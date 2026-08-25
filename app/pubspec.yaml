@@ -7,13 +7,21 @@ environment:
   sdk: ^3.13.1
 
 dependencies:
+  archive: ^4.2.0
+  crypto: ^3.0.7
   drift: ^2.34.3
   drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.2
+  flutter_secure_storage: ^11.0.0
+  flutter_svg: ^2.3.0
   flutter_tts: ^4.2.5
   go_router: ^18.0.0
+  http: ^1.6.0
+  image: ^4.9.2
+  image_picker: ^1.2.3
+  path: ^1.9.1
   path_provider: ^2.1.6
   uuid: ^4.6.0
 
@@ -26,3 +34,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/symbols/core/

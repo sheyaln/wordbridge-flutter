@@ -1,0 +1,68 @@
+/// A pointer to one symbol inside a pack.
+///
+/// Deliberately not an image. Whether a picture exists on this device is a
+/// separate, failable question answered by [SymbolPack.resolve], and keeping
+/// the two apart is what lets a button carry a symbol it has not downloaded
+/// yet without carrying a rendering error with it.
+typedef SymbolRef = ({String packId, String externalId, String label});
+
+extension SymbolRefKey on SymbolRef {
+  /// Stable identity for caching and de-duplication across packs.
+  String get key => '$packId/$externalId';
+}
+
+/// A source of symbols.
+///
+/// Application code depends on this interface and never on a concrete pack.
+/// The reason is licensing, not tidiness: ARASAAC and Sclera are CC BY-NC and
+/// cannot ship in a build that is sold, so a commercial fork has to be able to
+/// delete those files and still compile. See NOTICE.md.
+abstract interface class SymbolPack {
+  /// Stable across releases — it is written into `symbols.pack_id` rows and is
+  /// how a stored symbol finds its way back to a pack after a cache wipe.
+  String get id;
+
+  String get name;
+
+  /// SPDX-ish identifier, e.g. `CC-BY-SA-4.0`.
+  String get license;
+
+  /// Human-readable, shown in-app. Every licence in use here requires the
+  /// credit to be reachable from inside the running app, not just from the
+  /// repository.
+  String get attribution;
+
+  /// False means the pack may not be bundled, sold, or shipped on hardware
+  /// that is sold. [SymbolRegistry] keeps such packs inert until a user turns
+  /// them on, so the restriction attaches to that choice.
+  bool get allowsCommercialUse;
+
+  /// True if the images ship inside the application binary.
+  bool get isBundled;
+
+  Future<List<SymbolRef>> search(
+    String query, {
+    String locale = 'en',
+    int limit = 24,
+  });
+
+  /// An asset key for a bundled pack, an absolute file path for a downloaded
+  /// one, or null when no image is on the device.
+  ///
+  /// Implementations must not throw and must not wait on the network: this is
+  /// called while a grid is being built.
+  Future<String?> resolve(SymbolRef ref);
+}
+
+/// A pack that fetches its images at runtime.
+///
+/// Split out so the resolver can react to a download landing without knowing
+/// which pack did the downloading — the interface boundary has to hold even
+/// for the packs that behave least like the bundled ones.
+abstract interface class DownloadingSymbolPack implements SymbolPack {
+  /// Emits once a queued image has been written to disk, so a grid already on
+  /// screen can pick it up instead of polling.
+  Stream<SymbolRef> get available;
+
+  Future<void> dispose();
+}

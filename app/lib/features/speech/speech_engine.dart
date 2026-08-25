@@ -19,6 +19,25 @@ abstract interface class SpeechEngine {
 
 typedef VoiceOption = ({String name, String locale, bool requiresNetwork});
 
+/// Works around synthesisers announcing a lone capital letter by name.
+///
+/// Both iOS and Android read a single uppercase character as its letter name
+/// with a prefix — "I" becomes "capital I" — because in isolation it looks
+/// like a letter rather than a word. Lowercasing yields the letter's plain
+/// name, which for "I" is exactly the correct pronunciation of the word.
+///
+/// Only whole-utterance single letters are touched. Inside a sentence the
+/// synthesiser already has enough context ("I want more" reads correctly),
+/// and a spelling keyboard genuinely wants letter names, so it must not be
+/// routed through here.
+String normaliseForSpeech(String text) {
+  final trimmed = text.trim();
+  if (trimmed.length == 1 && RegExp(r'^[A-Z]$').hasMatch(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+  return trimmed;
+}
+
 class FlutterTtsEngine implements SpeechEngine {
   FlutterTtsEngine();
 
@@ -39,11 +58,12 @@ class FlutterTtsEngine implements SpeechEngine {
 
   @override
   Future<void> speak(String text) async {
-    if (text.trim().isEmpty) return;
+    final spoken = normaliseForSpeech(text);
+    if (spoken.isEmpty) return;
     // Newest selection wins. A user tapping quickly wants the current word,
     // not a queue draining words they have moved on from.
     await _tts.stop();
-    await _tts.speak(text);
+    await _tts.speak(spoken);
   }
 
   @override
