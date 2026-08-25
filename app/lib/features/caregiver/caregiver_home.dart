@@ -4,6 +4,7 @@ import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../editor/board_editor.dart';
 import '../usage/logger.dart';
+import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
 
 /// Everything behind the PIN.
@@ -144,6 +145,16 @@ class _Settings extends StatelessWidget {
             'position has had before you move it. With it off, the editor '
             'still works but cannot warn you.',
             style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+          ),
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.image_outlined),
+          title: const Text('Symbol credits'),
+          subtitle: const Text('Who made the pictures, and their licences'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SymbolCredits()),
           ),
         ),
       ],

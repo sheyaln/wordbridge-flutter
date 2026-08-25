@@ -11,6 +11,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data' show BytesBuilder;
 
 const _language = 'eng';
 const _outDir = 'app/assets/symbols/core';
@@ -64,6 +65,27 @@ const _words = <String>[
   'people', 'food', 'play', 'feelings', 'places', 'body',
   // System row
   'home', 'back', 'undo', 'clear',
+  // people
+  'mum', 'dad', 'friend', 'teacher', 'baby', 'brother', 'sister', 'doctor',
+  'nurse', 'grandma', 'grandpa', 'everybody', 'nobody', 'name',
+  // food
+  'eat', 'drink', 'water', 'milk', 'juice', 'hungry', 'thirsty', 'apple',
+  'banana', 'bread', 'cheese', 'egg', 'rice', 'hot', 'cold', 'pizza', 'pasta',
+  'chicken', 'soup', 'cake', 'biscuit', 'yummy', 'yucky', 'breakfast',
+  'lunch', 'dinner', 'snack',
+  // play
+  'read', 'draw', 'sing', 'dance', 'run', 'ball', 'book', 'toy', 'game',
+  'puzzle', 'blocks', 'music', 'video', 'tablet', 'bubbles', 'swing', 'slide',
+  'outside',
+  // feelings
+  'happy', 'sad', 'angry', 'scared', 'tired', 'excited', 'sick', 'worried',
+  'lonely', 'bored', 'silly', 'love', 'hate', 'miss',
+  // places
+  'school', 'shop', 'park', 'car', 'bus', 'bathroom', 'bedroom', 'kitchen',
+  'garden', 'inside', 'hospital', 'work', 'holiday', 'away',
+  // body
+  'head', 'face', 'eyes', 'ears', 'nose', 'mouth', 'hand', 'arm', 'leg',
+  'foot', 'tummy', 'hair', 'teeth', 'throat', 'skin', 'medicine', 'plaster',
 ];
 
 /// Alternative search terms, tried in order, for words whose own label is not
@@ -91,18 +113,49 @@ const _searchCandidates = <String, List<String>>{
   'undo': ['undo', 'delete', 'erase', 'rub out'],
   'clear': ['clear', 'empty', 'rubbish', 'bin'],
   'can': ['can', 'able'],
+  // British labels that the sets index under other names. Every one of these
+  // is the same referent, not a near-enough guess.
+  'mum': ['mum', 'mother', 'mummy', 'mom'],
+  'dad': ['dad', 'father', 'daddy'],
+  'everybody': ['everybody', 'everyone'],
+  'nobody': ['nobody', 'no one', 'none'],
+  'biscuit': ['biscuit', 'cookie'],
+  'bathroom': ['bathroom', 'toilet', 'washroom'],
+  'garden': ['garden', 'yard'],
+  'blocks': ['blocks', 'bricks', 'building blocks'],
+  'puzzle': ['puzzle', 'jigsaw'],
+  'toy': ['toy', 'toys'],
+  'snack': ['snack', 'snacks'],
 };
 
 Future<void> main() async {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
   final dir = Directory(_outDir)..createSync(recursive: true);
 
+  // Resume rather than restart. A run is ~600 requests, and a transient
+  // failure partway through used to be indistinguishable from a word that
+  // genuinely has no symbol — which is how "car" and "bus" ended up filed as
+  // missing when both exist upstream.
   final manifest = <String, Map<String, dynamic>>{};
-  final missing = <String>[];
+  final existing = File('${dir.path}/manifest.json');
+  if (existing.existsSync()) {
+    final decoded = jsonDecode(existing.readAsStringSync());
+    final symbols = decoded is Map ? decoded['symbols'] : null;
+    if (symbols is Map) {
+      for (final e in symbols.entries) {
+        manifest[e.key as String] = Map<String, dynamic>.from(e.value as Map);
+      }
+    }
+    stdout.writeln('resuming with ${manifest.length} symbols already fetched\n');
+  }
 
-  final usedSets = <String>{};
+  final missing = <String>[];
+  final usedSets = <String>{
+    for (final v in manifest.values) v['set'] as String,
+  };
 
   for (final word in _words) {
+    if (manifest.containsKey(word.toLowerCase())) continue;
     final candidates = _searchCandidates[word] ?? [word];
     stdout.write('${word.padRight(12)} ');
 
@@ -176,7 +229,28 @@ typedef _Hit = ({
   String setSlug,
 });
 
+/// Retries around network flakiness.
+///
+/// Distinguishing "this set has no such word" from "the request failed" is
+/// the whole point: the first is a real answer, the second is noise that must
+/// not be recorded as one.
 Future<_Hit?> _search(
+  HttpClient client,
+  String query,
+  ({String slug, int id, String name, String attribution}) set,
+) async {
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await _searchOnce(client, query, set);
+    } on Object {
+      if (attempt == 2) rethrow;
+      await Future<void>.delayed(Duration(milliseconds: 400 * (attempt + 1)));
+    }
+  }
+  return null;
+}
+
+Future<_Hit?> _searchOnce(
   HttpClient client,
   String query,
   ({String slug, int id, String name, String attribution}) set,

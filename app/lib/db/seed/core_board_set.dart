@@ -138,6 +138,97 @@ const _categories = <({int col, String name, String label})>[
   (col: 8, name: 'body', label: 'body'),
 ];
 
+/// Fringe vocabulary, written as the grid it becomes.
+///
+/// Each inner list is a row; `null` is a location deliberately left open.
+/// Laying it out literally rather than filling from a flat word list is the
+/// point: a word's position is written down, so adding one later cannot
+/// quietly shift the rest. Only rows 0-3 are used, leaving rows 4 and 5 free
+/// for the vocabulary a particular person turns out to need.
+///
+/// Columns stop at 10. Column 11 is the pinned question column.
+typedef _CategoryGrid = ({
+  List<List<String?>> rows,
+  Set<String> verbs,
+  Set<String> adjectives,
+});
+
+// The grid below is laid out to be read as a grid. dart format would set one
+// word per line, which hides the very thing that makes it reviewable: whether
+// a board is balanced, and where the deliberate gaps are.
+// dart format off
+const _categoryVocabulary = <String, _CategoryGrid>{
+  // Generic relations only. The blank columns are where a family's actual
+  // names belong — the most-requested personal vocabulary in every account of
+  // AAC use, and the thing a shipped board can never guess.
+  'people': (
+    rows: [
+      ['mum',     'dad',      null,     null, null, 'friend',    'teacher'],
+      ['baby',    'brother',  'sister', null, null, 'doctor',    'nurse'],
+      ['grandma', 'grandpa',  null,     null, null, 'everybody', 'nobody'],
+      ['name',    'who'],
+    ],
+    verbs: {},
+    adjectives: {},
+  ),
+  'food': (
+    rows: [
+      ['eat',       'drink',   null,      'water',  'milk',    'juice',    null, 'hungry', 'thirsty'],
+      ['apple',     'banana',  'bread',   'cheese', 'egg',     'rice',     null, 'hot',    'cold'],
+      ['pizza',     'pasta',   'chicken', 'soup',   'cake',    'biscuit',  null, 'yummy',  'yucky'],
+      ['breakfast', 'lunch',   'dinner',  'snack'],
+    ],
+    verbs: {'eat', 'drink'},
+    adjectives: {'hungry', 'thirsty', 'hot', 'cold', 'yummy', 'yucky'},
+  ),
+  'play': (
+    rows: [
+      ['play',    'read',      'draw',       'sing',    'dance',  'run'],
+      ['ball',    'book',      'toy',        'game',    'puzzle', 'blocks'],
+      ['music',   'video',     'tablet',     'bubbles', 'swing',  'slide'],
+      ['outside', 'my turn',   'your turn',  'again'],
+    ],
+    verbs: {'play', 'read', 'draw', 'sing', 'dance', 'run'},
+    adjectives: {},
+  ),
+  // Deliberately includes the difficult ones. A board that can only say
+  // "happy" and "sad" cannot report pain, fear, or being overwhelmed, which
+  // are the feelings that most need saying.
+  'feelings': (
+    rows: [
+      ['happy',    'sad',        'angry',    'scared',          'tired', 'excited'],
+      ['hurt',     'sick',       'worried',  'lonely',          'bored', 'silly'],
+      ['love',     'like',       'hate',     'miss'],
+      ['too loud', 'too bright', 'too much', 'leave me alone'],
+    ],
+    verbs: {'love', 'like', 'hate', 'miss'},
+    adjectives: {
+      'happy', 'sad', 'angry', 'scared', 'tired', 'excited',
+      'hurt', 'sick', 'worried', 'lonely', 'bored', 'silly',
+    },
+  ),
+  'places': (
+    rows: [
+      ['home',     'school',  'shop',    'park',   'car',     'bus'],
+      ['bathroom', 'bedroom', 'kitchen', 'garden', 'outside', 'inside'],
+      ['hospital', 'work',    'holiday', 'away'],
+    ],
+    verbs: {},
+    adjectives: {},
+  ),
+  'body': (
+    rows: [
+      ['head',     'face',     'eyes',    'ears', 'nose',  'mouth'],
+      ['hand',     'arm',      'leg',     'foot', 'tummy', 'back'],
+      ['hair',     'teeth',    'throat',  'skin'],
+      ['it hurts', 'medicine', 'plaster'],
+    ],
+    verbs: {},
+    adjectives: {},
+  ),
+};
+// dart format on
+
 /// Creates the shipped vocabulary and returns its id.
 Future<String> seedCoreBoardSet(
   WordbridgeDatabase db, {
@@ -201,12 +292,52 @@ Future<String> seedCoreBoardSet(
     );
   }
 
+  for (final entry in boardIds.entries) {
+    await _fillCategory(db, vocabId, entry.value, entry.key);
+  }
+
   await _addPinnedCells(db, vocabId, homeId, boardIds);
   for (final id in boardIds.values) {
     await _addPinnedCells(db, vocabId, id, boardIds);
   }
 
   return vocabId;
+}
+
+/// Places a category's vocabulary at the coordinates its grid declares.
+Future<void> _fillCategory(
+  WordbridgeDatabase db,
+  String vocabId,
+  String boardId,
+  String category,
+) async {
+  final grid = _categoryVocabulary[category];
+  if (grid == null) return;
+
+  for (var row = 0; row < grid.rows.length; row++) {
+    final labels = grid.rows[row];
+    for (var col = 0; col < labels.length; col++) {
+      final label = labels[col];
+      if (label == null) continue;
+
+      final cell = await cellAt(db, boardId: boardId, row: row, col: col);
+      await placeButton(
+        db,
+        vocabularyId: vocabId,
+        cellId: cell.id,
+        label: label,
+        message: label,
+        partOfSpeech: grid.verbs.contains(label)
+            ? PartOfSpeech.verb
+            : grid.adjectives.contains(label)
+            ? PartOfSpeech.adjective
+            : PartOfSpeech.noun,
+        // Fringe vocabulary sits at level 2 so an emergent user starts on core
+        // words alone, and the categories fill in without anything moving.
+        vocabLevel: 2,
+      );
+    }
+  }
 }
 
 /// Places everything that appears on every board.
@@ -268,6 +399,8 @@ Future<void> _addPinnedCells(
     );
   }
 
-  await place(10, 'undo', ButtonAction.backspace);
-  await place(11, 'clear', ButtonAction.clear);
+  // No undo or clear here. Both duplicate controls that belong on the
+  // utterance bar, and every duplicate costs a permanent location on every
+  // board — plus a second place a user can accidentally delete their sentence
+  // from. Those two slots stay reserved.
 }

@@ -90,14 +90,19 @@ class _TalkScreenState extends State<TalkScreen> {
           ]);
 
     return query.watch().map(
-      (rows) => rows
-          .map(
-            (r) => (
-              cell: r.readTable(widget.db.cells),
-              button: r.readTableOrNull(widget.db.buttons),
-            ),
-          )
-          .toList(),
+      (rows) => rows.map((r) {
+        final cell = r.readTable(widget.db.cells);
+        final button = r.readTableOrNull(widget.db.buttons);
+
+        // "Back" has nowhere to go from the root board, so it is not drawn
+        // there. Its location stays reserved rather than being given to
+        // something else, so the button is in the same place every time it is
+        // actually usable — hiding it is a rendering decision, not a move.
+        final deadBack =
+            button?.action == ButtonAction.back && boardId == _rootBoardId;
+
+        return (cell: cell, button: deadBack ? null : button);
+      }).toList(),
     );
   }
 
@@ -115,7 +120,10 @@ class _TalkScreenState extends State<TalkScreen> {
         _utterance.add(button.message);
         await widget.speech.speak(button.speakText ?? button.message);
         if (_autoReturn && _currentBoardId != _rootBoardId) {
-          setState(() => _currentBoardId = _rootBoardId);
+          setState(() {
+            _currentBoardId = _rootBoardId;
+            _previousBoardId = null;
+          });
         }
 
       case ButtonAction.navigate:
@@ -125,7 +133,13 @@ class _TalkScreenState extends State<TalkScreen> {
         });
 
       case ButtonAction.home:
-        setState(() => _currentBoardId = _rootBoardId);
+        // Home is a reset, not a step. Anything that walked the user here is
+        // discarded, so the next "back" cannot rewind into a board they have
+        // already left.
+        setState(() {
+          _currentBoardId = _rootBoardId;
+          _previousBoardId = null;
+        });
 
       case ButtonAction.back:
         setState(() => _currentBoardId = _previousBoardId ?? _rootBoardId);
@@ -199,6 +213,7 @@ class _TalkScreenState extends State<TalkScreen> {
                 _UtteranceBarView(
                   utterance: _utterance,
                   onSpeak: () => widget.speech.speak(_utterance.text),
+                  onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
                 Expanded(
@@ -245,31 +260,56 @@ class _UtteranceBarView extends StatelessWidget {
   const _UtteranceBarView({
     required this.utterance,
     required this.onSpeak,
+    required this.onBackspace,
     required this.onClear,
   });
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
+  final VoidCallback onBackspace;
   final VoidCallback onClear;
+
+  /// Space between speaking and deleting.
+  ///
+  /// The two most important controls here do opposite things, and one of them
+  /// is destructive. A user with imprecise reach who means to speak and lands
+  /// one button over should not lose the sentence they just built. So speak
+  /// sits at the far left, the destructive pair at the far right, with the
+  /// whole sentence between them.
+  static const _separation = 24.0;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: utterance,
       builder: (context, _) {
+        final empty = utterance.isEmpty;
+
         return Container(
-          height: 72,
+          height: 80,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           color: Colors.white,
           child: Row(
             children: [
+              // Deliberately the largest target on the bar.
+              _BarButton(
+                icon: Icons.volume_up_rounded,
+                tooltip: 'Speak',
+                onPressed: empty ? null : onSpeak,
+                size: 40,
+                colour: const Color(0xFF1B5E20),
+                background: const Color(0xFFDCEDC8),
+              ),
+              const SizedBox(width: _separation),
+
               Expanded(
                 child: GestureDetector(
-                  onTap: onSpeak,
+                  onTap: empty ? null : onSpeak,
+                  behavior: HitTestBehavior.opaque,
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      utterance.isEmpty ? '' : utterance.text,
+                      utterance.text,
                       style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w500,
@@ -280,20 +320,68 @@ class _UtteranceBarView extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.volume_up),
-                iconSize: 32,
-                onPressed: onSpeak,
+
+              const SizedBox(width: _separation),
+              _BarButton(
+                icon: Icons.backspace_outlined,
+                tooltip: 'Delete last word',
+                onPressed: empty ? null : onBackspace,
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                iconSize: 32,
-                onPressed: onClear,
+              const SizedBox(width: 4),
+              _BarButton(
+                icon: Icons.close_rounded,
+                tooltip: 'Clear',
+                onPressed: empty ? null : onClear,
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.size = 30,
+    this.colour = Colors.black54,
+    this.background,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final double size;
+  final Color colour;
+  final Color? background;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: enabled
+            ? (background ?? Colors.transparent)
+            : Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              icon,
+              size: size,
+              color: enabled ? colour : Colors.black12,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

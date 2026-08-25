@@ -217,6 +217,66 @@ void main() {
     });
   });
 
+  group('categories carry vocabulary', () {
+    test('no category board is empty', () async {
+      // This shipped empty once. A category button that opens onto nothing is
+      // worse than no button: it teaches that navigating is pointless.
+      final categories = await (db.select(
+        db.boards,
+      )..where((b) => b.kind.equalsValue(BoardKind.category))).get();
+
+      expect(categories, isNotEmpty);
+
+      for (final board in categories) {
+        final query =
+            db.select(db.buttons).join([
+              innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+            ])..where(
+              db.cells.boardId.equals(board.id) &
+                  db.buttons.isSystem.equals(false) &
+                  db.cells.col.isSmallerThanValue(11),
+            );
+
+        expect(
+          await query.get(),
+          hasLength(greaterThan(8)),
+          reason: '"${board.name}" has nothing in it',
+        );
+      }
+    });
+
+    test('every category keeps room to grow', () async {
+      final categories = await (db.select(
+        db.boards,
+      )..where((b) => b.kind.equalsValue(BoardKind.category))).get();
+
+      for (final board in categories) {
+        final reserved =
+            await (db.select(db.cells)..where(
+                  (c) =>
+                      c.boardId.equals(board.id) &
+                      c.state.equalsValue(CellState.emptyReserved),
+                ))
+                .get();
+
+        expect(
+          reserved.length,
+          greaterThan(15),
+          reason:
+              '"${board.name}" is packed too full for personal vocabulary '
+              'to be added without displacing something',
+        );
+      }
+    });
+
+    test('feelings can say the difficult things', () async {
+      // A board that only manages "happy" and "sad" cannot report pain or
+      // being overwhelmed, which are the feelings that most need saying.
+      final labels = (await buttons()).map((b) => b.label).toSet();
+      expect(labels, containsAll(['hurt', 'scared', 'too loud']));
+    });
+  });
+
   test('every category button leads somewhere real', () async {
     final navButtons = (await buttons())
         .where((b) => b.action == ButtonAction.navigate)
