@@ -78,13 +78,54 @@ const _homeWords = <_Word>[
   // urgent thing a user can need, and burying it is a safety problem.
   (row: 0, col: 10, label: 'good', pos: PartOfSpeech.adjective, level: 1),
   (row: 1, col: 10, label: 'not', pos: PartOfSpeech.negation, level: 1),
+];
 
-  // Column 11 — questions
-  (row: 0, col: 11, label: 'what', pos: PartOfSpeech.question, level: 1),
-  (row: 1, col: 11, label: 'where', pos: PartOfSpeech.question, level: 1),
-  (row: 2, col: 11, label: 'who', pos: PartOfSpeech.question, level: 2),
-  (row: 3, col: 11, label: 'when', pos: PartOfSpeech.question, level: 2),
-  (row: 4, col: 11, label: 'why', pos: PartOfSpeech.question, level: 2),
+/// The rightmost column, repeated on every board.
+///
+/// Questions are not a category — they apply to whatever the user is already
+/// looking at. Pinning them means "where" is one movement from anywhere
+/// rather than a trip back to the root board and out again, which is the
+/// difference between asking a question and giving up on asking it.
+///
+/// Same reasoning as the system row, one axis over.
+const _pinnedColumn = 11;
+
+const _pinnedWords = <_Word>[
+  (
+    row: 0,
+    col: _pinnedColumn,
+    label: 'what',
+    pos: PartOfSpeech.question,
+    level: 1,
+  ),
+  (
+    row: 1,
+    col: _pinnedColumn,
+    label: 'where',
+    pos: PartOfSpeech.question,
+    level: 1,
+  ),
+  (
+    row: 2,
+    col: _pinnedColumn,
+    label: 'who',
+    pos: PartOfSpeech.question,
+    level: 2,
+  ),
+  (
+    row: 3,
+    col: _pinnedColumn,
+    label: 'when',
+    pos: PartOfSpeech.question,
+    level: 2,
+  ),
+  (
+    row: 4,
+    col: _pinnedColumn,
+    label: 'why',
+    pos: PartOfSpeech.question,
+    level: 2,
+  ),
 ];
 
 /// Category boards reachable in one tap from the system row.
@@ -160,19 +201,21 @@ Future<String> seedCoreBoardSet(
     );
   }
 
-  await _addSystemRow(db, vocabId, homeId, boardIds);
+  await _addPinnedCells(db, vocabId, homeId, boardIds);
   for (final id in boardIds.values) {
-    await _addSystemRow(db, vocabId, id, boardIds);
+    await _addPinnedCells(db, vocabId, id, boardIds);
   }
 
   return vocabId;
 }
 
-/// Places the system row on a board.
+/// Places everything that appears on every board.
 ///
-/// Identical coordinates on every board, so home, back, and the category
-/// buttons are one fixed movement away regardless of where the user is.
-Future<void> _addSystemRow(
+/// The bottom row (home, back, categories, editing) and the rightmost column
+/// (questions) are at identical coordinates wherever the user is, so reaching
+/// them is one fixed movement rather than a path that depends on which board
+/// happens to be open.
+Future<void> _addPinnedCells(
   WordbridgeDatabase db,
   String vocabId,
   String boardId,
@@ -194,6 +237,22 @@ Future<void> _addSystemRow(
       action: action,
       targetBoardId: target,
       isSystem: true,
+    );
+  }
+
+  // Questions first: they are ordinary vocabulary that happens to be pinned,
+  // not controls, so they keep their part-of-speech colour and are editable
+  // like any other word.
+  for (final w in _pinnedWords) {
+    final cell = await cellAt(db, boardId: boardId, row: w.row, col: w.col);
+    await placeButton(
+      db,
+      vocabularyId: vocabId,
+      cellId: cell.id,
+      label: w.label,
+      message: w.label,
+      partOfSpeech: w.pos,
+      vocabLevel: w.level,
     );
   }
 

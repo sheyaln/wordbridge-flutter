@@ -163,6 +163,60 @@ void main() {
     });
   });
 
+  group('the question column is pinned', () {
+    test(
+      'every board carries the same questions at the same coordinates',
+      () async {
+        final boards = await db.select(db.boards).get();
+        expect(boards.length, greaterThan(1));
+
+        final perBoard = <String, Map<String, ({int row, int col})>>{};
+
+        for (final board in boards) {
+          final query = db.select(db.cells).join(
+            [innerJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id))],
+          )..where(db.cells.boardId.equals(board.id) & db.cells.col.equals(11));
+
+          perBoard[board.name] = {
+            for (final r in await query.get())
+              r.readTable(db.buttons).label: (
+                row: r.readTable(db.cells).row,
+                col: r.readTable(db.cells).col,
+              ),
+          };
+        }
+
+        final reference = perBoard.values.first;
+        expect(reference.keys, containsAll(['what', 'where', 'who']));
+
+        for (final entry in perBoard.entries) {
+          expect(
+            entry.value,
+            reference,
+            reason:
+                'questions differ on "${entry.key}" — asking "where" would '
+                'take a different movement depending on which board is open',
+          );
+        }
+      },
+    );
+
+    test('questions stay ordinary vocabulary, not controls', () async {
+      // Pinned is a placement decision. Treating them as system buttons would
+      // strip their colour coding and lock a caregiver out of editing them.
+      final what = await (db.select(
+        db.buttons,
+      )..where((b) => b.label.equals('what'))).get();
+
+      expect(what, isNotEmpty);
+      for (final b in what) {
+        expect(b.isSystem, isFalse);
+        expect(b.partOfSpeech, PartOfSpeech.question);
+        expect(b.action, ButtonAction.speak);
+      }
+    });
+  });
+
   test('every category button leads somewhere real', () async {
     final navButtons = (await buttons())
         .where((b) => b.action == ButtonAction.navigate)
