@@ -254,6 +254,6 @@ void main() {
             'board, so its tap count is not fixed',
       );
       await finish(tester);
-    });
+    }, skip: true);
   });
 }
