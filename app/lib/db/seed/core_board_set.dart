@@ -102,6 +102,18 @@ const _morphemes =
       (row: 5, label: 'was/were', kind: null, tense: 'past'),
     ];
 
+/// Articles, one column further right.
+///
+/// "a" is inserted and repaired to "an" once the following word is known —
+/// the choice has to be made before the noun exists, and asking a user to
+/// know how their next word starts is not a reasonable thing to ask.
+const _articleColumn = 7;
+
+const _articles = <({int row, String label, String word})>[
+  (row: 0, label: 'a', word: 'a'),
+  (row: 1, label: 'the', word: 'the'),
+];
+
 /// The rightmost column, repeated on every board.
 ///
 /// Questions are not a category — they apply to whatever the user is already
@@ -279,6 +291,19 @@ Future<String> seedCoreBoardSet(
         ),
       );
 
+  await db
+      .into(db.profiles)
+      .insert(
+        ProfilesCompanion.insert(
+          id: 'default',
+          displayName: 'default',
+          activeVocabularyId: Value(vocabId),
+          createdAt: ts,
+          updatedAt: ts,
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
   final homeId = await materialiseBoard(
     db,
     vocabularyId: vocabId,
@@ -307,6 +332,25 @@ Future<String> seedCoreBoardSet(
       action: ButtonAction.morpheme,
       morphemeKind: m.kind,
       partOfSpeech: PartOfSpeech.other,
+      vocabLevel: 2,
+    );
+  }
+
+  for (final a in _articles) {
+    final cell = await cellAt(
+      db,
+      boardId: homeId,
+      row: a.row,
+      col: _articleColumn,
+    );
+    await placeButton(
+      db,
+      vocabularyId: vocabId,
+      cellId: cell.id,
+      label: a.label,
+      message: 'article',
+      action: ButtonAction.morpheme,
+      partOfSpeech: PartOfSpeech.determiner,
       vocabLevel: 2,
     );
   }

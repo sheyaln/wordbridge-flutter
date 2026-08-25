@@ -222,3 +222,62 @@ String copulaFor(String? subject, {required bool past}) {
   if (plural.contains(s)) return 'are';
   return 'is';
 }
+
+/// Whether a grammar helper makes sense given what has been said so far.
+///
+/// Endings that cannot apply are hidden rather than moved: the cell stays
+/// reserved and the button reappears in exactly the same place the moment it
+/// becomes usable. This is the same rule the rest of the board follows —
+/// nothing that has a location ever loses it — applied to a button whose
+/// availability changes mid-sentence rather than over months.
+///
+/// The point is not tidiness. A grid that offers "+ed" with nothing to attach
+/// it to invites a tap that produces nothing, and a button that sometimes
+/// does nothing is one a user learns to distrust.
+bool grammarHelperApplies({
+  required MorphemeKind? kind,
+  required String tense,
+  required PartOfSpeech? previousPos,
+  required bool previousInflected,
+  required bool atStart,
+}) {
+  // Articles come before a noun phrase, so they belong at the start of a
+  // sentence or after a verb or preposition — "want a drink", "in a car".
+  if (tense == 'article') {
+    if (atStart) return true;
+    return switch (previousPos) {
+      PartOfSpeech.verb ||
+      PartOfSpeech.preposition ||
+      PartOfSpeech.conjunction => true,
+      _ => false,
+    };
+  }
+
+  if (atStart) return false;
+
+  // "to be" agrees with a subject, so it follows one. "want is" is not a
+  // sentence anyone means to build.
+  if (kind == null && (tense == 'present' || tense == 'past')) {
+    return switch (previousPos) {
+      PartOfSpeech.pronoun ||
+      PartOfSpeech.noun ||
+      PartOfSpeech.determiner => true,
+      _ => false,
+    };
+  }
+
+  // One suffix per word. Stacking them gives "wanteding".
+  if (previousInflected) return false;
+
+  return switch (kind) {
+    MorphemeKind.pastEd || MorphemeKind.ing => previousPos == PartOfSpeech.verb,
+    // Plural on a noun, third person on a verb — one key, two jobs.
+    MorphemeKind.pluralS =>
+      previousPos == PartOfSpeech.noun || previousPos == PartOfSpeech.verb,
+    MorphemeKind.possessive =>
+      previousPos == PartOfSpeech.noun || previousPos == PartOfSpeech.pronoun,
+    MorphemeKind.comparativeEr ||
+    MorphemeKind.superlativeEst => previousPos == PartOfSpeech.adjective,
+    null => false,
+  };
+}

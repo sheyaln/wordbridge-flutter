@@ -9,6 +9,7 @@ import '../auth/pin_gate.dart';
 import '../caregiver/caregiver_home.dart';
 import '../grid/grid_surface.dart';
 import '../speech/speech_engine.dart';
+import '../profiles/profile_settings.dart';
 import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
@@ -24,6 +25,7 @@ class TalkScreen extends StatefulWidget {
     required this.logger,
     required this.auth,
     this.resolver,
+    this.settings,
     this.profileId = 'default',
     this.userName,
   });
@@ -34,6 +36,7 @@ class TalkScreen extends StatefulWidget {
   final UsageLogger logger;
   final PinAuth auth;
   final SymbolResolver? resolver;
+  final ProfileSettings? settings;
   final String profileId;
   final String? userName;
 
@@ -61,7 +64,20 @@ class _TalkScreenState extends State<TalkScreen> {
   @override
   void initState() {
     super.initState();
+    // Which endings are offered depends on the sentence so far, so the grid
+    // has to rebuild whenever the bar changes.
+    _utterance.addListener(_onUtteranceChanged);
     _load();
+  }
+
+  void _onUtteranceChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _utterance.removeListener(_onUtteranceChanged);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -118,7 +134,7 @@ class _TalkScreenState extends State<TalkScreen> {
 
     switch (button.action) {
       case ButtonAction.speak:
-        _utterance.add(button.message);
+        _utterance.add(button.message, pos: button.partOfSpeech);
         await widget.speech.speak(button.speakText ?? button.message);
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
@@ -162,6 +178,25 @@ class _TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  /// Whether a button can be used given what has been said so far.
+  ///
+  /// Only word endings are ever withheld; ordinary vocabulary is always
+  /// available. When the setting is off, everything shows all the time and
+  /// the board never changes shape.
+  bool _isAvailable(Button button) {
+    if (button.action != ButtonAction.morpheme) return true;
+    if (!(widget.settings?.contextualGrammar ?? true)) return true;
+
+    final previous = _utterance.last;
+    return grammarHelperApplies(
+      kind: button.morphemeKind,
+      tense: button.message,
+      previousPos: previous?.pos,
+      previousInflected: previous?.inflected ?? false,
+      atStart: previous == null,
+    );
+  }
+
   /// Inflects the last word, or appends an agreeing form of "to be".
   ///
   /// Two different operations behind one action, because they are two ways of
@@ -172,11 +207,17 @@ class _TalkScreenState extends State<TalkScreen> {
     final kind = button.morphemeKind;
 
     if (kind == null) {
-      // A copula button carries its tense in the message rather than in
-      // morphemeKind, since it does not transform anything.
+      // Articles and copulas add a word rather than rewriting one, so they
+      // share a path that appends.
+      if (button.message == 'article') {
+        _utterance.add(button.label, pos: PartOfSpeech.determiner);
+        await widget.speech.speak(button.label);
+        return;
+      }
+
       final past = button.message == 'past';
-      final form = copulaFor(_utterance.last, past: past);
-      _utterance.add(form);
+      final form = copulaFor(_utterance.last?.text, past: past);
+      _utterance.add(form, pos: PartOfSpeech.verb);
       await widget.speech.speak(form);
       return;
     }
@@ -215,6 +256,7 @@ class _TalkScreenState extends State<TalkScreen> {
           vocabularyId: widget.vocabularyId,
           profileId: widget.profileId,
           logger: widget.logger,
+          settings: widget.settings,
           userName: widget.userName,
         ),
       ),
@@ -259,6 +301,7 @@ class _TalkScreenState extends State<TalkScreen> {
                           cells: cells,
                           vocabLevel: 3,
                           resolver: widget.resolver,
+                          isAvailable: _isAvailable,
                           colourScheme: vocab.colourScheme,
                           onSelect: _onSelect,
                         ),

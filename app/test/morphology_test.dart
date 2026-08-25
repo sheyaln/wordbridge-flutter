@@ -154,6 +154,8 @@ void main() {
     });
   });
 
+  _grammarTests();
+
   group('the examples that prompted this', () {
     test('I am', () {
       expect('I ${copulaFor('I', past: false)}', 'I am');
@@ -165,6 +167,130 @@ void main() {
 
     test('he made', () {
       expect('he ${past('make')}', 'he made');
+    });
+  });
+}
+
+void _grammarTests() {
+  bool applies({
+    MorphemeKind? kind,
+    String tense = '',
+    PartOfSpeech? after,
+    bool inflected = false,
+    bool atStart = false,
+  }) => grammarHelperApplies(
+    kind: kind,
+    tense: tense,
+    previousPos: after,
+    previousInflected: inflected,
+    atStart: atStart,
+  );
+
+  group('endings appear only where they apply', () {
+    test('nothing is offered before a word has been said', () {
+      // The case that prompted this: "+ed" with no verb to attach it to.
+      expect(applies(kind: MorphemeKind.pastEd, atStart: true), isFalse);
+      expect(applies(kind: MorphemeKind.pluralS, atStart: true), isFalse);
+      expect(applies(kind: null, tense: 'present', atStart: true), isFalse);
+    });
+
+    test('tense endings follow a verb and nothing else', () {
+      expect(
+        applies(kind: MorphemeKind.pastEd, after: PartOfSpeech.verb),
+        isTrue,
+      );
+      expect(applies(kind: MorphemeKind.ing, after: PartOfSpeech.verb), isTrue);
+
+      for (final pos in [
+        PartOfSpeech.noun,
+        PartOfSpeech.pronoun,
+        PartOfSpeech.preposition,
+        PartOfSpeech.question,
+        PartOfSpeech.negation,
+      ]) {
+        expect(applies(kind: MorphemeKind.pastEd, after: pos), isFalse);
+      }
+    });
+
+    test('plural s serves both nouns and verbs', () {
+      expect(
+        applies(kind: MorphemeKind.pluralS, after: PartOfSpeech.noun),
+        isTrue,
+      );
+      expect(
+        applies(kind: MorphemeKind.pluralS, after: PartOfSpeech.verb),
+        isTrue,
+      );
+      expect(
+        applies(kind: MorphemeKind.pluralS, after: PartOfSpeech.preposition),
+        isFalse,
+      );
+    });
+
+    test('possessive follows something that can own', () {
+      expect(
+        applies(kind: MorphemeKind.possessive, after: PartOfSpeech.noun),
+        isTrue,
+      );
+      expect(
+        applies(kind: MorphemeKind.possessive, after: PartOfSpeech.pronoun),
+        isTrue,
+      );
+      expect(
+        applies(kind: MorphemeKind.possessive, after: PartOfSpeech.verb),
+        isFalse,
+      );
+    });
+
+    test('a suffix cannot be applied twice', () {
+      // Otherwise "want" becomes "wanted" becomes "wanteded".
+      expect(
+        applies(
+          kind: MorphemeKind.pastEd,
+          after: PartOfSpeech.verb,
+          inflected: true,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('the copula follows a subject', () {
+    test('after a pronoun or noun', () {
+      expect(
+        applies(kind: null, tense: 'present', after: PartOfSpeech.pronoun),
+        isTrue,
+      );
+      expect(
+        applies(kind: null, tense: 'past', after: PartOfSpeech.noun),
+        isTrue,
+      );
+    });
+
+    test('never after a verb', () {
+      // "want is" is not a sentence anyone means to build.
+      expect(
+        applies(kind: null, tense: 'present', after: PartOfSpeech.verb),
+        isFalse,
+      );
+    });
+  });
+
+  group('articles', () {
+    test('open a sentence', () {
+      expect(applies(tense: 'article', atStart: true), isTrue);
+    });
+
+    test('follow a verb or preposition', () {
+      expect(applies(tense: 'article', after: PartOfSpeech.verb), isTrue);
+      expect(
+        applies(tense: 'article', after: PartOfSpeech.preposition),
+        isTrue,
+      );
+    });
+
+    test('do not stack on a noun already introduced', () {
+      expect(applies(tense: 'article', after: PartOfSpeech.noun), isFalse);
     });
   });
 }

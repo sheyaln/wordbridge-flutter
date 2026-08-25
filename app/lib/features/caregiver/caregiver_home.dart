@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../editor/board_editor.dart';
+import '../profiles/profile_settings.dart';
 import '../usage/logger.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
@@ -19,6 +20,7 @@ class CaregiverHome extends StatefulWidget {
     required this.vocabularyId,
     required this.profileId,
     required this.logger,
+    this.settings,
     this.userName,
   });
 
@@ -26,6 +28,7 @@ class CaregiverHome extends StatefulWidget {
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
+  final ProfileSettings? settings;
   final String? userName;
 
   @override
@@ -57,7 +60,11 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           profileId: widget.profileId,
           logger: widget.logger,
         ),
-        _ => _Settings(logger: widget.logger, onChanged: () => setState(() {})),
+        _ => _Settings(
+          logger: widget.logger,
+          settings: widget.settings,
+          onChanged: () => setState(() {}),
+        ),
       },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
@@ -119,15 +126,36 @@ class _Boards extends StatelessWidget {
 }
 
 class _Settings extends StatelessWidget {
-  const _Settings({required this.logger, required this.onChanged});
+  const _Settings({
+    required this.logger,
+    required this.settings,
+    required this.onChanged,
+  });
 
   final UsageLogger logger;
+  final ProfileSettings? settings;
   final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        if (settings != null)
+          SwitchListTile(
+            value: settings!.contextualGrammar,
+            title: const Text('Show word endings only when they fit'),
+            subtitle: const Text(
+              'With this on, "+ed" appears once there is a verb to attach it '
+              'to and is hidden otherwise. It always returns to the same '
+              'place. Turn it off to keep every key visible at all times.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('contextualGrammar', v);
+              onChanged();
+            },
+          ),
+        const Divider(),
         SwitchListTile(
           value: logger.enabled,
           title: const Text('Record what gets said'),

@@ -4,6 +4,7 @@ import 'db/database.dart';
 import 'db/ids.dart';
 import 'db/seed/core_board_set.dart';
 import 'features/auth/pin.dart';
+import 'features/profiles/profile_settings.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/symbols/bundled_pack.dart';
 import 'features/symbols/symbol_registry.dart';
@@ -30,6 +31,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 
   late final _logger = UsageLogger(_db, deviceId: newId());
   late final _auth = PinAuth(_db);
+  late final _settings = ProfileSettings(_db, 'default');
 
   late final _symbols = SymbolRegistry(packs: bundledSymbolPacks());
   late final _resolver = SymbolResolver(registry: _symbols);
@@ -40,9 +42,12 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     await _speech.init();
 
     final existing = await _db.select(_db.vocabularies).get();
-    if (existing.isNotEmpty) return existing.first.id;
+    final vocabId = existing.isNotEmpty
+        ? existing.first.id
+        : await seedCoreBoardSet(_db);
 
-    return seedCoreBoardSet(_db);
+    await _settings.load();
+    return vocabId;
   }
 
   @override
@@ -96,6 +101,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
             logger: _logger,
             auth: _auth,
             resolver: _resolver,
+            settings: _settings,
           );
         },
       ),

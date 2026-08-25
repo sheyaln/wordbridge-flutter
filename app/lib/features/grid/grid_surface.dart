@@ -28,6 +28,7 @@ class GridSurface extends StatelessWidget {
     this.showHidden = false,
     this.resolver,
     this.symbolPackIds = const ['core'],
+    this.isAvailable,
   });
 
   final int rows;
@@ -53,6 +54,14 @@ class GridSurface extends StatelessWidget {
 
   /// Packs to look in, in order.
   final List<String> symbolPackIds;
+
+  /// Whether a button can be used right now.
+  ///
+  /// Used for word endings, which only make sense after certain kinds of
+  /// word. A button that fails this is drawn as a reserved blank — it keeps
+  /// its location and reappears in exactly the same place, so a temporarily
+  /// unusable key never becomes a moved one.
+  final bool Function(Button)? isAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +94,7 @@ class GridSurface extends StatelessWidget {
                     showHidden: showHidden,
                     resolver: resolver,
                     symbolPackIds: symbolPackIds,
+                    isAvailable: isAvailable,
                     onSelect: onSelect,
                   ),
                 ),
@@ -104,6 +114,7 @@ class _Cell extends StatelessWidget {
     required this.showHidden,
     required this.resolver,
     required this.symbolPackIds,
+    required this.isAvailable,
     required this.onSelect,
   });
 
@@ -113,11 +124,13 @@ class _Cell extends StatelessWidget {
   final bool showHidden;
   final SymbolResolver? resolver;
   final List<String> symbolPackIds;
+  final bool Function(Button)? isAvailable;
   final void Function(PlacedCell) onSelect;
 
   bool get _isMasked {
     final b = placed.button;
-    return b == null || b.hidden || b.vocabLevel > vocabLevel;
+    if (b == null || b.hidden || b.vocabLevel > vocabLevel) return true;
+    return !(isAvailable?.call(b) ?? true);
   }
 
   Widget _content(Button button) {
