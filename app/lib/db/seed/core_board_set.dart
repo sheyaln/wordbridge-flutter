@@ -80,6 +80,28 @@ const _homeWords = <_Word>[
   (row: 1, col: 10, label: 'not', pos: PartOfSpeech.negation, level: 1),
 ];
 
+/// Word endings, sitting immediately right of the verbs.
+///
+/// Five locations buy every inflected form of every verb on the board. The
+/// alternative — a cell each for want, wants, wanted, wanting — would consume
+/// the grid several times over and still miss combinations nobody predicted.
+///
+/// Placed at column 6 because verbs occupy 3 to 5: the movement reads left to
+/// right, verb then ending, matching the order the words come out in.
+const _morphemeColumn = 6;
+
+const _morphemes =
+    <({int row, String label, MorphemeKind? kind, String tense})>[
+      (row: 0, label: '+s', kind: MorphemeKind.pluralS, tense: ''),
+      (row: 1, label: '+ed', kind: MorphemeKind.pastEd, tense: ''),
+      (row: 2, label: '+ing', kind: MorphemeKind.ing, tense: ''),
+      (row: 3, label: "+'s", kind: MorphemeKind.possessive, tense: ''),
+      // The copula agrees with whatever subject is already in the bar, so one
+      // location covers am / is / are and another covers was / were.
+      (row: 4, label: 'am/is/are', kind: null, tense: 'present'),
+      (row: 5, label: 'was/were', kind: null, tense: 'past'),
+    ];
+
 /// The rightmost column, repeated on every board.
 ///
 /// Questions are not a category — they apply to whatever the user is already
@@ -267,6 +289,27 @@ Future<String> seedCoreBoardSet(
   await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId))).write(
     VocabulariesCompanion(rootBoardId: Value(homeId)),
   );
+
+  for (final m in _morphemes) {
+    final cell = await cellAt(
+      db,
+      boardId: homeId,
+      row: m.row,
+      col: _morphemeColumn,
+    );
+    await placeButton(
+      db,
+      vocabularyId: vocabId,
+      cellId: cell.id,
+      label: m.label,
+      // A copula carries its tense here; a suffix carries it in morphemeKind.
+      message: m.tense,
+      action: ButtonAction.morpheme,
+      morphemeKind: m.kind,
+      partOfSpeech: PartOfSpeech.other,
+      vocabLevel: 2,
+    );
+  }
 
   for (final w in _homeWords) {
     final cell = await cellAt(db, boardId: homeId, row: w.row, col: w.col);

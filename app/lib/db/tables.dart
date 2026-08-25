@@ -27,6 +27,10 @@ enum MorphemeKind {
   possessive,
 }
 
+/// Forms of "to be", which agree with the subject rather than transforming
+/// the previous word, so they append instead of rewriting.
+enum CopulaKind { present, past }
+
 enum SymbolSource { bundled, downloaded, custom }
 
 /// Distinguishes the AAC user's own selections from a partner modelling on

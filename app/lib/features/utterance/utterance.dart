@@ -14,6 +14,20 @@ class UtteranceBar extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Rewrites the last word in place.
+  ///
+  /// Used by the suffix keys: tapping "+ed" after "want" should leave one
+  /// word reading "wanted", not two reading "want ed".
+  String? replaceLast(String Function(String) transform) {
+    if (_words.isEmpty) return null;
+    final replaced = transform(_words.last);
+    _words[_words.length - 1] = replaced;
+    notifyListeners();
+    return replaced;
+  }
+
+  String? get last => _words.isEmpty ? null : _words.last;
+
   void backspace() {
     if (_words.isEmpty) return;
     _words.removeLast();

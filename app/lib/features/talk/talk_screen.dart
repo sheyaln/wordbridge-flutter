@@ -11,6 +11,7 @@ import '../grid/grid_surface.dart';
 import '../speech/speech_engine.dart';
 import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
+import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 
 /// The only screen the AAC user sees.
@@ -154,9 +155,35 @@ class _TalkScreenState extends State<TalkScreen> {
         await widget.speech.speak(_utterance.text);
 
       case ButtonAction.morpheme:
+        await _applyMorpheme(button);
+
       case ButtonAction.none:
         break;
     }
+  }
+
+  /// Inflects the last word, or appends an agreeing form of "to be".
+  ///
+  /// Two different operations behind one action, because they are two ways of
+  /// answering the same need: the suffix keys rewrite what is already there
+  /// ("want" becomes "wanted"), while the copula adds a word that depends on
+  /// what is there ("I" gets "am", "they" get "are").
+  Future<void> _applyMorpheme(Button button) async {
+    final kind = button.morphemeKind;
+
+    if (kind == null) {
+      // A copula button carries its tense in the message rather than in
+      // morphemeKind, since it does not transform anything.
+      final past = button.message == 'past';
+      final form = copulaFor(_utterance.last, past: past);
+      _utterance.add(form);
+      await widget.speech.speak(form);
+      return;
+    }
+
+    final inflected = _utterance.replaceLast((w) => applyMorpheme(w, kind));
+    if (inflected == null) return;
+    await widget.speech.speak(inflected);
   }
 
   void _record(PlacedCell placed, Button button) {
