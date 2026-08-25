@@ -18,7 +18,14 @@ enum ButtonAction {
   none,
 }
 
-enum MorphemeKind { pluralS, pastEd, ing, comparativeEr, superlativeEst, possessive }
+enum MorphemeKind {
+  pluralS,
+  pastEd,
+  ing,
+  comparativeEr,
+  superlativeEst,
+  possessive,
+}
 
 enum SymbolSource { bundled, downloaded, custom }
 
@@ -26,7 +33,16 @@ enum SymbolSource { bundled, downloaded, custom }
 /// their device. Conflating them makes every progress report wrong.
 enum UsageSource { touch, switchAccess, partnerModel }
 
-enum EditKind { remap, create, hide, unhide, relabel, resymbol, delete, gridResize }
+enum EditKind {
+  remap,
+  create,
+  hide,
+  unhide,
+  relabel,
+  resymbol,
+  delete,
+  gridResize,
+}
 
 enum PartOfSpeech {
   pronoun,
@@ -99,15 +115,17 @@ class Vocabularies extends Table with _Timestamps {
   /// JSON: {"home": [6, 0], "back": [6, 1], ...}
   TextColumn get systemCellMap => text().withDefault(const Constant('{}'))();
 
-  TextColumn get colourScheme =>
-      textEnum<ColourScheme>().withDefault(const Constant('modifiedFitzgerald'))();
+  TextColumn get colourScheme => textEnum<ColourScheme>().withDefault(
+    const Constant('modifiedFitzgerald'),
+  )();
 
   BoolColumn get isTemplate => boolean().withDefault(const Constant(false))();
 
   /// Attribution for imported or derived board sets.
   TextColumn get sourceLicense => text().nullable()();
 
-  BoolColumn get motorPlanLocked => boolean().withDefault(const Constant(true))();
+  BoolColumn get motorPlanLocked =>
+      boolean().withDefault(const Constant(true))();
   IntColumn get schemaVersion => integer().withDefault(const Constant(1))();
 
   @override
@@ -154,8 +172,8 @@ class Cells extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {boardId, row, col},
-      ];
+    {boardId, row, col},
+  ];
 }
 
 /// Content attached to a location.
@@ -289,10 +307,12 @@ class EditEvents extends Table {
 class CaregiverAuth extends Table {
   TextColumn get id => text()();
   TextColumn get pinHash => text()();
-  TextColumn get pinAlgo => text().withDefault(const Constant('sha256-salted'))();
+  TextColumn get pinAlgo =>
+      text().withDefault(const Constant('sha256-salted'))();
   IntColumn get failedAttempts => integer().withDefault(const Constant(0))();
   IntColumn get lockedUntil => integer().nullable()();
-  BoolColumn get biometricEnabled => boolean().withDefault(const Constant(false))();
+  BoolColumn get biometricEnabled =>
+      boolean().withDefault(const Constant(false))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 

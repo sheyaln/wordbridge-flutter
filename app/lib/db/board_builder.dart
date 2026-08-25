@@ -20,14 +20,16 @@ Future<String> materialiseBoard(
   required BoardKind kind,
 }) async {
   return db.transaction(() async {
-    final vocab = await (db.select(db.vocabularies)
-          ..where((v) => v.id.equals(vocabularyId)))
-        .getSingle();
+    final vocab = await (db.select(
+      db.vocabularies,
+    )..where((v) => v.id.equals(vocabularyId))).getSingle();
 
     final boardId = newId();
     final ts = nowMs();
 
-    await db.into(db.boards).insert(
+    await db
+        .into(db.boards)
+        .insert(
           BoardsCompanion.insert(
             id: boardId,
             vocabularyId: vocabularyId,
@@ -80,8 +82,9 @@ Future<String> placeButton(
   bool isSystem = false,
 }) async {
   return db.transaction(() async {
-    final cell = await (db.select(db.cells)..where((c) => c.id.equals(cellId)))
-        .getSingle();
+    final cell = await (db.select(
+      db.cells,
+    )..where((c) => c.id.equals(cellId))).getSingle();
 
     if (cell.state == CellState.occupied) {
       throw StateError(
@@ -93,7 +96,9 @@ Future<String> placeButton(
     final buttonId = newId();
     final ts = nowMs();
 
-    await db.into(db.buttons).insert(
+    await db
+        .into(db.buttons)
+        .insert(
           ButtonsCompanion.insert(
             id: buttonId,
             cellId: Value(cellId),
@@ -112,8 +117,9 @@ Future<String> placeButton(
           ),
         );
 
-    await (db.update(db.cells)..where((c) => c.id.equals(cellId)))
-        .write(const CellsCompanion(state: Value(CellState.occupied)));
+    await (db.update(db.cells)..where((c) => c.id.equals(cellId))).write(
+      const CellsCompanion(state: Value(CellState.occupied)),
+    );
 
     return buttonId;
   });
@@ -126,9 +132,10 @@ Future<Cell> cellAt(
   required int row,
   required int col,
 }) {
-  return (db.select(db.cells)
-        ..where((c) =>
-            c.boardId.equals(boardId) & c.row.equals(row) & c.col.equals(col)))
+  return (db.select(db.cells)..where(
+        (c) =>
+            c.boardId.equals(boardId) & c.row.equals(row) & c.col.equals(col),
+      ))
       .getSingle();
 }
 

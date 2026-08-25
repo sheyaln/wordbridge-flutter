@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Generate database code
+        run: dart run build_runner build
+
+      - run: dart format --set-exit-if-changed .
+
+      - run: flutter analyze --fatal-infos
+
+      # motor_plan_invariant_test.dart is the reason this job blocks merges.
+      # If a change moves a word that already had a home, it fails here rather
+      # than on someone's device six months into learning that position.
+      - name: Test
+        run: flutter test

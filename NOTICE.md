@@ -1,0 +1,86 @@
+# Notices and attribution
+
+wordbridge's own source code is MIT licensed — see [LICENSE](LICENSE).
+
+That licence does **not** extend to the vocabulary and symbol content described
+below. Read this before forking commercially.
+
+---
+
+## Vocabulary
+
+**Universal Core 36** — Center for Literacy and Disability Studies, University
+of North Carolina at Chapel Hill, via Project Core (<https://project-core.com>).
+
+Used as the word *selection* for the shipped starter vocabulary. The layout is
+independently designed; see [docs/starter-vocabulary.md](docs/starter-vocabulary.md).
+
+> ⚠️ **Unresolved:** project-core.com states CC BY-SA 4.0 while
+> med.unc.edu states CC BY 4.0 for the same list. Both permit our use, but
+> BY-SA carries share-alike obligations on derivative content. Confirm with
+> CLDS in writing before a public release.
+
+---
+
+## Symbol libraries
+
+wordbridge never links a symbol pack directly; packs are loaded behind a
+`SymbolPack` interface so they can be swapped or removed wholesale.
+
+### Bundled — commercial use permitted
+
+| Pack | Licence | Notes |
+|---|---|---|
+| Mulberry Symbols | CC BY-SA | © Garry Paxton 2008–2017, Steve Lee 2018–. Upstream marks the set unmaintained. |
+| OpenMoji | CC BY-SA 4.0 | <https://openmoji.org> |
+| Twemoji | CC BY 4.0 | © Twitter, Inc. and contributors |
+| Tawasol Symbols | CC BY-SA | Arabic-focused; Mada Center, Qatar |
+
+Attribution for these must remain reachable from inside the app.
+
+### Optional downloads — **non-commercial only**
+
+**These are never bundled.** They are fetched at runtime only if a user
+chooses them, so the restriction attaches to that choice rather than to this
+project's distribution.
+
+| Pack | Licence |
+|---|---|
+| ARASAAC | CC BY-NC-SA |
+| Sclera | CC BY-NC |
+
+ARASAAC attribution, required wherever its symbols appear:
+
+> Author of the pictographic symbols: **Sergio Palao**. Origin: **ARASAAC**
+> (<https://arasaac.org>). License: **CC (BY-NC-SA)**. Owner: **Government of
+> Aragón (Spain)**.
+
+> ⚠️ **If you are forking wordbridge to sell it**, or bundling it on hardware
+> you sell, or putting it behind a paid support tier: ARASAAC and Sclera cannot
+> come with you. The `SymbolPack` boundary exists precisely so you can drop
+> them and ship the CC BY-SA packs instead. A CI check fails the build if
+> application code imports a specific pack directly, so this boundary stays
+> real rather than aspirational.
+
+### Never permitted
+
+PCS, SymbolStix, Widgit, and Unity symbols are proprietary and must not be
+bundled, imported, or reproduced.
+
+---
+
+## Trademarks
+
+**LAMP**, **LAMP Words for Life**, **Unity**, **Minspeak**, and **WordPower**
+are trademarks of PRC-Saltillo and Semantic Compaction Systems.
+**Core First** and **Snap** are trademarks of Tobii Dynavox. **Proloquo2Go**
+and **Crescendo** are trademarks of AssistiveWare.
+
+wordbridge is not affiliated with, endorsed by, or derived from any of them.
+Referring to them descriptively — as this document does — is not a claim of
+association.
+
+Their vocabulary layouts are proprietary content and are not reproduced here.
+Notably, `open-aac/aac-metrics` distributes reconstructions of several
+commercial board sets for research comparison; **do not seed a wordbridge
+vocabulary from them.**

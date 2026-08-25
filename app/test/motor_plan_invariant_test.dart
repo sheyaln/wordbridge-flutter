@@ -22,8 +22,7 @@ Future<Map<String, MotorPath>> motorPaths(
   final query = db.select(db.buttons).join([
     innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
     innerJoin(db.boards, db.boards.id.equalsExp(db.cells.boardId)),
-  ])
-    ..where(db.buttons.vocabularyId.equals(vocabularyId));
+  ])..where(db.buttons.vocabularyId.equals(vocabularyId));
 
   final rows = await query.get();
   return {
@@ -46,7 +45,9 @@ void main() {
 
     vocabId = newId();
     final ts = nowMs();
-    await db.into(db.vocabularies).insert(
+    await db
+        .into(db.vocabularies)
+        .insert(
           VocabulariesCompanion.insert(
             id: vocabId,
             name: 'test',
@@ -74,16 +75,18 @@ void main() {
     });
 
     test('locations start reserved, not absent', () async {
-      final reserved = await (db.select(db.cells)
-            ..where((c) => c.state.equalsValue(CellState.emptyReserved)))
-          .get();
+      final reserved = await (db.select(
+        db.cells,
+      )..where((c) => c.state.equalsValue(CellState.emptyReserved))).get();
       expect(reserved.length, 84);
     });
 
     test('a location cannot be duplicated', () async {
       final existing = await cellAt(db, boardId: homeBoardId, row: 0, col: 0);
       expect(
-        () => db.into(db.cells).insert(
+        () => db
+            .into(db.cells)
+            .insert(
               CellsCompanion.insert(
                 id: newId(),
                 boardId: homeBoardId,
@@ -153,7 +156,8 @@ void main() {
       expect(
         after.state,
         CellState.occupied,
-        reason: 'a freed cell would be taken by the next word added, '
+        reason:
+            'a freed cell would be taken by the next word added, '
             'displacing this one when it is revealed',
       );
     });
@@ -215,11 +219,13 @@ void main() {
       // Now grow the vocabulary every way the app allows.
 
       // 1. Fill reserved locations on the existing board.
-      final free = await (db.select(db.cells)
-            ..where((c) =>
-                c.boardId.equals(homeBoardId) &
-                c.state.equalsValue(CellState.emptyReserved)))
-          .get();
+      final free =
+          await (db.select(db.cells)..where(
+                (c) =>
+                    c.boardId.equals(homeBoardId) &
+                    c.state.equalsValue(CellState.emptyReserved),
+              ))
+              .get();
       for (var i = 0; i < 40; i++) {
         await placeButton(
           db,
@@ -258,21 +264,24 @@ void main() {
       }
 
       // 3. Hide and reveal a starter word — the level progression.
-      final likeButton = await (db.select(db.buttons)
-            ..where((b) => b.label.equals('like')))
-          .getSingle();
+      final likeButton = await (db.select(
+        db.buttons,
+      )..where((b) => b.label.equals('like'))).getSingle();
       await hideButton(db, likeButton.id);
       await unhideButton(db, likeButton.id);
 
       // 4. Relabel a word in place. Content changed, location did not.
-      final goButton =
-          await (db.select(db.buttons)..where((b) => b.label.equals('go')))
-              .getSingle();
-      await (db.update(db.buttons)..where((b) => b.id.equals(goButton.id)))
-          .write(ButtonsCompanion(
-        message: const Value('go now'),
-        updatedAt: Value(nowMs()),
-      ));
+      final goButton = await (db.select(
+        db.buttons,
+      )..where((b) => b.label.equals('go'))).getSingle();
+      await (db.update(
+        db.buttons,
+      )..where((b) => b.id.equals(goButton.id))).write(
+        ButtonsCompanion(
+          message: const Value('go now'),
+          updatedAt: Value(nowMs()),
+        ),
+      );
 
       final after = await motorPaths(db, vocabId);
 
@@ -284,7 +293,8 @@ void main() {
         expect(
           after[label],
           before[label],
-          reason: '"$label" moved from ${before[label]} to ${after[label]}. '
+          reason:
+              '"$label" moved from ${before[label]} to ${after[label]}. '
               'A learned motor pattern was silently destroyed.',
         );
       }
