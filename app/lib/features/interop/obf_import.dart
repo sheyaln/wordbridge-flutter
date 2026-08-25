@@ -89,7 +89,8 @@ Future<String> importObz(
 
   final paths = boards.keys.toList()..sort();
   final sources = [
-    for (final path in paths) _Source(ObfBoard.parse(_text(boards[path]!)), path),
+    for (final path in paths)
+      _Source(ObfBoard.parse(_text(boards[path]!)), path),
   ];
 
   final rootPath = manifest?.root == null ? null : _normalise(manifest!.root!);
@@ -216,11 +217,8 @@ Future<String> _materialise(
       );
     }
 
-    await (db.update(
-      db.vocabularies,
-    )..where((v) => v.id.equals(vocabId))).write(
-      VocabulariesCompanion(rootBoardId: Value(root.boardId)),
-    );
+    await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId)))
+        .write(VocabulariesCompanion(rootBoardId: Value(root.boardId)));
 
     final links = _LinkTable(sources);
 
@@ -292,7 +290,14 @@ Future<String> _materialise(
     }
 
     await _recordSystemCells(db, vocabId, root.boardId);
-    await _recordImport(db, vocabId, rows, cols, notes);
+    await _recordImport(
+      db,
+      vocabId: vocabId,
+      rows: rows,
+      cols: cols,
+      enlarged: mismatched.isNotEmpty,
+      notes: notes,
+    );
 
     return vocabId;
   });
@@ -335,11 +340,7 @@ class _LinkTable {
         final base = p.url.basename(path);
         // Two boards with the same file name in different directories cannot
         // be told apart by base name, so refuse to guess.
-        _byBasename.update(
-          base,
-          (_) => null,
-          ifAbsent: () => source.boardId,
-        );
+        _byBasename.update(base, (_) => null, ifAbsent: () => source.boardId);
       }
       if (source.obf.id.isNotEmpty) {
         _byObfId.putIfAbsent(source.obf.id, () => source.boardId);
@@ -399,8 +400,8 @@ Future<void> _place(
     await (db.update(db.buttons)..where((b) => b.id.equals(buttonId))).write(
       ButtonsCompanion(
         speakText: Value(content.speakText),
-        backgroundColor: Value(button.backgroundColor),
-        borderColor: Value(button.borderColor),
+        backgroundColor: Value(content.backgroundColor),
+        borderColor: Value(content.borderColor),
         morphemeKind: Value(content.morphemeKind),
       ),
     );
@@ -435,8 +436,8 @@ Future<void> _tray(
           targetBoardId: Value(content.targetBoardId),
           speakText: Value(content.speakText),
           morphemeKind: Value(content.morphemeKind),
-          backgroundColor: Value(button.backgroundColor),
-          borderColor: Value(button.borderColor),
+          backgroundColor: Value(content.backgroundColor),
+          borderColor: Value(content.borderColor),
           partOfSpeech: Value(content.partOfSpeech),
           vocabLevel: Value(content.vocabLevel),
           hidden: Value(content.hidden),
@@ -488,6 +489,10 @@ class _Content {
       speakText: spoken == null || spoken == label ? null : spoken,
       action: action,
       targetBoardId: target,
+      // Colours are stored exactly as OBF writes them; the column mirrors the
+      // format rather than the other way round.
+      backgroundColor: button.backgroundColor,
+      borderColor: button.borderColor,
       morphemeKind: _enumByName(
         MorphemeKind.values,
         readExt<String>(button.ext, WordbridgeExt.morphemeKind),
@@ -510,6 +515,8 @@ class _Content {
     required this.speakText,
     required this.action,
     required this.targetBoardId,
+    required this.backgroundColor,
+    required this.borderColor,
     required this.morphemeKind,
     required this.partOfSpeech,
     required this.vocabLevel,
@@ -522,6 +529,8 @@ class _Content {
   final String? speakText;
   final ButtonAction action;
   final String? targetBoardId;
+  final String? backgroundColor;
+  final String? borderColor;
   final MorphemeKind? morphemeKind;
   final PartOfSpeech? partOfSpeech;
   final int vocabLevel;
@@ -529,7 +538,11 @@ class _Content {
   final bool isSystem;
 
   /// Columns [placeButton] does not take, so they need a follow-up write.
-  bool get hasExtras => speakText != null || morphemeKind != null;
+  bool get hasExtras =>
+      speakText != null ||
+      backgroundColor != null ||
+      borderColor != null ||
+      morphemeKind != null;
 }
 
 const _systemActions = {
@@ -599,7 +612,10 @@ String _licenceText(List<_Source> sources) {
   for (final source in sources) {
     final licence = source.obf.license;
     if (licence != null && !licence.isEmpty) seen.add(licence.readable);
-    final carried = readExt<String>(source.obf.ext, WordbridgeExt.sourceLicense);
+    final carried = readExt<String>(
+      source.obf.ext,
+      WordbridgeExt.sourceLicense,
+    );
     if (carried != null && carried.isNotEmpty) seen.add(carried);
   }
   return seen.isEmpty
@@ -640,22 +656,26 @@ Future<void> _recordSystemCells(
   );
 }
 
-/// Leaves an audit row for every judgement call the import made, chiefly the
-/// grid size chosen when boards disagreed.
+/// Leaves an audit row for every judgement call the import made.
+///
+/// [enlarged] marks the one that touches the motor plan: boards that declared
+/// different grid sizes were all given the largest, so the geometry a board
+/// was authored against is not the geometry it now lives in.
 Future<void> _recordImport(
-  WordbridgeDatabase db,
-  String vocabId,
-  int rows,
-  int cols,
-  List<String> notes,
-) async {
+  WordbridgeDatabase db, {
+  required String vocabId,
+  required int rows,
+  required int cols,
+  required bool enlarged,
+  required List<String> notes,
+}) async {
   await db
       .into(db.editEvents)
       .insert(
         EditEventsCompanion.insert(
           id: newId(),
           vocabularyId: vocabId,
-          kind: EditKind.gridResize,
+          kind: enlarged ? EditKind.gridResize : EditKind.create,
           afterJson: Value(
             jsonEncode({
               'source': 'obf-import',

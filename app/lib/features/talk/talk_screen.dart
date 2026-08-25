@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../../db/tables.dart';
+import '../auth/corner_hold_target.dart';
+import '../auth/pin.dart';
+import '../auth/pin_gate.dart';
+import '../caregiver/caregiver_home.dart';
 import '../grid/grid_surface.dart';
 import '../speech/speech_engine.dart';
+import '../usage/logger.dart';
 import '../utterance/utterance.dart';
 
 /// The only screen the AAC user sees.
@@ -14,11 +19,19 @@ class TalkScreen extends StatefulWidget {
     required this.db,
     required this.speech,
     required this.vocabularyId,
+    required this.logger,
+    required this.auth,
+    this.profileId = 'default',
+    this.userName,
   });
 
   final WordbridgeDatabase db;
   final SpeechEngine speech;
   final String vocabularyId;
+  final UsageLogger logger;
+  final PinAuth auth;
+  final String profileId;
+  final String? userName;
 
   @override
   State<TalkScreen> createState() => _TalkScreenState();
@@ -39,7 +52,7 @@ class _TalkScreenState extends State<TalkScreen> {
   /// Returns to the root board after a word is spoken, so the next word
   /// always starts from the same place. Without it a two-tap word is only
   /// two taps sometimes.
-  bool _autoReturn = true;
+  final bool _autoReturn = true;
 
   @override
   void initState() {
@@ -89,6 +102,11 @@ class _TalkScreenState extends State<TalkScreen> {
     final button = placed.button;
     if (button == null) return;
 
+    // Order matters. Speech happens before anything is recorded, and the log
+    // call cannot throw, so no amount of database trouble can cost the user a
+    // word.
+    _record(placed, button);
+
     switch (button.action) {
       case ButtonAction.speak:
         _utterance.add(button.message);
@@ -124,6 +142,41 @@ class _TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  void _record(PlacedCell placed, Button button) {
+    widget.logger.log(
+      profileId: widget.profileId,
+      vocabularyId: widget.vocabularyId,
+      boardId: placed.cell.boardId,
+      cellId: placed.cell.id,
+      buttonId: button.id,
+      label: button.label,
+      action: button.action,
+      source: UsageSource.touch,
+    );
+
+    if (button.action == ButtonAction.clear ||
+        button.action == ButtonAction.speakBar) {
+      widget.logger.endUtterance();
+    }
+  }
+
+  Future<void> _openCaregiver() async {
+    final unlocked = await PinGate.show(context, widget.auth);
+    if (!unlocked || !mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CaregiverHome(
+          db: widget.db,
+          vocabularyId: widget.vocabularyId,
+          profileId: widget.profileId,
+          logger: widget.logger,
+          userName: widget.userName,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vocab = _vocab;
@@ -136,14 +189,14 @@ class _TalkScreenState extends State<TalkScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Column(
+        child: Stack(
+          children: [
+            Column(
           children: [
             _UtteranceBarView(
               utterance: _utterance,
               onSpeak: () => widget.speech.speak(_utterance.text),
               onClear: _utterance.clear,
-              autoReturn: _autoReturn,
-              onToggleAutoReturn: (v) => setState(() => _autoReturn = v),
             ),
             Expanded(
               child: StreamBuilder<List<PlacedCell>>(
@@ -167,6 +220,16 @@ class _TalkScreenState extends State<TalkScreen> {
                 },
               ),
             ),
+              ],
+            ),
+            // Bottom-left, away from the utterance bar's controls and outside
+            // the grid's own padding, so an ordinary reach for a cell does not
+            // land on it.
+            Positioned(
+              left: 0,
+              bottom: 0,
+              child: CornerHoldTarget(onTriggered: _openCaregiver),
+            ),
           ],
         ),
       ),
@@ -179,15 +242,11 @@ class _UtteranceBarView extends StatelessWidget {
     required this.utterance,
     required this.onSpeak,
     required this.onClear,
-    required this.autoReturn,
-    required this.onToggleAutoReturn,
   });
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
   final VoidCallback onClear;
-  final bool autoReturn;
-  final ValueChanged<bool> onToggleAutoReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -216,15 +275,6 @@ class _UtteranceBarView extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
-              // Temporary scaffolding: auto-return becomes a per-profile
-              // setting behind the caregiver gate, not a control the AAC user
-              // can reach.
-              Row(
-                children: [
-                  const Text('auto-return', style: TextStyle(fontSize: 12)),
-                  Switch(value: autoReturn, onChanged: onToggleAutoReturn),
-                ],
               ),
               IconButton(
                 icon: const Icon(Icons.volume_up),

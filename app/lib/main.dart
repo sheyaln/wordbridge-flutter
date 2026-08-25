@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'db/database.dart';
+import 'db/ids.dart';
 import 'db/seed/core_board_set.dart';
+import 'features/auth/pin.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/talk/talk_screen.dart';
+import 'features/usage/logger.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,9 +20,13 @@ class WordbridgeApp extends StatefulWidget {
   State<WordbridgeApp> createState() => _WordbridgeAppState();
 }
 
-class _WordbridgeAppState extends State<WordbridgeApp> {
+class _WordbridgeAppState extends State<WordbridgeApp>
+    with WidgetsBindingObserver {
   final _db = WordbridgeDatabase();
   final _speech = FlutterTtsEngine();
+
+  late final _logger = UsageLogger(_db, deviceId: newId());
+  late final _auth = PinAuth(_db);
 
   late final Future<String> _ready = _bootstrap();
 
@@ -33,7 +40,24 @@ class _WordbridgeAppState extends State<WordbridgeApp> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Anything buffered goes to disk before the OS can suspend or kill us.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _logger.flush();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _logger.dispose();
     _db.close();
     super.dispose();
   }
@@ -58,7 +82,13 @@ class _WordbridgeAppState extends State<WordbridgeApp> {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          return TalkScreen(db: _db, speech: _speech, vocabularyId: vocabId);
+          return TalkScreen(
+            db: _db,
+            speech: _speech,
+            vocabularyId: vocabId,
+            logger: _logger,
+            auth: _auth,
+          );
         },
       ),
     );

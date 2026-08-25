@@ -35,10 +35,7 @@ Future<String> exportObf(WordbridgeDatabase db, String boardId) async {
 }
 
 /// Exports every board in a vocabulary as an `.obz` package.
-Future<List<int>> exportObz(
-  WordbridgeDatabase db,
-  String vocabularyId,
-) async {
+Future<List<int>> exportObz(WordbridgeDatabase db, String vocabularyId) async {
   final vocabulary = await (db.select(
     db.vocabularies,
   )..where((v) => v.id.equals(vocabularyId))).getSingle();
@@ -55,7 +52,8 @@ Future<List<int>> exportObz(
   ];
 
   final paths = <String, String>{
-    for (var i = 0; i < ordered.length; i++) ordered[i].id: 'boards/${i + 1}.obf',
+    for (var i = 0; i < ordered.length; i++)
+      ordered[i].id: 'boards/${i + 1}.obf',
   };
   final names = {for (final b in ordered) b.id: b.name};
 
@@ -102,7 +100,10 @@ Future<ObfBoard> _toObf(
   final placed =
       [
         for (final row in await query.get())
-          (cell: row.readTable(db.cells), button: row.readTableOrNull(db.buttons)),
+          (
+            cell: row.readTable(db.cells),
+            button: row.readTableOrNull(db.buttons),
+          ),
       ]..sort((a, b) {
         final byRow = a.cell.row.compareTo(b.cell.row);
         return byRow != 0 ? byRow : a.cell.col.compareTo(b.cell.col);

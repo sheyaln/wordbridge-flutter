@@ -168,8 +168,7 @@ List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
     id: 'tawasol',
     name: 'Tawasol Symbols',
     license: 'CC-BY-SA',
-    attribution:
-        'Tawasol Symbols — Mada Center, Qatar. Licensed CC BY-SA.',
+    attribution: 'Tawasol Symbols — Mada Center, Qatar. Licensed CC BY-SA.',
     bundle: bundle,
   ),
 ];

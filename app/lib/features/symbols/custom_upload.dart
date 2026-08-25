@@ -34,7 +34,16 @@ typedef NormalisedImage = ({Uint8List bytes, int width, int height});
 ///
 /// Returns null if the bytes are not a decodable image.
 NormalisedImage? normaliseSymbolImage(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
+  // decodeImage is documented to return null for unrecognised data but throws
+  // a RangeError on anything short enough that its format sniffing reads off
+  // the end. A truncated download or a file the picker mis-reports must be a
+  // declined import, not a crash.
+  final img.Image? decoded;
+  try {
+    decoded = img.decodeImage(bytes);
+  } catch (_) {
+    return null;
+  }
   if (decoded == null) return null;
 
   // Bake before stripping. EXIF orientation is the only record that a photo is
@@ -53,7 +62,11 @@ NormalisedImage? normaliseSymbolImage(Uint8List bytes) {
   // gallery export can put author or location strings in them.
   image.textData = null;
 
-  return (bytes: img.encodePng(image), width: image.width, height: image.height);
+  return (
+    bytes: img.encodePng(image),
+    width: image.width,
+    height: image.height,
+  );
 }
 
 /// Imports a photograph from the device as a symbol.
@@ -80,7 +93,10 @@ class CustomSymbolImporter {
   /// No `maxWidth` is passed to the picker: platform implementations differ on
   /// whether their own resize preserves EXIF, and the one part of this that
   /// must not vary by platform is the stripping.
-  Future<Symbol?> importFrom(ImageSource source, {required String label}) async {
+  Future<Symbol?> importFrom(
+    ImageSource source, {
+    required String label,
+  }) async {
     final picked = await _picker.pickImage(source: source);
     if (picked == null) return null;
     return store(await picked.readAsBytes(), label: label);

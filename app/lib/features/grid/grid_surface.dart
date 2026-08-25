@@ -23,6 +23,7 @@ class GridSurface extends StatelessWidget {
     required this.vocabLevel,
     required this.colourScheme,
     required this.onSelect,
+    this.showHidden = false,
   });
 
   final int rows;
@@ -31,6 +32,13 @@ class GridSurface extends StatelessWidget {
 
   /// Buttons above this level are not rendered. They keep their locations.
   final int vocabLevel;
+
+  /// Renders masked words dimmed instead of blank.
+  ///
+  /// Only ever true in the editor. A caregiver deciding where to put a new
+  /// word needs to see that a location is already spoken for; the AAC user
+  /// must not, or the mask means nothing.
+  final bool showHidden;
 
   final ColourScheme colourScheme;
   final void Function(PlacedCell) onSelect;
@@ -63,6 +71,7 @@ class GridSurface extends StatelessWidget {
                     placed: placed,
                     vocabLevel: vocabLevel,
                     colourScheme: colourScheme,
+                    showHidden: showHidden,
                     onSelect: onSelect,
                   ),
                 ),
@@ -79,25 +88,36 @@ class _Cell extends StatelessWidget {
     required this.placed,
     required this.vocabLevel,
     required this.colourScheme,
+    required this.showHidden,
     required this.onSelect,
   });
 
   final PlacedCell placed;
   final int vocabLevel;
   final ColourScheme colourScheme;
+  final bool showHidden;
   final void Function(PlacedCell) onSelect;
 
-  bool get _isVisible {
+  bool get _isMasked {
     final b = placed.button;
-    return b != null && !b.hidden && b.vocabLevel <= vocabLevel;
+    return b == null || b.hidden || b.vocabLevel > vocabLevel;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isVisible) return const _ReservedCell();
+    final button = placed.button;
 
-    final button = placed.button!;
-    final colour = Fitzgerald.colourFor(colourScheme, button.partOfSpeech);
+    if (_isMasked) {
+      if (!showHidden || button == null) {
+        return _ReservedCell(onTap: () => onSelect(placed));
+      }
+      return _MaskedCell(
+        label: button.label,
+        onTap: () => onSelect(placed),
+      );
+    }
+
+    final colour = Fitzgerald.colourFor(colourScheme, button!.partOfSpeech);
 
     return Material(
       color: colour,
@@ -134,15 +154,76 @@ class _Cell extends StatelessWidget {
 
 /// A location held open for future vocabulary. Drawn, not omitted.
 class _ReservedCell extends StatelessWidget {
-  const _ReservedCell();
+  const _ReservedCell({this.onTap});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+    return Material(
+      color: const Color(0xFFFAFAFA),
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A word the user cannot currently see, shown only to a caregiver.
+///
+/// Drawn dimmed rather than blank so it reads as "occupied, not yet revealed"
+/// — the distinction that keeps someone from putting a new word on top of a
+/// position already reserved for this one.
+class _MaskedCell extends StatelessWidget {
+  const _MaskedCell({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF0F0F0),
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: const Color(0xFFCCCCCC),
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Opacity(
+                  opacity: 0.45,
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

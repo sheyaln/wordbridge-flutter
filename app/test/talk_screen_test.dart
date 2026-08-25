@@ -3,9 +3,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
 import 'package:wordbridge/db/database.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
+import 'package:wordbridge/features/usage/logger.dart';
+
+/// The real implementation needs a platform channel, which tests do not have.
+class _FakeSecureStorage extends FlutterSecureStorage {
+  const _FakeSecureStorage();
+
+  static final _store = <String, String>{};
+
+  @override
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async =>
+      _store[key];
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    if (value != null) _store[key] = value;
+  }
+}
 
 /// Records what would have been spoken.
 class FakeSpeech implements SpeechEngine {
@@ -67,10 +103,24 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: TalkScreen(db: db, speech: speech, vocabularyId: vocabId),
+        home: TalkScreen(
+          db: db,
+          speech: speech,
+          vocabularyId: vocabId,
+          logger: UsageLogger(db, deviceId: 'test'),
+          auth: PinAuth(db, storage: _FakeSecureStorage()),
+        ),
       ),
     );
     await settle(tester);
+
+    // Replace the tree before the test ends so the StreamBuilder cancels its
+    // drift subscription. Left mounted, the query stream keeps a timer alive
+    // and the test binding hangs waiting for it.
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    });
   }
 
   testWidgets('renders the home board', (tester) async {

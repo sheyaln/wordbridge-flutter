@@ -64,9 +64,8 @@ class SymbolResolver {
     final hit = _memo[ref.key];
     if (hit != null) return hit;
 
-    final resolved = await _resolve(
-      ref,
-    ).timeout(budget, onTimeout: () => labelOnly(ref.label));
+    final resolved = await _resolve(ref)
+        .timeout(budget, onTimeout: () => labelOnly(ref.label));
 
     // Only successes are memoised. A miss usually means "queued for download",
     // and caching it would hold the button at label-only until the next launch.
@@ -94,7 +93,8 @@ class SymbolResolver {
 
   /// Bundled candidates first, then the rest, each in the order given.
   List<SymbolRef> orderCandidates(Iterable<SymbolRef> candidates) {
-    bool bundled(SymbolRef ref) => registry.packFor(ref.packId)?.isBundled ?? false;
+    bool bundled(SymbolRef ref) =>
+        registry.packFor(ref.packId)?.isBundled ?? false;
     return [
       ...candidates.where(bundled),
       ...candidates.where((ref) => !bundled(ref)),

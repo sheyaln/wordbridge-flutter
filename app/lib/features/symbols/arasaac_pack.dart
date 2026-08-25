@@ -25,7 +25,8 @@ class ArasaacPack implements DownloadingSymbolPack {
     Future<Directory> Function()? documentsDirectory,
     this.requestTimeout = const Duration(seconds: 6),
   }) : _client = client ?? http.Client(),
-       _documentsDirectory = documentsDirectory ?? getApplicationDocumentsDirectory;
+       _documentsDirectory =
+           documentsDirectory ?? getApplicationDocumentsDirectory;
 
   static const apiHost = 'api.arasaac.org';
   static const staticHost = 'static.arasaac.org';
@@ -85,12 +86,19 @@ class ArasaacPack implements DownloadingSymbolPack {
     return language.isEmpty ? 'en' : language;
   }
 
-  static Uri searchUri(String query, {String locale = 'en', bool best = false}) {
+  static Uri searchUri(
+    String query, {
+    String locale = 'en',
+    bool best = false,
+  }) {
     // Path segments, not query parameters. A slash in the search box would
     // otherwise silently become a different endpoint.
     final term = query.trim().replaceAll('/', ' ');
     final endpoint = best ? 'bestsearch' : 'search';
-    return Uri.https(apiHost, '/api/pictograms/${apiLocale(locale)}/$endpoint/$term');
+    return Uri.https(
+      apiHost,
+      '/api/pictograms/${apiLocale(locale)}/$endpoint/$term',
+    );
   }
 
   static Uri imageUri(String pictogramId, {int resolution = imageResolution}) {
@@ -116,7 +124,9 @@ class ArasaacPack implements DownloadingSymbolPack {
     // bestsearch is ARASAAC's curated answer for the whole phrase and is
     // usually both shorter and better ordered. The broad search is the
     // fallback for words it has no curated match for.
-    var rows = await _getJsonList(searchUri(trimmed, locale: locale, best: true));
+    var rows = await _getJsonList(
+      searchUri(trimmed, locale: locale, best: true),
+    );
     if (rows.isEmpty) {
       rows = await _getJsonList(searchUri(trimmed, locale: locale));
     }

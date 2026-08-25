@@ -89,9 +89,10 @@ class SymbolRegistry extends ChangeNotifier {
     final merged = <String, SymbolRef>{};
     for (final refs in answers) {
       for (final ref in refs) {
-        if (merged.length >= limit) return merged.values.toList(growable: false);
+        if (merged.length >= limit) break;
         merged.putIfAbsent(ref.key, () => ref);
       }
+      if (merged.length >= limit) break;
     }
     return merged.values.toList(growable: false);
   }

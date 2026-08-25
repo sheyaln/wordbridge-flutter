@@ -199,9 +199,7 @@ class ObfButton {
       imageId: _asId(json['image_id']),
       soundId: _asId(json['sound_id']),
       action: _asString(json['action']),
-      actions: [
-        for (final a in _asList(json['actions'])) ?_asString(a),
-      ],
+      actions: [for (final a in _asList(json['actions'])) ?_asString(a)],
       backgroundColor: _asString(json['background_color']),
       borderColor: _asString(json['border_color']),
       loadBoard: loadBoard == null
@@ -439,8 +437,7 @@ class ObfBoard {
       strings: {
         for (final e in _asMap(json['strings']).entries)
           e.key: {
-            for (final t in _asMap(e.value).entries)
-              t.key: ?_asString(t.value),
+            for (final t in _asMap(e.value).entries) t.key: ?_asString(t.value),
           },
       },
       license: license == null ? null : ObfLicense.fromJson(_asMap(license)),
