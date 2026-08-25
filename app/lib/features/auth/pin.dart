@@ -8,6 +8,30 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 
+/// Somewhere to keep a secret that is not the database.
+///
+/// Exists so the PIN salt can be stored in the platform keystore in
+/// production and in memory under test, without tests having to subclass a
+/// package whose method signatures change between versions.
+abstract interface class SecretStore {
+  Future<String?> read(String key);
+  Future<void> write(String key, String value);
+}
+
+/// Hardware-backed storage: Keychain on Apple platforms, Keystore on Android.
+class KeychainSecretStore implements SecretStore {
+  const KeychainSecretStore();
+
+  static const _storage = FlutterSecureStorage();
+
+  @override
+  Future<String?> read(String key) => _storage.read(key: key);
+
+  @override
+  Future<void> write(String key, String value) =>
+      _storage.write(key: key, value: value);
+}
+
 /// Caregiver PIN.
 ///
 /// The salt lives in the platform keystore rather than the database, so
@@ -19,11 +43,11 @@ import '../../db/ids.dart';
 /// months of learned positions. It is not protection against a determined
 /// adult with the unlocked device.
 class PinAuth {
-  PinAuth(this._db, {FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+  PinAuth(this._db, {SecretStore? storage})
+    : _storage = storage ?? const KeychainSecretStore();
 
   final WordbridgeDatabase _db;
-  final FlutterSecureStorage _storage;
+  final SecretStore _storage;
 
   static const _saltKey = 'wordbridge.pin.salt';
   static const _row = 'caregiver';
@@ -41,14 +65,14 @@ class PinAuth {
   )..where((r) => r.id.equals(_row))).getSingleOrNull();
 
   Future<String> _salt() async {
-    final existing = await _storage.read(key: _saltKey);
+    final existing = await _storage.read(_saltKey);
     if (existing != null) return existing;
 
     final rng = Random.secure();
     final salt = base64Url.encode(
       List<int>.generate(32, (_) => rng.nextInt(256)),
     );
-    await _storage.write(key: _saltKey, value: salt);
+    await _storage.write(_saltKey, salt);
     return salt;
   }
 

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
+import '../symbols/symbol_resolver.dart';
 import 'grid_geometry.dart';
+import 'symbol_view.dart';
 
 /// One location and whatever currently occupies it.
 typedef PlacedCell = ({Cell cell, Button? button});
@@ -24,6 +26,8 @@ class GridSurface extends StatelessWidget {
     required this.colourScheme,
     required this.onSelect,
     this.showHidden = false,
+    this.resolver,
+    this.symbolPackIds = const ['core'],
   });
 
   final int rows;
@@ -42,6 +46,13 @@ class GridSurface extends StatelessWidget {
 
   final ColourScheme colourScheme;
   final void Function(PlacedCell) onSelect;
+
+  /// Absent in tests and wherever pictures are not wanted; the grid then
+  /// renders labels only, which is a complete, working board.
+  final SymbolResolver? resolver;
+
+  /// Packs to look in, in order.
+  final List<String> symbolPackIds;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +83,8 @@ class GridSurface extends StatelessWidget {
                     vocabLevel: vocabLevel,
                     colourScheme: colourScheme,
                     showHidden: showHidden,
+                    resolver: resolver,
+                    symbolPackIds: symbolPackIds,
                     onSelect: onSelect,
                   ),
                 ),
@@ -89,6 +102,8 @@ class _Cell extends StatelessWidget {
     required this.vocabLevel,
     required this.colourScheme,
     required this.showHidden,
+    required this.resolver,
+    required this.symbolPackIds,
     required this.onSelect,
   });
 
@@ -96,11 +111,40 @@ class _Cell extends StatelessWidget {
   final int vocabLevel;
   final ColourScheme colourScheme;
   final bool showHidden;
+  final SymbolResolver? resolver;
+  final List<String> symbolPackIds;
   final void Function(PlacedCell) onSelect;
 
   bool get _isMasked {
     final b = placed.button;
     return b == null || b.hidden || b.vocabLevel > vocabLevel;
+  }
+
+  Widget _content(Button button) {
+    final resolver = this.resolver;
+    if (resolver == null) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          button.label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: button.isSystem ? FontWeight.w500 : FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      );
+    }
+
+    // Keyed by label because that is what the bundled manifests index on. A
+    // button whose label a pack does not carry simply renders as text, which
+    // is a complete button, not a degraded one.
+    return SymbolView(
+      resolver: resolver,
+      label: button.label,
+      packIds: symbolPackIds,
+    );
   }
 
   @override
@@ -111,10 +155,7 @@ class _Cell extends StatelessWidget {
       if (!showHidden || button == null) {
         return _ReservedCell(onTap: () => onSelect(placed));
       }
-      return _MaskedCell(
-        label: button.label,
-        onTap: () => onSelect(placed),
-      );
+      return _MaskedCell(label: button.label, onTap: () => onSelect(placed));
     }
 
     final colour = Fitzgerald.colourFor(colourScheme, button!.partOfSpeech);
@@ -130,22 +171,7 @@ class _Cell extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         child: Padding(
           padding: const EdgeInsets.all(4),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                button.label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: button.isSystem
-                      ? FontWeight.w500
-                      : FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-          ),
+          child: Center(child: _content(button)),
         ),
       ),
     );

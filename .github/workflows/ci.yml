@@ -35,3 +35,8 @@ jobs:
       # than on someone's device six months into learning that position.
       - name: Test
         run: flutter test
+
+      # Keeps the non-commercial symbol packs droppable — see NOTICE.md.
+      - name: Symbol pack licence boundary
+        working-directory: .
+        run: ./tools/check_symbol_boundary.sh

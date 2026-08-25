@@ -47,15 +47,15 @@ class _CaregiverHomeState extends State<CaregiverHome> {
       ),
       body: switch (_tab) {
         0 => _Boards(
-            db: widget.db,
-            vocabularyId: widget.vocabularyId,
-            userName: widget.userName,
-          ),
+          db: widget.db,
+          vocabularyId: widget.vocabularyId,
+          userName: widget.userName,
+        ),
         1 => UsageSummary(
-            db: widget.db,
-            profileId: widget.profileId,
-            logger: widget.logger,
-          ),
+          db: widget.db,
+          profileId: widget.profileId,
+          logger: widget.logger,
+        ),
         _ => _Settings(logger: widget.logger, onChanged: () => setState(() {})),
       },
       bottomNavigationBar: NavigationBar(
@@ -72,11 +72,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
 }
 
 class _Boards extends StatelessWidget {
-  const _Boards({
-    required this.db,
-    required this.vocabularyId,
-    this.userName,
-  });
+  const _Boards({required this.db, required this.vocabularyId, this.userName});
 
   final WordbridgeDatabase db;
   final String vocabularyId;
@@ -85,9 +81,9 @@ class _Boards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Board>>(
-      stream: (db.select(db.boards)
-            ..where((b) => b.vocabularyId.equals(vocabularyId)))
-          .watch(),
+      stream: (db.select(
+        db.boards,
+      )..where((b) => b.vocabularyId.equals(vocabularyId))).watch(),
       builder: (context, snapshot) {
         final boards = snapshot.data;
         if (boards == null) {
@@ -134,9 +130,7 @@ class _Settings extends StatelessWidget {
         SwitchListTile(
           value: logger.enabled,
           title: const Text('Record what gets said'),
-          subtitle: const Text(
-            'Stays on this device. Off by default.',
-          ),
+          subtitle: const Text('Stays on this device. Off by default.'),
           onChanged: (v) {
             logger.enabled = v;
             onChanged();

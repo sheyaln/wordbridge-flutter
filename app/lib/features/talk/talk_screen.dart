@@ -9,6 +9,7 @@ import '../auth/pin_gate.dart';
 import '../caregiver/caregiver_home.dart';
 import '../grid/grid_surface.dart';
 import '../speech/speech_engine.dart';
+import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
 import '../utterance/utterance.dart';
 
@@ -21,6 +22,7 @@ class TalkScreen extends StatefulWidget {
     required this.vocabularyId,
     required this.logger,
     required this.auth,
+    this.resolver,
     this.profileId = 'default',
     this.userName,
   });
@@ -30,6 +32,7 @@ class TalkScreen extends StatefulWidget {
   final String vocabularyId;
   final UsageLogger logger;
   final PinAuth auth;
+  final SymbolResolver? resolver;
   final String profileId;
   final String? userName;
 
@@ -192,34 +195,35 @@ class _TalkScreenState extends State<TalkScreen> {
         child: Stack(
           children: [
             Column(
-          children: [
-            _UtteranceBarView(
-              utterance: _utterance,
-              onSpeak: () => widget.speech.speak(_utterance.text),
-              onClear: _utterance.clear,
-            ),
-            Expanded(
-              child: StreamBuilder<List<PlacedCell>>(
-                stream: _cellsFor(boardId),
-                builder: (context, snapshot) {
-                  final cells = snapshot.data;
-                  if (cells == null) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: GridSurface(
-                      rows: vocab.gridRows,
-                      cols: vocab.gridCols,
-                      cells: cells,
-                      vocabLevel: 3,
-                      colourScheme: vocab.colourScheme,
-                      onSelect: _onSelect,
-                    ),
-                  );
-                },
-              ),
-            ),
+              children: [
+                _UtteranceBarView(
+                  utterance: _utterance,
+                  onSpeak: () => widget.speech.speak(_utterance.text),
+                  onClear: _utterance.clear,
+                ),
+                Expanded(
+                  child: StreamBuilder<List<PlacedCell>>(
+                    stream: _cellsFor(boardId),
+                    builder: (context, snapshot) {
+                      final cells = snapshot.data;
+                      if (cells == null) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: GridSurface(
+                          rows: vocab.gridRows,
+                          cols: vocab.gridCols,
+                          cells: cells,
+                          vocabLevel: 3,
+                          resolver: widget.resolver,
+                          colourScheme: vocab.colourScheme,
+                          onSelect: _onSelect,
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
             // Bottom-left, away from the utterance bar's controls and outside

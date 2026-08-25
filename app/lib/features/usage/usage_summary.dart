@@ -115,10 +115,7 @@ class _UsageSummaryState extends State<UsageSummary> {
                       children: [
                         SizedBox(
                           width: 100,
-                          child: Text(
-                            w.label,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          child: Text(w.label, overflow: TextOverflow.ellipsis),
                         ),
                         Expanded(
                           child: LayoutBuilder(
@@ -236,12 +233,12 @@ class _Heading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
 class _Empty extends StatelessWidget {
@@ -250,9 +247,9 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(text, style: const TextStyle(color: Colors.black45)),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Text(text, style: const TextStyle(color: Colors.black45)),
+  );
 }
 
 class _Stat extends StatelessWidget {
@@ -262,16 +259,13 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        value,
+        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w600),
+      ),
+      Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+    ],
+  );
 }

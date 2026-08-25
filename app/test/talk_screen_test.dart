@@ -3,44 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
 import 'package:wordbridge/db/database.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 
-/// The real implementation needs a platform channel, which tests do not have.
-class _FakeSecureStorage extends FlutterSecureStorage {
-  const _FakeSecureStorage();
-
-  static final _store = <String, String>{};
+/// In-memory stand-in for the platform keystore.
+class _FakeSecretStore implements SecretStore {
+  final _store = <String, String>{};
 
   @override
-  Future<String?> read({
-    required String key,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) async =>
-      _store[key];
+  Future<String?> read(String key) async => _store[key];
 
   @override
-  Future<void> write({
-    required String key,
-    required String? value,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) async {
-    if (value != null) _store[key] = value;
-  }
+  Future<void> write(String key, String value) async => _store[key] = value;
 }
 
 /// Records what would have been spoken.
@@ -77,7 +54,18 @@ void main() {
     vocabId = await seedCoreBoardSet(db);
   });
 
-  tearDown(() async => db.close());
+
+  /// Ends a test cleanly.
+  ///
+  /// Drift keeps a timer alive for as long as a query stream exists, and
+  /// `flutter_test` asserts no timers are pending at the end of the *test
+  /// body* — before any `tearDown` runs. So the tree has to be torn down and
+  /// the database closed here, inside the test, not afterwards.
+  Future<void> finish(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await db.close();
+  }
 
   /// Lets real asynchronous work run between frames.
   ///
@@ -108,19 +96,12 @@ void main() {
           speech: speech,
           vocabularyId: vocabId,
           logger: UsageLogger(db, deviceId: 'test'),
-          auth: PinAuth(db, storage: _FakeSecureStorage()),
+          auth: PinAuth(db, storage: _FakeSecretStore()),
         ),
       ),
     );
     await settle(tester);
 
-    // Replace the tree before the test ends so the StreamBuilder cancels its
-    // drift subscription. Left mounted, the query stream keeps a timer alive
-    // and the test binding hangs waiting for it.
-    addTearDown(() async {
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
-    });
   }
 
   testWidgets('renders the home board', (tester) async {
@@ -130,6 +111,7 @@ void main() {
     expect(find.text('help'), findsOneWidget);
     expect(find.text('not'), findsOneWidget);
     expect(find.text('home'), findsOneWidget);
+    await finish(tester);
   });
 
   testWidgets('tapping a word speaks it and adds it to the bar',
@@ -142,6 +124,7 @@ void main() {
     expect(speech.spoken, ['want']);
     // Once on the button, once in the utterance bar.
     expect(find.text('want'), findsNWidgets(2));
+    await finish(tester);
   });
 
   testWidgets('builds a sentence across several taps', (tester) async {
@@ -154,6 +137,7 @@ void main() {
 
     expect(speech.spoken, ['I', 'want', 'more']);
     expect(find.text('I want more'), findsOneWidget);
+    await finish(tester);
   });
 
   testWidgets('clear empties the bar', (tester) async {
@@ -214,6 +198,7 @@ void main() {
         reason: 'home moved between boards — the motor plan for getting back '
             'would depend on where the user happens to be',
       );
+      await finish(tester);
     });
   });
 
@@ -247,6 +232,7 @@ void main() {
         reason: 'without auto-return the next word starts from an arbitrary '
             'board, so its tap count is not fixed',
       );
+      await finish(tester);
     });
   });
 }

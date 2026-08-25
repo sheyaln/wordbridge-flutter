@@ -5,6 +5,9 @@ import 'db/ids.dart';
 import 'db/seed/core_board_set.dart';
 import 'features/auth/pin.dart';
 import 'features/speech/speech_engine.dart';
+import 'features/symbols/bundled_pack.dart';
+import 'features/symbols/symbol_registry.dart';
+import 'features/symbols/symbol_resolver.dart';
 import 'features/talk/talk_screen.dart';
 import 'features/usage/logger.dart';
 
@@ -27,6 +30,9 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 
   late final _logger = UsageLogger(_db, deviceId: newId());
   late final _auth = PinAuth(_db);
+
+  late final _symbols = SymbolRegistry(packs: bundledSymbolPacks());
+  late final _resolver = SymbolResolver(registry: _symbols);
 
   late final Future<String> _ready = _bootstrap();
 
@@ -58,6 +64,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _logger.dispose();
+    _resolver.dispose();
     _db.close();
     super.dispose();
   }
@@ -88,6 +95,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
             vocabularyId: vocabId,
             logger: _logger,
             auth: _auth,
+            resolver: _resolver,
           );
         },
       ),

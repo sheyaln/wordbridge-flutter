@@ -91,6 +91,40 @@ class SymbolResolver {
     return labelOnly(fallback);
   }
 
+  /// Resolves by word rather than by filename.
+  ///
+  /// Packs index on keyword, so a button knows what it means but not which
+  /// file illustrates it. Only an exact keyword match is accepted: a pack's
+  /// search also returns prefix and substring hits, and taking those puts a
+  /// notebook on the word "not" and a sheep on "she". A wrong picture is
+  /// worse than none, because it teaches a false association to someone who
+  /// cannot easily contradict it.
+  Future<ResolvedSymbol> resolveLabel(
+    String label,
+    List<String> packIds,
+  ) async {
+    final needle = label.toLowerCase().trim();
+    if (needle.isEmpty) return labelOnly(label);
+
+    for (final packId in packIds) {
+      if (!registry.isEnabled(packId)) continue;
+      final pack = registry.packFor(packId);
+      if (pack == null) continue;
+
+      try {
+        for (final ref in await pack.search(needle, limit: 4)) {
+          if (ref.label.toLowerCase().trim() != needle) continue;
+          final resolved = await resolve(ref);
+          if (resolved.image != null) return resolved;
+        }
+      } catch (_) {
+        // A pack that misbehaves costs this button its picture, nothing more.
+      }
+    }
+
+    return labelOnly(label);
+  }
+
   /// Bundled candidates first, then the rest, each in the order given.
   List<SymbolRef> orderCandidates(Iterable<SymbolRef> candidates) {
     bool bundled(SymbolRef ref) =>

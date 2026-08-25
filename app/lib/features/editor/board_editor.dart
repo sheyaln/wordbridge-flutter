@@ -49,12 +49,12 @@ class _BoardEditorState extends State<BoardEditor> {
   }
 
   Future<void> _load() async {
-    final vocab = await (widget.db.select(widget.db.vocabularies)
-          ..where((v) => v.id.equals(widget.vocabularyId)))
-        .getSingle();
-    final board = await (widget.db.select(widget.db.boards)
-          ..where((b) => b.id.equals(widget.boardId)))
-        .getSingle();
+    final vocab = await (widget.db.select(
+      widget.db.vocabularies,
+    )..where((v) => v.id.equals(widget.vocabularyId))).getSingle();
+    final board = await (widget.db.select(
+      widget.db.boards,
+    )..where((b) => b.id.equals(widget.boardId))).getSingle();
     if (mounted) {
       setState(() {
         _vocab = vocab;
@@ -65,21 +65,26 @@ class _BoardEditorState extends State<BoardEditor> {
 
   Stream<List<PlacedCell>> get _cells {
     final db = widget.db;
-    final query = db.select(db.cells).join([
-      leftOuterJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id)),
-    ])
-      ..where(db.cells.boardId.equals(widget.boardId))
-      ..orderBy([
-        OrderingTerm.asc(db.cells.row),
-        OrderingTerm.asc(db.cells.col),
-      ]);
+    final query =
+        db.select(db.cells).join([
+            leftOuterJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id)),
+          ])
+          ..where(db.cells.boardId.equals(widget.boardId))
+          ..orderBy([
+            OrderingTerm.asc(db.cells.row),
+            OrderingTerm.asc(db.cells.col),
+          ]);
 
-    return query.watch().map((rows) => rows
-        .map((r) => (
+    return query.watch().map(
+      (rows) => rows
+          .map(
+            (r) => (
               cell: r.readTable(db.cells),
               button: r.readTableOrNull(db.buttons),
-            ))
-        .toList());
+            ),
+          )
+          .toList(),
+    );
   }
 
   Future<void> _onCellTapped(PlacedCell placed) async {
@@ -104,7 +109,10 @@ class _BoardEditorState extends State<BoardEditor> {
 
   Future<void> _completeMove(Button button, Cell target) async {
     final impact = await _remap.impactOfMoving(button.id);
-    final warning = await _remap.warningFor(button.id, userName: widget.userName);
+    final warning = await _remap.warningFor(
+      button.id,
+      userName: widget.userName,
+    );
 
     if (!mounted) return;
     final proceed = await RemapConfirmSheet.show(
@@ -146,7 +154,9 @@ class _BoardEditorState extends State<BoardEditor> {
       message: label.trim(),
     );
 
-    await widget.db.into(widget.db.editEvents).insert(
+    await widget.db
+        .into(widget.db.editEvents)
+        .insert(
           EditEventsCompanion.insert(
             id: newId(),
             vocabularyId: widget.vocabularyId,

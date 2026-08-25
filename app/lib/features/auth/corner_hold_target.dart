@@ -36,15 +36,14 @@ class CornerHoldTarget extends StatefulWidget {
 
 class _CornerHoldTargetState extends State<CornerHoldTarget>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: widget.holdDuration,
-  )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _reset();
-        widget.onTriggered();
-      }
-    });
+  late final AnimationController _controller =
+      AnimationController(vsync: this, duration: widget.holdDuration)
+        ..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            _reset();
+            widget.onTriggered();
+          }
+        });
 
   Timer? _revealTimer;
   bool _visible = false;
