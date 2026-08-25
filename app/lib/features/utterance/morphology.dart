@@ -212,7 +212,7 @@ String _addComparative(String word, String suffix) {
 String copulaFor(String? subject, {required bool past}) {
   final s = subject?.trim().toLowerCase();
 
-  const plural = {'you', 'we', 'they', 'people', 'everybody'};
+  const plural = {'you', 'we', 'they', 'people', 'everybody', 'nobody'};
   const firstPerson = {'i'};
 
   if (past) {

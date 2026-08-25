@@ -101,6 +101,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
             logger: _logger,
             auth: _auth,
             resolver: _resolver,
+            registry: _symbols,
             settings: _settings,
           );
         },

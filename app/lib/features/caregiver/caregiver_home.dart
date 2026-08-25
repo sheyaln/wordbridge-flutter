@@ -4,6 +4,8 @@ import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../editor/board_editor.dart';
 import '../profiles/profile_settings.dart';
+import '../symbols/symbol_registry.dart';
+import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
@@ -21,6 +23,8 @@ class CaregiverHome extends StatefulWidget {
     required this.profileId,
     required this.logger,
     this.settings,
+    this.registry,
+    this.resolver,
     this.userName,
   });
 
@@ -29,6 +33,8 @@ class CaregiverHome extends StatefulWidget {
   final String profileId;
   final UsageLogger logger;
   final ProfileSettings? settings;
+  final SymbolRegistry? registry;
+  final SymbolResolver? resolver;
   final String? userName;
 
   @override
@@ -53,6 +59,8 @@ class _CaregiverHomeState extends State<CaregiverHome> {
         0 => _Boards(
           db: widget.db,
           vocabularyId: widget.vocabularyId,
+          registry: widget.registry,
+          resolver: widget.resolver,
           userName: widget.userName,
         ),
         1 => UsageSummary(
@@ -80,10 +88,18 @@ class _CaregiverHomeState extends State<CaregiverHome> {
 }
 
 class _Boards extends StatelessWidget {
-  const _Boards({required this.db, required this.vocabularyId, this.userName});
+  const _Boards({
+    required this.db,
+    required this.vocabularyId,
+    this.registry,
+    this.resolver,
+    this.userName,
+  });
 
   final WordbridgeDatabase db;
   final String vocabularyId;
+  final SymbolRegistry? registry;
+  final SymbolResolver? resolver;
   final String? userName;
 
   @override
@@ -113,6 +129,8 @@ class _Boards extends StatelessWidget {
                       db: db,
                       vocabularyId: vocabularyId,
                       boardId: board.id,
+                      registry: registry,
+                      resolver: resolver,
                       userName: userName,
                     ),
                   ),
@@ -158,7 +176,7 @@ class _Settings extends StatelessWidget {
         const Divider(),
         SwitchListTile(
           value: logger.enabled,
-          title: const Text('Record what gets said'),
+          title: const Text('Track word usage'),
           subtitle: const Text('Stays on this device. Off by default.'),
           onChanged: (v) {
             logger.enabled = v;

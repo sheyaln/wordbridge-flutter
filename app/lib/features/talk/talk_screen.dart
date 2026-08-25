@@ -10,6 +10,7 @@ import '../caregiver/caregiver_home.dart';
 import '../grid/grid_surface.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_settings.dart';
+import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
@@ -25,6 +26,7 @@ class TalkScreen extends StatefulWidget {
     required this.logger,
     required this.auth,
     this.resolver,
+    this.registry,
     this.settings,
     this.profileId = 'default',
     this.userName,
@@ -36,6 +38,7 @@ class TalkScreen extends StatefulWidget {
   final UsageLogger logger;
   final PinAuth auth;
   final SymbolResolver? resolver;
+  final SymbolRegistry? registry;
   final ProfileSettings? settings;
   final String profileId;
   final String? userName;
@@ -257,6 +260,8 @@ class _TalkScreenState extends State<TalkScreen> {
           profileId: widget.profileId,
           logger: widget.logger,
           settings: widget.settings,
+          registry: widget.registry,
+          resolver: widget.resolver,
           userName: widget.userName,
         ),
       ),

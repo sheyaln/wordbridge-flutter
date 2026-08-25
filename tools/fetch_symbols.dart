@@ -61,6 +61,7 @@ const _words = <String>[
   'help', 'here', 'I', 'in', 'it', 'like', 'look', 'make', 'more', 'not',
   'on', 'open', 'put', 'same', 'she', 'some', 'stop', 'that', 'turn', 'up',
   'want', 'what', 'when', 'where', 'who', 'why', 'you',
+  'we', 'they', 'will',
   // Category boards
   'people', 'food', 'play', 'feelings', 'places', 'body',
   // System row

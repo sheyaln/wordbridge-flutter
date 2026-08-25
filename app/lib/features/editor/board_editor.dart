@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show OrderingTerm, Value, leftOuterJoin;
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 
 import '../../db/board_builder.dart';
@@ -6,8 +6,11 @@ import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
 import '../grid/grid_surface.dart';
+import '../symbols/symbol_registry.dart';
+import '../symbols/symbol_resolver.dart';
 import 'remap.dart';
 import 'remap_confirm_sheet.dart';
+import 'symbol_picker.dart';
 
 /// Caregiver board editing.
 ///
@@ -21,12 +24,16 @@ class BoardEditor extends StatefulWidget {
     required this.db,
     required this.vocabularyId,
     required this.boardId,
+    this.registry,
+    this.resolver,
     this.userName,
   });
 
   final WordbridgeDatabase db;
   final String vocabularyId;
   final String boardId;
+  final SymbolRegistry? registry;
+  final SymbolResolver? resolver;
   final String? userName;
 
   @override
@@ -228,6 +235,32 @@ class _BoardEditorState extends State<BoardEditor> {
                   _snack('Now tap an empty location.');
                 },
               ),
+            if (widget.registry != null && widget.resolver != null)
+              ListTile(
+                leading: const Icon(Icons.image_outlined),
+                title: const Text('Change the picture'),
+                subtitle: const Text('Search the packs, or use your own photo'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await SymbolPicker.show(
+                    context,
+                    db: widget.db,
+                    registry: widget.registry!,
+                    resolver: widget.resolver!,
+                    button: button,
+                  );
+                },
+              ),
+            if (!button.isSystem)
+              ListTile(
+                leading: const Icon(Icons.drive_file_move_outlined),
+                title: const Text('Move to another board'),
+                subtitle: const Text('Keeps the word, changes where it lives'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _moveToBoard(button);
+                },
+              ),
             ListTile(
               leading: Icon(
                 button.hidden ? Icons.visibility : Icons.visibility_off,
@@ -246,6 +279,89 @@ class _BoardEditorState extends State<BoardEditor> {
         ),
       ),
     );
+  }
+
+  /// Moves a word onto a different board.
+  ///
+  /// The destination is picked first, then the location on it, because the
+  /// two questions are genuinely separate — a word crossing boards still has
+  /// to land somewhere specific, and landing "wherever there is room" is how
+  /// layouts drift.
+  Future<void> _moveToBoard(Button button) async {
+    final boards = await (widget.db.select(
+      widget.db.boards,
+    )..where((b) => b.vocabularyId.equals(widget.vocabularyId))).get();
+
+    if (!mounted) return;
+    final destination = await showDialog<Board>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text('Move "${button.label}" to'),
+        children: [
+          for (final board in boards)
+            if (board.id != widget.boardId)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(context).pop(board),
+                child: Text(board.name),
+              ),
+        ],
+      ),
+    );
+    if (destination == null || !mounted) return;
+
+    final free =
+        await (widget.db.select(widget.db.cells)
+              ..where(
+                (c) =>
+                    c.boardId.equals(destination.id) &
+                    c.state.equalsValue(CellState.emptyReserved),
+              )
+              ..orderBy([
+                (c) => OrderingTerm.asc(c.row),
+                (c) => OrderingTerm.asc(c.col),
+              ]))
+            .get();
+
+    if (free.isEmpty) {
+      _snack('"${destination.name}" has no free locations.');
+      return;
+    }
+
+    if (!mounted) return;
+    final target = await showDialog<Cell>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text('Where on "${destination.name}"?'),
+        children: [
+          for (final cell in free.take(40))
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(cell),
+              child: Text('Row ${cell.row + 1}, column ${cell.col + 1}'),
+            ),
+        ],
+      ),
+    );
+    if (target == null || !mounted) return;
+
+    final impact = await _remap.impactOfMoving(button.id);
+    final warning = await _remap.warningFor(
+      button.id,
+      userName: widget.userName,
+    );
+    if (!mounted) return;
+
+    final proceed = await RemapConfirmSheet.show(
+      context,
+      impact: impact,
+      warning: warning,
+      destination:
+          '${destination.name}, row ${target.row + 1}, '
+          'column ${target.col + 1}',
+    );
+    if (!proceed) return;
+
+    await _remap.moveButton(buttonId: button.id, toCellId: target.id);
+    if (mounted) _snack('Moved "${button.label}" to ${destination.name}');
   }
 
   void _snack(String message) {

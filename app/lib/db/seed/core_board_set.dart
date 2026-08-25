@@ -42,6 +42,13 @@ const _homeWords = <_Word>[
   (row: 4, col: 0, label: 'it', pos: PartOfSpeech.pronoun, level: 1),
   (row: 5, col: 0, label: 'that', pos: PartOfSpeech.pronoun, level: 1),
 
+  // Column 1 was held for names, and still mostly is. "we" and "they" take
+  // its top two locations because they are core vocabulary and column 0 is
+  // full — adding them here is additive, where reshuffling column 0 to make
+  // room would have moved six words that already have positions.
+  (row: 0, col: 1, label: 'we', pos: PartOfSpeech.pronoun, level: 1),
+  (row: 1, col: 1, label: 'they', pos: PartOfSpeech.pronoun, level: 1),
+
   // Column 2 — determiners and quantifiers
   (row: 0, col: 2, label: 'all', pos: PartOfSpeech.determiner, level: 1),
   (row: 1, col: 2, label: 'some', pos: PartOfSpeech.determiner, level: 1),
@@ -66,6 +73,9 @@ const _homeWords = <_Word>[
 
   (row: 0, col: 5, label: 'can', pos: PartOfSpeech.verb, level: 2),
   (row: 1, col: 5, label: 'finished', pos: PartOfSpeech.verb, level: 1),
+  // Modals. "will" is how the board says anything about the future at all,
+  // which the vocabulary had no way to express.
+  (row: 2, col: 5, label: 'will', pos: PartOfSpeech.verb, level: 1),
 
   // Column 9 — prepositions and place
   (row: 0, col: 9, label: 'here', pos: PartOfSpeech.preposition, level: 1),

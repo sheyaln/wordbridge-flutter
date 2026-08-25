@@ -208,7 +208,7 @@ class _LoggingOff extends StatelessWidget {
           Icon(Icons.visibility_off, size: 48, color: Colors.black26),
           SizedBox(height: 16),
           Text(
-            'Recording is off',
+            'Word usage is not being tracked',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           SizedBox(height: 8),
@@ -216,7 +216,7 @@ class _LoggingOff extends StatelessWidget {
           // of this is a transcript of a disabled person's speech, and turning
           // it on should be a choice somebody made on purpose.
           Text(
-            'wordbridge does not record what gets said unless you turn it on. '
+            'Turn this on to see which words get used and how often. '
             'Everything stays on this device.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.black54, height: 1.4),

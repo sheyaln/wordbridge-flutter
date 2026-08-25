@@ -102,9 +102,13 @@ void main() {
       db.cells,
     )..where((c) => c.boardId.equals(home.id) & c.col.equals(1))).get();
 
-    final vocabRows = col1.where((c) => c.row < 6);
+    // Rows 0 and 1 hold "we" and "they" — core pronouns that would not fit in
+    // column 0. The rest of the column stays open for the people in a
+    // particular person's life, which no shipped board can guess.
+    final nameRows = col1.where((c) => c.row >= 2 && c.row < 6);
+    expect(nameRows, hasLength(4));
     expect(
-      vocabRows.every((c) => c.state == CellState.emptyReserved),
+      nameRows.every((c) => c.state == CellState.emptyReserved),
       isTrue,
       reason: 'family names need a permanent home next to the pronouns',
     );

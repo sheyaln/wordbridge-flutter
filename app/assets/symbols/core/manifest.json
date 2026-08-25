@@ -983,6 +983,34 @@
       "picto_id": 3388,
       "matched": "Bricks",
       "part_of_speech": "noun"
+    },
+    "we": {
+      "file": "we.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53127,
+      "matched": "we",
+      "part_of_speech": "pronoun"
+    },
+    "they": {
+      "file": "they.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53128,
+      "matched": "they",
+      "part_of_speech": "pronoun"
+    },
+    "will": {
+      "file": "will.svg",
+      "set": "stellar-symbols",
+      "picto_id": 54310,
+      "matched": "will",
+      "part_of_speech": "adjective"
+    },
+    "bathroom": {
+      "file": "bathroom.svg",
+      "set": "mulberry",
+      "picto_id": 5983,
+      "matched": "Toilet",
+      "part_of_speech": "noun"
     }
   }
 }
