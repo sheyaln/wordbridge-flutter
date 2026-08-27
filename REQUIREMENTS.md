@@ -1,0 +1,249 @@
+# wordbridge — requirements
+
+The durable record of what this is, why, and what it must do. Architecture
+decisions live in [docs/adr/](docs/adr/); this is the product-level record.
+
+Status keys: **done** · **agreed, not built** · **open question**
+
+---
+
+## 1. What this is
+
+A free, open-source AAC app with **customizable motor planning**. Every word
+has a permanent grid location that never moves as vocabulary grows; unlike
+existing motor-planning systems, that layout is editable by the people who
+know the user, and the app defends it rather than locking it away.
+
+### The evidence behind that
+
+Not a preference. The clinical literature is specific:
+
+- **Johnson, Inglebret, Jones & Ray (2006)**, *AAC* 22(2):85-99 — the canonical
+  AAC abandonment study, 275 ASHA AAC specialists. The **top-ranked** driver of
+  inappropriate abandonment is *"Not Maintaining/Adjusting the System."*
+  Failure to customize is the field's number-one named cause of AAC failure.
+- **Yau et al. (2024)**, *Frontiers in Psychiatry* 15:1385947 — **73–100%** of
+  stakeholders report poor customization, sensory overwhelm, or physical
+  incompatibility. Parent-carers specifically struggle to adjust vocabulary.
+  Also: when a prescribed system wasn't supported at school, switching was
+  *"prohibitively expensive"* — **lock-in is itself an abandonment mechanism.**
+- **Thistle, Holmes, Horn & Reum (2018)**, *AJSLP* 27(3):1010-1017 — the direct
+  support for motor planning. 24 typically developing four-year-olds; consistent
+  symbol location went 6.0s → 3.3s over five sessions while the variable-location
+  group **did not improve at all**.
+- **Light et al. (2004)**, *AAC* 20(2):63-88 — evidence *against* iconic
+  encoding: children performed significantly worse with it than with three other
+  organizations. Part of why we reject polysemous symbols ([ADR-0002](docs/adr/0002-no-polysemous-symbols.md)).
+
+**Be honest about the evidence.** Motor planning rests on one study of 24
+children without disabilities. We build as if it holds because the mechanism is
+plausible and the cost of being wrong is low. We do not claim more, and our
+materials must not either. LAMP's evidence is thinner than its marketing; a
+project positioning itself as the honest alternative cannot inherit that habit.
+
+### What parents actually complained about (App Store reviews, verbatim)
+
+Ranked by how often it recurred:
+
+1. **Data loss** — four independent parents. *"We lost months of custom button
+   and phrase building... my wife was almost in tears."* One concluded: *"If
+   your app doesn't seem to have problems or issues, don't update it."*
+2. **Updates that reset or move things**, including an app-icon change:
+   *"My son has been using lamp for eight years and now the poor kid can't find
+   it with visual recognition."*
+3. **Volume** — three parents over a decade. *"all of this motor planning is
+   useless if I cannot hear him... I don't want my son to whisper, I want him
+   to talk."*
+4. **Crashes** — *"When it doesn't [work] it robs him of his voice."*
+5. **Symbol gaps** — *"the word 'sun' has over 10 symbols while 'blueberry'
+   does not have a symbol."*
+
+---
+
+## 2. The governing rule
+
+> **Additive changes are safe. Displacing changes are not.**
+
+A change is *displacing* if a word the user has already used moves, disappears,
+or acquires a different access sequence. Everything else is additive.
+
+Three consequences, all enforced in code:
+
+- **Position is identity.** Grid locations are permanent rows that exist whether
+  or not a word sits on them. Never computed from a button list.
+- **Hiding never frees a cell.** This is what lets vocabulary grow without
+  relocating anything.
+- **Edits are measured against real use.** Usage is logged against the
+  *location*, so the editor can say *"Maya has tapped this location 341 times
+  in the last 90 days."*
+
+`app/test/motor_plan_invariant_test.dart` enforces this and blocks CI.
+
+---
+
+## 3. Delivered
+
+| | |
+|---|---|
+| Fixed motor-planning grid, 7×12, positions stored not computed | **done** |
+| Starter vocabulary — Universal Core 36 + ~240 fringe words, clean-room | **done** |
+| Category boards with second pages (`more` / `back a page`) | **done** |
+| Pinned question column (col 11) and system row (row 6) on every board | **done** |
+| 203 bundled symbols across four CC BY-SA sets | **done** |
+| On-device TTS, offline, iOS silent-switch handled | **done** |
+| Caregiver mode: 2s corner hold → PIN | **done** |
+| Board editor: add, move, hide, move between boards | **done** |
+| Remap warning quantified in the user's own tap counts | **done** |
+| Symbol customization: pack search + own photo (EXIF stripped) | **done** |
+| Usage tracking, off by default, with caregiver summary | **done** |
+| Word endings (`+s`/`+ed`/`+ing`/`+'s`) with irregular verbs | **done** |
+| Subject-agreeing copula (`am/is/are`, `was/were`) | **done** |
+| Articles with `a`→`an` repair | **done** |
+| Contextual grammar — endings shown only where valid, in place | **done** |
+| Optional verb filtering after a verb | **done** |
+| Board creation for subcategories | **done** |
+| Symbol credits screen (licence obligation) | **done** |
+| OBF/OBZ import and export | **done** |
+
+---
+
+## 4. Agreed, not built
+
+### 4.1 Responsive grid sizing
+
+**Grid dimensions are re-derived from screen size and the chosen icon size.**
+More rows and columns on a larger screen. The invariant is *"same place every
+time on this device"*, not across devices.
+
+- Icon size is a **user setting**, sized to motor ability: larger targets for
+  imprecise reach, smaller for accurate. Grid dimensions follow from
+  `available space ÷ icon size`.
+- **Text truncates; it never shrinks the icon.** Minimum cell size is the icon
+  size.
+- **Settings and system icons stay a fixed size** regardless of the grid.
+
+> ⚠️ **Orientation must be locked per profile.** Re-derivation on rotation would
+> relayout the board mid-sentence, which is the exact failure this project
+> exists to prevent. Re-derive on device and setting changes; never on rotation.
+
+> ⚠️ **Blocker:** the starter vocabulary is a hardcoded 7×12 coordinate table.
+> This needs restructuring into **ordered bands** (pronouns, determiners, verbs,
+> prepositions, questions) placed deterministically by a layout function, so the
+> same device yields the same result every launch. Hand-maintaining a coordinate
+> table per screen size does not scale.
+
+> ⚠️ **Resizing a customised board is a destructive migration.** A caregiver's
+> added words have coordinates in the old geometry. Must go through the typed-
+> confirmation path with a full displaced-word report — never silently.
+
+### 4.2 Profiles
+
+- Profile selection **on launch**.
+- Each profile carries its own settings, vocabulary, and usage history.
+- Profile switching stays caregiver-gated — a child must not reach another
+  child's board (wrong layout is a motor-plan hazard; it is also another
+  person's private history).
+- **Creation asks for date of birth.** Vocabulary presets vary by age group.
+- **Age-appropriate presets.** Teen and adult presets include profanity and
+  adult vocabulary. Rationale is not novelty: autistic adults report commercial
+  AAC feels *"infantilizing"*, and censoring vocabulary removes agency from
+  people who cannot easily route around it (USSAAC 2022; Martin & Nagalakshmi
+  2024, arXiv:2404.17730).
+- **Profanity is disable-able** for the age groups that receive it. Default on
+  for adult presets, off for child presets.
+
+### 4.3 Word prediction
+
+- Behaves like a touchscreen keyboard's prediction.
+- **Learns per profile** — this user's own history, not a global model.
+- Must not relocate anything. Predictions appear in a dedicated region, never
+  by rearranging grid cells. *(Nieder 2014 names predictive reordering as a
+  motor-planning killer.)*
+
+### 4.4 Voice and tone
+
+- **Configurable voices:** male, female, and variations within each.
+- **Tone presets:** calm, urgent, joking, sarcastic, and others.
+- **In-app volume** independent of system volume: maximum is a *yell*, minimum
+  audible is a *whisper*.
+
+> ⚠️ **Honest limits of platform TTS.** `flutter_tts` exposes rate, pitch and
+> volume, and nothing else. That genuinely supports **urgent** (faster, higher,
+> louder) and **calm** (slower, lower, quieter). It does **not** support
+> **sarcasm** — that needs prosodic contour control no platform TTS offers —
+> and a true **whisper** needs breathiness, which is not a parameter. Low volume
+> plus low pitch approximates it and will not sound like whispering.
+>
+> Real tone control means a bundled neural voice (Piper/Kokoro via
+> `react-native-executorch`-equivalents, or on-device SSML where supported).
+> That is a substantial piece of work. **Do not ship "sarcastic" as a preset
+> that merely changes speed** — a preset that does not do what it says is worse
+> than an absent one, particularly for a user who cannot hear the mismatch and
+> correct it.
+
+### 4.5 Everything above is toggleable
+
+Every feature in §4 must be individually switchable per profile. Defaults
+should favour the simplest, most stable board; complexity is opt-in.
+
+---
+
+## 5. Non-negotiables
+
+Violating any of these is a bug regardless of what else it buys.
+
+1. **Nothing stands between a user and speech.** Speech happens before logging;
+   the logger cannot throw. A database failure must never cost a word.
+2. **Never lose customizations.** Autosave, versioned, restorable. The most
+   common parent complaint about the incumbent.
+3. **Updates never move anything.** Board layout is user data, not app data.
+   Layout changes are opt-in, previewable, reversible.
+4. **Works fully offline.** No network for any core function.
+5. **Audible in the real world** — output gain above system maximum.
+6. **A crash never leaves a user with nothing.** Error boundary degrading to a
+   minimal always-working core board.
+7. **Usage tracking is off by default** and never leaves the device. An AAC log
+   is a transcript of a disabled person's private speech.
+8. **Never a wrong symbol.** A blank button says "no picture yet" honestly; a
+   plausible wrong one teaches a false association to someone who cannot easily
+   contradict it. *(The fetcher initially matched "not"→Notebook, "she"→Sheep.
+   Exact matches only, no fuzzy fallback.)*
+9. **Symbol licence boundary holds.** ARASAAC and Sclera are CC BY-**NC** and are
+   never bundled — opt-in download only. CI enforces this
+   (`tools/check_symbol_boundary.sh`).
+10. **No polysemous symbols.** One button, one meaning
+    ([ADR-0002](docs/adr/0002-no-polysemous-symbols.md)).
+
+---
+
+## 6. Open questions
+
+- **Does `back` earn its slot?** With auto-return and a pinned `home`, it may be
+  redundant. Usage data will answer this; don't guess.
+- **Is 7×12 right on a mini?** Resolved as "not too dense" by observation, but
+  superseded by §4.1.
+- **Free personal-team signing expires after 7 days.** Fine for development,
+  unacceptable for a real user. Needs a paid account before anyone relies on it.
+- **Irregular verbs added through the editor** get regular endings — `swim`
+  would become `swimmed`. The table is developer-maintained; the editor does not
+  prompt for it.
+- **Grammar availability reads only the immediately preceding word.** "I want a
+  drink" hides `+ed` even though you might want to inflect `want`. Fixing that
+  needs a notion of which word is being edited.
+
+---
+
+## 7. Legal
+
+- **Code:** MIT. Apache-2.0 has a live argument in its favour given the patent
+  below; decide deliberately rather than by default.
+- **Symbols:** bundled sets are CC BY-SA / CC BY (commercial use permitted).
+  ARASAAC and Sclera are CC BY-NC and must never be bundled. See
+  [NOTICE.md](NOTICE.md).
+- **US9336198B2** (PRC, active to 2033) covers navigating *polysemous* symbols
+  across linked overlays. We do not build that — see ADR-0002. The foundational
+  Minspeak patents have expired. User has taken the legal question off the
+  engineering track; do not re-litigate it.
+- **"LAMP" is a PRC-Saltillo trademark.** Keep it out of the app name, bundle
+  id, and store listing. The starter vocabulary is clean-room; its derivation is
+  the evidence.
