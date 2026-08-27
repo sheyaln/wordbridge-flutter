@@ -30,6 +30,13 @@ class ProfileSettings extends ChangeNotifier {
   /// shape, which is why this is a setting and not a rule.
   bool get contextualGrammar => _values['contextualGrammar'] as bool? ?? true;
 
+  /// Hide other verbs once a verb has been chosen, until something licenses
+  /// another one.
+  ///
+  /// Off by default. It removes clutter mid-sentence at the cost of a board
+  /// that changes shape while you use it.
+  bool get filterVerbs => _values['filterVerbs'] as bool? ?? false;
+
   /// Return to the root board after speaking, so every word costs the same
   /// number of movements every time.
   bool get autoReturn => _values['autoReturn'] as bool? ?? true;

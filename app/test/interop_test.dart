@@ -751,9 +751,14 @@ void main() {
       final vocabId = await seedCoreBoardSet(db);
       final archive = ZipDecoder().decodeBytes(await exportObz(db, vocabId));
 
+      // Derived rather than hardcoded: the shipped vocabulary gains boards
+      // as it grows, and a literal here fails for the wrong reason every time
+      // it does. What matters is that every board is in the package.
+      final boardCount = await db.boards.count().getSingle();
+
       final names = archive.files.map((f) => f.name).toSet();
       expect(names, contains('manifest.json'));
-      expect(names.where((n) => n.endsWith('.obf')), hasLength(7));
+      expect(names.where((n) => n.endsWith('.obf')), hasLength(boardCount));
 
       final manifest = ObzManifest.parse(
         utf8.decode(
@@ -763,7 +768,7 @@ void main() {
         ),
       );
       expect(manifest.format, obfFormat);
-      expect(manifest.boards, hasLength(7));
+      expect(manifest.boards, hasLength(boardCount));
       expect(names, contains(manifest.root));
 
       final root = ObfBoard.parse(

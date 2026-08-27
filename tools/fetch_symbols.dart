@@ -61,7 +61,29 @@ const _words = <String>[
   'help', 'here', 'I', 'in', 'it', 'like', 'look', 'make', 'more', 'not',
   'on', 'open', 'put', 'same', 'she', 'some', 'stop', 'that', 'turn', 'up',
   'want', 'what', 'when', 'where', 'who', 'why', 'you',
-  'we', 'they', 'will',
+  'we', 'they', 'will', 'need', 'close', 'take', 'to',
+  // people 2
+  'me', 'him', 'her', 'them', 'us', 'somebody', 'boy', 'girl', 'man', 'woman',
+  'family', 'class', 'neighbour', 'driver', 'helper', 'stranger',
+  // food 2
+  'toast', 'cereal', 'yoghurt', 'butter', 'jam', 'honey', 'potato', 'carrot',
+  'peas', 'beans', 'salad', 'tomato', 'orange', 'grapes', 'berries', 'melon',
+  'lemon', 'crisps', 'tea', 'coffee', 'squash', 'fizzy', 'straw', 'plate',
+  // play 2
+  'jump', 'climb', 'swim', 'ride', 'build', 'throw', 'catch', 'hide', 'chase',
+  'push', 'pull', 'win', 'bike', 'scooter', 'trampoline', 'sand', 'paint',
+  'film', 'cartoon', 'song', 'story', 'party',
+  // feelings 2
+  'calm', 'proud', 'shy', 'jealous', 'confused', 'surprised', 'funny', 'kind',
+  'mean', 'fair', 'unfair', 'safe', 'better', 'worse', 'enough', 'ready',
+  // places 2
+  'upstairs', 'downstairs', 'room', 'door', 'window', 'stairs', 'street',
+  'beach', 'pool', 'library', 'church', 'cafe', 'train', 'plane', 'walk',
+  'far', 'near',
+  // body 2
+  'finger', 'thumb', 'knee', 'elbow', 'shoulder', 'neck', 'chest', 'heart',
+  'bottom', 'toes', 'nails', 'lips', 'itchy', 'sore', 'dizzy', 'sleepy',
+  'poorly', 'bandage', 'cough', 'temperature',
   // Category boards
   'people', 'food', 'play', 'feelings', 'places', 'body',
   // System row

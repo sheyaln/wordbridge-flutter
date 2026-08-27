@@ -130,10 +130,16 @@ void main() {
                   db.buttons.isSystem.equals(true),
             );
 
+        // Paging keys are deliberately conditional — a board with no next
+        // page does not draw "more" — so they are excluded here. Their
+        // locations are asserted separately.
+        const conditional = {'more', 'back a page'};
+
         final rows = await query.get();
         signatures[board.name] = {
           for (final r in rows)
-            r.readTable(db.buttons).label: r.readTable(db.cells).col,
+            if (!conditional.contains(r.readTable(db.buttons).label))
+              r.readTable(db.buttons).label: r.readTable(db.cells).col,
         };
       }
 
@@ -177,9 +183,15 @@ void main() {
         final perBoard = <String, Map<String, ({int row, int col})>>{};
 
         for (final board in boards) {
-          final query = db.select(db.cells).join(
-            [innerJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id))],
-          )..where(db.cells.boardId.equals(board.id) & db.cells.col.equals(11));
+          final query =
+              db.select(db.cells).join([
+                innerJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id)),
+              ])..where(
+                db.cells.boardId.equals(board.id) &
+                    db.cells.col.equals(11) &
+                    // Row 6 is the system row, where the paging key lives.
+                    db.cells.row.isSmallerThanValue(6),
+              );
 
           perBoard[board.name] = {
             for (final r in await query.get())
@@ -278,6 +290,115 @@ void main() {
       // being overwhelmed, which are the feelings that most need saying.
       final labels = (await buttons()).map((b) => b.label).toSet();
       expect(labels, containsAll(['hurt', 'scared', 'too loud']));
+    });
+  });
+
+  group('related verbs stay neighbours', () {
+    Future<Map<String, ({int row, int col})>> homePositions() async {
+      final home = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('home'))).getSingle();
+
+      final query = db.select(db.buttons).join([
+        innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+      ])..where(db.cells.boardId.equals(home.id));
+
+      return {
+        for (final r in await query.get())
+          r.readTable(db.buttons).label: (
+            row: r.readTable(db.cells).row,
+            col: r.readTable(db.cells).col,
+          ),
+      };
+    }
+
+    bool adjacent(({int row, int col}) a, ({int row, int col}) b) =>
+        (a.col == b.col && (a.row - b.row).abs() == 1) ||
+        (a.row == b.row && (a.col - b.col).abs() == 1);
+
+    test('opposites and relations share an edge', () async {
+      // Neighbouring locations are learned as a pair. Two positions that
+      // happen to be far apart are learned twice.
+      final p = await homePositions();
+
+      for (final pair in [('open', 'close'), ('go', 'stop'), ('get', 'take')]) {
+        expect(
+          adjacent(p[pair.$1]!, p[pair.$2]!),
+          isTrue,
+          reason: '"${pair.$1}" and "${pair.$2}" are no longer neighbours',
+        );
+      }
+    });
+
+    test('want, need and like run together', () async {
+      final p = await homePositions();
+
+      expect(p['want']!.col, p['need']!.col);
+      expect(p['need']!.col, p['like']!.col);
+      expect(p['need']!.row, p['want']!.row + 1);
+      expect(p['like']!.row, p['need']!.row + 1);
+    });
+  });
+
+  group('paging', () {
+    test('a category with a second page offers a way to it', () async {
+      final food = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('food'))).getSingle();
+
+      final query =
+          db.select(db.buttons).join([
+            innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+          ])..where(
+            db.cells.boardId.equals(food.id) & db.buttons.label.equals('more'),
+          );
+
+      final rows = await query.get();
+      expect(rows, hasLength(1));
+
+      final cell = rows.single.readTable(db.cells);
+      expect(cell.row, 6);
+      expect(cell.col, 11);
+    });
+
+    test('the second page leads back to the first', () async {
+      final second = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('food 2'))).getSingle();
+      final first = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('food'))).getSingle();
+
+      final query =
+          db.select(db.buttons).join([
+            innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+          ])..where(
+            db.cells.boardId.equals(second.id) &
+                db.buttons.label.equals('back a page'),
+          );
+
+      final rows = await query.get();
+      expect(rows, hasLength(1));
+      expect(rows.single.readTable(db.buttons).targetBoardId, first.id);
+    });
+
+    test('a page is a grid, not a scroll position', () async {
+      // Everything on page two has fixed coordinates, same as page one. This
+      // is the whole reason for paging over scrolling.
+      final second = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('play 2'))).getSingle();
+
+      final placed =
+          await (db.select(db.cells)..where(
+                (c) =>
+                    c.boardId.equals(second.id) &
+                    c.state.equalsValue(CellState.occupied),
+              ))
+              .get();
+
+      expect(placed.length, greaterThan(15));
+      expect(placed.every((c) => c.row >= 0 && c.col >= 0), isTrue);
     });
   });
 

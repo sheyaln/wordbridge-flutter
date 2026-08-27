@@ -281,3 +281,26 @@ bool grammarHelperApplies({
     null => false,
   };
 }
+
+/// Whether an ordinary word should be offered after what has been said.
+///
+/// Only ever restricts verbs, and only when the caregiver has asked for it.
+/// English does not allow two bare verbs in a row — "I want go" is not a
+/// sentence — so after a verb the other verbs are noise until something
+/// licenses another one. "to" is what licenses it: "I want **to** go".
+///
+/// Off by default, because a board that changes shape as you build a sentence
+/// is harder to learn than one that does not, and that trade is a judgement
+/// about a particular person rather than a fact about English.
+bool verbIsOfferable({
+  required PartOfSpeech? pos,
+  required String? previousText,
+  required PartOfSpeech? previousPos,
+}) {
+  if (pos != PartOfSpeech.verb) return true;
+  if (previousPos != PartOfSpeech.verb) return true;
+
+  // An infinitive marker or a modal opens the door to a second verb.
+  const licensors = {'to', 'will', 'can', 'need', 'want'};
+  return licensors.contains(previousText?.toLowerCase());
+}

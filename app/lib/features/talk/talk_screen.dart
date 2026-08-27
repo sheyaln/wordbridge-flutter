@@ -187,10 +187,19 @@ class _TalkScreenState extends State<TalkScreen> {
   /// available. When the setting is off, everything shows all the time and
   /// the board never changes shape.
   bool _isAvailable(Button button) {
-    if (button.action != ButtonAction.morpheme) return true;
-    if (!(widget.settings?.contextualGrammar ?? true)) return true;
-
     final previous = _utterance.last;
+
+    if (button.action != ButtonAction.morpheme) {
+      if (!(widget.settings?.filterVerbs ?? false)) return true;
+      if (button.isSystem) return true;
+      return verbIsOfferable(
+        pos: button.partOfSpeech,
+        previousText: previous?.text,
+        previousPos: previous?.pos,
+      );
+    }
+
+    if (!(widget.settings?.contextualGrammar ?? true)) return true;
     return grammarHelperApplies(
       kind: button.morphemeKind,
       tense: button.message,

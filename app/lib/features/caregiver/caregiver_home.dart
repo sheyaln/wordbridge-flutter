@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../db/board_builder.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../editor/board_editor.dart';
@@ -116,6 +117,15 @@ class _Boards extends StatelessWidget {
 
         return ListView(
           children: [
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('New board'),
+              subtitle: const Text(
+                'For a sub-category, or another page of an existing one',
+              ),
+              onTap: () => _createBoard(context),
+            ),
+            const Divider(),
             for (final board in boards)
               ListTile(
                 leading: Icon(
@@ -140,6 +150,60 @@ class _Boards extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+extension on _Boards {
+  /// Creates an empty board.
+  ///
+  /// Every location is materialised at once, so the board is a full grid of
+  /// reserved cells from the moment it exists. Nothing has to shuffle when
+  /// words are added to it later — which is the point of creating one rather
+  /// than packing more into an existing board.
+  Future<void> _createBoard(BuildContext context) async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('New board'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Name, e.g. "breakfast"'),
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (name == null || name.trim().isEmpty) return;
+
+    await materialiseBoard(
+      db,
+      vocabularyId: vocabularyId,
+      name: name.trim(),
+      kind: BoardKind.category,
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Created "${name.trim()}". Put a word on another board and choose '
+            '"Move to another board", or add a button that opens it.',
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -170,6 +234,21 @@ class _Settings extends StatelessWidget {
             isThreeLine: true,
             onChanged: (v) async {
               await settings!.set('contextualGrammar', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
+          SwitchListTile(
+            value: settings!.filterVerbs,
+            title: const Text('Hide other verbs after a verb'),
+            subtitle: const Text(
+              'After "I want", the other verbs disappear until "to" or a '
+              'modal makes a second verb possible. Less clutter mid-sentence, '
+              'but the board changes shape while it is being used.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('filterVerbs', v);
               onChanged();
             },
           ),

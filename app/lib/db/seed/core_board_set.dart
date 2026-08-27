@@ -56,32 +56,42 @@ const _homeWords = <_Word>[
   (row: 3, col: 2, label: 'different', pos: PartOfSpeech.determiner, level: 2),
   (row: 4, col: 2, label: 'more', pos: PartOfSpeech.determiner, level: 1),
 
-  // Columns 3-5 — verbs, the largest band because they carry the most traffic
+  // Columns 3-5 — verbs, arranged by meaning rather than frequency.
+  //
+  // Opposites and near-relations sit next to each other: open above close, go
+  // above stop, get above take, and want/need/like as a run. Neighbouring
+  // locations are easier to learn as a pair than two positions that happen to
+  // be far apart, and a user reaching for one has the other under the same
+  // finger.
   (row: 0, col: 3, label: 'want', pos: PartOfSpeech.verb, level: 1),
-  (row: 1, col: 3, label: 'go', pos: PartOfSpeech.verb, level: 1),
-  (row: 2, col: 3, label: 'get', pos: PartOfSpeech.verb, level: 1),
-  (row: 3, col: 3, label: 'do', pos: PartOfSpeech.verb, level: 1),
-  (row: 4, col: 3, label: 'make', pos: PartOfSpeech.verb, level: 2),
-  (row: 5, col: 3, label: 'put', pos: PartOfSpeech.verb, level: 2),
+  (row: 1, col: 3, label: 'need', pos: PartOfSpeech.verb, level: 1),
+  (row: 2, col: 3, label: 'like', pos: PartOfSpeech.verb, level: 1),
+  (row: 3, col: 3, label: 'go', pos: PartOfSpeech.verb, level: 1),
+  (row: 4, col: 3, label: 'stop', pos: PartOfSpeech.verb, level: 1),
+  (row: 5, col: 3, label: 'can', pos: PartOfSpeech.verb, level: 2),
 
-  (row: 0, col: 4, label: 'like', pos: PartOfSpeech.verb, level: 1),
-  (row: 1, col: 4, label: 'help', pos: PartOfSpeech.verb, level: 1),
-  (row: 2, col: 4, label: 'look', pos: PartOfSpeech.verb, level: 1),
-  (row: 3, col: 4, label: 'open', pos: PartOfSpeech.verb, level: 2),
-  (row: 4, col: 4, label: 'turn', pos: PartOfSpeech.verb, level: 2),
-  (row: 5, col: 4, label: 'stop', pos: PartOfSpeech.verb, level: 1),
+  (row: 0, col: 4, label: 'get', pos: PartOfSpeech.verb, level: 1),
+  (row: 1, col: 4, label: 'take', pos: PartOfSpeech.verb, level: 1),
+  (row: 2, col: 4, label: 'do', pos: PartOfSpeech.verb, level: 1),
+  (row: 3, col: 4, label: 'make', pos: PartOfSpeech.verb, level: 2),
+  (row: 4, col: 4, label: 'put', pos: PartOfSpeech.verb, level: 2),
+  (row: 5, col: 4, label: 'will', pos: PartOfSpeech.verb, level: 1),
 
-  (row: 0, col: 5, label: 'can', pos: PartOfSpeech.verb, level: 2),
-  (row: 1, col: 5, label: 'finished', pos: PartOfSpeech.verb, level: 1),
-  // Modals. "will" is how the board says anything about the future at all,
-  // which the vocabulary had no way to express.
-  (row: 2, col: 5, label: 'will', pos: PartOfSpeech.verb, level: 1),
+  (row: 0, col: 5, label: 'open', pos: PartOfSpeech.verb, level: 2),
+  (row: 1, col: 5, label: 'close', pos: PartOfSpeech.verb, level: 1),
+  (row: 2, col: 5, label: 'help', pos: PartOfSpeech.verb, level: 1),
+  (row: 3, col: 5, label: 'look', pos: PartOfSpeech.verb, level: 1),
+  (row: 4, col: 5, label: 'turn', pos: PartOfSpeech.verb, level: 2),
+  (row: 5, col: 5, label: 'finished', pos: PartOfSpeech.verb, level: 1),
 
   // Column 9 — prepositions and place
   (row: 0, col: 9, label: 'here', pos: PartOfSpeech.preposition, level: 1),
   (row: 1, col: 9, label: 'in', pos: PartOfSpeech.preposition, level: 2),
   (row: 2, col: 9, label: 'on', pos: PartOfSpeech.preposition, level: 2),
   (row: 3, col: 9, label: 'up', pos: PartOfSpeech.preposition, level: 2),
+  // "to" is what lets a second verb follow a first — "I want to go" — and is
+  // what re-enables the other verbs when the optional verb filter is on.
+  (row: 4, col: 9, label: 'to', pos: PartOfSpeech.preposition, level: 2),
 
   // Column 10 — descriptors and negation.
   // "not" gets a high-contrast location of its own: refusal is the most
@@ -196,6 +206,102 @@ typedef _CategoryGrid = ({
   Set<String> verbs,
   Set<String> adjectives,
 });
+
+/// Second pages, reached by the "next" key.
+///
+/// Paging rather than scrolling: a page is a fixed grid, and "next" is a fixed
+/// location, so a word on page two is still at one unchanging sequence of
+/// movements. A scrolling surface would put a word wherever the scroll
+/// happened to be, which is no position at all.
+const _categoryPageTwo = <String, _CategoryGrid>{
+  'people': (
+    rows: [
+      ['me', 'him', 'her', 'them', 'us', 'somebody'],
+      ['boy', 'girl', 'man', 'woman', 'family', 'class'],
+      ['neighbour', 'driver', 'helper', 'stranger'],
+    ],
+    verbs: {},
+    adjectives: {},
+  ),
+  'food': (
+    rows: [
+      ['toast', 'cereal', 'yoghurt', 'butter', 'jam', 'honey'],
+      ['potato', 'carrot', 'peas', 'beans', 'salad', 'tomato'],
+      ['orange', 'grapes', 'berries', 'melon', 'lemon', 'crisps'],
+      ['tea', 'coffee', 'squash', 'fizzy', 'straw', 'plate'],
+    ],
+    verbs: {},
+    adjectives: {},
+  ),
+  'play': (
+    rows: [
+      ['jump', 'climb', 'swim', 'ride', 'build', 'throw'],
+      ['catch', 'hide', 'chase', 'push', 'pull', 'win'],
+      ['bike', 'scooter', 'trampoline', 'sand', 'water', 'paint'],
+      ['film', 'cartoon', 'song', 'story', 'friend', 'party'],
+    ],
+    verbs: {
+      'jump',
+      'climb',
+      'swim',
+      'ride',
+      'build',
+      'throw',
+      'catch',
+      'hide',
+      'chase',
+      'push',
+      'pull',
+      'win',
+    },
+    adjectives: {},
+  ),
+  'feelings': (
+    rows: [
+      ['calm', 'proud', 'shy', 'jealous', 'confused', 'surprised'],
+      ['funny', 'kind', 'mean', 'fair', 'unfair', 'safe'],
+      ['better', 'worse', 'enough', 'ready'],
+      ['I need a break', 'too fast', 'too slow', 'I do not know'],
+    ],
+    verbs: {},
+    adjectives: {
+      'calm',
+      'proud',
+      'shy',
+      'jealous',
+      'confused',
+      'surprised',
+      'funny',
+      'kind',
+      'mean',
+      'fair',
+      'unfair',
+      'safe',
+      'better',
+      'worse',
+      'ready',
+    },
+  ),
+  'places': (
+    rows: [
+      ['upstairs', 'downstairs', 'room', 'door', 'window', 'stairs'],
+      ['street', 'beach', 'pool', 'library', 'church', 'cafe'],
+      ['train', 'plane', 'bike', 'walk', 'far', 'near'],
+    ],
+    verbs: {'walk'},
+    adjectives: {'far', 'near'},
+  ),
+  'body': (
+    rows: [
+      ['finger', 'thumb', 'knee', 'elbow', 'shoulder', 'neck'],
+      ['chest', 'heart', 'bottom', 'toes', 'nails', 'lips'],
+      ['itchy', 'sore', 'dizzy', 'thirsty', 'sleepy', 'poorly'],
+      ['doctor', 'nurse', 'bandage', 'cold', 'cough', 'temperature'],
+    ],
+    verbs: {},
+    adjectives: {'itchy', 'sore', 'dizzy', 'thirsty', 'sleepy', 'poorly'},
+  ),
+};
 
 // The grid below is laid out to be read as a grid. dart format would set one
 // word per line, which hides the very thing that makes it reviewable: whether
@@ -389,13 +495,41 @@ Future<String> seedCoreBoardSet(
     );
   }
 
+  // Second pages, created after the first so "more" has somewhere to point.
+  final pageTwoIds = <String, String>{};
+  for (final c in _categories) {
+    if (!_categoryPageTwo.containsKey(c.name)) continue;
+    pageTwoIds[c.name] = await materialiseBoard(
+      db,
+      vocabularyId: vocabId,
+      name: '${c.name} 2',
+      kind: BoardKind.category,
+    );
+  }
+
   for (final entry in boardIds.entries) {
-    await _fillCategory(db, vocabId, entry.value, entry.key);
+    await _fillCategory(
+      db,
+      vocabId,
+      entry.value,
+      _categoryVocabulary[entry.key],
+    );
+  }
+  for (final entry in pageTwoIds.entries) {
+    await _fillCategory(db, vocabId, entry.value, _categoryPageTwo[entry.key]);
   }
 
   await _addPinnedCells(db, vocabId, homeId, boardIds);
-  for (final id in boardIds.values) {
-    await _addPinnedCells(db, vocabId, id, boardIds);
+
+  for (final c in _categories) {
+    final first = boardIds[c.name]!;
+    final second = pageTwoIds[c.name];
+
+    await _addPinnedCells(db, vocabId, first, boardIds, pageForward: second);
+
+    if (second != null) {
+      await _addPinnedCells(db, vocabId, second, boardIds, pageBack: first);
+    }
   }
 
   return vocabId;
@@ -406,9 +540,8 @@ Future<void> _fillCategory(
   WordbridgeDatabase db,
   String vocabId,
   String boardId,
-  String category,
+  _CategoryGrid? grid,
 ) async {
-  final grid = _categoryVocabulary[category];
   if (grid == null) return;
 
   for (var row = 0; row < grid.rows.length; row++) {
@@ -447,8 +580,10 @@ Future<void> _addPinnedCells(
   WordbridgeDatabase db,
   String vocabId,
   String boardId,
-  Map<String, String> categoryBoards,
-) async {
+  Map<String, String> categoryBoards, {
+  String? pageForward,
+  String? pageBack,
+}) async {
   Future<void> place(
     int col,
     String label,
@@ -486,6 +621,15 @@ Future<void> _addPinnedCells(
 
   await place(0, 'home', ButtonAction.home);
   await place(1, 'back', ButtonAction.back);
+
+  // Paging keys sit where undo and clear used to. Both are hidden when there
+  // is no page to go to, and reappear in the same place when there is.
+  if (pageBack != null) {
+    await place(10, 'back a page', ButtonAction.navigate, target: pageBack);
+  }
+  if (pageForward != null) {
+    await place(11, 'more', ButtonAction.navigate, target: pageForward);
+  }
 
   for (final c in _categories) {
     await place(
