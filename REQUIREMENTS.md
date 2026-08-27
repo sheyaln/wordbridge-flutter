@@ -109,32 +109,44 @@ Three consequences, all enforced in code:
 
 ## 4. Agreed, not built
 
-### 4.1 Responsive grid sizing
+### 4.1 Grid geometry, chosen at setup
 
-**Grid dimensions are re-derived from screen size and the chosen icon size.**
-More rows and columns on a larger screen. The invariant is *"same place every
-time on this device"*, not across devices.
+**Grid dimensions are derived from three explicit choices, not from the device.**
 
-- Icon size is a **user setting**, sized to motor ability: larger targets for
-  imprecise reach, smaller for accurate. Grid dimensions follow from
-  `available space ÷ icon size`.
+At profile setup the caregiver picks:
+
+1. **Orientation** — landscape or portrait. Not sensed; chosen. The app locks
+   to it.
+2. **Icon size** — matched to motor ability. Larger targets for imprecise
+   reach, smaller where accuracy allows more vocabulary on screen.
+
+Rows and columns follow from `available space ÷ icon size` in the chosen
+orientation. Both remain changeable in settings.
+
+> **Re-derivation happens on a settings change and at no other time.**
+>
+> This is the whole design. Not on rotation, not on device change, not on an OS
+> update that shifts the safe area. Exactly one trigger, and it is a person
+> deliberately choosing it. Anything implicit would relayout a board someone is
+> mid-sentence on, which is the failure this project exists to prevent — and an
+> ambiguous trigger ("device change") is one nobody can audit afterwards.
+
+Changing orientation or icon size later **is allowed and must be warned about**,
+through the existing destructive-migration path: typed confirmation plus a full
+report of every word that moves and how much practice it had. It is the same
+warning as a remap, at the scale of a whole board.
+
+Other rules:
+
 - **Text truncates; it never shrinks the icon.** Minimum cell size is the icon
   size.
 - **Settings and system icons stay a fixed size** regardless of the grid.
 
-> ⚠️ **Orientation must be locked per profile.** Re-derivation on rotation would
-> relayout the board mid-sentence, which is the exact failure this project
-> exists to prevent. Re-derive on device and setting changes; never on rotation.
-
 > ⚠️ **Blocker:** the starter vocabulary is a hardcoded 7×12 coordinate table.
 > This needs restructuring into **ordered bands** (pronouns, determiners, verbs,
-> prepositions, questions) placed deterministically by a layout function, so the
-> same device yields the same result every launch. Hand-maintaining a coordinate
-> table per screen size does not scale.
-
-> ⚠️ **Resizing a customised board is a destructive migration.** A caregiver's
-> added words have coordinates in the old geometry. Must go through the typed-
-> confirmation path with a full displaced-word report — never silently.
+> prepositions, questions) placed deterministically by a layout function, so any
+> chosen geometry yields a stable, reproducible layout. Hand-maintaining a
+> coordinate table per size does not scale.
 
 ### 4.2 Profiles
 
@@ -181,7 +193,20 @@ time on this device"*, not across devices.
 > than an absent one, particularly for a user who cannot hear the mismatch and
 > correct it.
 
-### 4.5 Everything above is toggleable
+### 4.5 Neural voice — roadmap, not near-term
+
+Real tone control and a convincing whisper need a bundled on-device neural
+voice (Piper/Kokoro class) rather than platform TTS. That unlocks genuine
+prosody, breathiness, and a voice that does not sound like every other AAC
+user's — which autistic adults name directly: *"having the voice that matches
+every other person who uses AAC is very disempowering."*
+
+Substantial work: model size, licensing, per-locale coverage, and latency all
+need answering. Keep `SpeechEngine` engine-agnostic so this stays a swap rather
+than a rewrite. Until then, ship only the tones platform TTS can honestly
+produce.
+
+### 4.6 Everything above is toggleable
 
 Every feature in §4 must be individually switchable per profile. Defaults
 should favour the simplest, most stable board; complexity is opt-in.
