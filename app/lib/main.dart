@@ -8,6 +8,7 @@ import 'features/profiles/profile_settings.dart';
 import 'features/profiles/profile_setup.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/symbols/bundled_pack.dart';
+import 'features/symbols/global_symbols_pack.dart';
 import 'features/symbols/symbol_registry.dart';
 import 'features/symbols/symbol_resolver.dart';
 import 'features/talk/talk_screen.dart';
@@ -34,7 +35,13 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   late final _auth = PinAuth(_db);
   late final _profiles = ProfileRepository(_db);
 
-  late final _symbols = SymbolRegistry(packs: bundledSymbolPacks());
+  // The bundled pack covers the shipped vocabulary. The fetching one covers
+  // everything a caregiver adds afterwards, from the same four CC BY-SA sets,
+  // so a word somebody types today can have a picture today.
+  late final _globalSymbols = GlobalSymbolsPack();
+  late final _symbols = SymbolRegistry(
+    packs: [...bundledSymbolPacks(), _globalSymbols],
+  );
   late final _resolver = SymbolResolver(registry: _symbols);
 
   late Future<Profile?> _ready = _bootstrap();
@@ -69,6 +76,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     WidgetsBinding.instance.removeObserver(this);
     _logger.dispose();
     _resolver.dispose();
+    _globalSymbols.dispose();
     _db.close();
     super.dispose();
   }
@@ -108,6 +116,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
             auth: _auth,
             resolver: _resolver,
             registry: _symbols,
+            fetcher: _globalSymbols,
             onSwitchProfile: _use,
           );
         },
@@ -177,6 +186,7 @@ class _Session extends StatefulWidget {
     required this.auth,
     required this.resolver,
     required this.registry,
+    required this.fetcher,
     required this.onSwitchProfile,
   });
 
@@ -187,6 +197,7 @@ class _Session extends StatefulWidget {
   final PinAuth auth;
   final SymbolResolver resolver;
   final SymbolRegistry registry;
+  final GlobalSymbolsPack fetcher;
   final void Function(Profile) onSwitchProfile;
 
   @override
@@ -224,6 +235,7 @@ class _SessionState extends State<_Session> {
           auth: widget.auth,
           resolver: widget.resolver,
           registry: widget.registry,
+          fetcher: widget.fetcher,
           settings: _settings,
           profileId: widget.profile.id,
           userName: widget.profile.displayName,

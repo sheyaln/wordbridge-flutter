@@ -85,16 +85,16 @@ Three consequences, all enforced in code:
 
 | | |
 |---|---|
-| Fixed motor-planning grid, 7×12, positions stored not computed | **done** |
-| Starter vocabulary — Universal Core 36 + ~240 fringe words, clean-room | **done** |
-| Category boards with second pages (`more` / `back a page`) | **done** |
-| Pinned question column (col 11) and system row (row 6) on every board | **done** |
-| 203 bundled symbols across four CC BY-SA sets | **done** |
+| Fixed motor-planning grid, positions stored not computed | **done** |
+| Starter vocabulary — Universal Core 36 + ~330 fringe words, clean-room | **done** |
+| Automatic paging — a board gets a second page when the grid needs one | **done** |
+| Pinned question column and system row on every board, at every grid size | **done** |
+| Bundled symbols across four CC BY-SA sets, generated from the vocabulary | **done** |
 | On-device TTS, offline, iOS silent-switch handled | **done** |
 | Caregiver mode: 2s corner hold → PIN | **done** |
 | Board editor: add, move, hide, move between boards | **done** |
 | Remap warning quantified in the user's own tap counts | **done** |
-| Symbol customization: pack search + own photo (EXIF stripped) | **done** |
+| Symbol choice: browse, search, own photo (EXIF stripped) | **done** |
 | Usage tracking, off by default, with caregiver summary | **done** |
 | Word endings (`+s`/`+ed`/`+ing`/`+'s`) with irregular verbs | **done** |
 | Subject-agreeing copula (`am/is/are`, `was/were`) | **done** |
@@ -113,6 +113,10 @@ Three consequences, all enforced in code:
 | Question mark, using the speech engine's own question intonation | **done** |
 | Category keys cycle in place instead of opening a board of categories | **done** |
 | New shipped words reach existing boards without moving anything | **done** |
+| `yes`, `no`, `don't` and `wait` on the root board | **done** |
+| Greetings, toileting, safeguarding and money vocabulary | **done** |
+| A picture is found automatically when a word is added | **done** |
+| Pictures browsable and searchable, fetched on demand | **done** |
 
 ---
 
@@ -211,6 +215,32 @@ Other rules:
 - **Profanity is disable-able** for the age groups that receive it. Default on
   for adult presets, off for child presets.
 
+### 4.2a Pictures for words that have none
+
+**Two jobs, two standards of proof.** They share a source and must not share a
+rule.
+
+**Choosing, with a person looking.** The picker searches the four bundled
+CC BY-SA sets and fetches more from Global Symbols on demand. Results may be
+near misses, because a caregiver deciding that a picture of a cup means
+"drink" is judgement, and judgement is what a caregiver is for. A word with no
+pictures of its own falls back to the longest word in it — "I need a break"
+offers pictures for "break" — and says so, so nobody mistakes a related
+picture for an exact one.
+
+**Finding, with nobody looking.** When a word is added, a picture is attached
+only if a label matches it *exactly*. The search behind both is a substring
+match: "all" returns Ball, "not" returns Notebook, "she" returns Sheep. Nobody
+is watching when this runs, so a near miss would be attached silently.
+
+> Curated synonyms are allowed in the offline bundler — `mum`→mother,
+> `he`→man, `bathroom`→toilet — and every one must be a **genuine synonym for
+> the same referent**. A bus is not a bus stop; "turn" is not "my turn". Audit
+> the manifest's `matched` column when adding candidates.
+
+Nothing blocks: the picture is queued and the button shows its word until it
+arrives, which is the same thing it shows if it never does.
+
 ### 4.3 Word prediction
 
 - Behaves like a touchscreen keyboard's prediction.
@@ -253,7 +283,25 @@ need answering. Keep `SpeechEngine` engine-agnostic so this stays a swap rather
 than a rewrite. Until then, ship only the tones platform TTS can honestly
 produce.
 
-### 4.6 Everything above is toggleable
+### 4.6 Still to do
+
+Carried forward, in the order they matter:
+
+- **Word prediction** (§4.3) and **voice and tone** (§4.4) are the two
+  remaining features from the original scope. Neither is started.
+- **Level does double duty** — it decides both what is drawn on day one and
+  what a small grid sheds first. Those are different questions.
+- **Word endings and articles shed first on a small grid**, because they are
+  all level 2 with the highest shed ranks. So the users least able to afford
+  an extra movement are the ones who lose the grammar engine. Worth a
+  deliberate decision rather than leaving it as fallout.
+- **`docs/starter-vocabulary.md` does not exist** though `core_vocabulary.dart`
+  cites it and §7 calls the clean-room derivation "the evidence". Given the
+  trademark position, that is the one document that should exist.
+- **The root board has little slack left.** Two name cells beside the pronouns
+  and one noun column. Further additions there displace something.
+
+### 4.7 Everything above is toggleable
 
 Every feature in §4 must be individually switchable per profile. Defaults
 should favour the simplest, most stable board; complexity is opt-in.
@@ -293,6 +341,20 @@ Violating any of these is a bug regardless of what else it buys.
 ---
 
 ## 5.1 Standing decisions
+
+- **Auto-return after a word is a setting, not a rule.** On by default,
+  because it is what makes a word's motor path fixed rather than dependent on
+  where the user happened to be. Off suits someone building longer utterances
+  out of one category.
+- **The board pauses briefly after it changes**, ignoring taps for an
+  adjustable interval, default half a second, zero to switch it off. A finger
+  already on its way down when the screen changes otherwise lands on whatever
+  now occupies that location. This is the only place anything deliberately
+  stands between a user and speech, which is why it is short and removable.
+- **`more categories` turns the keys in place**; it never opens a board of
+  categories. A board would put every category two movements away instead of
+  one.
+- **`more words` is the paging key.** Both keys say what they do.
 
 - **A word may hold two locations on two different boards** where both are
   logical — `doctor` on people and on body, `outside` on play and on places.

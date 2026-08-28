@@ -11,6 +11,7 @@ import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
 import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
+import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
@@ -31,6 +32,7 @@ class CaregiverHome extends StatefulWidget {
     required this.logger,
     this.settings,
     this.registry,
+    this.fetcher,
     this.resolver,
     this.userName,
     this.onSwitchProfile,
@@ -42,6 +44,7 @@ class CaregiverHome extends StatefulWidget {
   final UsageLogger logger;
   final ProfileSettings? settings;
   final SymbolRegistry? registry;
+  final GlobalSymbolsPack? fetcher;
   final SymbolResolver? resolver;
   final String? userName;
   final void Function(Profile)? onSwitchProfile;
@@ -69,6 +72,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           db: widget.db,
           vocabularyId: widget.vocabularyId,
           registry: widget.registry,
+          fetcher: widget.fetcher,
           resolver: widget.resolver,
           userName: widget.userName,
         ),
@@ -106,6 +110,7 @@ class _Boards extends StatelessWidget {
     required this.db,
     required this.vocabularyId,
     this.registry,
+    this.fetcher,
     this.resolver,
     this.userName,
   });
@@ -113,6 +118,7 @@ class _Boards extends StatelessWidget {
   final WordbridgeDatabase db;
   final String vocabularyId;
   final SymbolRegistry? registry;
+  final GlobalSymbolsPack? fetcher;
   final SymbolResolver? resolver;
   final String? userName;
 
@@ -153,6 +159,7 @@ class _Boards extends StatelessWidget {
                       vocabularyId: vocabularyId,
                       boardId: board.id,
                       registry: registry,
+                      fetcher: fetcher,
                       resolver: resolver,
                       userName: userName,
                     ),

@@ -1,4 +1,7 @@
 import 'package:drift/drift.dart' hide Column;
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../db/board_builder.dart';
@@ -6,6 +9,8 @@ import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
 import '../grid/grid_surface.dart';
+import '../symbols/auto_symbol.dart';
+import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import 'remap.dart';
@@ -25,6 +30,7 @@ class BoardEditor extends StatefulWidget {
     required this.vocabularyId,
     required this.boardId,
     this.registry,
+    this.fetcher,
     this.resolver,
     this.userName,
   });
@@ -34,6 +40,10 @@ class BoardEditor extends StatefulWidget {
   final String boardId;
   final SymbolRegistry? registry;
   final SymbolResolver? resolver;
+
+  /// Looks up a picture for a word as soon as it is added. Absent in tests and
+  /// wherever the network is not wanted; the editor works either way.
+  final GlobalSymbolsPack? fetcher;
   final String? userName;
 
   @override
@@ -153,13 +163,27 @@ class _BoardEditorState extends State<BoardEditor> {
     final label = await _promptForWord();
     if (label == null || label.trim().isEmpty) return;
 
-    await placeButton(
+    final word = label.trim();
+    final buttonId = await placeButton(
       widget.db,
       vocabularyId: widget.vocabularyId,
       cellId: cell.id,
-      label: label.trim(),
-      message: label.trim(),
+      label: word,
+      message: word,
     );
+
+    // Looked up in the background. A word with no picture is a complete,
+    // working button, so nothing here is worth making anyone wait for.
+    final registry = widget.registry;
+    if (registry != null) {
+      unawaited(
+        AutoSymbol(
+          db: widget.db,
+          registry: registry,
+          fetcher: widget.fetcher,
+        ).attachTo(buttonId: buttonId, label: word),
+      );
+    }
 
     await widget.db
         .into(widget.db.editEvents)
@@ -247,6 +271,7 @@ class _BoardEditorState extends State<BoardEditor> {
                     db: widget.db,
                     registry: widget.registry!,
                     resolver: widget.resolver!,
+                    fetcher: widget.fetcher,
                     button: button,
                   );
                 },

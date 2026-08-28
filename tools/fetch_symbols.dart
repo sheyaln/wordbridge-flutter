@@ -54,62 +54,31 @@ const _sets = <({String slug, int id, String name, String attribution})>[
   ),
 ];
 
-/// Everything the shipped vocabulary can currently display.
-const _words = <String>[
-  // Universal Core 36
-  'all', 'can', 'different', 'do', 'finished', 'get', 'go', 'good', 'he',
-  'help', 'here', 'I', 'in', 'it', 'like', 'look', 'make', 'more', 'not',
-  'on', 'open', 'put', 'same', 'she', 'some', 'stop', 'that', 'turn', 'up',
-  'want', 'what', 'when', 'where', 'who', 'why', 'you',
-  'we', 'they', 'will', 'need', 'close', 'take', 'to',
-  // people 2
-  'me', 'him', 'her', 'them', 'us', 'somebody', 'boy', 'girl', 'man', 'woman',
-  'family', 'class', 'neighbour', 'driver', 'helper', 'stranger',
-  // food 2
-  'toast', 'cereal', 'yoghurt', 'butter', 'jam', 'honey', 'potato', 'carrot',
-  'peas', 'beans', 'salad', 'tomato', 'orange', 'grapes', 'berries', 'melon',
-  'lemon', 'crisps', 'tea', 'coffee', 'squash', 'fizzy', 'straw', 'plate',
-  // play 2
-  'jump', 'climb', 'swim', 'ride', 'build', 'throw', 'catch', 'hide', 'chase',
-  'push', 'pull', 'win', 'bike', 'scooter', 'trampoline', 'sand', 'paint',
-  'film', 'cartoon', 'song', 'story', 'party',
-  // feelings 2
-  'calm', 'proud', 'shy', 'jealous', 'confused', 'surprised', 'funny', 'kind',
-  'mean', 'fair', 'unfair', 'safe', 'better', 'worse', 'enough', 'ready',
-  // places 2
-  'upstairs', 'downstairs', 'room', 'door', 'window', 'stairs', 'street',
-  'beach', 'pool', 'library', 'church', 'cafe', 'train', 'plane', 'walk',
-  'far', 'near',
-  // body 2
-  'finger', 'thumb', 'knee', 'elbow', 'shoulder', 'neck', 'chest', 'heart',
-  'bottom', 'toes', 'nails', 'lips', 'itchy', 'sore', 'dizzy', 'sleepy',
-  'poorly', 'bandage', 'cough', 'temperature',
-  // Category boards
-  'people', 'food', 'play', 'feelings', 'places', 'body',
-  // System row
-  'home', 'back', 'undo', 'clear',
-  // people
-  'mum', 'dad', 'friend', 'teacher', 'baby', 'brother', 'sister', 'doctor',
-  'nurse', 'grandma', 'grandpa', 'everybody', 'nobody', 'name',
-  // food
-  'eat', 'drink', 'water', 'milk', 'juice', 'hungry', 'thirsty', 'apple',
-  'banana', 'bread', 'cheese', 'egg', 'rice', 'hot', 'cold', 'pizza', 'pasta',
-  'chicken', 'soup', 'cake', 'biscuit', 'yummy', 'yucky', 'breakfast',
-  'lunch', 'dinner', 'snack',
-  // play
-  'read', 'draw', 'sing', 'dance', 'run', 'ball', 'book', 'toy', 'game',
-  'puzzle', 'blocks', 'music', 'video', 'tablet', 'bubbles', 'swing', 'slide',
-  'outside',
-  // feelings
-  'happy', 'sad', 'angry', 'scared', 'tired', 'excited', 'sick', 'worried',
-  'lonely', 'bored', 'silly', 'love', 'hate', 'miss',
-  // places
-  'school', 'shop', 'park', 'car', 'bus', 'bathroom', 'bedroom', 'kitchen',
-  'garden', 'inside', 'hospital', 'work', 'holiday', 'away',
-  // body
-  'head', 'face', 'eyes', 'ears', 'nose', 'mouth', 'hand', 'arm', 'leg',
-  'foot', 'tummy', 'hair', 'teeth', 'throat', 'skin', 'medicine', 'plaster',
-];
+/// Words to look for, read from a file of one label per line.
+///
+/// Generated from the vocabulary itself rather than kept here, because a
+/// second copy of the word list drifts and the drift is invisible — words ship
+/// without a picture and nobody notices:
+///
+///   cd app && dart run tool/vocabulary_words.dart > /tmp/wordbridge-words.txt
+///   dart run tools/fetch_symbols.dart /tmp/wordbridge-words.txt
+List<String> _wordsFrom(String path) {
+  final file = File(path);
+  if (!file.existsSync()) {
+    stderr.writeln(
+      'No word list at $path.\n\n'
+      'Generate one first:\n'
+      '  cd app && dart run tool/vocabulary_words.dart > $path',
+    );
+    exit(2);
+  }
+
+  return [
+    for (final line in file.readAsLinesSync())
+      if (line.trim().isNotEmpty) line.trim(),
+  ];
+}
+
 
 /// Alternative search terms, tried in order, for words whose own label is not
 /// how Mulberry names the concept.
@@ -149,9 +118,41 @@ const _searchCandidates = <String, List<String>>{
   'puzzle': ['puzzle', 'jigsaw'],
   'toy': ['toy', 'toys'],
   'snack': ['snack', 'snacks'],
+  // Object pronouns take the same treatment as "she": a picture of a person is
+  // standard AAC practice for a third-person pronoun, not a loose match.
+  'him': ['him', 'he', 'boy', 'man'],
+  'her': ['her', 'she', 'girl', 'woman'],
+  'them': ['them', 'they'],
+  'me': ['me', 'I'],
+  'my': ['my', 'mine'],
+  // "don't" is the imperative negator, which these sets index unabbreviated.
+  "don't": ["don't", 'do not', 'dont'],
+  "I don't know": ["I don't know", 'I do not know', 'do not know'],
+  "I don't understand": ["I don't understand", 'do not understand'],
+  'hello': ['hello', 'hi'],
+  'bye': ['bye', 'goodbye', 'bye bye'],
+  'thank you': ['thank you', 'thanks'],
+  // British nursery words for the same referents.
+  'wee': ['wee', 'urine', 'pee'],
+  'poo': ['poo', 'poop', 'faeces'],
+  'toilet': ['toilet', 'lavatory', 'wc'],
+  'medication': ['medication', 'medicine'],
+  'allergic': ['allergic', 'allergy'],
+  'wheelchair': ['wheelchair', 'wheel chair'],
+  'glasses': ['glasses', 'spectacles'],
+  'headphones': ['headphones', 'headphone'],
+  'video call': ['video call', 'videocall'],
+  'support worker': ['support worker', 'carer', 'helper'],
+  'it hurts': ['it hurts', 'hurt', 'pain'],
+  'yoghurt': ['yoghurt', 'yogurt'],
 };
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
+  final words = _wordsFrom(
+    args.isEmpty ? '/tmp/wordbridge-words.txt' : args.first,
+  );
+  stdout.writeln('${words.length} words in the vocabulary\n');
+
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
   final dir = Directory(_outDir)..createSync(recursive: true);
 
@@ -177,7 +178,7 @@ Future<void> main() async {
     for (final v in manifest.values) v['set'] as String,
   };
 
-  for (final word in _words) {
+  for (final word in words) {
     if (manifest.containsKey(word.toLowerCase())) continue;
     final candidates = _searchCandidates[word] ?? [word];
     stdout.write('${word.padRight(12)} ');

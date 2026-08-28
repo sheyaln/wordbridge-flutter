@@ -11,6 +11,7 @@ import '../../db/tables.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../symbols/custom_upload.dart';
+import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
@@ -30,12 +31,17 @@ class SymbolPicker extends StatefulWidget {
     required this.registry,
     required this.resolver,
     required this.button,
+    this.fetcher,
   });
 
   final WordbridgeDatabase db;
   final SymbolRegistry registry;
   final SymbolResolver resolver;
   final Button button;
+
+  /// Downloads a chosen picture before the sheet closes, so the caregiver sees
+  /// it land rather than trusting that it will.
+  final GlobalSymbolsPack? fetcher;
 
   /// Returns true if the button's symbol changed.
   static Future<bool> show(
@@ -44,6 +50,7 @@ class SymbolPicker extends StatefulWidget {
     required SymbolRegistry registry,
     required SymbolResolver resolver,
     required Button button,
+    GlobalSymbolsPack? fetcher,
   }) async {
     final changed = await showModalBottomSheet<bool>(
       context: context,
@@ -55,6 +62,7 @@ class SymbolPicker extends StatefulWidget {
           registry: registry,
           resolver: resolver,
           button: button,
+          fetcher: fetcher,
         ),
       ),
     );
@@ -72,6 +80,12 @@ class _SymbolPickerState extends State<SymbolPicker> {
 
   List<SymbolRef> _results = const [];
   bool _searching = false;
+  bool _fetching = false;
+
+  /// What was actually searched for, which is not always what is in the box —
+  /// a word with no pictures of its own falls back to broader terms.
+  String _searchedFor = '';
+  bool _widened = false;
 
   @override
   void initState() {
@@ -88,18 +102,53 @@ class _SymbolPickerState extends State<SymbolPicker> {
   Future<void> _search() async {
     final q = _query.text.trim();
     if (q.isEmpty) {
-      setState(() => _results = const []);
+      setState(() {
+        _results = const [];
+        _widened = false;
+      });
       return;
     }
 
     setState(() => _searching = true);
-    final hits = await widget.registry.search(q, limit: 60);
+
+    var hits = await widget.registry.search(q, limit: 60);
+    var searched = q;
+    var widened = false;
+
+    // A phrase almost never has a picture of its own, and a compound word
+    // often does not either. Rather than show an empty sheet, fall back to the
+    // longest word in it and say so — browsing something related beats
+    // browsing nothing.
+    if (hits.isEmpty) {
+      final fallback = _broaderTerm(q);
+      if (fallback != null) {
+        hits = await widget.registry.search(fallback, limit: 60);
+        if (hits.isNotEmpty) {
+          searched = fallback;
+          widened = true;
+        }
+      }
+    }
+
     if (mounted) {
       setState(() {
         _results = hits;
+        _searchedFor = searched;
+        _widened = widened;
         _searching = false;
       });
     }
+  }
+
+  /// The longest word in a phrase, which is usually the one carrying its
+  /// meaning: "I need a break" searches "break", "bus stop" searches "stop".
+  static String? _broaderTerm(String query) {
+    final words =
+        query.split(RegExp(r"[^A-Za-z']+")).where((w) => w.length > 2).toList()
+          ..sort((a, b) => b.length.compareTo(a.length));
+    return words.isEmpty || words.first.toLowerCase() == query.toLowerCase()
+        ? null
+        : words.first;
   }
 
   Future<void> _assign(String symbolId) async {
@@ -126,9 +175,33 @@ class _SymbolPickerState extends State<SymbolPicker> {
   }
 
   Future<void> _assignFromPack(SymbolRef ref) async {
+    final pack = widget.registry.packFor(ref.packId);
+    final fetcher = widget.fetcher;
+
+    // A downloaded picture is pulled before the sheet closes. Resolution alone
+    // only queues it, which would leave the caregiver looking at a button that
+    // still has no picture and no way to tell whether it worked.
+    if (pack is GlobalSymbolsPack && fetcher != null) {
+      setState(() => _fetching = true);
+      final landed = await fetcher.fetchNow(ref);
+      if (!mounted) return;
+      setState(() => _fetching = false);
+
+      if (!landed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'That picture could not be downloaded. The button keeps its '
+              'word, and you can try again or use a photo.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final uri = await widget.resolver.resolve(ref);
     final id = newId();
-    final pack = widget.registry.packFor(ref.packId);
 
     await widget.db
         .into(widget.db.symbols)
@@ -223,8 +296,19 @@ class _SymbolPickerState extends State<SymbolPicker> {
             ),
             const SizedBox(height: 12),
 
+            if (_widened)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'No pictures for "${widget.button.label}" itself, so these '
+                  'are pictures for "$_searchedFor". Pick one only if it '
+                  'really means the same thing.',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ),
+
             Expanded(
-              child: _searching
+              child: _searching || _fetching
                   ? const Center(child: CircularProgressIndicator())
                   : _results.isEmpty
                   ? const Center(
