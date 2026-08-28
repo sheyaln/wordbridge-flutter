@@ -312,20 +312,6 @@
       "matched": "Back",
       "part_of_speech": "noun"
     },
-    "undo": {
-      "file": "undo.svg",
-      "set": "openmoji",
-      "picto_id": 44231,
-      "matched": "Delete",
-      "part_of_speech": "noun"
-    },
-    "clear": {
-      "file": "clear.svg",
-      "set": "mulberry",
-      "picto_id": 4145,
-      "matched": "Empty",
-      "part_of_speech": "noun"
-    },
     "friend": {
       "file": "friend.svg",
       "set": "openmoji",
@@ -1383,13 +1369,6 @@
       "matched": "Heart",
       "part_of_speech": "noun"
     },
-    "bottom": {
-      "file": "bottom.svg",
-      "set": "mulberry",
-      "picto_id": 3341,
-      "matched": "Bottom",
-      "part_of_speech": "noun"
-    },
     "lips": {
       "file": "lips.svg",
       "set": "mulberry",
@@ -1690,6 +1669,265 @@
       "picto_id": 6220,
       "matched": "Yogurt",
       "part_of_speech": "noun"
+    },
+    "bus stop": {
+      "file": "bus_stop.svg",
+      "set": "openmoji",
+      "picto_id": 43038,
+      "matched": "Bus Stop",
+      "part_of_speech": "noun"
+    },
+    "church": {
+      "file": "church.svg",
+      "set": "mulberry",
+      "picto_id": 3618,
+      "matched": "Church",
+      "part_of_speech": "noun"
+    },
+    "college": {
+      "file": "college.svg",
+      "set": "openmoji",
+      "picto_id": 43389,
+      "matched": "College",
+      "part_of_speech": "noun"
+    },
+    "come": {
+      "file": "come.svg",
+      "set": "mulberry",
+      "picto_id": 49188,
+      "matched": "come",
+      "part_of_speech": "verb"
+    },
+    "confused": {
+      "file": "confused.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53076,
+      "matched": "confused",
+      "part_of_speech": "adjective"
+    },
+    "dentist": {
+      "file": "dentist.png",
+      "set": "tawasol",
+      "picto_id": 51638,
+      "matched": "dentist",
+      "part_of_speech": "noun"
+    },
+    "don't": {
+      "file": "don_t.svg",
+      "set": "stellar-symbols",
+      "picto_id": 54307,
+      "matched": "don't",
+      "part_of_speech": "noun"
+    },
+    "give": {
+      "file": "give.svg",
+      "set": "mulberry",
+      "picto_id": 49211,
+      "matched": "give",
+      "part_of_speech": "verb"
+    },
+    "glasses": {
+      "file": "glasses.svg",
+      "set": "mulberry",
+      "picto_id": 4637,
+      "matched": "Glasses",
+      "part_of_speech": "noun"
+    },
+    "group": {
+      "file": "group.svg",
+      "set": "openmoji",
+      "picto_id": 44206,
+      "matched": "Group",
+      "part_of_speech": "noun"
+    },
+    "headphones": {
+      "file": "headphones.svg",
+      "set": "mulberry",
+      "picto_id": 4753,
+      "matched": "Headphones",
+      "part_of_speech": "noun"
+    },
+    "hello": {
+      "file": "hello.svg",
+      "set": "mulberry",
+      "picto_id": 4769,
+      "matched": "hello",
+      "part_of_speech": "noun"
+    },
+    "her": {
+      "file": "her.png",
+      "set": "tawasol",
+      "picto_id": 7953,
+      "matched": "girl",
+      "part_of_speech": "noun"
+    },
+    "him": {
+      "file": "him.svg",
+      "set": "mulberry",
+      "picto_id": 56063,
+      "matched": "man",
+      "part_of_speech": "noun"
+    },
+    "it hurts": {
+      "file": "it_hurts.svg",
+      "set": "openmoji",
+      "picto_id": 43380,
+      "matched": "Pain",
+      "part_of_speech": "noun"
+    },
+    "know": {
+      "file": "know.png",
+      "set": "tawasol",
+      "picto_id": 8127,
+      "matched": "know",
+      "part_of_speech": "verb"
+    },
+    "my turn": {
+      "file": "my_turn.svg",
+      "set": "stellar-symbols",
+      "picto_id": 52999,
+      "matched": "my turn",
+      "part_of_speech": "adjective"
+    },
+    "no": {
+      "file": "no.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53149,
+      "matched": "no",
+      "part_of_speech": "adverb"
+    },
+    "out": {
+      "file": "out.svg",
+      "set": "mulberry",
+      "picto_id": 5217,
+      "matched": "Out",
+      "part_of_speech": "noun"
+    },
+    "pain": {
+      "file": "pain.svg",
+      "set": "openmoji",
+      "picto_id": 43380,
+      "matched": "Pain",
+      "part_of_speech": "noun"
+    },
+    "partner": {
+      "file": "partner.svg",
+      "set": "mulberry",
+      "picto_id": 5261,
+      "matched": "Partner",
+      "part_of_speech": "noun"
+    },
+    "this": {
+      "file": "this.png",
+      "set": "tawasol",
+      "picto_id": 7606,
+      "matched": "This,",
+      "part_of_speech": "noun"
+    },
+    "toilet": {
+      "file": "toilet.svg",
+      "set": "mulberry",
+      "picto_id": 5983,
+      "matched": "Toilet",
+      "part_of_speech": "noun"
+    },
+    "town": {
+      "file": "town.svg",
+      "set": "openmoji",
+      "picto_id": 44187,
+      "matched": "Town",
+      "part_of_speech": "noun"
+    },
+    "train": {
+      "file": "train.svg",
+      "set": "mulberry",
+      "picto_id": 6019,
+      "matched": "Train",
+      "part_of_speech": "noun"
+    },
+    "wait": {
+      "file": "wait.png",
+      "set": "tawasol",
+      "picto_id": 7762,
+      "matched": "wait",
+      "part_of_speech": "verb"
+    },
+    "pool": {
+      "file": "pool.svg",
+      "set": "openmoji",
+      "picto_id": 43206,
+      "matched": "Pool",
+      "part_of_speech": "noun"
+    },
+    "ready": {
+      "file": "ready.svg",
+      "set": "mulberry",
+      "picto_id": 5484,
+      "matched": "Ready",
+      "part_of_speech": "noun"
+    },
+    "bye": {
+      "file": "bye.png",
+      "set": "tawasol",
+      "picto_id": 7832,
+      "matched": "bye",
+      "part_of_speech": "interjection"
+    },
+    "cafe": {
+      "file": "cafe.svg",
+      "set": "mulberry",
+      "picto_id": 3440,
+      "matched": "Cafe",
+      "part_of_speech": "noun"
+    },
+    "period": {
+      "file": "period.svg",
+      "set": "openmoji",
+      "picto_id": 44095,
+      "matched": "Period",
+      "part_of_speech": "noun"
+    },
+    "phone": {
+      "file": "phone.svg",
+      "set": "openmoji",
+      "picto_id": 41080,
+      "matched": "Phone",
+      "part_of_speech": "noun"
+    },
+    "please": {
+      "file": "please.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53167,
+      "matched": "please",
+      "part_of_speech": "adverb"
+    },
+    "wee": {
+      "file": "wee.svg",
+      "set": "openmoji",
+      "picto_id": 44100,
+      "matched": "Urine",
+      "part_of_speech": "noun"
+    },
+    "wheelchair": {
+      "file": "wheelchair.svg",
+      "set": "mulberry",
+      "picto_id": 6160,
+      "matched": "Wheelchair",
+      "part_of_speech": "noun"
+    },
+    "window": {
+      "file": "window.svg",
+      "set": "mulberry",
+      "picto_id": 6183,
+      "matched": "Window",
+      "part_of_speech": "noun"
+    },
+    "your turn": {
+      "file": "your_turn.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53000,
+      "matched": "your turn",
+      "part_of_speech": "adjective"
     }
   }
 }
