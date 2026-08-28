@@ -8,6 +8,7 @@ import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
 import '../editor/board_editor.dart';
+import '../editor/grid_change_screen.dart';
 import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/symbol_registry.dart';
@@ -83,6 +84,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           logger: widget.logger,
           settings: widget.settings,
           onSwitchProfile: widget.onSwitchProfile,
+          userName: widget.userName,
           onChanged: () => setState(() {}),
         ),
       },
@@ -227,12 +229,14 @@ class _Settings extends StatelessWidget {
     required this.settings,
     required this.onChanged,
     this.onSwitchProfile,
+    this.userName,
   });
 
   final WordbridgeDatabase db;
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
+  final String? userName;
   final ProfileSettings? settings;
   final VoidCallback onChanged;
   final void Function(Profile)? onSwitchProfile;
@@ -262,6 +266,12 @@ class _Settings extends StatelessWidget {
             },
           ),
         _VocabularyLevel(db: db, profileId: profileId, onChanged: onChanged),
+        _NewWords(
+          db: db,
+          vocabularyId: vocabularyId,
+          profileId: profileId,
+          onChanged: onChanged,
+        ),
         if (settings != null)
           _StrongLanguage(
             db: db,
@@ -269,6 +279,34 @@ class _Settings extends StatelessWidget {
             profileId: profileId,
             settings: settings!,
             onChanged: onChanged,
+          ),
+        if (settings != null)
+          ListTile(
+            leading: const Icon(Icons.grid_on_outlined),
+            title: const Text('Button size and orientation'),
+            subtitle: Text(
+              '${settings!.iconSize.label} icons, '
+              '${settings!.orientation.label.toLowerCase()}. Changing either '
+              'one rebuilds every board and moves almost every word.',
+            ),
+            isThreeLine: true,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              final rebuilt = await GridChangeScreen.show(
+                context,
+                db: db,
+                profileId: profileId,
+                vocabularyId: vocabularyId,
+                settings: settings!,
+                userName: userName,
+                trackingEnabled: logger.enabled,
+              );
+              if (rebuilt == null || !context.mounted) return;
+
+              // The board this screen was opened over no longer exists, so
+              // back out to the talk screen and let it load the rebuilt one.
+              Navigator.of(context).pop();
+            },
           ),
         const Divider(),
         if (settings != null)
