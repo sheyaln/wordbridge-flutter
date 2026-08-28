@@ -61,6 +61,50 @@ void main() {
     db.buttons,
   )..where((b) => b.vocabularyId.equals(vocabId))).get();
 
+  test('the 7x12 home board is exactly where it has always been', () async {
+    // The shipped layout used to be a literal table of row/column numbers.
+    // Deriving it from bands instead had to reproduce it to the cell: anyone
+    // already using this board learned these positions, and an update that
+    // moved them is the precise failure this project exists to prevent.
+    //
+    // Read this as the board. Each string is a row, "." is a location held
+    // open. Column 11 carries the pinned questions and row 6 the system keys,
+    // both asserted separately.
+    const shipped = [
+      'I   we   all       want get  open  +s        a   . here good',
+      'you they some      need take close +ed       the . in   not',
+      'he  .    same      like do   help  +ing      .   . on   .',
+      'she .    different go   make look  +\'s      .   . up   .',
+      'it  .    more      stop put  turn  am/is/are .   . to   .',
+      'that .   .         can  will finished was/were . . .    .',
+    ];
+
+    final home = await (db.select(
+      db.boards,
+    )..where((b) => b.name.equals('home'))).getSingle();
+
+    final query = db.select(db.cells).join([
+      leftOuterJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id)),
+    ])..where(db.cells.boardId.equals(home.id));
+
+    final actual = <String, String>{
+      for (final r in await query.get())
+        '${r.readTable(db.cells).row},${r.readTable(db.cells).col}':
+            r.readTableOrNull(db.buttons)?.label ?? '.',
+    };
+
+    for (var row = 0; row < shipped.length; row++) {
+      final expected = shipped[row].split(RegExp(r'\s+'));
+      for (var col = 0; col < expected.length; col++) {
+        expect(
+          actual['$row,$col'],
+          expected[col],
+          reason: 'location $row,$col changed',
+        );
+      }
+    }
+  });
+
   test('ships the complete Universal Core 36', () async {
     final labels = (await buttons())
         .where((b) => !b.isSystem)
@@ -387,7 +431,7 @@ void main() {
       // is the whole reason for paging over scrolling.
       final second = await (db.select(
         db.boards,
-      )..where((b) => b.name.equals('play 2'))).getSingle();
+      )..where((b) => b.name.equals('food 2'))).getSingle();
 
       final placed =
           await (db.select(db.cells)..where(

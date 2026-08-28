@@ -1,0 +1,330 @@
+/// Turning an ordered vocabulary into coordinates on a grid of any size.
+///
+/// The shipped vocabulary used to be a table of literal row/column numbers,
+/// which meant it only existed at one grid size. Once the grid is something a
+/// caregiver chooses, that table has to become a rule instead: bands of
+/// related words, in Fitzgerald order, each claiming a contiguous range of
+/// columns wide enough to hold it.
+///
+/// The rule has to be deterministic. Two runs at the same size must produce
+/// identical coordinates, or a rebuild would silently move words — the exact
+/// failure this project exists to prevent. Everything here is a pure function
+/// of (rows, cols, bands); nothing reads a clock, a device, or a database.
+library;
+
+/// One word waiting for a location.
+class BandItem<T> {
+  const BandItem(this.value, {this.level = 1, this.essential = false});
+
+  final T value;
+
+  /// Vocabulary level. When the chosen grid cannot hold everything, the
+  /// highest levels lose their place first, so a small board still keeps the
+  /// core words a user needs on day one.
+  final int level;
+
+  /// Never moved to an overflow board, whatever the grid size.
+  ///
+  /// For the handful of words where an extra tap is not an acceptable cost:
+  /// refusal, and anything else a user might need to say urgently. A grid too
+  /// small to hold these is refused outright rather than quietly shipped
+  /// without them.
+  final bool essential;
+}
+
+/// A run of related words that occupies a contiguous range of columns.
+class Band<T> {
+  const Band({
+    required this.name,
+    required this.items,
+    this.minCols = 0,
+    this.reserveCols = 0,
+    this.reserveRank = 100,
+    this.shedRank = 100,
+  });
+
+  final String name;
+
+  /// In the order they should be read. Placement fills a column top to bottom
+  /// before starting the next one, so this order is what a user's eye follows.
+  final List<BandItem<T>> items;
+
+  /// Columns held open whether or not there are words to fill them, and the
+  /// last thing to give way when the grid runs short.
+  ///
+  /// This is how personal vocabulary gets a permanent home from day one rather
+  /// than being appended wherever there happens to be room later. It outranks
+  /// shipped words deliberately: a word pushed onto the next page is still
+  /// reachable, while a reserve given away is gone.
+  final int minCols;
+
+  /// Extra empty columns this band would like if the grid turns out to have
+  /// room to spare. Unlike [minCols], never at the expense of a word.
+  final int reserveCols;
+
+  /// Order in which spare columns are handed out. Lower goes first.
+  final int reserveRank;
+
+  /// Order in which a band gives way when the grid is too small. Lower holds
+  /// on longest.
+  final int shedRank;
+}
+
+typedef BandPlacement<T> = ({
+  int row,
+  int col,
+  String band,
+  T value,
+  int level,
+});
+
+class BandLayout<T> {
+  const BandLayout({
+    required this.placed,
+    required this.overflow,
+    required this.contentRows,
+    required this.contentCols,
+  });
+
+  final List<BandPlacement<T>> placed;
+
+  /// Words the chosen grid had no room for, still carrying their levels so the
+  /// next page can order them the same way. They are not discarded — the
+  /// caller puts them on an overflow board, because a word that exists in the
+  /// vocabulary and cannot be said is a worse outcome than an extra tap.
+  final List<BandItem<T>> overflow;
+
+  final int contentRows;
+  final int contentCols;
+}
+
+/// Places [bands] left to right across a grid, filling each column top to
+/// bottom.
+///
+/// [systemRows] rows are held at the bottom and [pinnedCols] columns at the
+/// right; neither is available to a band, because both carry keys that must be
+/// at identical coordinates on every board.
+BandLayout<T> layOutBands<T>({
+  required int rows,
+  required int cols,
+  required List<Band<T>> bands,
+  int systemRows = 1,
+  int pinnedCols = 1,
+}) {
+  final contentRows = rows - systemRows;
+  final contentCols = cols - pinnedCols;
+
+  if (contentRows < 1 || contentCols < 1) {
+    throw ArgumentError(
+      'A ${rows}x$cols grid leaves no room for vocabulary once the system row '
+      'and pinned column are reserved.',
+    );
+  }
+
+  final kept = {
+    for (final b in bands) b.name: [...b.items],
+  };
+  final held = {for (final b in bands) b.name: b.minCols};
+  final overflow = <BandItem<T>>[];
+
+  int widthOf(Band<T> b) {
+    final needed = (kept[b.name]!.length / contentRows).ceil();
+    return needed > held[b.name]! ? needed : held[b.name]!;
+  }
+
+  int totalWidth() => bands.fold(0, (sum, b) => sum + widthOf(b));
+
+  // Shed one word at a time rather than a whole column, so what survives is
+  // chosen by importance instead of by which band happened to be widest.
+  while (totalWidth() > contentCols) {
+    if (_shedLeastImportant(bands, kept, overflow)) continue;
+    if (_giveUpReserve(bands, held)) continue;
+
+    throw StateError(
+      'A ${rows}x$cols grid cannot hold the words that must always be '
+      'reachable. Offer a smaller icon size or a different orientation '
+      'rather than shipping a board without them.',
+    );
+  }
+
+  var surplus = contentCols - totalWidth();
+  final extra = <String, int>{for (final b in bands) b.name: 0};
+
+  final byReserve = [...bands]
+    ..sort((a, b) => a.reserveRank.compareTo(b.reserveRank));
+  for (final b in byReserve) {
+    if (surplus <= 0) break;
+    final take = b.reserveCols < surplus ? b.reserveCols : surplus;
+    extra[b.name] = take;
+    surplus -= take;
+  }
+
+  final placed = <BandPlacement<T>>[];
+  var col = 0;
+
+  for (final band in bands) {
+    final items = kept[band.name]!;
+
+    for (var i = 0; i < items.length; i++) {
+      placed.add((
+        row: i % contentRows,
+        col: col + i ~/ contentRows,
+        band: band.name,
+        value: items[i].value,
+        level: items[i].level,
+      ));
+    }
+
+    col += widthOf(band) + extra[band.name]!;
+  }
+
+  assert(col <= contentCols, 'bands ran past the grid: $col > $contentCols');
+
+  return BandLayout(
+    placed: placed,
+    overflow: overflow,
+    contentRows: contentRows,
+    contentCols: contentCols,
+  );
+}
+
+/// Moves the single least important remaining word to the overflow list.
+///
+/// Importance is level first, then how readily the band gives way, then
+/// position within the band. Level dominating is what keeps "not" and "want"
+/// on a small board while "turn" and "different" move to the overflow page.
+///
+/// Returns false when nothing is left to shed.
+bool _shedLeastImportant<T>(
+  List<Band<T>> bands,
+  Map<String, List<BandItem<T>>> kept,
+  List<BandItem<T>> overflow,
+) {
+  Band<T>? worstBand;
+  var worstIndex = -1;
+  var worstKey = <int>[];
+
+  for (final band in bands) {
+    final items = kept[band.name]!;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].essential) continue;
+
+      final key = [items[i].level, band.shedRank, i];
+      if (worstIndex < 0 || _greater(key, worstKey)) {
+        worstBand = band;
+        worstIndex = i;
+        worstKey = key;
+      }
+    }
+  }
+
+  if (worstBand == null) return false;
+
+  overflow.add(kept[worstBand.name]!.removeAt(worstIndex));
+  return true;
+}
+
+/// Takes one column back from the largest remaining reserve.
+///
+/// Only reached once every non-essential word has already moved to the
+/// overflow list, because a word on the next page is still sayable and a
+/// reserve given away is not recoverable.
+bool _giveUpReserve<T>(List<Band<T>> bands, Map<String, int> held) {
+  String? widest;
+  for (final b in bands) {
+    if (held[b.name]! < 1) continue;
+    if (widest == null || held[b.name]! > held[widest]!) widest = b.name;
+  }
+
+  if (widest == null) return false;
+
+  held[widest] = held[widest]! - 1;
+  return true;
+}
+
+bool _greater(List<int> a, List<int> b) {
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return a[i] > b[i];
+  }
+  return false;
+}
+
+/// Where the keys that appear on every board go, for a grid of any size.
+///
+/// The bottom row and the rightmost column are the two fixed frames of the
+/// whole system: reaching home, or asking "where", is one unchanging movement
+/// no matter which board is open.
+class SystemRowPlan {
+  const SystemRowPlan._({
+    required this.row,
+    required this.homeCol,
+    required this.backCol,
+    required this.categoryCols,
+    required this.overflowCol,
+    required this.pageBackCol,
+    required this.pageForwardCol,
+  });
+
+  /// The smallest grid this can be laid out on: home, back, the separating
+  /// gap, one category slot, and the two paging keys.
+  static const minCols = 6;
+  static const minRows = 4;
+
+  /// Refuses a grid that cannot carry the keys every board needs.
+  ///
+  /// Called before anything is laid out so a caregiver gets the actionable
+  /// message — this icon size does not fit this device — rather than a
+  /// complaint about vocabulary that is really a complaint about the grid.
+  static void validate({required int rows, required int cols}) {
+    if (cols < minCols || rows < minRows) {
+      throw ArgumentError(
+        'A ${rows}x$cols grid is too small for the keys every board needs. '
+        'Minimum is ${minRows}x$minCols.',
+      );
+    }
+  }
+
+  factory SystemRowPlan.forGrid({
+    required int rows,
+    required int cols,
+    required int categories,
+    bool needsOverflow = false,
+  }) {
+    validate(rows: rows, cols: cols);
+
+    // Column 2 stays empty on purpose. Home and back undo what the user just
+    // did; the category keys go somewhere new. Putting them shoulder to
+    // shoulder means an imprecise reach for one lands on the other.
+    const firstCategory = 3;
+    final lastCategory = cols - 3;
+    final slots = lastCategory - firstCategory + 1;
+
+    final wanted = categories + (needsOverflow ? 1 : 0);
+    final spill = wanted > slots;
+    final shown = spill ? slots - 1 : categories;
+
+    return SystemRowPlan._(
+      row: rows - 1,
+      homeCol: 0,
+      backCol: 1,
+      categoryCols: [for (var i = 0; i < shown; i++) firstCategory + i],
+      overflowCol: spill || needsOverflow ? firstCategory + shown : null,
+      pageBackCol: cols - 2,
+      pageForwardCol: cols - 1,
+    );
+  }
+
+  final int row;
+  final int homeCol;
+  final int backCol;
+
+  /// One per category that fits, left to right.
+  final List<int> categoryCols;
+
+  /// Where the key to everything that did not fit goes, or null when
+  /// everything fit.
+  final int? overflowCol;
+
+  final int pageBackCol;
+  final int pageForwardCol;
+}
