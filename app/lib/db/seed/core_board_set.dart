@@ -42,28 +42,22 @@ Future<String> seedCoreBoardSet(
   // always been instead of pushing other words aside.
   final swearing = ageBand.canSwear;
   final swearingVisible = profanity ?? ageBand.swearsByDefault;
+
   SystemRowPlan.validate(rows: rows, cols: cols);
-
-  final home = layOutBands(rows: rows, cols: cols, bands: homeBands);
-
-  // A short grid cannot show all five questions in the pinned column. The ones
-  // that do not fit move to the overflow board rather than being dropped: an
-  // extra tap to ask "why" is a cost, losing the word is a different thing
-  // entirely.
-  final questionRows = rows - 1;
-  final questions = pinnedQuestions.take(questionRows).toList();
-
-  final extraWords = <BandItem<SeedWord>>[
-    for (final o in home.overflow) o.item,
-    ...pinnedQuestions.skip(questionRows),
-  ];
 
   final plan = SystemRowPlan.forGrid(
     rows: rows,
     cols: cols,
     categories: categoryNames.length,
-    needsOverflow: extraWords.isNotEmpty,
   );
+
+  // A short grid cannot show all the questions in the pinned column. The ones
+  // that do not fit become ordinary words on the root board rather than being
+  // dropped: an extra movement to ask "why" is a cost, losing the word is a
+  // different thing entirely.
+  final questionRows = rows - 1;
+  final questions = pinnedQuestions.take(questionRows).toList();
+  final spilledQuestions = pinnedQuestions.skip(questionRows).toList();
 
   final vocabId = newId();
   final ts = nowMs();
@@ -77,7 +71,6 @@ Future<String> seedCoreBoardSet(
           locale: Value(locale),
           gridRows: rows,
           gridCols: cols,
-          systemCellMap: Value(_systemCellMap(plan)),
           isTemplate: const Value(true),
           sourceLicense: const Value(
             'Word selection derived from Project Core Universal Core 36 '
@@ -111,21 +104,29 @@ Future<String> seedCoreBoardSet(
     );
   }
 
-  final homeId = await materialiseBoard(
+  // The root board pages like any other. Words the grid cannot hold go to a
+  // second page reached by the same key, rather than to a board of leftovers
+  // that would need a key of its own.
+  final homePages = await _buildPagedBoards(
     db,
-    vocabularyId: vocabId,
+    vocabId: vocabId,
     name: 'home',
-    kind: BoardKind.root,
+    rootKind: true,
+    rows: rows,
+    cols: cols,
+    bands: [
+      ...homeBands,
+      if (spilledQuestions.isNotEmpty)
+        Band(name: 'questions', items: spilledQuestions, shedRank: 3),
+    ],
   );
 
   await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId))).write(
-    VocabulariesCompanion(rootBoardId: Value(homeId)),
+    VocabulariesCompanion(rootBoardId: Value(homePages.first)),
   );
 
-  await _placeAll(db, vocabId, homeId, home.placed);
-
-  // Category boards must exist before the buttons that navigate to them, and
-  // a page must exist before the key that pages to it.
+  // Category boards must exist before the keys that navigate to them, and a
+  // page must exist before the key that pages to it.
   final categoryPages = <String, List<String>>{};
   for (final category in categoryNames) {
     categoryPages[category] = await _buildPagedBoards(
@@ -143,69 +144,36 @@ Future<String> seedCoreBoardSet(
     );
   }
 
-  final shown = plan.categoryCols.length;
-  final spilled = categoryNames.sublist(shown);
+  // Every category in a fixed order. The keys along the system row are a
+  // window onto this list; the cycle key moves the window. Recording the order
+  // here is what lets the talk screen do that without moving a button.
+  final wheel = [
+    for (final c in categoryNames) (name: c, boardId: categoryPages[c]!.first),
+  ];
 
-  final pageGroups = [...categoryPages.values];
+  await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId))).write(
+    VocabulariesCompanion(systemCellMap: Value(_systemCellMap(plan, wheel))),
+  );
 
-  if (plan.overflowCol != null) {
-    pageGroups.add(
-      await _buildPagedBoards(
-        db,
-        vocabId: vocabId,
-        name: 'more words',
-        rows: rows,
-        cols: cols,
-        links: {for (final c in spilled) c: categoryPages[c]!.first},
-        bands: [
-          Band(
-            name: 'categories',
-            items: [
-              for (final c in spilled)
-                BandItem((
-                  label: c,
-                  message: '',
-                  action: ButtonAction.navigate,
-                  morphemeKind: null,
-                  pos: null,
-                )),
-            ],
-          ),
-          Band(name: 'words', items: extraWords),
-        ],
-      ),
-    );
-  }
-
-  final reachable = <String, String>{
-    for (var i = 0; i < shown; i++)
-      categoryNames[i]: categoryPages[categoryNames[i]]!.first,
-  };
+  final pageGroups = [homePages, ...categoryPages.values];
 
   // Every board carries the same frame, so reaching home or asking "where" is
   // one unchanging movement no matter where the user is.
-  for (final boardId in [homeId, for (final g in pageGroups) ...g]) {
-    final pages = pageGroups.firstWhere(
-      (g) => g.contains(boardId),
-      orElse: () => const [],
-    );
-    final index = pages.indexOf(boardId);
-
-    await _addFixedKeys(
-      db,
-      vocabId: vocabId,
-      boardId: boardId,
-      rows: rows,
-      cols: cols,
-      plan: plan,
-      questions: questions,
-      categories: reachable,
-      overflowBoardId: plan.overflowCol == null ? null : pageGroups.last.first,
-      pageBack: index > 0 ? pages[index - 1] : null,
-      pageForward: index >= 0 && index < pages.length - 1
-          ? pages[index + 1]
-          : null,
-    );
+  for (final group in pageGroups) {
+    for (var index = 0; index < group.length; index++) {
+      await _addFixedKeys(
+        db,
+        vocabId: vocabId,
+        boardId: group[index],
+        rows: rows,
+        cols: cols,
+        plan: plan,
+        questions: questions,
+        wheel: wheel,
+        pageBack: index > 0 ? group[index - 1] : null,
+        pageForward: index < group.length - 1 ? group[index + 1] : null,
+      );
+    }
   }
 
   return vocabId;
@@ -223,7 +191,7 @@ Future<List<String>> _buildPagedBoards(
   required List<Band<SeedWord>> bands,
   required int rows,
   required int cols,
-  Map<String, String> links = const {},
+  bool rootKind = false,
   Set<String> hiddenBands = const {},
 }) async {
   final boardIds = <String>[];
@@ -236,7 +204,7 @@ Future<List<String>> _buildPagedBoards(
       db,
       vocabularyId: vocabId,
       name: boardIds.isEmpty ? name : '$name ${boardIds.length + 1}',
-      kind: BoardKind.category,
+      kind: rootKind && boardIds.isEmpty ? BoardKind.root : BoardKind.category,
     );
     boardIds.add(boardId);
 
@@ -245,7 +213,6 @@ Future<List<String>> _buildPagedBoards(
       vocabId,
       boardId,
       page.placed,
-      links: links,
       hiddenBands: hiddenBands,
     );
 
@@ -278,7 +245,6 @@ Future<void> _placeAll(
   String vocabId,
   String boardId,
   List<BandPlacement<SeedWord>> placements, {
-  Map<String, String> links = const {},
   Set<String> hiddenBands = const {},
 }) async {
   for (final p in placements) {
@@ -290,9 +256,6 @@ Future<void> _placeAll(
       label: p.value.label,
       message: p.value.message,
       action: p.value.action,
-      targetBoardId: p.value.action == ButtonAction.navigate
-          ? links[p.value.label]
-          : null,
       morphemeKind: p.value.morphemeKind,
       partOfSpeech: p.value.pos,
       vocabLevel: p.level,
@@ -314,8 +277,7 @@ Future<void> _addFixedKeys(
   required int cols,
   required SystemRowPlan plan,
   required List<BandItem<SeedWord>> questions,
-  required Map<String, String> categories,
-  String? overflowBoardId,
+  required List<({String name, String boardId})> wheel,
   String? pageBack,
   String? pageForward,
 }) async {
@@ -351,6 +313,7 @@ Future<void> _addFixedKeys(
       cellId: cell.id,
       label: item.value.label,
       message: item.value.message,
+      action: item.value.action,
       partOfSpeech: item.value.pos,
       vocabLevel: item.level,
     );
@@ -359,23 +322,21 @@ Future<void> _addFixedKeys(
   await key(plan.homeCol, 'home', ButtonAction.home);
   await key(plan.backCol, 'back', ButtonAction.back);
 
+  // The keys as they stand on the first turn of the wheel. When there are more
+  // categories than slots, the talk screen draws a different one of them in
+  // each slot as the wheel turns; the location never changes, only what it
+  // opens.
   for (var i = 0; i < plan.categoryCols.length; i++) {
-    final name = categoryNames[i];
     await key(
       plan.categoryCols[i],
-      name,
+      wheel[i].name,
       ButtonAction.navigate,
-      target: categories[name],
+      target: wheel[i].boardId,
     );
   }
 
-  if (plan.overflowCol != null && overflowBoardId != null) {
-    await key(
-      plan.overflowCol!,
-      'more words',
-      ButtonAction.navigate,
-      target: overflowBoardId,
-    );
+  if (plan.cycleCol != null) {
+    await key(plan.cycleCol!, 'more categories', ButtonAction.cycleCategories);
   }
 
   // Paging keys are drawn only where there is a page to go to, and reappear in
@@ -394,7 +355,7 @@ Future<void> _addFixedKeys(
   if (pageForward != null) {
     await key(
       plan.pageForwardCol,
-      'more',
+      'more words',
       ButtonAction.navigate,
       target: pageForward,
     );
@@ -403,12 +364,20 @@ Future<void> _addFixedKeys(
 
 /// Records where the fixed keys landed, so a later rebuild at the same size
 /// can be checked against what the user actually learned.
-String _systemCellMap(SystemRowPlan plan) => jsonEncode({
+String _systemCellMap(
+  SystemRowPlan plan,
+  List<({String name, String boardId})> wheel,
+) => jsonEncode({
   'row': plan.row,
   'home': plan.homeCol,
   'back': plan.backCol,
-  'categories': plan.categoryCols,
-  if (plan.overflowCol != null) 'more words': plan.overflowCol,
-  'back a page': plan.pageBackCol,
-  'more': plan.pageForwardCol,
+  'categoryCols': plan.categoryCols,
+  if (plan.cycleCol != null) 'cycleCol': plan.cycleCol,
+  'backAPage': plan.pageBackCol,
+  'moreWords': plan.pageForwardCol,
+  // The full ordered list, so the talk screen can turn the wheel without a
+  // button ever changing its location.
+  'categories': [
+    for (final c in wheel) {'name': c.name, 'boardId': c.boardId},
+  ],
 });

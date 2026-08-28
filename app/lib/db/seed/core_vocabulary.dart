@@ -178,15 +178,21 @@ final homeBands = <Band<SeedWord>>[
     ],
   ),
 
-  // Refusal is the most urgent thing a user can need to say. It keeps a
-  // location on the root board at every grid size; a board that can only agree
-  // is not a communication device.
+  // Answering and refusing. These keep their locations at every grid size; a
+  // board that can only agree is not a communication device, and one that
+  // cannot answer a direct question makes its user look absent from their own
+  // conversation.
+  //
+  // "not" negates inside a sentence, "no" answers one — different words doing
+  // different jobs, both of which a user needs.
   Band(
     name: 'describing',
     shedRank: 2,
     items: [
       w('good', PartOfSpeech.adjective),
       w('not', PartOfSpeech.negation, essential: true),
+      w('yes', PartOfSpeech.social, essential: true),
+      w('no', PartOfSpeech.negation, essential: true),
     ],
   ),
 ];
@@ -203,7 +209,18 @@ final pinnedQuestions = <BandItem<SeedWord>>[
   w('who', PartOfSpeech.question, level: 2),
   w('when', PartOfSpeech.question, level: 2),
   w('why', PartOfSpeech.question, level: 2),
+  // Appended rather than slotted in beside the question words, because every
+  // one of those already has a location somebody has learned.
+  _punctuation('?'),
 ];
+
+BandItem<SeedWord> _punctuation(String mark) => BandItem((
+  label: mark,
+  message: mark,
+  action: ButtonAction.punctuate,
+  morphemeKind: null,
+  pos: PartOfSpeech.question,
+));
 
 BandItem<SeedWord> _morpheme(String label, MorphemeKind kind) => BandItem((
   label: label,

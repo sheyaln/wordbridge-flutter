@@ -574,6 +574,10 @@ ButtonAction _actionFor(ObfButton button) {
       return ButtonAction.back;
     case WordbridgeExt.morphemeAction:
       return ButtonAction.morpheme;
+    case WordbridgeExt.punctuateAction:
+      return ButtonAction.punctuate;
+    case WordbridgeExt.cycleCategoriesAction:
+      return ButtonAction.cycleCategories;
     case WordbridgeExt.noneAction:
       return ButtonAction.none;
   }

@@ -72,8 +72,8 @@ void main() {
     const shipped = [
       'I   we   all       want get  open  +s        a   . here good',
       'you they some      need take close +ed       the . in   not',
-      'he  .    same      like do   help  +ing      .   . on   .',
-      'she .    different go   make look  +\'s      .   . up   .',
+      'he  .    same      like do   help  +ing      .   . on   yes',
+      'she .    different go   make look  +\'s      .   . up   no',
       'it  .    more      stop put  turn  am/is/are .   . to   .',
       'that .   .         can  will finished was/were . . .    .',
     ];
@@ -176,7 +176,7 @@ void main() {
         // Paging keys are deliberately conditional — a board with no next
         // page does not draw "more" — so they are excluded here. Their
         // locations are asserted separately.
-        const conditional = {'more', 'back a page'};
+        const conditional = {'more words', 'back a page'};
 
         final rows = await query.get();
         signatures[board.name] = {
@@ -393,7 +393,8 @@ void main() {
           db.select(db.buttons).join([
             innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
           ])..where(
-            db.cells.boardId.equals(food.id) & db.buttons.label.equals('more'),
+            db.cells.boardId.equals(food.id) &
+                db.buttons.label.equals('more words'),
           );
 
       final rows = await query.get();

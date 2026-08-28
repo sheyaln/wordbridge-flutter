@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:drift/drift.dart' show OrderingTerm, leftOuterJoin;
+import 'package:drift/drift.dart' show OrderingTerm, Value, leftOuterJoin;
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
@@ -64,6 +65,12 @@ class _TalkScreenState extends State<TalkScreen> {
   String? _rootBoardId;
   String? _currentBoardId;
 
+  _CategoryWheel? _wheel;
+
+  /// Which turn of the category wheel is showing. Only ever non-zero when
+  /// there are more categories than slots along the system row.
+  int _categoryPage = 0;
+
   /// One level deep. Board navigation is a shallow map, not a stack: any
   /// category is one movement from anywhere, and depth that accumulates makes
   /// a word's motor path depend on how the user got there.
@@ -84,6 +91,8 @@ class _TalkScreenState extends State<TalkScreen> {
   Timer? _settleTimer;
 
   bool get _settling => DateTime.now().isBefore(_operableAt);
+
+  int get wheelPages => _wheel?.pages ?? 1;
 
   /// Starts the delay, and schedules the rebuild that ends it.
   void _settle() {
@@ -127,6 +136,7 @@ class _TalkScreenState extends State<TalkScreen> {
       _vocab = vocab;
       _rootBoardId = vocab.rootBoardId;
       _currentBoardId = vocab.rootBoardId;
+      _wheel = _CategoryWheel.parse(vocab.systemCellMap);
     });
   }
 
@@ -155,9 +165,32 @@ class _TalkScreenState extends State<TalkScreen> {
         // actually usable — hiding it is a rendering decision, not a move.
         final deadBack =
             button?.action == ButtonAction.back && boardId == _rootBoardId;
+        if (deadBack) return (cell: cell, button: null);
 
-        return (cell: cell, button: deadBack ? null : button);
+        return (cell: cell, button: _throughWheel(cell, button));
       }).toList(),
+    );
+  }
+
+  /// Substitutes whichever category a slot is showing on this turn.
+  ///
+  /// The button stays where it is and keeps its location's history; only the
+  /// name on it and the board it opens change. Every category is one movement
+  /// away plus however many turns of the wheel, rather than two movements away
+  /// behind a board of categories.
+  Button? _throughWheel(Cell cell, Button? button) {
+    final wheel = _wheel;
+    if (button == null || wheel == null || cell.row != wheel.row) return button;
+
+    final slot = wheel.cols.indexOf(cell.col);
+    if (slot < 0) return button;
+
+    final entry = wheel.at(_categoryPage, slot);
+    if (entry == null) return null;
+
+    return button.copyWith(
+      label: entry.name,
+      targetBoardId: Value(entry.boardId),
     );
   }
 
@@ -217,6 +250,19 @@ class _TalkScreenState extends State<TalkScreen> {
 
       case ButtonAction.speakBar:
         await widget.speech.speak(_utterance.text);
+
+      case ButtonAction.cycleCategories:
+        setState(() {
+          _categoryPage = (_categoryPage + 1) % wheelPages;
+          _settle();
+        });
+
+      case ButtonAction.punctuate:
+        // Speaks the whole sentence rather than the mark. Tone is a property
+        // of the sentence, so hearing it is the only feedback that tells the
+        // user the question mark did anything.
+        _utterance.punctuate(button.message);
+        if (!_utterance.isEmpty) await widget.speech.speak(_utterance.text);
 
       case ButtonAction.morpheme:
         await _applyMorpheme(button);
@@ -516,5 +562,58 @@ class _BarButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The category keys along the system row, and the full list they show a
+/// window onto.
+///
+/// Read from the vocabulary rather than recomputed, so the window matches the
+/// locations the board was actually built with.
+class _CategoryWheel {
+  const _CategoryWheel({
+    required this.row,
+    required this.cols,
+    required this.entries,
+  });
+
+  final int row;
+  final List<int> cols;
+  final List<({String name, String boardId})> entries;
+
+  int get pages =>
+      cols.isEmpty ? 1 : (entries.length / cols.length).ceil().clamp(1, 99);
+
+  /// The category a slot shows on a given turn, or null where the last turn
+  /// runs out of categories before it runs out of slots.
+  ({String name, String boardId})? at(int page, int slot) {
+    if (cols.isEmpty) return null;
+    final index = page * cols.length + slot;
+    return index < entries.length ? entries[index] : null;
+  }
+
+  static _CategoryWheel? parse(String json) {
+    try {
+      final map = jsonDecode(json) as Map<String, dynamic>;
+      final cols = (map['categoryCols'] as List?)?.cast<int>();
+      final categories = map['categories'] as List?;
+      if (cols == null || categories == null || cols.isEmpty) return null;
+
+      return _CategoryWheel(
+        row: map['row'] as int,
+        cols: cols,
+        entries: [
+          for (final entry in categories.cast<Map<String, dynamic>>())
+            (
+              name: entry['name'] as String,
+              boardId: entry['boardId'] as String,
+            ),
+        ],
+      );
+    } catch (_) {
+      // A board built before the wheel existed, or a malformed map. The keys
+      // then behave as plain navigation, which is what they already are.
+      return null;
+    }
   }
 }

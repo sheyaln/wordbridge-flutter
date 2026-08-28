@@ -141,7 +141,7 @@ class _FirstRun extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   'A few questions about how this device will be used, then '
-                  'the board will be built.',
+                  'the your wordbridge board will be built.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.black54),
                 ),

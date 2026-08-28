@@ -15,8 +15,42 @@ class UtteranceBar extends ChangeNotifier {
 
   List<UtteranceEntry> get entries => List.unmodifiable(_entries);
   List<String> get words => [for (final e in _entries) e.text];
-  String get text => words.join(' ');
   bool get isEmpty => _entries.isEmpty;
+
+  /// The sentence as it will be spoken.
+  ///
+  /// Punctuation joins without a leading space so the speech engine sees
+  /// "you want that?" rather than "you want that ?". Engines read
+  /// sentence-final punctuation for prosody, and a stray space in front of it
+  /// is enough for some of them to miss it.
+  String get text {
+    final buffer = StringBuffer();
+    for (final entry in _entries) {
+      if (buffer.isNotEmpty && !isPunctuation(entry.text)) buffer.write(' ');
+      buffer.write(entry.text);
+    }
+    return buffer.toString();
+  }
+
+  static bool isPunctuation(String text) =>
+      text.length == 1 && '?!.,'.contains(text);
+
+  /// Ends the sentence with a mark that carries tone.
+  ///
+  /// One mark at a time: tapping "?" twice leaves one question mark rather
+  /// than two, and tapping "!" after "?" swaps it. Nothing is appended to an
+  /// empty bar, because a lone "?" is not a question.
+  void punctuate(String mark) {
+    if (_entries.isEmpty) return;
+
+    if (isPunctuation(_entries.last.text)) {
+      if (_entries.last.text == mark) return;
+      _entries.removeLast();
+    }
+
+    _entries.add((text: mark, pos: PartOfSpeech.question, inflected: true));
+    notifyListeners();
+  }
 
   UtteranceEntry? get last => _entries.isEmpty ? null : _entries.last;
 

@@ -307,7 +307,7 @@ class SystemRowPlan {
     required this.homeCol,
     required this.backCol,
     required this.categoryCols,
-    required this.overflowCol,
+    required this.cycleCol,
     required this.pageBackCol,
     required this.pageForwardCol,
   });
@@ -335,27 +335,37 @@ class SystemRowPlan {
     required int rows,
     required int cols,
     required int categories,
-    bool needsOverflow = false,
   }) {
     validate(rows: rows, cols: cols);
 
-    // Column 2 stays empty on purpose. Home and back undo what the user just
-    // did; the category keys go somewhere new. Putting them shoulder to
-    // shoulder means an imprecise reach for one lands on the other.
-    const firstCategory = 3;
+    // Column 2 is normally left empty. Home and back undo what the user just
+    // did; the category keys go somewhere new. Shoulder to shoulder, an
+    // imprecise reach for one lands on the other.
+    //
+    // A grid narrow enough that the gap would leave room for the cycle key and
+    // no category at all gives the gap up. Its buttons are large — that is why
+    // there are so few — so the mis-reach it guards against is the less likely
+    // problem, and a system row with no category key on it is the worse one.
     final lastCategory = cols - 3;
+    var firstCategory = 3;
+    if (lastCategory - firstCategory + 1 < 2 && categories > 1) {
+      firstCategory = 2;
+    }
     final slots = lastCategory - firstCategory + 1;
 
-    final wanted = categories + (needsOverflow ? 1 : 0);
-    final spill = wanted > slots;
-    final shown = spill ? slots - 1 : categories;
+    // Categories that do not fit are reached by cycling these same keys rather
+    // than by opening a board of categories. A board would put every category
+    // two movements away instead of one; cycling keeps them all at one
+    // movement plus however many presses of the cycle key.
+    final cycles = categories > slots;
+    final shown = cycles ? slots - 1 : categories;
 
     return SystemRowPlan._(
       row: rows - 1,
       homeCol: 0,
       backCol: 1,
       categoryCols: [for (var i = 0; i < shown; i++) firstCategory + i],
-      overflowCol: spill || needsOverflow ? firstCategory + shown : null,
+      cycleCol: cycles ? firstCategory + shown : null,
       pageBackCol: cols - 2,
       pageForwardCol: cols - 1,
     );
@@ -365,12 +375,14 @@ class SystemRowPlan {
   final int homeCol;
   final int backCol;
 
-  /// One per category that fits, left to right.
+  /// One per category shown at a time, left to right. When there are more
+  /// categories than slots, these keys are a window onto the full list and
+  /// [cycleCol] moves the window.
   final List<int> categoryCols;
 
-  /// Where the key to everything that did not fit goes, or null when
-  /// everything fit.
-  final int? overflowCol;
+  /// Where the key that moves the window goes, or null when every category
+  /// already has a permanent slot.
+  final int? cycleCol;
 
   final int pageBackCol;
   final int pageForwardCol;

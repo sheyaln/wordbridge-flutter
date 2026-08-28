@@ -195,6 +195,8 @@ String? _obfAction(ButtonAction action) => switch (action) {
   ButtonAction.speakBar => ':speak',
   ButtonAction.back => WordbridgeExt.backAction,
   ButtonAction.morpheme => WordbridgeExt.morphemeAction,
+  ButtonAction.punctuate => WordbridgeExt.punctuateAction,
+  ButtonAction.cycleCategories => WordbridgeExt.cycleCategoriesAction,
   ButtonAction.none => WordbridgeExt.noneAction,
   // Speaking is the default and a link is described by load_board.
   ButtonAction.speak || ButtonAction.navigate => null,

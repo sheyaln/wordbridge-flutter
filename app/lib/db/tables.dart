@@ -15,6 +15,21 @@ enum ButtonAction {
   backspace,
   speakBar,
   morpheme,
+
+  /// Ends the sentence with a mark that carries tone.
+  ///
+  /// Platform speech engines read sentence-final punctuation for prosody, so a
+  /// question mark buys a genuine rising intonation rather than an imitation
+  /// of one. It is the only tone control available without a bundled neural
+  /// voice, and it costs one location.
+  punctuate,
+
+  /// Turns the window of category keys along the system row.
+  ///
+  /// The keys stay where they are; what each one opens changes. A board of
+  /// categories would put every one of them two movements away instead of one.
+  cycleCategories,
+
   none,
 }
 

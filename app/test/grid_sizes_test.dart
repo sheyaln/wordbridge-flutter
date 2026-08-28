@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -173,17 +175,45 @@ void main() {
       });
 
       test('every category is reachable', () async {
-        // Directly from the system row, or behind the one "more words" key
-        // when the grid is too narrow to show them all.
-        final reachable = <String>{};
-        for (final r in await placed()) {
-          final button = r.readTable(db.buttons);
-          if (button.action == ButtonAction.navigate) {
-            reachable.add(button.label);
-          }
-        }
+        // Directly from a system-row key, or by turning the wheel those keys
+        // sit on when the grid is too narrow to show them all at once. The
+        // wheel is recorded on the vocabulary, because the keys themselves
+        // only ever hold whichever category is showing.
+        final vocab = await (db.select(
+          db.vocabularies,
+        )..where((v) => v.id.equals(vocabId))).getSingle();
 
-        expect(reachable, containsAll(categoryNames));
+        final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+        final wheel = {
+          for (final entry
+              in (map['categories'] as List).cast<Map<String, dynamic>>())
+            entry['name'] as String,
+        };
+
+        expect(wheel, containsAll(categoryNames));
+
+        // And every one of them names a board that exists.
+        final boardIds = (await db.select(db.boards).get())
+            .map((b) => b.id)
+            .toSet();
+        for (final entry
+            in (map['categories'] as List).cast<Map<String, dynamic>>()) {
+          expect(boardIds, contains(entry['boardId']));
+        }
+      });
+
+      test('the wheel turns through every category without a gap', () async {
+        final vocab = await (db.select(
+          db.vocabularies,
+        )..where((v) => v.id.equals(vocabId))).getSingle();
+
+        final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+        final slots = (map['categoryCols'] as List).length;
+        final total = (map['categories'] as List).length;
+
+        // A cycle key exists exactly when there is something to cycle to.
+        expect(map.containsKey('cycleCol'), total > slots);
+        expect(slots, greaterThan(0));
       });
 
       test('there is room left to grow', () async {

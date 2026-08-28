@@ -315,16 +315,22 @@ void main() {
       final plan = SystemRowPlan.forGrid(rows: 7, cols: 12, categories: 6);
       expect(plan.categoryCols.first, 3);
       expect(plan.categoryCols, [3, 4, 5, 6, 7, 8]);
-      expect(plan.overflowCol, isNull);
+      expect(
+        plan.cycleCol,
+        isNull,
+        reason: 'nothing to cycle when every category has its own key',
+      );
     });
 
-    test('categories that do not fit are reachable through one more key', () {
+    test('categories that do not fit are cycled through, not buried', () {
+      // A board of categories would put every one of them two movements away.
+      // Cycling keeps them at one movement plus however many turns.
       final plan = SystemRowPlan.forGrid(rows: 8, cols: 7, categories: 6);
 
       expect(plan.categoryCols, hasLength(1));
-      expect(plan.overflowCol, isNotNull);
-      expect(plan.overflowCol, greaterThan(plan.categoryCols.last));
-      expect(plan.overflowCol, lessThan(plan.pageBackCol));
+      expect(plan.cycleCol, isNotNull);
+      expect(plan.cycleCol, greaterThan(plan.categoryCols.last));
+      expect(plan.cycleCol, lessThan(plan.pageBackCol));
     });
 
     test('a grid too small for the fixed keys is refused', () {

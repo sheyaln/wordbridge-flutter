@@ -31,6 +31,8 @@ abstract final class WordbridgeExt {
   static const backAction = ':ext_wordbridge_back';
   static const morphemeAction = ':ext_wordbridge_morpheme';
   static const noneAction = ':ext_wordbridge_none';
+  static const punctuateAction = ':ext_wordbridge_punctuate';
+  static const cycleCategoriesAction = ':ext_wordbridge_cycle_categories';
 }
 
 class ObfFormatException implements Exception {
