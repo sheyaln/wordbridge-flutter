@@ -117,6 +117,7 @@ Three consequences, all enforced in code:
 | Greetings, toileting, safeguarding and money vocabulary | **done** |
 | A picture is found automatically when a word is added | **done** |
 | Pictures browsable and searchable, fetched on demand | **done** |
+| Word prediction in its own strip, learned per profile, off by default | **done** |
 
 ---
 
@@ -241,13 +242,45 @@ is watching when this runs, so a near miss would be attached silently.
 Nothing blocks: the picture is queued and the button shows its word until it
 arrives, which is the same thing it shows if it never does.
 
-### 4.3 Word prediction
+### 4.3 Word prediction — built
 
-- Behaves like a touchscreen keyboard's prediction.
-- **Learns per profile** — this user's own history, not a global model.
-- Must not relocate anything. Predictions appear in a dedicated region, never
-  by rearranging grid cells. *(Nieder 2014 names predictive reordering as a
-  motor-planning killer.)*
+Behaves like a touchscreen keyboard's prediction, learned per profile, in its
+own strip above the grid. It never rearranges the board — *(Nieder 2014 names
+predictive reordering as a motor-planning killer)*.
+
+Six rules hold it in place:
+
+- **Only words already on this user's boards.** A suggestion is a shortcut to a
+  word, never a source of new ones. Hidden words and words held back by level
+  are never offered, or the level would stop meaning anything.
+- **Fixed slots.** The strip's width is divided evenly and words are drawn
+  inside their slot. Chips sized to their text would put the third suggestion
+  somewhere different depending on how long the first two words were.
+- **It settles.** The contents change after every word, so the strip ignores
+  taps for the same delay the boards use (§ adjustable pause).
+- **An empty slot is a hole, not a button.** It takes no tap and speaks
+  nothing, exactly as a masked cell does not.
+- **Deterministic order.** Equal counts break alphabetically, so two identical
+  states give the same strip in the same order every time.
+- **Suggestion taps are logged as `prediction`, not `touch`.** The remap
+  warning counts how often a *location* was reached for, and a word taken from
+  the strip was not reached for at all.
+
+**Off by default, and it is not free.** The strip takes its height from the
+grid, so every button is a little shorter while it is on. That is a change to
+where things are, which is why it is a deliberate choice. Turning it back off
+restores the previous layout exactly — nothing is rebuilt and no cell moves, so
+it is the one layout change that costs nothing to undo.
+
+**What it stores is counts, not a transcript.** `prediction_pairs` holds a pair
+of words and how often one followed the other: no timestamp, no ordering beyond
+the pair, nothing that says four words were one sentence. It is separate from
+the usage log, which is consent-gated and exports. Turning prediction off
+empties it.
+
+Learning happens when a sentence is *spoken*, not as each word is added — what
+is recorded is what the user meant to say, and nothing at all from a sentence
+they built and then cleared.
 
 ### 4.4 Voice and tone
 
@@ -287,8 +320,8 @@ produce.
 
 Carried forward, in the order they matter:
 
-- **Word prediction** (§4.3) and **voice and tone** (§4.4) are the two
-  remaining features from the original scope. Neither is started.
+- **Voice and tone** (§4.4) is the last remaining feature from the original
+  scope, and is not started.
 - **Level does double duty** — it decides both what is drawn on day one and
   what a small grid sheds first. Those are different questions.
 - **Word endings and articles shed first on a small grid**, because they are

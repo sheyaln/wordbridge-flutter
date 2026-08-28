@@ -231,7 +231,7 @@ void main() {
     // Forces the upgrade to run.
     await db.select(db.profiles).get();
 
-    expect(db.schemaVersion, 3);
+    expect(db.schemaVersion, 4);
   });
 
   test('the board survives the upgrade untouched', () async {
@@ -284,6 +284,11 @@ void main() {
     expect(profile.birthDate, isNull);
 
     expect(await db.select(db.appState).get(), isEmpty);
+
+    // Prediction arrives switched off and knowing nothing, which is the only
+    // state it may arrive in: an upgrade must not start keeping a record of
+    // somebody's speech that they did not ask for.
+    expect(await db.select(db.predictionPairs).get(), isEmpty);
   });
 
   test('no word is taken off the board by the upgrade', () async {

@@ -11,6 +11,8 @@ import '../auth/pin.dart';
 import '../auth/pin_gate.dart';
 import '../caregiver/caregiver_home.dart';
 import '../grid/grid_surface.dart';
+import '../prediction/prediction_strip.dart';
+import '../prediction/word_prediction.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
@@ -97,6 +99,36 @@ class _TalkScreenState extends State<TalkScreen> {
 
   int get wheelPages => _wheel?.pages ?? 1;
 
+  bool get _predicting => widget.settings?.prediction ?? false;
+
+  late final _prediction = WordPrediction(
+    widget.db,
+    profileId: widget.profileId,
+    vocabularyId: widget.vocabularyId,
+    vocabLevel: widget.vocabLevel,
+  );
+
+  /// What the strip is showing. Held rather than rebuilt inline so a rebuild
+  /// for any other reason cannot change it — the suggestions move only when
+  /// the sentence does.
+  List<Button> _suggestions = const [];
+
+  /// Drops a suggestion set that arrives after the sentence has moved on.
+  int _suggestionRequest = 0;
+
+  Future<void> _refreshSuggestions() async {
+    if (!_predicting) {
+      if (_suggestions.isNotEmpty) setState(() => _suggestions = const []);
+      return;
+    }
+
+    final request = ++_suggestionRequest;
+    final words = await _prediction.suggest(previous: _utterance.last?.text);
+
+    if (!mounted || request != _suggestionRequest) return;
+    setState(() => _suggestions = words);
+  }
+
   /// Starts the delay, and schedules the rebuild that ends it.
   void _settle() {
     final delay =
@@ -116,17 +148,27 @@ class _TalkScreenState extends State<TalkScreen> {
     // Which endings are offered depends on the sentence so far, so the grid
     // has to rebuild whenever the bar changes.
     _utterance.addListener(_onUtteranceChanged);
+    // Whether the strip is drawn is read during build, so a caregiver turning
+    // it on has to reach the board without going back out and in again.
+    widget.settings?.addListener(_onSettingsChanged);
     _load();
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) setState(() {});
+    _refreshSuggestions();
   }
 
   void _onUtteranceChanged() {
     if (mounted) setState(() {});
+    _refreshSuggestions();
   }
 
   @override
   void dispose() {
     _settleTimer?.cancel();
     _utterance.removeListener(_onUtteranceChanged);
+    widget.settings?.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
@@ -141,6 +183,8 @@ class _TalkScreenState extends State<TalkScreen> {
       _currentBoardId = vocab.rootBoardId;
       _wheel = _CategoryWheel.parse(vocab.systemCellMap);
     });
+
+    await _refreshSuggestions();
   }
 
   Stream<List<PlacedCell>> _cellsFor(String boardId) {
@@ -252,7 +296,7 @@ class _TalkScreenState extends State<TalkScreen> {
         _utterance.clear();
 
       case ButtonAction.speakBar:
-        await widget.speech.speak(_utterance.text);
+        await _speakSentence();
 
       case ButtonAction.cycleCategories:
         setState(() {
@@ -265,13 +309,91 @@ class _TalkScreenState extends State<TalkScreen> {
         // of the sentence, so hearing it is the only feedback that tells the
         // user the question mark did anything.
         _utterance.punctuate(button.message);
-        if (!_utterance.isEmpty) await widget.speech.speak(_utterance.text);
+        if (!_utterance.isEmpty) await _speakSentence();
 
       case ButtonAction.morpheme:
         await _applyMorpheme(button);
 
       case ButtonAction.none:
         break;
+    }
+  }
+
+  /// Speaks the sentence, and lets prediction watch it.
+  ///
+  /// Learning happens here rather than as each word is added, so what is
+  /// recorded is a sentence the user chose to say — not every combination they
+  /// passed through on the way to it, and nothing at all from one they built
+  /// and then cleared.
+  Future<void> _speakSentence() async {
+    final words = _utterance.words;
+    await widget.speech.speak(_utterance.text);
+
+    if (_predicting && words.isNotEmpty) {
+      await _prediction.learn(words);
+      await _refreshSuggestions();
+    }
+  }
+
+  /// Finds the button the strip was showing, without going back to the disk.
+  ///
+  /// The strip deals in words so that it stays a display; the buttons behind
+  /// them are already held here.
+  void _onSuggestionWord(String word) {
+    for (final button in _suggestions) {
+      if (button.message == word) {
+        _onSuggestion(button);
+        return;
+      }
+    }
+  }
+
+  /// Puts a suggested word into the sentence, exactly as its own button would.
+  ///
+  /// The word keeps its part of speech, so the endings offered after it are
+  /// the same ones that would follow a tap on the board. A suggestion is a
+  /// shortcut to a button and has to behave like one.
+  ///
+  /// Nothing is read from the database first — the button arrived with the
+  /// suggestion — so speech starts here as fast as it does from the grid.
+  Future<void> _onSuggestion(Button button) async {
+    _utterance.add(button.message, pos: button.partOfSpeech);
+    await widget.speech.speak(button.speakText ?? button.message);
+
+    unawaited(_recordSuggestion(button));
+  }
+
+  /// Logs the word against the location it lives at, marked as a suggestion.
+  ///
+  /// The location is right — that is where the word is — but the tap count a
+  /// caregiver sees before moving something has to mean "reached for here",
+  /// and this was not that.
+  ///
+  /// Runs after the word has been spoken and is never awaited, so no amount of
+  /// database trouble can cost the user a word.
+  Future<void> _recordSuggestion(Button button) async {
+    try {
+      final cellId = button.cellId;
+      if (cellId == null) return;
+
+      final cell = await (widget.db.select(
+        widget.db.cells,
+      )..where((c) => c.id.equals(cellId))).getSingleOrNull();
+      if (cell == null) return;
+
+      widget.logger.log(
+        profileId: widget.profileId,
+        vocabularyId: widget.vocabularyId,
+        boardId: cell.boardId,
+        cellId: cell.id,
+        buttonId: button.id,
+        label: button.label,
+        action: button.action,
+        source: UsageSource.prediction,
+      );
+    } catch (_) {
+      // A suggestion that was spoken but not recorded is a gap in a report.
+      // A suggestion that throws is a word the user does not get.
     }
   }
 
@@ -391,10 +513,22 @@ class _TalkScreenState extends State<TalkScreen> {
               children: [
                 _UtteranceBarView(
                   utterance: _utterance,
-                  onSpeak: () => widget.speech.speak(_utterance.text),
+                  onSpeak: _speakSentence,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
+                // Above the grid and below the sentence, where it reads as
+                // part of the sentence being built rather than part of the
+                // board. Absent entirely when off, so a profile that does not
+                // use it does not pay for it in grid height.
+                if (_predicting)
+                  PredictionStrip(
+                    words: [for (final b in _suggestions) b.message],
+                    settleDelay:
+                        widget.settings?.settleDelay ??
+                        const Duration(milliseconds: 500),
+                    onSelect: _onSuggestionWord,
+                  ),
                 Expanded(
                   child: StreamBuilder<List<PlacedCell>>(
                     stream: _cellsFor(boardId),

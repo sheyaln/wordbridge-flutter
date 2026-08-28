@@ -17,6 +17,7 @@ part 'database.g.dart';
     EditEvents,
     CaregiverAuth,
     AppState,
+    PredictionPairs,
     SyncMeta,
   ],
 )
@@ -27,7 +28,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,6 +82,12 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         // made. Levelling every existing profile up reveals words rather than
         // removing them, which is the safe direction.
         await customStatement('UPDATE profiles SET vocab_level = 3');
+      }
+
+      if (from < 4) {
+        // Empty on arrival. Prediction is off until somebody turns it on, and
+        // it has nothing to say until it has watched a few sentences.
+        await m.createTable(predictionPairs);
       }
     },
     beforeOpen: (details) async {

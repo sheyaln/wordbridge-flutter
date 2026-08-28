@@ -126,6 +126,38 @@ void main() {
 
       expect(await remap.warningFor(id), isNull);
     });
+
+    test('a word taken from the suggestions is not practice either', () async {
+      final id = await placeAt(0, 0, 'eat');
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(id))).getSingle();
+
+      for (var i = 0; i < 50; i++) {
+        logger.log(
+          profileId: 'p1',
+          vocabularyId: vocabId,
+          boardId: boardId,
+          cellId: button.cellId!,
+          buttonId: id,
+          label: 'eat',
+          action: ButtonAction.speak,
+          // The word does live here, so this is the right location to record
+          // against. But the user pressed the prediction strip, not this
+          // spot, so it is no evidence they know where the spot is.
+          source: UsageSource.prediction,
+        );
+      }
+      await logger.flush();
+
+      expect(
+        await remap.warningFor(id),
+        isNull,
+        reason:
+            'a warning inflated by suggestions would talk a caregiver out '
+            'of a move that costs nothing',
+      );
+    });
   });
 
   group('moving a word', () {

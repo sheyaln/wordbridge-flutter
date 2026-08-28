@@ -19,13 +19,23 @@ class UsageQueries {
 
   static int _cutoff(Duration window) => nowMs() - window.inMilliseconds;
 
-  /// Selections recorded at a location, counting only the user's own taps.
+  /// The ways of choosing a word that mean the user went to the location.
+  ///
+  /// An allowlist rather than a list of exclusions, so a source added later
+  /// has to be considered before it can count towards a motor plan. Partner
+  /// modelling is not here — a partner demonstrating a word teaches the user,
+  /// but it is not the user's own practice — and neither is a word taken from
+  /// the prediction strip, which was never reached for at all.
+  static const practisedSources = [
+    UsageSource.touch,
+    UsageSource.switchAccess,
+  ];
+
+  /// Selections recorded at a location, counting only the user's own reaches.
   ///
   /// This is what makes a remap warning honest rather than alarmist: the
   /// question is not "has this word been used" but "has this *position* been
-  /// practised", which is what a motor plan actually is. Partner modelling is
-  /// excluded — a communication partner demonstrating a word teaches the
-  /// user, but it is not the user's own practice.
+  /// practised", which is what a motor plan actually is.
   Future<CellHistory> historyForCell(
     String cellId, {
     Duration window = const Duration(days: 90),
@@ -37,7 +47,7 @@ class UsageQueries {
               (e) =>
                   e.cellId.equals(cellId) &
                   e.occurredAt.isBiggerOrEqualValue(since) &
-                  e.source.equalsValue(UsageSource.partnerModel).not(),
+                  e.source.isInValues(practisedSources),
             ))
             .get();
 

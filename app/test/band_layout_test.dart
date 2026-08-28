@@ -220,7 +220,7 @@ void main() {
 
       final seen = <String>{};
       for (final p in layout.placed) {
-        expect(seen.add('${p.row}:${p.col}'), isTrue, reason: '${p.value}');
+        expect(seen.add('${p.row}:${p.col}'), isTrue, reason: p.value);
       }
       expect(coords(layout)['z']!.row, greaterThan(0));
     });

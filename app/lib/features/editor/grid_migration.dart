@@ -27,6 +27,7 @@ import '../../db/seed/band_layout.dart';
 import '../../db/seed/core_board_set.dart';
 import '../../db/seed/core_vocabulary.dart';
 import '../../db/tables.dart';
+import '../usage/usage_queries.dart';
 
 /// What changing the grid would cost, in the user's own history.
 class MigrationImpact {
@@ -569,11 +570,19 @@ class GridMigration {
   static String _baseName(String name) =>
       name.replaceAll(RegExp(r'\s+\d+$'), '');
 
+  /// How much practice a location has had.
+  ///
+  /// Counts only the ways of choosing a word that involved going to the
+  /// location, so the number a caregiver is shown before a rebuild means what
+  /// it says.
   static Future<int> _tapsAt(WordbridgeDatabase db, String cellId) async {
     final count = db.usageEvents.id.count();
     final query = db.selectOnly(db.usageEvents)
       ..addColumns([count])
-      ..where(db.usageEvents.cellId.equals(cellId));
+      ..where(
+        db.usageEvents.cellId.equals(cellId) &
+            db.usageEvents.source.isInValues(UsageQueries.practisedSources),
+      );
 
     return (await query.getSingle()).read(count) ?? 0;
   }

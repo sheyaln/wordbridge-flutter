@@ -3,10 +3,8 @@
 //   cd app && dart run tool/vocabulary_words.dart > /tmp/wordbridge-words.txt
 //   dart run tools/fetch_symbols.dart /tmp/wordbridge-words.txt
 //
-// The symbol fetcher used to carry its own copy of this list, which drifted
-// out of step with the vocabulary and left words shipping without a picture
-// that nobody noticed. Deriving it means adding a word to the vocabulary is
-// the only thing anyone has to remember to do.
+// Deriving the list from the vocabulary keeps adding a word the only thing
+// anyone has to remember to do.
 
 import 'package:wordbridge/db/seed/age_presets.dart';
 import 'package:wordbridge/db/seed/core_vocabulary.dart';
@@ -37,6 +35,10 @@ void main() {
   for (final item in swearingBand.items) {
     add(item.value.label);
   }
+
+  // The bottom-row category keys are buttons too, and want pictures as much as
+  // the words behind them do.
+  categoryNames.forEach(add);
 
   for (final entry in categoryBands.entries) {
     for (final band in entry.value) {

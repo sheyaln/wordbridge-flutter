@@ -50,7 +50,12 @@ enum SymbolSource { bundled, downloaded, custom }
 
 /// Distinguishes the AAC user's own selections from a partner modelling on
 /// their device. Conflating them makes every progress report wrong.
-enum UsageSource { touch, switchAccess, partnerModel }
+///
+/// [prediction] is separate from [touch] for a second reason: the remap
+/// warning counts how often a *location* was reached for, and a word taken
+/// from the prediction strip was not reached for at all. Counting it would
+/// inflate the number a caregiver is shown before they move something.
+enum UsageSource { touch, switchAccess, partnerModel, prediction }
 
 enum EditKind {
   remap,
@@ -358,6 +363,31 @@ class AppState extends Table {
 
   @override
   Set<Column> get primaryKey => {key};
+}
+
+/// How often one word followed another in this profile's own sentences.
+///
+/// Counts, not a transcript. There is no timestamp and no ordering beyond the
+/// pair, so this can rank what comes next without being able to reconstruct
+/// anything that was said — which matters, because the alternative is keeping
+/// a record of a disabled person's private speech in order to autocomplete it.
+///
+/// Separate from [UsageEvents] on purpose. That log is consent-gated, exports,
+/// and is off by default; this one exists only while prediction is switched on
+/// and is emptied when it is switched off.
+class PredictionPairs extends Table {
+  TextColumn get profileId => text()();
+
+  /// Empty for the start of a sentence, so the first word can be predicted
+  /// from nothing but how often the user opens with it.
+  TextColumn get previous => text()();
+
+  TextColumn get word => text()();
+
+  IntColumn get count => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {profileId, previous, word};
 }
 
 /// Unused in v1. Present so that adding sync later is not a migration of every

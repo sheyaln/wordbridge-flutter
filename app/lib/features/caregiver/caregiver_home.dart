@@ -9,6 +9,7 @@ import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
 import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
+import '../prediction/word_prediction.dart';
 import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
@@ -361,6 +362,41 @@ class _Settings extends StatelessWidget {
             isThreeLine: true,
             onChanged: (v) async {
               await settings!.set('filterVerbs', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
+          SwitchListTile(
+            value: settings!.prediction,
+            title: const Text('Suggest the next word'),
+            subtitle: const Text(
+              'A strip above the board offers likely next words, learned from '
+              'this profile\'s own sentences. It never rearranges the board. '
+              'It does take its height from the grid, so every button is a '
+              'little shorter while it is on; turning it off puts them back '
+              'exactly as they were and forgets what it learned.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('prediction', v);
+              if (!v) await forgetPredictions(db, profileId);
+              onChanged();
+            },
+          ),
+        if (settings != null && settings!.prediction)
+          ListTile(
+            leading: const Icon(Icons.restart_alt),
+            title: const Text('Start the suggestions over'),
+            subtitle: const Text(
+              'Forgets every pair of words learned so far. Worth doing after '
+              'a stretch where somebody else was using the device.',
+            ),
+            onTap: () async {
+              await forgetPredictions(db, profileId);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Suggestions start over.')),
+              );
               onChanged();
             },
           ),

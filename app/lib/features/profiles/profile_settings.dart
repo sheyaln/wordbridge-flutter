@@ -71,6 +71,16 @@ class ProfileSettings extends ChangeNotifier {
 
   IconSize get iconSize => _enum('iconSize', IconSize.values, IconSize.medium);
 
+  /// Offer likely next words in a strip above the grid.
+  ///
+  /// Off by default, and it is not free: the strip takes its height from the
+  /// grid, so every button is a little shorter while it is on. That is a
+  /// change to where things are, which is why it is a deliberate choice rather
+  /// than a default. Switching it back off restores the previous layout
+  /// exactly — nothing is rebuilt and no cell moves, so this is the one
+  /// layout change that costs nothing to undo.
+  bool get prediction => _values['prediction'] as bool? ?? false;
+
   /// Whether strong language is revealed on the boards that carry it.
   ///
   /// The words are already placed either way; this only draws them. Turning it
