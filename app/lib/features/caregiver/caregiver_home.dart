@@ -10,6 +10,7 @@ import '../../db/seed/vocabulary_top_up.dart';
 import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
 import '../prediction/word_prediction.dart';
+import '../speech/speech_engine.dart';
 import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
@@ -18,6 +19,7 @@ import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
+import 'voice_screen.dart';
 
 /// Everything behind the PIN.
 ///
@@ -31,6 +33,7 @@ class CaregiverHome extends StatefulWidget {
     required this.vocabularyId,
     required this.profileId,
     required this.logger,
+    this.speech,
     this.settings,
     this.registry,
     this.fetcher,
@@ -43,6 +46,7 @@ class CaregiverHome extends StatefulWidget {
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
+  final SpeechEngine? speech;
   final ProfileSettings? settings;
   final SymbolRegistry? registry;
   final GlobalSymbolsPack? fetcher;
@@ -87,6 +91,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           vocabularyId: widget.vocabularyId,
           profileId: widget.profileId,
           logger: widget.logger,
+          speech: widget.speech,
           settings: widget.settings,
           onSwitchProfile: widget.onSwitchProfile,
           userName: widget.userName,
@@ -236,6 +241,7 @@ class _Settings extends StatelessWidget {
     required this.logger,
     required this.settings,
     required this.onChanged,
+    this.speech,
     this.onSwitchProfile,
     this.userName,
   });
@@ -244,6 +250,7 @@ class _Settings extends StatelessWidget {
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
+  final SpeechEngine? speech;
   final String? userName;
   final ProfileSettings? settings;
   final VoidCallback onChanged;
@@ -315,6 +322,21 @@ class _Settings extends StatelessWidget {
               // back out to the talk screen and let it load the rebuilt one.
               Navigator.of(context).pop();
             },
+          ),
+        if (settings != null && speech != null)
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_outlined),
+            title: const Text('Voice'),
+            subtitle: Text(
+              '${settings!.voiceName ?? 'The device\'s own voice'} · '
+              '${settings!.tone.label}',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => VoiceScreen.show(
+              context,
+              speech: speech!,
+              settings: settings!,
+            ).then((_) => onChanged()),
           ),
         const Divider(),
         if (settings != null)

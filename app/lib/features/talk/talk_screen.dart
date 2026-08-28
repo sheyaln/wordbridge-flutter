@@ -484,6 +484,7 @@ class _TalkScreenState extends State<TalkScreen> {
           vocabularyId: widget.vocabularyId,
           profileId: widget.profileId,
           logger: widget.logger,
+          speech: widget.speech,
           settings: widget.settings,
           registry: widget.registry,
           fetcher: widget.fetcher,

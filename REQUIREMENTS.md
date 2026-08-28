@@ -118,6 +118,8 @@ Three consequences, all enforced in code:
 | A picture is found automatically when a word is added | **done** |
 | Pictures browsable and searchable, fetched on demand | **done** |
 | Word prediction in its own strip, learned per profile, off by default | **done** |
+| Voice choice, offline voices only, per profile | **done** |
+| Tone, speed, pitch and volume, each previewed as a spoken sentence | **done** |
 
 ---
 
@@ -282,26 +284,51 @@ Learning happens when a sentence is *spoken*, not as each word is added — what
 is recorded is what the user meant to say, and nothing at all from a sentence
 they built and then cleared.
 
-### 4.4 Voice and tone
+### 4.4 Voice and tone — built, and short of what was asked
 
-- **Configurable voices:** male, female, and variations within each.
-- **Tone presets:** calm, urgent, joking, sarcastic, and others.
-- **In-app volume** independent of system volume: maximum is a *yell*, minimum
-  audible is a *whisper*.
+**Delivered.** A voice screen behind the PIN: pick a voice, pick a tone, set
+speed, pitch and volume, and every control speaks a whole sentence the moment
+it moves — because a caregiver setting a voice for someone else cannot judge it
+from a number, and the person it is for may not be able to say it is wrong. The
+voice belongs to the profile, not the device, so switching profile on a shared
+tablet changes who it sounds like.
 
-> ⚠️ **Honest limits of platform TTS.** `flutter_tts` exposes rate, pitch and
-> volume, and nothing else. That genuinely supports **urgent** (faster, higher,
-> louder) and **calm** (slower, lower, quieter). It does **not** support
-> **sarcasm** — that needs prosodic contour control no platform TTS offers —
-> and a true **whisper** needs breathiness, which is not a parameter. Low volume
-> plus low pitch approximates it and will not sound like whispering.
+Only voices that work without a connection are listed. A voice that works at
+home and not in an ambulance is a trap, not a choice.
+
+Tones multiply the profile's own settings rather than replacing them, so a user
+who reads slowly gets a slower **urgent**, not everybody's urgent.
+
+**Four tones ship, and the list stops exactly where the platform does.**
+
+| Tone | What it does |
+|---|---|
+| Normal | The chosen voice, unmodified |
+| Calm | Slower, a little lower |
+| Urgent | Faster, higher, full volume |
+| Quiet | The same voice turned down |
+
+> ⚠️ **Two things asked for are absent, deliberately.**
 >
-> Real tone control means a bundled neural voice (Piper/Kokoro via
-> `react-native-executorch`-equivalents, or on-device SSML where supported).
-> That is a substantial piece of work. **Do not ship "sarcastic" as a preset
-> that merely changes speed** — a preset that does not do what it says is worse
-> than an absent one, particularly for a user who cannot hear the mismatch and
-> correct it.
+> **Sarcasm** needs a prosodic contour — a particular rise and fall across a
+> sentence — that no platform engine lets an app specify. **A whisper** needs
+> breathiness, which is not a parameter at all. The fourth tone is called
+> *Quiet* and not *Whisper* for exactly that reason: it is the same voice with
+> the volume down, and that is what you will hear.
+>
+> A preset that does not do what its name says is worse than a missing one,
+> most of all for someone who cannot hear the mismatch and correct it, and who
+> will be taken to mean whatever came out.
+>
+> **The loudness ask is the one genuinely unmet.** In-app volume is a *share*
+> of the device's own volume and cannot exceed it — `flutter_tts` plays through
+> the platform and offers no gain stage. So "maximum is a yell" is not
+> delivered, and the parent complaint that motivated it ("all of this motor
+> planning is useless if I cannot hear him") still stands. Getting past it
+> means synthesising to a file and playing it through an audio graph with gain,
+> which puts a file write between a tap and a word — a straight violation of
+> §5. The honest fix is the neural voice in §4.5. The screen says so plainly
+> rather than pretending the slider goes further than it does.
 
 ### 4.5 Neural voice — roadmap, not near-term
 
@@ -320,8 +347,8 @@ produce.
 
 Carried forward, in the order they matter:
 
-- **Voice and tone** (§4.4) is the last remaining feature from the original
-  scope, and is not started.
+- **Volume above the device's own maximum** (§4.4) is the one part of the
+  original scope that platform speech cannot deliver. It needs §4.5.
 - **Level does double duty** — it decides both what is drawn on day one and
   what a small grid sheds first. Those are different questions.
 - **Word endings and articles shed first on a small grid**, because they are

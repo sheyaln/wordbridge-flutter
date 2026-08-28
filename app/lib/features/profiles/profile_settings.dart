@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../db/database.dart';
 import '../../db/ids.dart';
+import '../speech/tone.dart';
 import 'grid_choice.dart';
 
 /// Per-user preferences, held in the profile row.
@@ -70,6 +71,33 @@ class ProfileSettings extends ChangeNotifier {
       _enum('orientation', BoardOrientation.values, BoardOrientation.landscape);
 
   IconSize get iconSize => _enum('iconSize', IconSize.values, IconSize.medium);
+
+  /// The chosen voice, as the platform names it.
+  ///
+  /// Null means whatever the device defaults to. Stored as a name and locale
+  /// pair rather than an index, because the list of installed voices changes
+  /// when the OS updates and an index would quietly become a different voice.
+  String? get voiceName => _values['voiceName'] as String?;
+
+  String? get voiceLocale => _values['voiceLocale'] as String?;
+
+  /// How fast, high and loud this profile's voice is, before tone.
+  ///
+  /// One is the engine's own default for each. Volume is a fraction of what
+  /// the device is set to and cannot exceed it — see [Tone] for what platform
+  /// speech can and cannot be made to do.
+  double get speechRate => _double('speechRate', 1.0);
+
+  double get speechPitch => _double('speechPitch', 1.0);
+
+  double get speechVolume => _double('speechVolume', 1.0);
+
+  Tone get tone => Tone.byName(_values['tone'] as String?);
+
+  double _double(String key, double fallback) {
+    final stored = _values[key];
+    return stored is num ? stored.toDouble() : fallback;
+  }
 
   /// Offer likely next words in a strip above the grid.
   ///

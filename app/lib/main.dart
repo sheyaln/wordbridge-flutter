@@ -7,6 +7,7 @@ import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
 import 'features/profiles/profile_setup.dart';
 import 'features/speech/speech_engine.dart';
+import 'features/speech/voice_setup.dart';
 import 'features/symbols/bundled_pack.dart';
 import 'features/symbols/global_symbols_pack.dart';
 import 'features/symbols/symbol_registry.dart';
@@ -206,7 +207,25 @@ class _Session extends StatefulWidget {
 
 class _SessionState extends State<_Session> {
   late final _settings = ProfileSettings(widget.db, widget.profile.id);
-  late final Future<void> _loaded = _settings.load();
+  late final Future<void> _loaded = _open();
+
+  /// Loads the settings and puts this profile's voice on the engine.
+  ///
+  /// Done here rather than at startup because the voice belongs to the person,
+  /// not the device: switching profile has to change who the tablet sounds
+  /// like, and a shared device that keeps the last user's voice is telling
+  /// this one they are somebody else.
+  Future<void> _open() async {
+    await _settings.load();
+    await VoiceSetup(widget.speech).apply(
+      voiceName: _settings.voiceName,
+      voiceLocale: _settings.voiceLocale,
+      rate: _settings.speechRate,
+      pitch: _settings.speechPitch,
+      volume: _settings.speechVolume,
+      tone: _settings.tone,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
