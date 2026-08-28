@@ -40,7 +40,25 @@ class ProfileSettings extends ChangeNotifier {
 
   /// Return to the root board after speaking, so every word costs the same
   /// number of movements every time.
+  ///
+  /// On by default, because it is what makes a word's motor path fixed rather
+  /// than dependent on where the user happened to be. Off suits someone
+  /// building longer utterances out of one category, who would otherwise pay
+  /// the navigation cost again for every word.
   bool get autoReturn => _values['autoReturn'] as bool? ?? true;
+
+  /// How long the board ignores taps after it changes.
+  ///
+  /// A user moving at speed through a learned sequence has their finger coming
+  /// down before the new board has finished arriving, and lands on whatever
+  /// now occupies that location — a word they did not mean, in a sentence they
+  /// cannot easily repair.
+  ///
+  /// This is the one place something deliberately stands between a user and
+  /// speech, so it is short, adjustable, and can be switched off entirely by
+  /// setting it to zero.
+  Duration get settleDelay =>
+      Duration(milliseconds: _values['settleDelayMs'] as int? ?? 500);
 
   /// The two answers the grid was derived from.
   ///
@@ -92,13 +110,24 @@ class ProfileSettings extends ChangeNotifier {
 
     // An update, never an upsert. Writing a setting must not be able to
     // overwrite a profile's name or unpick which vocabulary it points at.
-    await (_db.update(
-      _db.profiles,
-    )..where((p) => p.id.equals(profileId))).write(
-      ProfilesCompanion(
-        settingsJson: Value(jsonEncode(_values)),
-        updatedAt: Value(nowMs()),
-      ),
-    );
+    final written =
+        await (_db.update(
+          _db.profiles,
+        )..where((p) => p.id.equals(profileId))).write(
+          ProfilesCompanion(
+            settingsJson: Value(jsonEncode(_values)),
+            updatedAt: Value(nowMs()),
+          ),
+        );
+
+    // An update against a profile that is not there writes nothing and reports
+    // success. Silently losing a caregiver's setting is the single most
+    // reported failure of the app this one exists to replace, so it fails
+    // loudly rather than pretending to have saved.
+    if (written == 0) {
+      throw StateError(
+        'No profile "$profileId" to save settings to. "$key" was not stored.',
+      );
+    }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show OrderingTerm, leftOuterJoin;
 import 'package:flutter/material.dart';
 
@@ -72,6 +74,30 @@ class _TalkScreenState extends State<TalkScreen> {
   /// two taps sometimes.
   bool get _autoReturn => widget.settings?.autoReturn ?? true;
 
+  /// Taps are ignored until this moment, after the board has changed.
+  ///
+  /// A finger already on its way down when the screen changes lands on
+  /// whatever now occupies that location. Without this, moving at speed
+  /// through a learned sequence puts words into the sentence that nobody
+  /// chose.
+  DateTime _operableAt = DateTime.fromMillisecondsSinceEpoch(0);
+  Timer? _settleTimer;
+
+  bool get _settling => DateTime.now().isBefore(_operableAt);
+
+  /// Starts the delay, and schedules the rebuild that ends it.
+  void _settle() {
+    final delay =
+        widget.settings?.settleDelay ?? const Duration(milliseconds: 500);
+    if (delay <= Duration.zero) return;
+
+    _settleTimer?.cancel();
+    _operableAt = DateTime.now().add(delay);
+    _settleTimer = Timer(delay, () {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +113,7 @@ class _TalkScreenState extends State<TalkScreen> {
 
   @override
   void dispose() {
+    _settleTimer?.cancel();
     _utterance.removeListener(_onUtteranceChanged);
     super.dispose();
   }
@@ -138,6 +165,10 @@ class _TalkScreenState extends State<TalkScreen> {
     final button = placed.button;
     if (button == null) return;
 
+    // The board has only just changed. This tap was aimed at what used to be
+    // here, so it is dropped rather than spoken.
+    if (_settling) return;
+
     // Order matters. Speech happens before anything is recorded, and the log
     // call cannot throw, so no amount of database trouble can cost the user a
     // word.
@@ -151,6 +182,7 @@ class _TalkScreenState extends State<TalkScreen> {
           setState(() {
             _currentBoardId = _rootBoardId;
             _previousBoardId = null;
+            _settle();
           });
         }
 
@@ -158,6 +190,7 @@ class _TalkScreenState extends State<TalkScreen> {
         setState(() {
           _previousBoardId = _currentBoardId;
           _currentBoardId = button.targetBoardId;
+          _settle();
         });
 
       case ButtonAction.home:
@@ -167,10 +200,14 @@ class _TalkScreenState extends State<TalkScreen> {
         setState(() {
           _currentBoardId = _rootBoardId;
           _previousBoardId = null;
+          _settle();
         });
 
       case ButtonAction.back:
-        setState(() => _currentBoardId = _previousBoardId ?? _rootBoardId);
+        setState(() {
+          _currentBoardId = _previousBoardId ?? _rootBoardId;
+          _settle();
+        });
 
       case ButtonAction.backspace:
         _utterance.backspace();
@@ -318,15 +355,18 @@ class _TalkScreenState extends State<TalkScreen> {
                       }
                       return Padding(
                         padding: const EdgeInsets.all(8),
-                        child: GridSurface(
-                          rows: vocab.gridRows,
-                          cols: vocab.gridCols,
-                          cells: cells,
-                          vocabLevel: widget.vocabLevel,
-                          resolver: widget.resolver,
-                          isAvailable: _isAvailable,
-                          colourScheme: vocab.colourScheme,
-                          onSelect: _onSelect,
+                        child: AbsorbPointer(
+                          absorbing: _settling,
+                          child: GridSurface(
+                            rows: vocab.gridRows,
+                            cols: vocab.gridCols,
+                            cells: cells,
+                            vocabLevel: widget.vocabLevel,
+                            resolver: widget.resolver,
+                            isAvailable: _isAvailable,
+                            colourScheme: vocab.colourScheme,
+                            onSelect: _onSelect,
+                          ),
                         ),
                       );
                     },

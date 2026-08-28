@@ -272,6 +272,24 @@ class _Settings extends StatelessWidget {
         const Divider(),
         if (settings != null)
           SwitchListTile(
+            value: settings!.autoReturn,
+            title: const Text('Go back to the home board after each word'),
+            subtitle: const Text(
+              'On, every word costs the same movements every time, because '
+              'each one starts from the same place. Off suits someone '
+              'building a longer sentence out of one category who would '
+              'otherwise pay the trip back out for every word.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('autoReturn', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
+          _SettleDelay(settings: settings!, onChanged: onChanged),
+        if (settings != null)
+          SwitchListTile(
             value: settings!.contextualGrammar,
             title: const Text('Show word endings only when they fit'),
             subtitle: const Text(
@@ -480,6 +498,65 @@ class _StrongLanguage extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// How long the board ignores taps after it changes.
+///
+/// A user moving quickly through a learned sequence has a finger already
+/// coming down as the new board arrives, and lands on whatever now occupies
+/// that location. This is the only place in the app where something
+/// deliberately delays speech, which is why it is short, adjustable, and can
+/// be turned off entirely.
+class _SettleDelay extends StatelessWidget {
+  const _SettleDelay({required this.settings, required this.onChanged});
+
+  final ProfileSettings settings;
+  final VoidCallback onChanged;
+
+  static String _describe(int ms) => switch (ms) {
+    0 => 'Off. Taps are accepted the instant a new board appears.',
+    _ => '${(ms / 1000).toStringAsFixed(2)} seconds',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final ms = settings.settleDelay.inMilliseconds;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.timer_outlined),
+          title: const Text('Pause after the board changes'),
+          subtitle: Text(_describe(ms)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Slider(
+            value: ms.toDouble().clamp(0, 2000),
+            max: 2000,
+            divisions: 8,
+            label: _describe(ms),
+            onChanged: (v) async {
+              await settings.set('settleDelayMs', v.round());
+              onChanged();
+            },
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Text(
+            'During the pause the board is visible but does not respond, so a '
+            'tap meant for the previous screen is dropped instead of speaking '
+            'a word nobody chose. Raise it for someone who moves fast or has '
+            'trouble lifting off; set it to zero for someone it gets in the '
+            'way of.',
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+        ),
+      ],
     );
   }
 }
