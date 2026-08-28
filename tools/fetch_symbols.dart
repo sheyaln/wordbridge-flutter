@@ -181,6 +181,21 @@ Future<void> main(List<String> args) async {
     );
   }
 
+  // Every run resolves the stylesheets of everything already on disk, not only
+  // what it is about to fetch. Idempotent, and it means a fix to the resolver
+  // reaches the symbols that shipped before it existed.
+  var restyled = 0;
+  for (final file in dir.listSync().whereType<File>()) {
+    if (!file.path.endsWith('.svg')) continue;
+    final before = file.readAsStringSync();
+    if (!before.contains('<style')) continue;
+    _writeSymbol(file, utf8.encode(before), 'svg');
+    restyled++;
+  }
+  if (restyled > 0) {
+    stdout.writeln('resolved the stylesheets of $restyled symbols\n');
+  }
+
   // Two different outcomes, kept apart. A word no set indexes is an answer
   // and its button renders label-only. A word whose lookup failed is not an
   // answer at all, and the next run should ask again — which it will, because
@@ -216,7 +231,7 @@ Future<void> main(List<String> args) async {
       final filename = '${_slug(word)}.$ext';
       final bytes = await _download(client, hit.imageUrl);
 
-      File('${dir.path}/$filename').writeAsBytesSync(bytes);
+      _writeSymbol(File('${dir.path}/$filename'), bytes, ext);
       usedSets.add(hit.setSlug);
 
       manifest[word.toLowerCase()] = {
@@ -414,6 +429,115 @@ Future<List<int>> _download(HttpClient client, String url) async {
           .fold<BytesBuilder>(BytesBuilder(), (b, d) => b..add(d))
           .timeout(_requestTimeout))
       .takeBytes();
+}
+
+/// Writes a symbol, with its stylesheet resolved into the shapes it styles.
+///
+/// The renderer this app uses does not read `<style>` blocks. Several sets
+/// draw entirely through CSS classes and carry no `fill` attributes at all, so
+/// left alone those symbols arrive as black silhouettes — legible as shapes,
+/// wrong as pictures, and invisible where the class said white.
+///
+/// Resolving it here rather than at render time means what ships is what is
+/// seen, and no device has to be able to parse CSS to show a word.
+void _writeSymbol(File file, List<int> bytes, String extension) {
+  if (extension != 'svg') {
+    file.writeAsBytesSync(bytes);
+    return;
+  }
+
+  final source = utf8.decode(bytes, allowMalformed: true);
+  final inlined = _inlineStyles(source);
+
+  if (inlined.contains('<style')) {
+    // Loud rather than quiet. A stylesheet this cannot resolve is a picture
+    // that will render wrong, and the whole point of bundling is knowing what
+    // shipped.
+    stderr.writeln(
+      '\n  ! ${file.path} keeps a stylesheet that could not be resolved. '
+      'It will render without its colours.',
+    );
+  }
+
+  file.writeAsStringSync(inlined);
+}
+
+/// Turns `.st0{fill:#fff}` plus `class="st0"` into `fill="#fff"`.
+///
+/// Only class selectors are handled, because that is all these sets use. A
+/// stylesheet containing anything else is left in place for the caller to
+/// complain about rather than half-applied — a partly-styled symbol is harder
+/// to notice than an unstyled one.
+String _inlineStyles(String svg) {
+  final styleBlock = RegExp(
+    r'<style[^>]*>(.*?)</style\s*>',
+    dotAll: true,
+    caseSensitive: false,
+  );
+  final match = styleBlock.firstMatch(svg);
+  if (match == null) return svg;
+
+  var css = match.group(1)!;
+  css = css.replaceAll(RegExp(r'<!\[CDATA\[|\]\]>'), '');
+  css = css.replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '');
+
+  // At-rules go, and `@font-face` is why. Sets sometimes embed an entire
+  // base64 typeface to letter one word — half a megabyte for a symbol, in a
+  // form the renderer cannot use either way. The text falls back to a system
+  // font, which is what it would have done regardless.
+  css = css.replaceAll(RegExp(r'@[\w-]+[^{]*\{[^{}]*\}', dotAll: true), '');
+
+  // Declarations accumulate per class in source order, so a later rule
+  // narrowing `stroke-width` wins over the one that set it first.
+  final byClass = <String, Map<String, String>>{};
+
+  for (final rule in RegExp(r'([^{}]+)\{([^{}]*)\}').allMatches(css)) {
+    final selectors = rule.group(1)!.split(',').map((s) => s.trim());
+    final declarations = <String, String>{};
+
+    for (final part in rule.group(2)!.split(';')) {
+      final colon = part.indexOf(':');
+      if (colon <= 0) continue;
+      declarations[part.substring(0, colon).trim()] = part
+          .substring(colon + 1)
+          .trim();
+    }
+
+    for (final selector in selectors) {
+      if (!RegExp(r'^\.[A-Za-z_][\w-]*$').hasMatch(selector)) return svg;
+      byClass.putIfAbsent(selector.substring(1), () => {}).addAll(declarations);
+    }
+  }
+
+  // No early return when there are no class rules. A stylesheet that was
+  // nothing but an embedded font still has to go, or the symbol keeps half a
+  // megabyte of typeface it never draws with.
+
+  // Whole elements rather than bare class attributes, so a declaration can be
+  // dropped when the element already states that property itself. Emitting it
+  // anyway would leave the tag with the attribute twice.
+  final withAttributes = svg.replaceAllMapped(RegExp(r'<[a-zA-Z][^>]*>'), (m) {
+    final tag = m.group(0)!;
+    final classAttr = RegExp(r'''\sclass\s*=\s*["']([^"']*)["']''')
+        .firstMatch(tag);
+    if (classAttr == null) return tag;
+
+    final declarations = <String, String>{};
+    for (final name in classAttr.group(1)!.trim().split(RegExp(r'\s+'))) {
+      final rules = byClass[name];
+      if (rules != null) declarations.addAll(rules);
+    }
+
+    final added = [
+      for (final entry in declarations.entries)
+        if (!RegExp('\\s${entry.key}\\s*=').hasMatch(tag))
+          ' ${entry.key}="${entry.value}"',
+    ].join();
+
+    return tag.replaceRange(classAttr.start, classAttr.end, added);
+  });
+
+  return withAttributes.replaceFirst(styleBlock, '');
 }
 
 String _slug(String word) =>
