@@ -156,7 +156,7 @@ void main() {
 
   _grammarTests();
 
-  group('the examples that prompted this', () {
+  group('the forms this exists to produce', () {
     test('I am', () {
       expect('I ${copulaFor('I', past: false)}', 'I am');
     });
@@ -188,7 +188,7 @@ void _grammarTests() {
 
   group('endings appear only where they apply', () {
     test('nothing is offered before a word has been said', () {
-      // The case that prompted this: "+ed" with no verb to attach it to.
+      // "+ed" with no verb to attach it to does nothing, so it is not shown.
       expect(applies(kind: MorphemeKind.pastEd, atStart: true), isFalse);
       expect(applies(kind: MorphemeKind.pluralS, atStart: true), isFalse);
       expect(applies(kind: null, tense: 'present', atStart: true), isFalse);

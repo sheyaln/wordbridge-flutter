@@ -62,10 +62,9 @@ void main() {
   )..where((b) => b.vocabularyId.equals(vocabId))).get();
 
   test('the 7x12 home board is exactly where it has always been', () async {
-    // The shipped layout used to be a literal table of row/column numbers.
-    // Deriving it from bands instead had to reproduce it to the cell: anyone
-    // already using this board learned these positions, and an update that
-    // moved them is the precise failure this project exists to prevent.
+    // Anyone using this board has learned these positions, so the derived
+    // layout has to land on them to the cell. An update that moves a word is
+    // the precise failure this project exists to prevent.
     //
     // Read this as the board. Each string is a row, "." is a location held
     // open. Column 11 carries the pinned questions and row 6 the system keys,
@@ -279,8 +278,8 @@ void main() {
 
   group('categories carry vocabulary', () {
     test('no category board is empty', () async {
-      // This shipped empty once. A category button that opens onto nothing is
-      // worse than no button: it teaches that navigating is pointless.
+      // A category key that opens onto nothing is worse than no key at all:
+      // it teaches that navigating is pointless.
       final categories = await (db.select(
         db.boards,
       )..where((b) => b.kind.equalsValue(BoardKind.category))).get();

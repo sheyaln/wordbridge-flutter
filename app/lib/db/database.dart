@@ -27,7 +27,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,10 +64,23 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
     },
     onUpgrade: (m, from, to) async {
       // Board layout is user data. A migration may add somewhere to record a
-      // birthday or which profile was last open; it may never touch a cell.
+      // birthday or which profile was last open; it may never move a cell, and
+      // it may never take a word off a board someone has learned.
+      //
+      // Steps are cumulative and each one belongs to the version that
+      // introduced it. A device that stopped at any version reaches the
+      // current one by running the steps above it, in order.
       if (from < 2) {
         await m.addColumn(profiles, profiles.birthDate);
         await m.createTable(appState);
+      }
+
+      if (from < 3) {
+        // Version 3 is the first in which the stored vocabulary level decides
+        // what is drawn, so no earlier value expresses a decision anybody
+        // made. Levelling every existing profile up reveals words rather than
+        // removing them, which is the safe direction.
+        await customStatement('UPDATE profiles SET vocab_level = 3');
       }
     },
     beforeOpen: (details) async {

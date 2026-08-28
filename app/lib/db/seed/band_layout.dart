@@ -1,10 +1,9 @@
 /// Turning an ordered vocabulary into coordinates on a grid of any size.
 ///
-/// The shipped vocabulary used to be a table of literal row/column numbers,
-/// which meant it only existed at one grid size. Once the grid is something a
-/// caregiver chooses, that table has to become a rule instead: bands of
-/// related words, in Fitzgerald order, each claiming a contiguous range of
-/// columns wide enough to hold it.
+/// The grid is something a caregiver chooses, so the vocabulary is declared as
+/// a rule rather than as coordinates: bands of related words, in Fitzgerald
+/// order, each claiming a contiguous range of columns wide enough to hold it.
+/// One declaration serves every grid size.
 ///
 /// The rule has to be deterministic. Two runs at the same size must produce
 /// identical coordinates, or a rebuild would silently move words — the exact
@@ -90,6 +89,7 @@ class BandLayout<T> {
     required this.placed,
     required this.overflow,
     required this.bandOrder,
+    required this.bandColumns,
     required this.contentRows,
     required this.contentCols,
   });
@@ -104,6 +104,22 @@ class BandLayout<T> {
 
   /// Band names in the order they were declared.
   final List<String> bandOrder;
+
+  /// The columns each band owns, including the ones it holds open and never
+  /// filled. A word a caregiver later adds to a reserved column belongs to the
+  /// band that reserved it, which is how a rebuild at another grid size knows
+  /// where to keep it.
+  final Map<String, ({int first, int last})> bandColumns;
+
+  /// Which band owns a column, or null for one no band claimed.
+  String? bandAt(int col) {
+    for (final entry in bandColumns.entries) {
+      if (col >= entry.value.first && col <= entry.value.last) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
 
   final int contentRows;
   final int contentCols;
@@ -181,6 +197,7 @@ BandLayout<T> layOutBands<T>({
   }
 
   final placed = <BandPlacement<T>>[];
+  final bandColumns = <String, ({int first, int last})>{};
   var col = 0;
 
   for (final band in bands) {
@@ -196,7 +213,11 @@ BandLayout<T> layOutBands<T>({
       ));
     }
 
-    col += widthOf(band) + extra[band.name]!;
+    final width = widthOf(band) + extra[band.name]!;
+    if (width > 0) {
+      bandColumns[band.name] = (first: col, last: col + width - 1);
+    }
+    col += width;
   }
 
   assert(col <= contentCols, 'bands ran past the grid: $col > $contentCols');
@@ -205,6 +226,7 @@ BandLayout<T> layOutBands<T>({
     placed: placed,
     overflow: overflow,
     bandOrder: [for (final b in bands) b.name],
+    bandColumns: bandColumns,
     contentRows: contentRows,
     contentCols: contentCols,
   );

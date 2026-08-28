@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
@@ -143,8 +142,8 @@ void main() {
     });
 
     test('writing a setting does not overwrite the name', () async {
-      // The settings writer used to upsert a whole profile row, which would
-      // have replaced a person's name with a placeholder on the next toggle.
+      // Writing a setting touches the settings column and nothing else. A
+      // whole-row write would replace a person's name on the next toggle.
       final maya = await create(name: 'Maya');
 
       final settings = ProfileSettings(db, maya.id);

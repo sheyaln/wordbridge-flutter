@@ -96,6 +96,7 @@ Future<String> seedCoreBoardSet(
             id: profileId,
             displayName: profileId,
             activeVocabularyId: Value(vocabId),
+            vocabLevel: Value(ageBand.startingLevel),
             createdAt: ts,
             updatedAt: ts,
           ),

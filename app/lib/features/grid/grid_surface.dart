@@ -165,8 +165,15 @@ class _Cell extends StatelessWidget {
     final button = placed.button;
 
     if (_isMasked) {
+      // A masked location must not speak. Whatever is behind it — a word above
+      // the current level, an ending that does not apply yet, a word switched
+      // off — the user cannot see it, and a blank that says a word nobody
+      // chose is worse than one that does nothing at all.
+      //
+      // The editor is the exception: a caregiver taps exactly these locations
+      // to put something in them, and needs to know what is already there.
       if (!showHidden || button == null) {
-        return _ReservedCell(onTap: () => onSelect(placed));
+        return _ReservedCell(onTap: showHidden ? () => onSelect(placed) : null);
       }
       return _MaskedCell(label: button.label, onTap: () => onSelect(placed));
     }

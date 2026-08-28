@@ -727,7 +727,7 @@ void main() {
 
       const ref = (packId: 'arasaac', externalId: '2248', label: 'water');
       await pack.resolve(ref);
-      await pumpEventQueue();
+      await pumpEventQueue(times: 100);
 
       expect(
         (await pack.resolve(ref))!.startsWith(documents.path),
@@ -749,14 +749,14 @@ void main() {
       const ref = (packId: 'arasaac', externalId: '2248', label: 'water');
       for (var attempt = 0; attempt < 5; attempt++) {
         expect(await pack.resolve(ref), isNull);
-        await pumpEventQueue();
+        await pumpEventQueue(times: 100);
       }
 
       expect(requests, 1);
 
       pack.clearFailures();
       expect(await pack.resolve(ref), isNull);
-      await pumpEventQueue();
+      await pumpEventQueue(times: 100);
       expect(requests, 2);
     });
 
@@ -768,7 +768,7 @@ void main() {
 
       const ref = (packId: 'arasaac', externalId: '2248', label: 'water');
       await pack.resolve(ref);
-      await pumpEventQueue();
+      await pumpEventQueue(times: 100);
 
       expect(await pack.resolve(ref), isNull);
     });

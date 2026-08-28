@@ -165,8 +165,8 @@ class _TalkScreenState extends State<TalkScreen> {
     final button = placed.button;
     if (button == null) return;
 
-    // The board has only just changed. This tap was aimed at what used to be
-    // here, so it is dropped rather than spoken.
+    // The board has only just changed, so this tap was aimed at the previous
+    // screen. Drop it rather than speak it.
     if (_settling) return;
 
     // Order matters. Speech happens before anything is recorded, and the log

@@ -31,6 +31,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.34.5
   build_runner: ^2.16.0
+  # Builds databases at earlier schema versions, so the upgrade path is tested
+  # against what a device actually has rather than against the current schema.
+  sqlite3: ^3.5.2
 
 flutter:
   uses-material-design: true
