@@ -486,6 +486,7 @@ class GridMigration {
           ],
           rows,
           cols,
+          axis: BandAxis.rows,
         ),
     };
 
@@ -506,14 +507,20 @@ class GridMigration {
     String name,
     List<Band<SeedWord>> bands,
     int rows,
-    int cols,
-  ) {
+    int cols, {
+    BandAxis axis = BandAxis.columns,
+  }) {
     final result = <String, Map<String, ({int row, int col})>>{};
     var remaining = bands;
     var page = 0;
 
     while (true) {
-      final layout = layOutBands(rows: rows, cols: cols, bands: remaining);
+      final layout = layOutBands(
+        rows: rows,
+        cols: cols,
+        bands: remaining,
+        axis: axis,
+      );
       result[page == 0 ? name : '$name ${page + 1}'] = {
         for (final p in layout.placed) p.value.label: (row: p.row, col: p.col),
       };
@@ -525,7 +532,7 @@ class GridMigration {
           Band(
             name: bandName,
             items: [
-              for (final o in layout.overflow)
+              for (final o in layout.overflow.reversed)
                 if (o.band == bandName) o.item,
             ],
           ),

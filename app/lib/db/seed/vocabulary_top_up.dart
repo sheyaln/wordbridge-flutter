@@ -136,6 +136,7 @@ Future<VocabularyTopUp> topUpVocabulary(
     final layout = layOutBands(
       rows: vocab.gridRows,
       cols: vocab.gridCols,
+      axis: BandAxis.rows,
       bands: [
         ...categoryBands[category]!,
         ...ageBand.extrasFor(category),
@@ -155,9 +156,15 @@ Future<Map<String, String>> _labelsOn(
   WordbridgeDatabase db,
   String boardId,
 ) async {
-  final query = db.select(db.buttons).join([
-    innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
-  ])..where(db.cells.boardId.equals(boardId));
+  // System keys only, excluded. "home", "back" and "play" are all both a key
+  // and a word, so counting the keys would make those three words look
+  // already-present on every board that carries them.
+  final query =
+      db.select(db.buttons).join([
+        innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+      ])..where(
+        db.cells.boardId.equals(boardId) & db.buttons.isSystem.equals(false),
+      );
 
   return {
     for (final r in await query.get())

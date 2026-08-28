@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/db/seed/core_vocabulary.dart';
 import 'package:wordbridge/db/tables.dart';
 
 /// Project Core's Universal Core 36 (UNC Center for Literacy and Disability
@@ -70,12 +71,12 @@ void main() {
     // open. Column 11 carries the pinned questions and row 6 the system keys,
     // both asserted separately.
     const shipped = [
-      'I   we   all       want get  open  +s        a   . here good',
-      'you they some      need take close +ed       the . in   not',
-      'he  .    same      like do   help  +ing      .   . on   yes',
-      'she .    different go   make look  +\'s      .   . up   no',
-      'it  .    more      stop put  turn  am/is/are .   . to   .',
-      'that .   .         can  will finished was/were . . .    .',
+      'I    we   all       want get  open     +s        a       . here good',
+      'you  they some      need take close    +ed       the     . in   not',
+      'he   my   same      like do   help     +ing      and     . on   yes',
+      'she  me   different go   make look     +\'s      but     . up   no',
+      'it   .    more      stop put  turn     am/is/are because . to   don\'t',
+      'that .    this      can  will finished was/were  so      . out  wait',
     ];
 
     final home = await (db.select(
@@ -130,10 +131,11 @@ void main() {
             ))
             .get();
 
-    // Roughly half the home board ships deliberately empty. If a future edit
-    // packs it full, personal vocabulary has nowhere to land that does not
-    // displace something already learned.
-    expect(reserved.length, greaterThan(20));
+    // The root board is dense, so what matters is not a raw count of empty
+    // cells but that the two reserves survive: the noun column and the cells
+    // beside the pronouns. Both exist so personal vocabulary has somewhere to
+    // land that displaces nothing.
+    expect(reserved.length, greaterThan(6));
   });
 
   test('reserves the column beside the pronouns for names', () async {
@@ -145,11 +147,11 @@ void main() {
       db.cells,
     )..where((c) => c.boardId.equals(home.id) & c.col.equals(1))).get();
 
-    // Rows 0 and 1 hold "we" and "they" — core pronouns that would not fit in
-    // column 0. The rest of the column stays open for the people in a
-    // particular person's life, which no shipped board can guess.
-    final nameRows = col1.where((c) => c.row >= 2 && c.row < 6);
-    expect(nameRows, hasLength(4));
+    // The column beside the pronouns carries the core pronouns that would not
+    // fit in column 0, and its tail stays open for the people in a particular
+    // person's life, which no shipped board can guess.
+    final nameRows = col1.where((c) => c.row >= 4 && c.row < 6);
+    expect(nameRows, hasLength(2));
     expect(
       nameRows.every((c) => c.state == CellState.emptyReserved),
       isTrue,
@@ -280,9 +282,14 @@ void main() {
     test('no category board is empty', () async {
       // A category key that opens onto nothing is worse than no key at all:
       // it teaches that navigating is pointless.
-      final categories = await (db.select(
-        db.boards,
-      )..where((b) => b.kind.equalsValue(BoardKind.category))).get();
+      // First pages only. A later page holds whatever the grid could not fit,
+      // which is legitimately however many words that turns out to be.
+      final categories =
+          (await (db.select(
+            db.boards,
+          )..where((b) => b.kind.equalsValue(BoardKind.category))).get()).where(
+            (b) => categoryNames.contains(b.name),
+          );
 
       expect(categories, isNotEmpty);
 
@@ -305,9 +312,12 @@ void main() {
     });
 
     test('every category keeps room to grow', () async {
-      final categories = await (db.select(
-        db.boards,
-      )..where((b) => b.kind.equalsValue(BoardKind.category))).get();
+      final categories =
+          (await (db.select(
+            db.boards,
+          )..where((b) => b.kind.equalsValue(BoardKind.category))).get()).where(
+            (b) => categoryNames.contains(b.name),
+          );
 
       for (final board in categories) {
         final reserved =
@@ -384,10 +394,10 @@ void main() {
   });
 
   group('paging', () {
-    test('a category with a second page offers a way to it', () async {
+    test('a board with a second page offers a way to it', () async {
       final food = await (db.select(
         db.boards,
-      )..where((b) => b.name.equals('food'))).getSingle();
+      )..where((b) => b.name.equals('home'))).getSingle();
 
       final query =
           db.select(db.buttons).join([
@@ -408,10 +418,10 @@ void main() {
     test('the second page leads back to the first', () async {
       final second = await (db.select(
         db.boards,
-      )..where((b) => b.name.equals('food 2'))).getSingle();
+      )..where((b) => b.name.equals('home 2'))).getSingle();
       final first = await (db.select(
         db.boards,
-      )..where((b) => b.name.equals('food'))).getSingle();
+      )..where((b) => b.name.equals('home'))).getSingle();
 
       final query =
           db.select(db.buttons).join([
@@ -431,7 +441,7 @@ void main() {
       // is the whole reason for paging over scrolling.
       final second = await (db.select(
         db.boards,
-      )..where((b) => b.name.equals('food 2'))).getSingle();
+      )..where((b) => b.name.equals('home 2'))).getSingle();
 
       final placed =
           await (db.select(db.cells)..where(
@@ -441,7 +451,7 @@ void main() {
               ))
               .get();
 
-      expect(placed.length, greaterThan(15));
+      expect(placed.length, greaterThan(8));
       expect(placed.every((c) => c.row >= 0 && c.col >= 0), isTrue);
     });
   });

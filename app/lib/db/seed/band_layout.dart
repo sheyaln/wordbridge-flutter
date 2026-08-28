@@ -11,6 +11,21 @@
 /// of (rows, cols, bands); nothing reads a clock, a device, or a database.
 library;
 
+/// Which way a board's bands run.
+///
+/// Columns on the root board, because column position there encodes Fitzgerald
+/// sentence order — who, does, what, where — and reading left to right builds a
+/// sentence.
+///
+/// Rows on a category board, where there is no sentence order to encode. Words
+/// are grouped by class instead, and arranging by word class measurably speeds
+/// message building (Thistle & Wilkinson 2017) and cuts fixations on
+/// irrelevant symbols (Wilkinson, Gilmore & Qian 2022). A row also survives
+/// row-column scanning: the first switch press picks a row, so a row that is
+/// one word class narrows the choice, while a column-grouped row narrows
+/// nothing.
+enum BandAxis { columns, rows }
+
 /// One word waiting for a location.
 class BandItem<T> {
   const BandItem(this.value, {this.level = 1, this.essential = false});
@@ -36,10 +51,11 @@ class Band<T> {
   const Band({
     required this.name,
     required this.items,
-    this.minCols = 0,
-    this.reserveCols = 0,
+    this.minLines = 0,
+    this.reserveLines = 0,
     this.reserveRank = 100,
     this.shedRank = 100,
+    this.startsLine = true,
   });
 
   final String name;
@@ -48,25 +64,39 @@ class Band<T> {
   /// before starting the next one, so this order is what a user's eye follows.
   final List<BandItem<T>> items;
 
-  /// Columns held open whether or not there are words to fill them, and the
-  /// last thing to give way when the grid runs short.
+  /// Lines held open whether or not there are words to fill them, and the last
+  /// thing to give way when the grid runs short.
+  ///
+  /// A line is a column on [BandAxis.columns] and a row on [BandAxis.rows].
   ///
   /// This is how personal vocabulary gets a permanent home from day one rather
   /// than being appended wherever there happens to be room later. It outranks
   /// shipped words deliberately: a word pushed onto the next page is still
   /// reachable, while a reserve given away is gone.
-  final int minCols;
+  ///
+  /// Worth knowing that a reserved row costs a whole row of cells while a
+  /// reserved column costs a whole column — at 7x12 that is 11 against 6 — so
+  /// a guaranteed reserve is nearly twice as expensive on the row axis.
+  final int minLines;
 
-  /// Extra empty columns this band would like if the grid turns out to have
-  /// room to spare. Unlike [minCols], never at the expense of a word.
-  final int reserveCols;
+  /// Extra empty lines this band would like if the grid turns out to have room
+  /// to spare. Unlike [minLines], never at the expense of a word.
+  final int reserveLines;
 
-  /// Order in which spare columns are handed out. Lower goes first.
+  /// Order in which spare lines are handed out. Lower goes first.
   final int reserveRank;
 
   /// Order in which a band gives way when the grid is too small. Lower holds
   /// on longest.
   final int shedRank;
+
+  /// Whether this band starts a fresh line, or fills the empty tail the band
+  /// before it left.
+  ///
+  /// False for the bands an age preset appends. They land in cells that would
+  /// otherwise stay empty, so they cost no shipped word its location — which
+  /// is the whole reason extras are appended rather than inserted.
+  final bool startsLine;
 }
 
 /// A word that did not fit, still labelled with where it came from.
@@ -89,7 +119,8 @@ class BandLayout<T> {
     required this.placed,
     required this.overflow,
     required this.bandOrder,
-    required this.bandColumns,
+    required this.bandLines,
+    required this.axis,
     required this.contentRows,
     required this.contentCols,
   });
@@ -105,16 +136,19 @@ class BandLayout<T> {
   /// Band names in the order they were declared.
   final List<String> bandOrder;
 
-  /// The columns each band owns, including the ones it holds open and never
-  /// filled. A word a caregiver later adds to a reserved column belongs to the
+  /// The lines each band owns, including the ones it holds open and never
+  /// filled. A word a caregiver later adds to a reserved line belongs to the
   /// band that reserved it, which is how a rebuild at another grid size knows
   /// where to keep it.
-  final Map<String, ({int first, int last})> bandColumns;
+  final Map<String, ({int first, int last})> bandLines;
 
-  /// Which band owns a column, or null for one no band claimed.
-  String? bandAt(int col) {
-    for (final entry in bandColumns.entries) {
-      if (col >= entry.value.first && col <= entry.value.last) {
+  final BandAxis axis;
+
+  /// Which band owns a location, or null for one no band claimed.
+  String? bandAt({required int row, required int col}) {
+    final line = axis == BandAxis.columns ? col : row;
+    for (final entry in bandLines.entries) {
+      if (line >= entry.value.first && line <= entry.value.last) {
         return entry.key;
       }
     }
@@ -145,6 +179,7 @@ BandLayout<T> layOutBands<T>({
   required int rows,
   required int cols,
   required List<Band<T>> bands,
+  BandAxis axis = BandAxis.columns,
   int systemRows = 1,
   int pinnedCols = 1,
 }) {
@@ -158,22 +193,36 @@ BandLayout<T> layOutBands<T>({
     );
   }
 
+  // Bands are keyed by name throughout, so two bands sharing one would merge
+  // and a whole band's words would vanish without a word of complaint. The
+  // names a caller passes include the ones an age preset appends, which is
+  // where a collision is easiest to introduce.
+  assert(
+    {for (final b in bands) b.name}.length == bands.length,
+    'two bands share a name: ${bands.map((b) => b.name).toList()}',
+  );
+
+  // A line is what a band claims: a column on one axis, a row on the other.
+  // Its length is whatever the grid measures in the other direction.
+  final lineLength = axis == BandAxis.columns ? contentRows : contentCols;
+  final lineCount = axis == BandAxis.columns ? contentCols : contentRows;
+
   final kept = {
     for (final b in bands) b.name: [...b.items],
   };
-  final held = {for (final b in bands) b.name: b.minCols};
+  final held = {for (final b in bands) b.name: b.minLines};
   final overflow = <BandOverflow<T>>[];
 
-  int widthOf(Band<T> b) {
-    final needed = (kept[b.name]!.length / contentRows).ceil();
+  int linesOf(Band<T> b) {
+    final needed = (kept[b.name]!.length / lineLength).ceil();
     return needed > held[b.name]! ? needed : held[b.name]!;
   }
 
-  int totalWidth() => bands.fold(0, (sum, b) => sum + widthOf(b));
+  int totalWidth() => bands.fold(0, (sum, b) => sum + linesOf(b));
 
   // Shed one word at a time rather than a whole column, so what survives is
   // chosen by importance instead of by which band happened to be widest.
-  while (totalWidth() > contentCols) {
+  while (totalWidth() > lineCount) {
     if (_shedLeastImportant(bands, kept, overflow)) continue;
     if (_giveUpReserve(bands, held)) continue;
 
@@ -184,49 +233,67 @@ BandLayout<T> layOutBands<T>({
     );
   }
 
-  var surplus = contentCols - totalWidth();
+  var surplus = lineCount - totalWidth();
   final extra = <String, int>{for (final b in bands) b.name: 0};
 
   final byReserve = [...bands]
     ..sort((a, b) => a.reserveRank.compareTo(b.reserveRank));
   for (final b in byReserve) {
     if (surplus <= 0) break;
-    final take = b.reserveCols < surplus ? b.reserveCols : surplus;
+    final take = b.reserveLines < surplus ? b.reserveLines : surplus;
     extra[b.name] = take;
     surplus -= take;
   }
 
   final placed = <BandPlacement<T>>[];
-  final bandColumns = <String, ({int first, int last})>{};
-  var col = 0;
+  final bandLines = <String, ({int first, int last})>{};
+
+  // Two cursors. The first is the next free line; the second is the next free
+  // cell, which a band that does not start its own line begins from instead.
+  var line = 0;
+  var cell = 0;
 
   for (final band in bands) {
     final items = kept[band.name]!;
+    final start = band.startsLine ? line * lineLength : cell;
 
     for (var i = 0; i < items.length; i++) {
+      final at = start + i;
       placed.add((
-        row: i % contentRows,
-        col: col + i ~/ contentRows,
+        row: axis == BandAxis.columns ? at % lineLength : at ~/ lineLength,
+        col: axis == BandAxis.columns ? at ~/ lineLength : at % lineLength,
         band: band.name,
         value: items[i].value,
         level: items[i].level,
       ));
     }
 
-    final width = widthOf(band) + extra[band.name]!;
-    if (width > 0) {
-      bandColumns[band.name] = (first: col, last: col + width - 1);
+    if (band.startsLine) {
+      final width = linesOf(band) + extra[band.name]!;
+      if (width > 0) {
+        bandLines[band.name] = (first: line, last: line + width - 1);
+      }
+      line += width;
+      if (items.isNotEmpty && start + items.length > cell) {
+        cell = start + items.length;
+      }
+    } else if (items.isNotEmpty) {
+      cell = start + items.length;
+      // Filling past the last claimed line pushes the line cursor on, so the
+      // band after this one does not land on top of these words.
+      final reached = (cell + lineLength - 1) ~/ lineLength;
+      if (reached > line) line = reached;
     }
-    col += width;
   }
 
-  assert(col <= contentCols, 'bands ran past the grid: $col > $contentCols');
+  assert(line <= lineCount, 'bands ran past the grid: $line > $lineCount');
 
   return BandLayout(
     placed: placed,
     overflow: overflow,
     bandOrder: [for (final b in bands) b.name],
-    bandColumns: bandColumns,
+    bandLines: bandLines,
+    axis: axis,
     contentRows: contentRows,
     contentCols: contentCols,
   );

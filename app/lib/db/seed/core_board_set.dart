@@ -133,6 +133,7 @@ Future<String> seedCoreBoardSet(
       db,
       vocabId: vocabId,
       name: category,
+      axis: BandAxis.rows,
       bands: [
         ...categoryBands[category]!,
         ...ageBand.extrasFor(category),
@@ -191,6 +192,7 @@ Future<List<String>> _buildPagedBoards(
   required List<Band<SeedWord>> bands,
   required int rows,
   required int cols,
+  BandAxis axis = BandAxis.columns,
   bool rootKind = false,
   Set<String> hiddenBands = const {},
 }) async {
@@ -198,7 +200,12 @@ Future<List<String>> _buildPagedBoards(
   var remaining = bands;
 
   while (true) {
-    final page = layOutBands(rows: rows, cols: cols, bands: remaining);
+    final page = layOutBands(
+      rows: rows,
+      cols: cols,
+      bands: remaining,
+      axis: axis,
+    );
 
     final boardId = await materialiseBoard(
       db,
@@ -227,12 +234,16 @@ Future<List<String>> _buildPagedBoards(
 
     // Overflow keeps its band name so a hidden band stays hidden wherever it
     // lands. Splitting a band across pages must not reveal half of it.
+    //
+    // Shedding works from the end of a band backwards, so the overflow list
+    // arrives reversed. Putting it back into declaration order is what makes
+    // page two read the same way page one does.
     remaining = [
       for (final name in page.overflowBands)
         Band(
           name: name,
           items: [
-            for (final o in page.overflow)
+            for (final o in page.overflow.reversed)
               if (o.band == name) o.item,
           ],
         ),

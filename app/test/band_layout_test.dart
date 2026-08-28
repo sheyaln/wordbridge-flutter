@@ -5,13 +5,15 @@ Band<String> band(
   String name,
   List<String> words, {
   int level = 1,
-  int reserveCols = 0,
+  int reserveLines = 0,
+  int minLines = 0,
   int reserveRank = 100,
   int shedRank = 100,
 }) => Band(
   name: name,
   items: [for (final w in words) BandItem(w, level: level)],
-  reserveCols: reserveCols,
+  reserveLines: reserveLines,
+  minLines: minLines,
   reserveRank: reserveRank,
   shedRank: shedRank,
 );
@@ -101,7 +103,7 @@ void main() {
         rows: 7,
         cols: 12,
         bands: [
-          band('a', [for (var i = 0; i < 14; i++) 'a$i'], reserveCols: 2),
+          band('a', [for (var i = 0; i < 14; i++) 'a$i'], reserveLines: 2),
           band('b', [for (var i = 0; i < 9; i++) 'b$i']),
           band('c', [for (var i = 0; i < 20; i++) 'c$i']),
         ],
@@ -118,11 +120,133 @@ void main() {
     });
   });
 
+  group('the row axis', () {
+    test('a band fills a row left to right before starting the next', () {
+      // Category boards group by word class along a row, so related words are
+      // side by side. A row-column scan then narrows to a word class on the
+      // first press instead of narrowing to nothing.
+      final layout = layOutBands(
+        rows: 4,
+        cols: 4,
+        axis: BandAxis.rows,
+        bands: [
+          band('verbs', ['a', 'b', 'c', 'd', 'e']),
+        ],
+      );
+
+      expect(coords(layout), {
+        'a': (row: 0, col: 0),
+        'b': (row: 0, col: 1),
+        'c': (row: 0, col: 2),
+        'd': (row: 1, col: 0),
+        'e': (row: 1, col: 1),
+      });
+    });
+
+    test('bands stack top to bottom in declaration order', () {
+      final layout = layOutBands(
+        rows: 5,
+        cols: 4,
+        axis: BandAxis.rows,
+        bands: [
+          band('first', ['a', 'b', 'c']),
+          band('second', ['d']),
+          band('third', ['e']),
+        ],
+      );
+
+      expect(coords(layout)['a']!.row, 0);
+      expect(coords(layout)['d']!.row, 1);
+      expect(coords(layout)['e']!.row, 2);
+    });
+
+    test('nothing is placed in the system row or the pinned column', () {
+      final layout = layOutBands(
+        rows: 7,
+        cols: 12,
+        axis: BandAxis.rows,
+        bands: [
+          band('big', [for (var i = 0; i < 66; i++) 'w$i']),
+        ],
+      );
+
+      for (final p in layout.placed) {
+        expect(p.row, lessThan(6));
+        expect(p.col, lessThan(11));
+      }
+    });
+
+    test(
+      'a band that does not start a line fills the tail of the one before',
+      () {
+        // How an age preset adds words without costing a shipped word its
+        // location: the extras land in cells the band above left empty.
+        final layout = layOutBands(
+          rows: 4,
+          cols: 5,
+          axis: BandAxis.rows,
+          bands: [
+            band('shipped', ['a', 'b']),
+            Band(
+              name: 'extra',
+              startsLine: false,
+              items: [BandItem('x'), BandItem('y')],
+            ),
+          ],
+        );
+
+        expect(coords(layout)['a'], (row: 0, col: 0));
+        expect(coords(layout)['b'], (row: 0, col: 1));
+        expect(coords(layout)['x'], (row: 0, col: 2));
+        expect(coords(layout)['y'], (row: 0, col: 3));
+      },
+    );
+
+    test('a filled tail still pushes the next band onto a fresh row', () {
+      final layout = layOutBands(
+        rows: 4,
+        cols: 3,
+        axis: BandAxis.rows,
+        bands: [
+          band('shipped', ['a', 'b']),
+          Band(
+            name: 'extra',
+            startsLine: false,
+            items: [BandItem('x'), BandItem('y')],
+          ),
+          band('after', ['z']),
+        ],
+      );
+
+      final seen = <String>{};
+      for (final p in layout.placed) {
+        expect(seen.add('${p.row}:${p.col}'), isTrue, reason: '${p.value}');
+      }
+      expect(coords(layout)['z']!.row, greaterThan(0));
+    });
+  });
+
+  test('two bands sharing a name is caught, not silently merged', () {
+    // Bands are keyed by name, so a collision would place one band's words
+    // twice and never place the other's at all.
+    expect(
+      () => layOutBands(
+        rows: 5,
+        cols: 5,
+        bands: [
+          band('out', ['a']),
+          band('out', ['b']),
+        ],
+      ),
+      throwsA(isA<AssertionError>()),
+    );
+  });
+
   test('the same grid always produces the same coordinates', () {
     // A rebuild that produced different coordinates would move every word on
     // the board, which is the failure the whole project is built to prevent.
     List<Band<String>> makeBands() => [
-      band('pronouns', ['I', 'you', 'he'], reserveCols: 2, reserveRank: 0),
+      band('pronouns', ['I', 'you', 'he'], reserveLines: 2, reserveRank: 0),
       band('verbs', ['want', 'go', 'stop', 'help', 'look']),
       band('places', ['here', 'in']),
     ];
@@ -139,7 +263,7 @@ void main() {
         rows: 4,
         cols: 6,
         bands: [
-          band('names', ['mum'], reserveCols: 2, reserveRank: 0),
+          band('names', ['mum'], reserveLines: 2, reserveRank: 0),
           band('verbs', ['go']),
         ],
       );
@@ -154,8 +278,8 @@ void main() {
         rows: 4,
         cols: 5,
         bands: [
-          band('low', ['a'], reserveCols: 2, reserveRank: 9),
-          band('high', ['b'], reserveCols: 2, reserveRank: 1),
+          band('low', ['a'], reserveLines: 2, reserveRank: 9),
+          band('high', ['b'], reserveLines: 2, reserveRank: 1),
           band('rest', ['c']),
         ],
       );
@@ -174,7 +298,7 @@ void main() {
         rows: 4,
         cols: 4,
         bands: [
-          band('names', ['mum'], reserveCols: 9, reserveRank: 0),
+          band('names', ['mum'], reserveLines: 9, reserveRank: 0),
           band('verbs', ['go', 'stop']),
         ],
       );

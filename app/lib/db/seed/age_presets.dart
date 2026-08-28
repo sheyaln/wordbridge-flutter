@@ -80,7 +80,9 @@ enum AgeBand {
 final swearingBand = Band<SeedWord>(
   name: 'strong words',
   shedRank: 8,
-  items: adjectives([
+  // Interjections, not adjectives. Coded as whole utterances, the board stops
+  // offering "shit's" and "damn is".
+  items: phrases([
     'damn',
     'crap',
     'bloody',
@@ -97,6 +99,7 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
       Band(
         name: 'screen',
         shedRank: 2,
+        startsLine: false,
         items: nouns([
           'phone',
           'headphones',
@@ -104,37 +107,62 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
           'online',
           'video call',
           'playlist',
+          'text',
         ], level: 1),
       ),
     ],
     'feelings': [
+      // Being able to end a conversation is as much a part of speech as
+      // starting one. "private" names a boundary a teenager has and a board
+      // read by adults gives away.
+      Band(
+        name: 'teen saying',
+        shedRank: 1,
+        startsLine: false,
+        items: phrases([
+          'whatever',
+          'leave it',
+          'not now',
+          'private',
+          'I decide',
+          'ask me',
+        ], level: 1),
+      ),
       Band(
         name: 'teenage',
         shedRank: 1,
-        items: [
-          ...adjectives([
-            'annoyed',
-            'stressed',
-            'embarrassed',
-            'awkward',
-          ], level: 1),
-          // Being able to end a conversation is as much a part of speech as
-          // starting one.
-          ...nouns(['whatever', 'leave it', 'not now'], level: 1),
-        ],
+        startsLine: false,
+        items: adjectives([
+          'annoyed',
+          'stressed',
+          'embarrassed',
+          'awkward',
+        ], level: 1),
       ),
     ],
     'places': [
+      // Named apart from the shipped bands on this board. The layout engine
+      // keys bands by name, so a collision merges two bands and the words of
+      // one of them are never placed.
       Band(
-        name: 'out',
+        name: 'teen out',
         shedRank: 3,
-        items: nouns(['college', 'town', 'party', 'gig', 'bus stop'], level: 1),
+        startsLine: false,
+        items: nouns([
+          'college',
+          'town',
+          'party',
+          'gig',
+          'bus stop',
+          'money',
+        ], level: 1),
       ),
     ],
     'people': [
       Band(
-        name: 'mine',
+        name: 'teen mine',
         shedRank: 3,
+        startsLine: false,
         items: nouns(['mate', 'group', 'crush', 'support worker'], level: 1),
       ),
     ],
@@ -142,16 +170,21 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
 
   AgeBand.adult: {
     'places': [
+      // "work" is not repeated here: it already has a permanent location in
+      // the shipped places band, and one word on one board has one location.
       Band(
         name: 'business',
         shedRank: 2,
+        startsLine: false,
         items: nouns([
-          'work',
           'appointment',
           'bank',
           'pharmacy',
           'taxi',
           'meeting',
+          'money',
+          'how much',
+          'pay',
         ], level: 1),
       ),
     ],
@@ -161,20 +194,24 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
       Band(
         name: 'self care',
         shedRank: 0,
+        startsLine: false,
         items: nouns([
           'pain',
           'medication',
-          'toilet',
           'shower',
           'period',
           'dentist',
+          'wheelchair',
+          'glasses',
+          'charger',
         ], level: 1),
       ),
     ],
     'people': [
       Band(
-        name: 'mine',
+        name: 'adult mine',
         shedRank: 2,
+        startsLine: false,
         items: nouns([
           'partner',
           'colleague',
@@ -185,21 +222,33 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
       ),
     ],
     'feelings': [
+      // Being spoken about in the third person while present is the most
+      // reported experience of adult AAC users, and a board that names the
+      // feeling but cannot interrupt it is only half the vocabulary.
+      Band(
+        name: 'adult saying',
+        shedRank: 1,
+        startsLine: false,
+        items: phrases([
+          'not now',
+          'I decide',
+          'ask me',
+          'talk to me',
+          'I disagree',
+          'I need time',
+        ], level: 1),
+      ),
       Band(
         name: 'adult',
         shedRank: 1,
-        items: [
-          // "patronised" earns its location: being talked down to is the most
-          // frequently reported experience of adult AAC users, and having no
-          // word for it means having to endure it silently.
-          ...adjectives([
-            'frustrated',
-            'patronised',
-            'exhausted',
-            'fine',
-          ], level: 1),
-          ...nouns(['not now', 'I decide', 'ask me'], level: 1),
-        ],
+        startsLine: false,
+        items: adjectives([
+          'frustrated',
+          'patronised',
+          'exhausted',
+          'fine',
+          'maybe',
+        ], level: 1),
       ),
     ],
   },

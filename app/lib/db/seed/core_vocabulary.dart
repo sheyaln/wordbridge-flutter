@@ -54,6 +54,18 @@ List<BandItem<SeedWord>> verbs(List<String> l, {int level = 2}) =>
 List<BandItem<SeedWord>> adjectives(List<String> l, {int level = 2}) =>
     _all(l, PartOfSpeech.adjective, level: level);
 
+List<BandItem<SeedWord>> pronouns(List<String> l, {int level = 2}) =>
+    _all(l, PartOfSpeech.pronoun, level: level);
+
+List<BandItem<SeedWord>> adverbs(List<String> l, {int level = 2}) =>
+    _all(l, PartOfSpeech.adverb, level: level);
+
+/// Whole utterances. One tap produces a complete thing to say, so they take no
+/// endings and no copula — coding them as nouns is what let the board build
+/// "I need a break's".
+List<BandItem<SeedWord>> phrases(List<String> l, {int level = 2}) =>
+    _all(l, PartOfSpeech.social, level: level);
+
 /// The root board.
 ///
 /// Band order is the order the words come out in: who, then what they do, then
@@ -71,7 +83,7 @@ final homeBands = <Band<SeedWord>>[
   Band(
     name: 'pronouns',
     shedRank: 0,
-    reserveCols: 1,
+    reserveLines: 1,
     reserveRank: 1,
     items: [
       w('I', PartOfSpeech.pronoun, essential: true),
@@ -82,6 +94,11 @@ final homeBands = <Band<SeedWord>>[
       w('that', PartOfSpeech.pronoun),
       w('we', PartOfSpeech.pronoun),
       w('they', PartOfSpeech.pronoun),
+      // "my" and "me" are toddler core and neither has a substitute here:
+      // "+'s" fires after "I" and produces "I's", and the object pronoun on
+      // the people board is two movements away from "help me".
+      w('my', PartOfSpeech.pronoun),
+      w('me', PartOfSpeech.pronoun),
     ],
   ),
 
@@ -94,6 +111,7 @@ final homeBands = <Band<SeedWord>>[
       w('same', PartOfSpeech.determiner, level: 2),
       w('different', PartOfSpeech.determiner, level: 2),
       w('more', PartOfSpeech.determiner, essential: true),
+      w('this', PartOfSpeech.determiner),
     ],
   ),
 
@@ -123,6 +141,19 @@ final homeBands = <Band<SeedWord>>[
       w('look', PartOfSpeech.verb),
       w('turn', PartOfSpeech.verb, level: 2),
       w('finished', PartOfSpeech.verb, essential: true),
+      // Cognition and communication: top-20 verbs in every published adult
+      // core list, and "tell" is the word a user needs to disclose something.
+      // Level 3 because the 7x12 board has no room for them — they shed to a
+      // later page there, and appear on the root board at smaller icon sizes
+      // where the grid is wider.
+      w('know', PartOfSpeech.verb, level: 3),
+      w('think', PartOfSpeech.verb, level: 3),
+      w('say', PartOfSpeech.verb, level: 3),
+      w('tell', PartOfSpeech.verb, level: 3),
+      w('see', PartOfSpeech.verb, level: 3),
+      w('come', PartOfSpeech.verb, level: 3),
+      w('give', PartOfSpeech.verb, level: 3),
+      w('feel', PartOfSpeech.verb, level: 3),
     ],
   ),
 
@@ -150,7 +181,24 @@ final homeBands = <Band<SeedWord>>[
   // "a" is inserted and repaired to "an" once the following word is known. The
   // choice has to be made before the noun exists, and asking a user to know
   // how their next word starts is not a reasonable thing to ask.
-  Band(name: 'articles', shedRank: 7, items: [_article('a'), _article('the')]),
+  // Articles and conjunctions share a line. Both are the small grammatical
+  // words that turn a run of content words into a sentence, and neither
+  // deserves a line of its own.
+  //
+  // "because" is the word that turns a refusal into a reason. A user who can
+  // say "no" but not "because" gets overridden.
+  Band(
+    name: 'articles',
+    shedRank: 7,
+    items: [
+      _article('a'),
+      _article('the'),
+      w('and', PartOfSpeech.conjunction, level: 2),
+      w('but', PartOfSpeech.conjunction, level: 2),
+      w('because', PartOfSpeech.conjunction, level: 2),
+      w('so', PartOfSpeech.conjunction, level: 2),
+    ],
+  ),
 
   // Held open, and empty on purpose. This is where the nouns a particular
   // person uses constantly get promoted to the root board, so their most
@@ -158,8 +206,8 @@ final homeBands = <Band<SeedWord>>[
   Band(
     name: 'nouns',
     shedRank: 8,
-    minCols: 1,
-    reserveCols: 1,
+    minLines: 1,
+    reserveLines: 1,
     reserveRank: 0,
     items: const [],
   ),
@@ -175,6 +223,7 @@ final homeBands = <Band<SeedWord>>[
       // "to" is what lets a second verb follow a first — "I want to go" — and
       // what re-enables the other verbs when the optional verb filter is on.
       w('to', PartOfSpeech.preposition, level: 2),
+      w('out', PartOfSpeech.preposition),
     ],
   ),
 
@@ -193,6 +242,13 @@ final homeBands = <Band<SeedWord>>[
       w('not', PartOfSpeech.negation, essential: true),
       w('yes', PartOfSpeech.social, essential: true),
       w('no', PartOfSpeech.negation, essential: true),
+      // "not" negates inside a sentence and cannot make an imperative. Without
+      // "don't" the board produces "I not go" where a user meant "don't go",
+      // and the imperative is the one that stops something happening.
+      w("don't", PartOfSpeech.negation, essential: true),
+      // Floor-holding. An AAC user composes slower than a speaker talks, and
+      // this is the one-tap way to stop being talked over mid-sentence.
+      w('wait', PartOfSpeech.verb, essential: true),
     ],
   ),
 ];
@@ -250,16 +306,40 @@ BandItem<SeedWord> _article(String label) => BandItem((
 /// Category boards, in the order their keys appear on the system row.
 const categoryNames = ['people', 'food', 'play', 'feelings', 'places', 'body'];
 
-/// Fringe vocabulary, grouped the way it is used rather than by frequency.
+/// Fringe vocabulary, grouped by word class and ordered within it by meaning.
 ///
-/// Words that do not fit the chosen grid are not dropped: they go to a second
-/// page, reached by a key in a fixed location. Paging rather than scrolling,
-/// because a page is a grid and a scroll position is not a position at all.
+/// Each band is one horizontal strip. Strips run top to bottom in Fitzgerald
+/// order — whole utterances, verbs, nouns, object pronouns, adjectives,
+/// adverbs — so a class occupies a contiguous block of rows, and therefore a
+/// contiguous block of colour. Inside a strip the words run left to right in
+/// semantic clusters, wrapping at the row edge.
+///
+/// Word class is the primary grouping because that is what the evidence
+/// measured: arranging by word class made children significantly faster at
+/// building multi-symbol messages (Thistle & Wilkinson 2017), and using
+/// position to cue grammatical category cut fixations on irrelevant symbols
+/// (Wilkinson, Gilmore & Qian 2022). The semantic cluster survives as the
+/// ordering inside a strip because that is how children group vocabulary
+/// themselves — small event-based groups rather than taxonomies (Fallon,
+/// Light & Achenbach 2003).
+///
+/// Rows rather than columns, because a row-column scan picks a row first: on a
+/// row-grouped board that first press narrows to a word class, and on a
+/// column-grouped one it narrows to nothing.
+///
+/// Band names must be unique within a board, including the bands an age preset
+/// appends — the layout engine keys bands by name.
 final categoryBands = <String, List<Band<SeedWord>>>{
   'people': [
     Band(
-      name: 'family',
+      name: 'greeting',
       shedRank: 0,
+      items: phrases(['hello', 'bye', 'please', 'thank you'], level: 1),
+    ),
+
+    Band(
+      name: 'family',
+      shedRank: 1,
       items: nouns([
         'mum',
         'dad',
@@ -270,214 +350,195 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         'grandpa',
       ], level: 1),
     ),
-    // The blank columns are where a family's actual names belong.
+
+    // Held open, and empty on purpose: this is where a family's actual names
+    // go. Asked for rather than guaranteed, because a reserved row costs a
+    // whole row's width — on a small grid those cells go to shipped words and
+    // a name still fits in the family strip's tail.
     Band(
       name: 'names',
       shedRank: 9,
-      minCols: 2,
-      reserveCols: 1,
+      reserveLines: 1,
       reserveRank: 0,
       items: const [],
     ),
+
     Band(
       name: 'community',
-      shedRank: 1,
+      shedRank: 2,
       items: nouns([
         'friend',
         'teacher',
+        'helper',
         'doctor',
         'nurse',
-        'helper',
       ], level: 1),
     ),
-    Band(
-      name: 'everyone',
-      shedRank: 2,
-      items: nouns(['everybody', 'nobody', 'somebody', 'name']),
-    ),
-    Band(
-      name: 'referring',
-      shedRank: 3,
-      items: nouns(['me', 'him', 'her', 'them', 'us']),
-    ),
+
     Band(
       name: 'groups',
       shedRank: 4,
-      items: nouns([
-        'boy',
-        'girl',
-        'man',
-        'woman',
-        'family',
-        'class',
-        'neighbour',
-        'driver',
-        'stranger',
-      ]),
+      items: [
+        ...nouns(['boy', 'girl', 'family'], level: 1),
+        ...nouns([
+          'man',
+          'woman',
+          'class',
+          'neighbour',
+          'driver',
+          'stranger',
+          'name',
+        ]),
+      ],
+    ),
+
+    // Object pronouns, after the nouns rather than before them: the root
+    // board's pronoun column holds subjects, which start a sentence, and
+    // these follow a verb.
+    Band(
+      name: 'referring',
+      shedRank: 3,
+      items: [
+        ...pronouns(['him', 'her'], level: 1),
+        ...pronouns(['us', 'them', 'everybody', 'somebody', 'nobody']),
+      ],
     ),
   ],
 
   'food': [
     Band(name: 'eating', shedRank: 0, items: verbs(['eat', 'drink'], level: 1)),
+
+    // One strip for every noun on the board. Splitting the clusters into
+    // strips of their own costs a row each, and eight clusters do not fit in
+    // six rows — that split moves 22 words to a second page to buy tidier
+    // edges. The clusters stay contiguous in reading order; they just wrap.
     Band(
-      name: 'drinks',
-      shedRank: 1,
-      items: nouns([
-        'water',
-        'milk',
-        'juice',
-        'squash',
-        'tea',
-        'coffee',
-        'fizzy',
-      ], level: 1),
-    ),
-    Band(
-      name: 'staples',
-      shedRank: 2,
-      items: nouns([
-        'bread',
-        'toast',
-        'cereal',
-        'rice',
-        'pasta',
-        'egg',
-        'cheese',
-        'butter',
-      ], level: 1),
-    ),
-    Band(
-      name: 'meals',
+      name: 'food',
       shedRank: 3,
-      items: nouns(['pizza', 'chicken', 'soup', 'salad'], level: 1),
+      items: [
+        ...nouns(['water', 'milk', 'juice', 'squash'], level: 1),
+        ...nouns(['tea', 'coffee', 'fizzy']),
+        ...nouns(['straw'], level: 1),
+        ...nouns(['plate']),
+        ...nouns([
+          'bread',
+          'toast',
+          'cereal',
+          'rice',
+          'pasta',
+          'egg',
+        ], level: 1),
+        ...nouns(['cheese', 'butter']),
+        ...nouns(['pizza', 'chicken', 'soup'], level: 1),
+        ...nouns(['salad']),
+        ...nouns(['breakfast', 'lunch', 'dinner', 'snack'], level: 1),
+        ...nouns(['apple', 'banana', 'orange', 'grapes'], level: 1),
+        ...nouns(['berries', 'melon', 'lemon']),
+        ...nouns(['potato', 'carrot', 'peas', 'beans', 'tomato']),
+        ...nouns(['cake', 'biscuit', 'crisps'], level: 1),
+        ...nouns(['yoghurt', 'honey', 'jam']),
+      ],
     ),
-    Band(
-      name: 'fruit',
-      shedRank: 5,
-      items: nouns([
-        'apple',
-        'banana',
-        'orange',
-        'grapes',
-        'berries',
-        'melon',
-        'lemon',
-      ], level: 1),
-    ),
-    Band(
-      name: 'vegetables',
-      shedRank: 6,
-      items: nouns(['potato', 'carrot', 'peas', 'beans', 'tomato']),
-    ),
-    Band(
-      name: 'sweet',
-      shedRank: 7,
-      items: nouns(['cake', 'biscuit', 'yoghurt', 'honey', 'jam', 'crisps']),
-    ),
-    Band(
-      name: 'mealtimes',
-      shedRank: 4,
-      items: nouns(['breakfast', 'lunch', 'dinner', 'snack'], level: 1),
-    ),
+
     // A user who cannot say "yucky" cannot decline a meal, only endure it.
+    // Opposites sit side by side, which on this axis means along a row.
     Band(
       name: 'describing',
       shedRank: 1,
-      items: adjectives([
-        'hungry',
-        'thirsty',
-        'hot',
-        'cold',
-        'yummy',
-        'yucky',
-      ], level: 1),
+      items: [
+        ...adjectives(['hungry', 'thirsty', 'yummy', 'yucky'], level: 1),
+        ...adjectives(['hot', 'cold']),
+      ],
     ),
-    Band(name: 'table', shedRank: 8, items: nouns(['plate', 'straw'])),
+
     Band(
       name: 'ours',
       shedRank: 9,
-      minCols: 1,
-      reserveCols: 1,
+      reserveLines: 1,
       reserveRank: 0,
       items: const [],
     ),
   ],
 
   'play': [
+    // Turn-taking is the whole of early play, and a user who cannot claim a
+    // turn is watching rather than playing. First row, first cells.
+    Band(
+      name: 'saying',
+      shedRank: 0,
+      items: phrases(['my turn', 'your turn'], level: 1),
+    ),
+
     Band(
       name: 'doing',
-      shedRank: 0,
-      items: verbs(['play', 'read', 'draw', 'sing', 'dance', 'run'], level: 1),
+      shedRank: 1,
+      items: [
+        ...verbs([
+          'play',
+          'read',
+          'draw',
+          'sing',
+          'dance',
+          'run',
+          'walk',
+        ], level: 1),
+        ...verbs([
+          'jump',
+          'climb',
+          'swim',
+          'ride',
+          'build',
+          'throw',
+          'catch',
+          'hide',
+          'chase',
+          'push',
+          'pull',
+          'win',
+        ]),
+      ],
     ),
-    Band(
-      name: 'moving',
-      shedRank: 3,
-      items: verbs([
-        'jump',
-        'climb',
-        'swim',
-        'ride',
-        'build',
-        'throw',
-        'catch',
-        'hide',
-        'chase',
-        'push',
-        'pull',
-        'win',
-      ]),
-    ),
+
+    // The same shed rank as the verbs on purpose: when the grid is small the
+    // two give way together, so a tiny board keeps some of each rather than a
+    // row of verbs and nothing to do them to.
     Band(
       name: 'things',
       shedRank: 1,
-      items: nouns([
-        'ball',
-        'book',
-        'toy',
-        'game',
-        'puzzle',
-        'blocks',
-      ], level: 1),
+      items: [
+        ...nouns(['ball', 'book', 'toy', 'game', 'puzzle', 'blocks'], level: 1),
+        ...nouns([
+          'music',
+          'video',
+          'tablet',
+          'film',
+          'cartoon',
+          'song',
+          'story',
+        ], level: 1),
+        ...nouns([
+          'bubbles',
+          'swing',
+          'slide',
+          'bike',
+          'scooter',
+          'trampoline',
+          'sand',
+          'paint',
+        ]),
+      ],
     ),
+
     Band(
-      name: 'screens',
-      shedRank: 2,
-      items: nouns([
-        'music',
-        'video',
-        'tablet',
-        'film',
-        'cartoon',
-        'song',
-        'story',
-      ], level: 1),
+      name: 'again',
+      shedRank: 3,
+      items: adverbs(['again', 'outside'], level: 1),
     ),
-    Band(
-      name: 'outdoors',
-      shedRank: 4,
-      items: nouns([
-        'bubbles',
-        'swing',
-        'slide',
-        'bike',
-        'scooter',
-        'trampoline',
-        'sand',
-        'paint',
-      ]),
-    ),
-    // Turn-taking is the whole of early play, and a user who cannot claim a
-    // turn is watching rather than playing.
-    Band(
-      name: 'turns',
-      shedRank: 0,
-      items: nouns(['my turn', 'your turn', 'again', 'outside'], level: 1),
-    ),
+
     Band(
       name: 'ours',
       shedRank: 9,
-      minCols: 1,
-      reserveCols: 1,
+      reserveLines: 1,
       reserveRank: 0,
       items: const [],
     ),
@@ -487,9 +548,34 @@ final categoryBands = <String, List<Band<SeedWord>>>{
   // "happy" and "sad" cannot report pain, fear, or being overwhelmed, which
   // are the feelings that most need saying.
   'feelings': [
+    // The sentences a user needs most and can least afford to spell out one
+    // word at a time. Coded as whole utterances, so nothing offers them an
+    // ending.
     Band(
-      name: 'core',
+      name: 'saying',
       shedRank: 0,
+      items: phrases([
+        'too loud',
+        'too bright',
+        'too fast',
+        'too slow',
+        'too much',
+        'leave me alone',
+        'I need a break',
+        "I don't know",
+        "I don't understand",
+      ], level: 1),
+    ),
+
+    Band(
+      name: 'liking',
+      shedRank: 2,
+      items: verbs(['love', 'like', 'hate', 'miss'], level: 1),
+    ),
+
+    Band(
+      name: 'feeling',
+      shedRank: 1,
       items: adjectives([
         'happy',
         'sad',
@@ -497,76 +583,47 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         'scared',
         'tired',
         'excited',
-      ], level: 1),
-    ),
-    Band(
-      name: 'unwell',
-      shedRank: 0,
-      items: adjectives([
         'hurt',
         'sick',
         'worried',
         'lonely',
         'bored',
-        'silly',
       ], level: 1),
     ),
-    Band(
-      name: 'liking',
-      shedRank: 1,
-      items: verbs(['love', 'like', 'hate', 'miss'], level: 1),
-    ),
-    // The sentences a user needs most and can least afford to spell out one
-    // word at a time.
-    Band(
-      name: 'too much',
-      shedRank: 0,
-      items: nouns([
-        'too loud',
-        'too bright',
-        'too much',
-        'leave me alone',
-        'I need a break',
-      ], level: 1),
-    ),
+
     Band(
       name: 'shades',
-      shedRank: 3,
-      items: adjectives([
-        'calm',
-        'proud',
-        'shy',
-        'jealous',
-        'confused',
-        'surprised',
-        'funny',
-        'kind',
-        'mean',
-      ]),
-    ),
-    Band(
-      name: 'judging',
       shedRank: 4,
-      items: adjectives([
-        'fair',
-        'unfair',
-        'safe',
-        'better',
-        'worse',
-        'enough',
-        'ready',
-      ]),
+      items: [
+        ...adjectives(['silly'], level: 1),
+        // Correcting a listener who got it wrong. Without these the only way
+        // to disagree is "no", which reads as refusal rather than correction.
+        ...adjectives(['right', 'wrong'], level: 1),
+        ...adjectives(['funny', 'kind', 'mean']),
+        ...adjectives([
+          'calm',
+          'proud',
+          'shy',
+          'jealous',
+          'confused',
+          'surprised',
+        ]),
+        ...adjectives([
+          'fair',
+          'unfair',
+          'safe',
+          'better',
+          'worse',
+          'enough',
+          'ready',
+        ]),
+      ],
     ),
-    Band(
-      name: 'pace',
-      shedRank: 2,
-      items: nouns(['too fast', 'too slow', 'I do not know'], level: 1),
-    ),
+
     Band(
       name: 'ours',
       shedRank: 9,
-      minCols: 1,
-      reserveCols: 1,
+      reserveLines: 1,
       reserveRank: 0,
       items: const [],
     ),
@@ -578,126 +635,124 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 0,
       items: nouns(['home', 'school', 'shop', 'park', 'car', 'bus'], level: 1),
     ),
+
     Band(
-      name: 'rooms',
-      shedRank: 1,
-      items: nouns([
-        'bathroom',
-        'bedroom',
-        'kitchen',
-        'garden',
-        'outside',
-        'inside',
-      ], level: 1),
-    ),
-    Band(
-      name: 'further',
-      shedRank: 2,
-      items: nouns(['hospital', 'work', 'holiday', 'away'], level: 1),
-    ),
-    Band(
-      name: 'around',
+      name: 'places',
       shedRank: 3,
-      items: nouns([
-        'upstairs',
-        'downstairs',
-        'room',
-        'door',
-        'window',
-        'stairs',
-      ]),
-    ),
-    Band(
-      name: 'out',
-      shedRank: 4,
-      items: nouns(['street', 'beach', 'pool', 'library', 'church', 'cafe']),
-    ),
-    Band(
-      name: 'getting there',
-      shedRank: 5,
       items: [
+        ...nouns(['bathroom', 'bedroom', 'kitchen', 'garden'], level: 1),
+        ...nouns(['hospital', 'work', 'holiday'], level: 1),
+        ...nouns(['room', 'door', 'window', 'stairs']),
+        ...nouns(['street', 'beach', 'pool', 'library', 'church', 'cafe']),
         ...nouns(['train', 'plane', 'bike']),
-        ...verbs(['walk']),
-        ...adjectives(['far', 'near']),
       ],
     ),
+
+    Band(name: 'far', shedRank: 4, items: adjectives(['far', 'near'])),
+
+    // Adverbs, not nouns: "upstairs's" and "away is" are what coding them as
+    // nouns produced. Adverb also keeps them clear of the preposition colour,
+    // which the modified scheme shares with social.
+    Band(
+      name: 'where',
+      shedRank: 2,
+      items: [
+        ...adverbs(['outside', 'inside', 'away'], level: 1),
+        ...adverbs(['upstairs', 'downstairs']),
+      ],
+    ),
+
     Band(
       name: 'ours',
       shedRank: 9,
-      minCols: 1,
-      reserveCols: 1,
+      reserveLines: 1,
       reserveRank: 0,
       items: const [],
     ),
   ],
 
   'body': [
+    // One phrase and the rest of the row held open. This is the fastest cell
+    // on the board and the class of button a caregiver adds to most.
     Band(
-      name: 'head',
-      shedRank: 1,
-      items: nouns(['head', 'face', 'eyes', 'ears', 'nose', 'mouth'], level: 1),
-    ),
-    Band(
-      name: 'limbs',
-      shedRank: 1,
-      items: nouns(['hand', 'arm', 'leg', 'foot', 'tummy', 'back'], level: 1),
-    ),
-    // Being able to name a symptom is the difference between a doctor's visit
-    // that finds the problem and one that guesses.
-    Band(
-      name: 'symptoms',
+      name: 'saying',
       shedRank: 0,
+      items: phrases(['it hurts', "don't touch me"], level: 1),
+    ),
+
+    // Needing the toilet is the most frequent daily request a user has, and
+    // the most common reason someone is kept out of a mainstream setting.
+    // Every preset gets it, at level 1.
+    Band(
+      name: 'toileting',
+      shedRank: 0,
+      items: nouns(['toilet', 'wee', 'poo'], level: 1),
+    ),
+
+    Band(
+      name: 'body',
+      shedRank: 2,
       items: [
-        ...nouns(['it hurts'], level: 1),
-        ...adjectives([
-          'itchy',
-          'sore',
-          'dizzy',
-          'thirsty',
-          'sleepy',
-          'poorly',
-        ], level: 1),
+        ...nouns(['head', 'face', 'eyes', 'ears', 'nose', 'mouth'], level: 1),
+        ...nouns(['hand', 'arm', 'leg', 'foot', 'tummy', 'back'], level: 1),
+        ...nouns([
+          'hair',
+          'teeth',
+          'throat',
+          'skin',
+          'finger',
+          'thumb',
+          'knee',
+          'elbow',
+          'shoulder',
+          'neck',
+          'chest',
+          'heart',
+          'toes',
+          'nails',
+          'lips',
+        ]),
       ],
     ),
-    Band(
-      name: 'detail',
-      shedRank: 3,
-      items: nouns([
-        'hair',
-        'teeth',
-        'throat',
-        'skin',
-        'finger',
-        'thumb',
-        'knee',
-        'elbow',
-        'shoulder',
-        'neck',
-        'chest',
-        'heart',
-        'toes',
-        'nails',
-        'lips',
-      ]),
-    ),
+
     Band(
       name: 'care',
-      shedRank: 2,
+      shedRank: 3,
       items: nouns([
         'medicine',
         'plaster',
-        'doctor',
-        'nurse',
         'bandage',
         'cough',
         'temperature',
+        'doctor',
+        'nurse',
+        // No workaround exists for these two. Someone who cannot say they are
+        // allergic depends on another person's record being right.
+        'allergic',
+        'emergency',
       ], level: 1),
     ),
+
+    // Being able to name a symptom is the difference between a visit that
+    // finds the problem and one that guesses, so this holds on longer than the
+    // medicine cupboard does.
+    Band(
+      name: 'hurting',
+      shedRank: 1,
+      items: adjectives([
+        'itchy',
+        'sore',
+        'dizzy',
+        'thirsty',
+        'sleepy',
+        'poorly',
+      ], level: 1),
+    ),
+
     Band(
       name: 'ours',
       shedRank: 9,
-      minCols: 1,
-      reserveCols: 1,
+      reserveLines: 1,
       reserveRank: 0,
       items: const [],
     ),
