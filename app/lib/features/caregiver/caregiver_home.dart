@@ -6,6 +6,7 @@ import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
+import '../../db/seed/vocabulary_top_up.dart';
 import '../editor/board_editor.dart';
 import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
@@ -557,6 +558,164 @@ class _SettleDelay extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Words that have shipped since this board was built.
+///
+/// A board is not rebuilt to receive them. Each one goes to the location the
+/// layout rule already assigns it on this grid, and only if that location is
+/// still free — so the board gains vocabulary without a single thing on it
+/// moving. Anything whose place is taken is reported rather than forced.
+class _NewWords extends StatefulWidget {
+  const _NewWords({
+    required this.db,
+    required this.vocabularyId,
+    required this.profileId,
+    required this.onChanged,
+  });
+
+  final WordbridgeDatabase db;
+  final String vocabularyId;
+  final String profileId;
+  final VoidCallback onChanged;
+
+  @override
+  State<_NewWords> createState() => _NewWordsState();
+}
+
+class _NewWordsState extends State<_NewWords> {
+  late Future<VocabularyTopUp> _preview = _check();
+  bool _applying = false;
+
+  Future<AgeBand> _band() async {
+    final profile = await (widget.db.select(
+      widget.db.profiles,
+    )..where((p) => p.id.equals(widget.profileId))).getSingleOrNull();
+
+    final birth = profile?.birthDate;
+    return AgeBand.forBirthDate(
+      birth == null ? null : DateTime.fromMillisecondsSinceEpoch(birth),
+    );
+  }
+
+  Future<VocabularyTopUp> _check() async => topUpVocabulary(
+    widget.db,
+    vocabularyId: widget.vocabularyId,
+    ageBand: await _band(),
+    dryRun: true,
+  );
+
+  Future<void> _apply(VocabularyTopUp preview) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add ${preview.count} words?'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Each one goes to a location that is currently empty. Nothing '
+                'already on the board moves.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Text(
+                    [
+                      for (final a in preview.added)
+                        '${a.label}  —  ${a.board}, row ${a.row + 1}, '
+                            'column ${a.col + 1}',
+                    ].join('\n'),
+                    style: const TextStyle(fontSize: 13, height: 1.5),
+                  ),
+                ),
+              ),
+              if (preview.blocked.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Not added, because those locations are already in use:\n'
+                  '${[for (final b in preview.blocked) '${b.label} (behind "${b.occupant}")'].join(', ')}',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Add them'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _applying = true);
+    await topUpVocabulary(
+      widget.db,
+      vocabularyId: widget.vocabularyId,
+      ageBand: await _band(),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _applying = false;
+      _preview = _check();
+    });
+    widget.onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<VocabularyTopUp>(
+      future: _preview,
+      builder: (context, snapshot) {
+        final preview = snapshot.data;
+        if (preview == null) {
+          return const ListTile(
+            leading: Icon(Icons.playlist_add),
+            title: Text('New words'),
+            subtitle: Text('Checking…'),
+          );
+        }
+
+        if (preview.added.isEmpty) {
+          return const ListTile(
+            leading: Icon(Icons.playlist_add_check),
+            title: Text('New words'),
+            subtitle: Text('This board has everything wordbridge ships.'),
+          );
+        }
+
+        return ListTile(
+          leading: const Icon(Icons.playlist_add),
+          title: Text('${preview.count} new words available'),
+          subtitle: Text(
+            [for (final a in preview.added.take(6)) a.label].join(', ') +
+                (preview.count > 6 ? '…' : ''),
+          ),
+          trailing: _applying
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.chevron_right),
+          onTap: _applying ? null : () => _apply(preview),
+        );
+      },
     );
   }
 }
