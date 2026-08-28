@@ -6,6 +6,7 @@ import '../board_builder.dart';
 import '../database.dart';
 import '../ids.dart';
 import '../tables.dart';
+import 'age_presets.dart';
 import 'band_layout.dart';
 import 'core_vocabulary.dart';
 
@@ -33,7 +34,14 @@ Future<String> seedCoreBoardSet(
   int cols = defaultGridCols,
   String profileId = 'default',
   bool attachToProfile = true,
+  AgeBand ageBand = AgeBand.child,
+  bool? profanity,
 }) async {
+  // Seeded whether or not it is switched on. Hiding holds the locations, so
+  // switching strong language on a year from now reveals it where it has
+  // always been instead of pushing other words aside.
+  final swearing = ageBand.canSwear;
+  final swearingVisible = profanity ?? ageBand.swearsByDefault;
   SystemRowPlan.validate(rows: rows, cols: cols);
 
   final home = layOutBands(rows: rows, cols: cols, bands: homeBands);
@@ -45,7 +53,10 @@ Future<String> seedCoreBoardSet(
   final questionRows = rows - 1;
   final questions = pinnedQuestions.take(questionRows).toList();
 
-  final extraWords = [...home.overflow, ...pinnedQuestions.skip(questionRows)];
+  final extraWords = <BandItem<SeedWord>>[
+    for (final o in home.overflow) o.item,
+    ...pinnedQuestions.skip(questionRows),
+  ];
 
   final plan = SystemRowPlan.forGrid(
     rows: rows,
@@ -120,9 +131,14 @@ Future<String> seedCoreBoardSet(
       db,
       vocabId: vocabId,
       name: category,
-      bands: categoryBands[category]!,
+      bands: [
+        ...categoryBands[category]!,
+        ...ageBand.extrasFor(category),
+        if (swearing && category == 'feelings') swearingBand,
+      ],
       rows: rows,
       cols: cols,
+      hiddenBands: swearingVisible ? const {} : {swearingBand.name},
     );
   }
 
@@ -207,6 +223,7 @@ Future<List<String>> _buildPagedBoards(
   required int rows,
   required int cols,
   Map<String, String> links = const {},
+  Set<String> hiddenBands = const {},
 }) async {
   final boardIds = <String>[];
   var remaining = bands;
@@ -222,7 +239,14 @@ Future<List<String>> _buildPagedBoards(
     );
     boardIds.add(boardId);
 
-    await _placeAll(db, vocabId, boardId, page.placed, links: links);
+    await _placeAll(
+      db,
+      vocabId,
+      boardId,
+      page.placed,
+      links: links,
+      hiddenBands: hiddenBands,
+    );
 
     if (page.overflow.isEmpty) return boardIds;
 
@@ -233,7 +257,18 @@ Future<List<String>> _buildPagedBoards(
       throw StateError('"$name" cannot be paged onto a ${rows}x$cols grid.');
     }
 
-    remaining = [Band(name: 'more', items: page.overflow)];
+    // Overflow keeps its band name so a hidden band stays hidden wherever it
+    // lands. Splitting a band across pages must not reveal half of it.
+    remaining = [
+      for (final name in page.overflowBands)
+        Band(
+          name: name,
+          items: [
+            for (final o in page.overflow)
+              if (o.band == name) o.item,
+          ],
+        ),
+    ];
   }
 }
 
@@ -243,6 +278,7 @@ Future<void> _placeAll(
   String boardId,
   List<BandPlacement<SeedWord>> placements, {
   Map<String, String> links = const {},
+  Set<String> hiddenBands = const {},
 }) async {
   for (final p in placements) {
     final cell = await cellAt(db, boardId: boardId, row: p.row, col: p.col);
@@ -259,6 +295,7 @@ Future<void> _placeAll(
       morphemeKind: p.value.morphemeKind,
       partOfSpeech: p.value.pos,
       vocabLevel: p.level,
+      hidden: hiddenBands.contains(p.band),
     );
   }
 }

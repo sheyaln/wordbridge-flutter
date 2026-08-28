@@ -36,7 +36,7 @@ void main() {
   };
 
   List<String> shed(BandLayout<String> layout) => [
-    for (final i in layout.overflow) i.value,
+    for (final o in layout.overflow) o.item.value,
   ];
 
   group('filling', () {

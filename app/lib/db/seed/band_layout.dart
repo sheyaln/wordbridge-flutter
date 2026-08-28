@@ -70,6 +70,13 @@ class Band<T> {
   final int shedRank;
 }
 
+/// A word that did not fit, still labelled with where it came from.
+///
+/// The band name travels with it so a band split across two pages keeps its
+/// identity — a hidden band must not become half visible just because it
+/// overflowed.
+typedef BandOverflow<T> = ({String band, BandItem<T> item});
+
 typedef BandPlacement<T> = ({
   int row,
   int col,
@@ -82,6 +89,7 @@ class BandLayout<T> {
   const BandLayout({
     required this.placed,
     required this.overflow,
+    required this.bandOrder,
     required this.contentRows,
     required this.contentCols,
   });
@@ -92,10 +100,23 @@ class BandLayout<T> {
   /// next page can order them the same way. They are not discarded — the
   /// caller puts them on an overflow board, because a word that exists in the
   /// vocabulary and cannot be said is a worse outcome than an extra tap.
-  final List<BandItem<T>> overflow;
+  final List<BandOverflow<T>> overflow;
+
+  /// Band names in the order they were declared.
+  final List<String> bandOrder;
 
   final int contentRows;
   final int contentCols;
+
+  /// Which bands overflowed, in declaration order, so the next page lays them
+  /// out the same way this one would have.
+  List<String> get overflowBands {
+    final spilled = {for (final o in overflow) o.band};
+    return [
+      for (final name in bandOrder)
+        if (spilled.contains(name)) name,
+    ];
+  }
 }
 
 /// Places [bands] left to right across a grid, filling each column top to
@@ -125,7 +146,7 @@ BandLayout<T> layOutBands<T>({
     for (final b in bands) b.name: [...b.items],
   };
   final held = {for (final b in bands) b.name: b.minCols};
-  final overflow = <BandItem<T>>[];
+  final overflow = <BandOverflow<T>>[];
 
   int widthOf(Band<T> b) {
     final needed = (kept[b.name]!.length / contentRows).ceil();
@@ -183,6 +204,7 @@ BandLayout<T> layOutBands<T>({
   return BandLayout(
     placed: placed,
     overflow: overflow,
+    bandOrder: [for (final b in bands) b.name],
     contentRows: contentRows,
     contentCols: contentCols,
   );
@@ -198,7 +220,7 @@ BandLayout<T> layOutBands<T>({
 bool _shedLeastImportant<T>(
   List<Band<T>> bands,
   Map<String, List<BandItem<T>>> kept,
-  List<BandItem<T>> overflow,
+  List<BandOverflow<T>> overflow,
 ) {
   Band<T>? worstBand;
   var worstIndex = -1;
@@ -220,7 +242,10 @@ bool _shedLeastImportant<T>(
 
   if (worstBand == null) return false;
 
-  overflow.add(kept[worstBand.name]!.removeAt(worstIndex));
+  overflow.add((
+    band: worstBand.name,
+    item: kept[worstBand.name]!.removeAt(worstIndex),
+  ));
   return true;
 }
 

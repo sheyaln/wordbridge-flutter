@@ -85,6 +85,14 @@ class Profiles extends Table with _Timestamps {
   TextColumn get avatarUri => text().nullable()();
   TextColumn get activeVocabularyId => text().nullable()();
 
+  /// Sets the starting vocabulary, and nothing else.
+  ///
+  /// Stored rather than the age it implies, so a profile does not silently
+  /// keep a four-year-old's word list once its owner is nine. Nullable: a
+  /// caregiver who would rather not record a birthday gets the middle preset
+  /// and full control, not an interrogation.
+  IntColumn get birthDate => integer().nullable()();
+
   /// Render filter: buttons at or below this level are visible. Raising it is
   /// how vocabulary grows, and it never moves anything already placed.
   IntColumn get vocabLevel => integer().withDefault(const Constant(1))();
@@ -322,6 +330,19 @@ class CaregiverAuth extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Device-wide state that belongs to no particular profile.
+///
+/// Currently just which profile was last in use, so launching resumes it
+/// rather than showing a chooser. A chooser in the user's path is a screen
+/// they cannot read, in front of the only way they have to speak.
+class AppState extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
 }
 
 /// Unused in v1. Present so that adding sync later is not a migration of every

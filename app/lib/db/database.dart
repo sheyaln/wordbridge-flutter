@@ -16,6 +16,7 @@ part 'database.g.dart';
     UsageEvents,
     EditEvents,
     CaregiverAuth,
+    AppState,
     SyncMeta,
   ],
 )
@@ -26,7 +27,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -60,6 +61,14 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
       await customStatement(
         'CREATE INDEX buttons_vocab ON buttons (vocabulary_id)',
       );
+    },
+    onUpgrade: (m, from, to) async {
+      // Board layout is user data. A migration may add somewhere to record a
+      // birthday or which profile was last open; it may never touch a cell.
+      if (from < 2) {
+        await m.addColumn(profiles, profiles.birthDate);
+        await m.createTable(appState);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
