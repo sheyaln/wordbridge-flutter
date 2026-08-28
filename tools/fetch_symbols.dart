@@ -16,6 +16,10 @@ import 'dart:typed_data' show BytesBuilder;
 const _language = 'eng';
 const _outDir = 'app/assets/symbols/core';
 
+/// A ceiling on any single request, so one unanswered call cannot stall a run
+/// of several hundred behind it.
+const _requestTimeout = Duration(seconds: 25);
+
 /// Symbol sets to draw from, in preference order. **Every one must permit
 /// commercial use** — see NOTICE.md. ARASAAC and Sclera are excluded on
 /// purpose: they are CC BY-NC and may only ever be opt-in downloads.
@@ -30,7 +34,8 @@ const _sets = <({String slug, int id, String name, String attribution})>[
     slug: 'mulberry',
     id: 13,
     name: 'Mulberry Symbols',
-    attribution: 'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
+    attribution:
+        'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
         'CC BY-SA 4.0. https://mulberrysymbols.org',
   ),
   (
@@ -43,14 +48,14 @@ const _sets = <({String slug, int id, String name, String attribution})>[
     slug: 'tawasol',
     id: 15,
     name: 'Tawasol',
-    attribution:
-        'Tawasol Symbols © Mada, Qatar. CC BY-SA 4.0. http://tawasolsymbols.org',
+    attribution: 'Tawasol Symbols © Mada, Qatar. CC BY-SA 4.0. http://tawasolsymbols.org',
   ),
   (
     slug: 'openmoji',
     id: 83,
     name: 'OpenMoji',
-    attribution: 'OpenMoji © OpenMoji Project. CC BY-SA 4.0. https://openmoji.org',
+    attribution:
+        'OpenMoji © OpenMoji Project. CC BY-SA 4.0. https://openmoji.org',
   ),
 ];
 
@@ -79,7 +84,6 @@ List<String> _wordsFrom(String path) {
   ];
 }
 
-
 /// Alternative search terms, tried in order, for words whose own label is not
 /// how Mulberry names the concept.
 ///
@@ -100,10 +104,6 @@ const _searchCandidates = <String, List<String>>{
   'different': ['different', 'difference', 'other'],
   'finished': ['finished', 'finish', 'done', 'end'],
   'home': ['home', 'house'],
-  // Editing controls: the concept is erasing the last word, not "undo" in the
-  // software sense.
-  'undo': ['undo', 'delete', 'erase', 'rub out'],
-  'clear': ['clear', 'empty', 'rubbish', 'bin'],
   'can': ['can', 'able'],
   // British labels that the sets index under other names. Every one of these
   // is the same referent, not a near-enough guess.
@@ -153,7 +153,13 @@ Future<void> main(List<String> args) async {
   );
   stdout.writeln('${words.length} words in the vocabulary\n');
 
-  final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+  // A hard ceiling on sockets, so a connection this tool fails to release
+  // shows up as a stall it can time out of rather than one it waits in
+  // forever.
+  final client = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 20)
+    ..idleTimeout = const Duration(seconds: 10)
+    ..maxConnectionsPerHost = 4;
   final dir = Directory(_outDir)..createSync(recursive: true);
 
   // Resume rather than restart. A run is ~600 requests, and a transient
@@ -170,10 +176,17 @@ Future<void> main(List<String> args) async {
         manifest[e.key as String] = Map<String, dynamic>.from(e.value as Map);
       }
     }
-    stdout.writeln('resuming with ${manifest.length} symbols already fetched\n');
+    stdout.writeln(
+      'resuming with ${manifest.length} symbols already fetched\n',
+    );
   }
 
+  // Two different outcomes, kept apart. A word no set indexes is an answer
+  // and its button renders label-only. A word whose lookup failed is not an
+  // answer at all, and the next run should ask again — which it will, because
+  // only successes reach the manifest.
   final missing = <String>[];
+  final failed = <String>[];
   final usedSets = <String>{
     for (final v in manifest.values) v['set'] as String,
   };
@@ -216,7 +229,7 @@ Future<void> main(List<String> args) async {
       stdout.writeln('${hit.setSlug.padRight(16)} ${hit.text}');
     } catch (e) {
       stdout.writeln('failed: $e');
-      missing.add(word);
+      failed.add(word);
     }
   }
 
@@ -239,8 +252,12 @@ Future<void> main(List<String> args) async {
 
   stdout.writeln('\n${manifest.length} symbols -> ${dir.path}');
   if (missing.isNotEmpty) {
-    stdout.writeln('no symbol for: ${missing.join(', ')}');
+    stdout.writeln('\nno symbol in any set for: ${missing.join(', ')}');
     stdout.writeln('those buttons render label-only, which is fine.');
+  }
+  if (failed.isNotEmpty) {
+    stdout.writeln('\nlookup failed for: ${failed.join(', ')}');
+    stdout.writeln('not an answer — run again to ask about these.');
   }
 }
 
@@ -253,25 +270,64 @@ typedef _Hit = ({
   String setSlug,
 });
 
-/// Retries around network flakiness.
+/// Raised for a 429, so it can be backed off from differently.
+///
+/// Being told to slow down is not a network failure and is not an answer
+/// about the word. It is the one error worth waiting a long time over.
+class _RateLimited implements Exception {
+  const _RateLimited(this.retryAfter);
+
+  /// What the server asked for, when it said.
+  final Duration? retryAfter;
+
+  @override
+  String toString() =>
+      'rate limited${retryAfter == null ? '' : ', '
+                'asked to wait ${retryAfter!.inSeconds}s'}';
+}
+
+/// Retries around network flakiness and rate limiting.
 ///
 /// Distinguishing "this set has no such word" from "the request failed" is
 /// the whole point: the first is a real answer, the second is noise that must
-/// not be recorded as one.
+/// not be recorded as one. Recording a 429 as "no symbol" is how a word that
+/// has a perfectly good picture ends up shipping blank.
 Future<_Hit?> _search(
   HttpClient client,
   String query,
   ({String slug, int id, String name, String attribution}) set,
 ) async {
-  for (var attempt = 0; attempt < 3; attempt++) {
+  for (var attempt = 0; attempt < 4; attempt++) {
     try {
+      await _throttle();
       return await _searchOnce(client, query, set);
+    } on _RateLimited catch (e) {
+      if (attempt == 3) rethrow;
+      // Long waits, because the server has said in as many words that it is
+      // being asked too often. Honour what it asked for when it says.
+      await Future<void>.delayed(
+        e.retryAfter ?? Duration(seconds: 5 * (attempt + 1)),
+      );
     } on Object {
-      if (attempt == 2) rethrow;
+      if (attempt == 3) rethrow;
       await Future<void>.delayed(Duration(milliseconds: 400 * (attempt + 1)));
     }
   }
   return null;
+}
+
+/// Keeps a polite distance between requests.
+///
+/// A run is several hundred lookups against somebody else\'s free service. Not
+/// pacing them gets this tool rate limited, which is both rude and — until the
+/// 429 was being read as an answer — silently wrong.
+DateTime _lastRequest = DateTime.fromMillisecondsSinceEpoch(0);
+
+Future<void> _throttle() async {
+  const gap = Duration(milliseconds: 350);
+  final since = DateTime.now().difference(_lastRequest);
+  if (since < gap) await Future<void>.delayed(gap - since);
+  _lastRequest = DateTime.now();
 }
 
 Future<_Hit?> _searchOnce(
@@ -286,10 +342,31 @@ Future<_Hit?> _searchOnce(
     'limit': '10',
   });
 
-  final res = await (await client.getUrl(uri)).close();
-  if (res.statusCode != 200) return null;
+  final res = await (await client.getUrl(uri)).close().timeout(_requestTimeout);
 
-  final body = jsonDecode(await res.transform(utf8.decoder).join());
+  // A refusal is not an answer. The API returns 200 with an empty list when a
+  // set genuinely has no such word, so any other status is the server saying
+  // "not now" — usually rate limiting. Throwing sends it back through the
+  // retry, where a "no symbol for" line is what it deserves only if it still
+  // fails three times.
+  //
+  // The body is drained first either way. An unread response holds its socket
+  // open, and enough of them exhaust the connection pool and wedge the run.
+  if (res.statusCode != 200) {
+    await res.drain<void>();
+
+    if (res.statusCode == 429) {
+      final header = res.headers.value('retry-after');
+      final seconds = header == null ? null : int.tryParse(header.trim());
+      throw _RateLimited(seconds == null ? null : Duration(seconds: seconds));
+    }
+
+    throw HttpException('${res.statusCode} from ${set.slug} for "$query"');
+  }
+
+  final body = jsonDecode(
+    await res.transform(utf8.decoder).join().timeout(_requestTimeout),
+  );
   if (body is! List || body.isEmpty) return null;
 
   // Exact matches only, and no fallback to the top-ranked result.
@@ -321,14 +398,22 @@ Future<_Hit?> _searchOnce(
 }
 
 Future<List<int>> _download(HttpClient client, String url) async {
-  final res = await (await client.getUrl(Uri.parse(url))).close();
+  await _throttle();
+
+  final res = await (await client.getUrl(Uri.parse(url)))
+      .close()
+      .timeout(_requestTimeout);
+
   if (res.statusCode != 200) {
+    // Drained before throwing. An unread response holds its socket open.
+    await res.drain<void>();
     throw HttpException('HTTP ${res.statusCode}');
   }
-  return (await res.fold<BytesBuilder>(
-    BytesBuilder(),
-    (b, d) => b..add(d),
-  )).takeBytes();
+
+  return (await res
+          .fold<BytesBuilder>(BytesBuilder(), (b, d) => b..add(d))
+          .timeout(_requestTimeout))
+      .takeBytes();
 }
 
 String _slug(String word) =>
