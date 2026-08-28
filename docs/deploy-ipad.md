@@ -12,6 +12,17 @@ xcrun devicectl device process launch --device "$DEVICE" org.wordbridge.wordbrid
 Find `$DEVICE` — the CoreDevice UUID, **not** the hardware serial Flutter shows —
 with `xcrun devicectl list devices`.
 
+### The device this is tested on
+
+Haley's iPad, an iPad mini 5th generation:
+
+```sh
+DEVICE=17098DA6-61DE-5465-9EA0-34CE0782F3C9
+```
+
+Or `tools/deploy-ipad.sh`, which does the three steps above and refuses to
+carry on if the install did not actually land.
+
 ## Two traps, both hit on the first deploy
 
 ### `flutter run` and `flutter install` hang at "Uninstalling old version…"
