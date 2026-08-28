@@ -104,10 +104,57 @@ Three consequences, all enforced in code:
 | Board creation for subcategories | **done** |
 | Symbol credits screen (licence obligation) | **done** |
 | OBF/OBZ import and export | **done** |
+| Layout derived from vocabulary bands, works at any grid size | **done** |
+| Grid chosen at setup from orientation and icon size | **done** |
+| Changing it later: measured, typed confirmation, reversible | **done** |
+| Profiles with their own board, settings and history | **done** |
+| Age presets, with strong language hidden in place rather than absent | **done** |
+| Adjustable pause after the board changes | **done** |
+| Question mark, using the speech engine's own question intonation | **done** |
+| Category keys cycle in place instead of opening a board of categories | **done** |
+| New shipped words reach existing boards without moving anything | **done** |
 
 ---
 
 ## 4. Agreed, not built
+
+### 4.0 Board organisation — settled
+
+**The root board groups by column; category boards group by row.**
+
+On the root board a column encodes Fitzgerald sentence order — who, does, what,
+where — so reading left to right builds a sentence. That ordering is fixed and
+is not up for redesign.
+
+Category boards have no sentence order to encode, so they group by **word
+class** instead, one class per horizontal strip, ordered within the strip by
+meaning. Three reasons, in descending order of how well evidenced they are:
+
+- **Row-column scanning.** The first switch press selects a row. On a
+  row-grouped board that narrows the choice to a word class; on a
+  column-grouped board it narrows to nothing. This is architecture, not
+  preference.
+- **Word class as the grouping is measured.** Thistle & Wilkinson (2017),
+  *AAC* 33(3):160-169 — arranging by word class made children significantly
+  faster at building multi-symbol messages. Wilkinson, Gilmore & Qian (2022),
+  *JSLHR* 65(2):710-726 — using position to cue grammatical category cut
+  fixations on irrelevant symbols.
+- **Horizontal adjacency is a preference with a plausible mechanism, not an
+  AAC finding.** No study compares row-grouping to column-grouping on a grid.
+  Visual performance is better along the horizontal meridian and visual span
+  is wider horizontally, but those are foveal text effects and an eleven-cell
+  row is scanned with saccades. Say this honestly.
+
+> **Do not cite Light et al. (2004) for this.** It compared taxonomic grids,
+> schematic grids, schematic scenes and iconic encoding, and found the first
+> three did not differ from each other. It is evidence against iconic
+> encoding, which is how §1 uses it, and says nothing about word-class
+> arrangement.
+
+Semantic clusters survive as the *ordering inside* a strip rather than as
+strips of their own, because children group vocabulary in small event-based
+groups rather than taxonomies (Fallon, Light & Achenbach 2003), and because a
+strip per cluster costs a row each — eight clusters do not fit in six rows.
 
 ### 4.1 Grid geometry, chosen at setup
 
@@ -229,17 +276,35 @@ Violating any of these is a bug regardless of what else it buys.
    minimal always-working core board.
 7. **Usage tracking is off by default** and never leaves the device. An AAC log
    is a transcript of a disabled person's private speech.
-8. **Never a wrong symbol.** A blank button says "no picture yet" honestly; a
+8. **A location the user cannot see never speaks.** Whatever is behind a
+   mask — a word above the current level, a word switched off, an ending that
+   does not apply yet — a blank that says a word nobody chose is worse than
+   one that does nothing.
+9. **Never a wrong symbol.** A blank button says "no picture yet" honestly; a
    plausible wrong one teaches a false association to someone who cannot easily
    contradict it. *(The fetcher initially matched "not"→Notebook, "she"→Sheep.
    Exact matches only, no fuzzy fallback.)*
-9. **Symbol licence boundary holds.** ARASAAC and Sclera are CC BY-**NC** and are
+10. **Symbol licence boundary holds.** ARASAAC and Sclera are CC BY-**NC** and are
    never bundled — opt-in download only. CI enforces this
    (`tools/check_symbol_boundary.sh`).
-10. **No polysemous symbols.** One button, one meaning
+11. **No polysemous symbols.** One button, one meaning
     ([ADR-0002](docs/adr/0002-no-polysemous-symbols.md)).
 
 ---
+
+## 5.1 Standing decisions
+
+- **A word may hold two locations on two different boards** where both are
+  logical — `doctor` on people and on body, `outside` on play and on places.
+  One word twice on *one* board is a defect, not a choice.
+- **Vocabulary level does double duty**: it decides what is drawn on day one
+  *and* what a small grid sheds first. Those are different questions and the
+  conflation is known. Worth separating if it starts to bite.
+- **Level 3 is "the grid decides"**: words seeded at level 3 shed to a later
+  page on a tight grid and sit on the root board on a roomier one. The
+  cognition verbs (know, think, say, tell, see, come, give, feel) live here,
+  because the 7x12 verb band is exactly full and every alternative meant
+  dropping a Universal Core word or reversing an explicit layout request.
 
 ## 6. Open questions
 
