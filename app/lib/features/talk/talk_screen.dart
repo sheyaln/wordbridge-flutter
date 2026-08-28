@@ -30,6 +30,8 @@ class TalkScreen extends StatefulWidget {
     this.settings,
     this.profileId = 'default',
     this.userName,
+    this.vocabLevel = 3,
+    this.onSwitchProfile,
   });
 
   final WordbridgeDatabase db;
@@ -42,6 +44,12 @@ class TalkScreen extends StatefulWidget {
   final ProfileSettings? settings;
   final String profileId;
   final String? userName;
+
+  /// Buttons at or below this level are drawn. Raising it reveals words where
+  /// they have always been; it never moves anything.
+  final int vocabLevel;
+
+  final void Function(Profile)? onSwitchProfile;
 
   @override
   State<TalkScreen> createState() => _TalkScreenState();
@@ -62,7 +70,7 @@ class _TalkScreenState extends State<TalkScreen> {
   /// Returns to the root board after a word is spoken, so the next word
   /// always starts from the same place. Without it a two-tap word is only
   /// two taps sometimes.
-  final bool _autoReturn = true;
+  bool get _autoReturn => widget.settings?.autoReturn ?? true;
 
   @override
   void initState() {
@@ -272,6 +280,7 @@ class _TalkScreenState extends State<TalkScreen> {
           registry: widget.registry,
           resolver: widget.resolver,
           userName: widget.userName,
+          onSwitchProfile: widget.onSwitchProfile,
         ),
       ),
     );
@@ -313,7 +322,7 @@ class _TalkScreenState extends State<TalkScreen> {
                           rows: vocab.gridRows,
                           cols: vocab.gridCols,
                           cells: cells,
-                          vocabLevel: 3,
+                          vocabLevel: widget.vocabLevel,
                           resolver: widget.resolver,
                           isAvailable: _isAvailable,
                           colourScheme: vocab.colourScheme,

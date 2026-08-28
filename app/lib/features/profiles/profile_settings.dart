@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../db/database.dart';
 import '../../db/ids.dart';
+import 'grid_choice.dart';
 
 /// Per-user preferences, held in the profile row.
 ///
@@ -41,6 +42,32 @@ class ProfileSettings extends ChangeNotifier {
   /// number of movements every time.
   bool get autoReturn => _values['autoReturn'] as bool? ?? true;
 
+  /// The two answers the grid was derived from.
+  ///
+  /// Stored so the settings screen can show what was chosen rather than only
+  /// its consequence, and so changing one can be recognised as the deliberate,
+  /// expensive act it is. Nothing reads these to lay a board out — the board
+  /// was laid out once, when the profile was made.
+  BoardOrientation get orientation =>
+      _enum('orientation', BoardOrientation.values, BoardOrientation.landscape);
+
+  IconSize get iconSize => _enum('iconSize', IconSize.values, IconSize.medium);
+
+  /// Whether strong language is revealed on the boards that carry it.
+  ///
+  /// The words are already placed either way; this only draws them. Turning it
+  /// off hides them in place, so turning it back on puts them exactly where
+  /// they were.
+  bool get profanity => _values['profanity'] as bool? ?? false;
+
+  T _enum<T extends Enum>(String key, List<T> values, T fallback) {
+    final stored = _values[key];
+    for (final value in values) {
+      if (value.name == stored) return value;
+    }
+    return fallback;
+  }
+
   Future<void> load() async {
     final row = await (_db.select(
       _db.profiles,
@@ -63,17 +90,15 @@ class ProfileSettings extends ChangeNotifier {
     _values = {..._values, key: value};
     notifyListeners();
 
-    final ts = nowMs();
-    await _db
-        .into(_db.profiles)
-        .insertOnConflictUpdate(
-          ProfilesCompanion.insert(
-            id: profileId,
-            displayName: 'default',
-            settingsJson: Value(jsonEncode(_values)),
-            createdAt: ts,
-            updatedAt: ts,
-          ),
-        );
+    // An update, never an upsert. Writing a setting must not be able to
+    // overwrite a profile's name or unpick which vocabulary it points at.
+    await (_db.update(
+      _db.profiles,
+    )..where((p) => p.id.equals(profileId))).write(
+      ProfilesCompanion(
+        settingsJson: Value(jsonEncode(_values)),
+        updatedAt: Value(nowMs()),
+      ),
+    );
   }
 }

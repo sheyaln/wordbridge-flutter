@@ -1,9 +1,13 @@
+import 'package:drift/drift.dart' show BooleanExpressionOperators, Value;
 import 'package:flutter/material.dart';
 
 import '../../db/board_builder.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
+import '../../db/ids.dart';
+import '../../db/seed/age_presets.dart';
 import '../editor/board_editor.dart';
+import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
@@ -27,6 +31,7 @@ class CaregiverHome extends StatefulWidget {
     this.registry,
     this.resolver,
     this.userName,
+    this.onSwitchProfile,
   });
 
   final WordbridgeDatabase db;
@@ -37,6 +42,7 @@ class CaregiverHome extends StatefulWidget {
   final SymbolRegistry? registry;
   final SymbolResolver? resolver;
   final String? userName;
+  final void Function(Profile)? onSwitchProfile;
 
   @override
   State<CaregiverHome> createState() => _CaregiverHomeState();
@@ -70,8 +76,12 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           logger: widget.logger,
         ),
         _ => _Settings(
+          db: widget.db,
+          vocabularyId: widget.vocabularyId,
+          profileId: widget.profileId,
           logger: widget.logger,
           settings: widget.settings,
+          onSwitchProfile: widget.onSwitchProfile,
           onChanged: () => setState(() {}),
         ),
       },
@@ -209,19 +219,57 @@ extension on _Boards {
 
 class _Settings extends StatelessWidget {
   const _Settings({
+    required this.db,
+    required this.vocabularyId,
+    required this.profileId,
     required this.logger,
     required this.settings,
     required this.onChanged,
+    this.onSwitchProfile,
   });
 
+  final WordbridgeDatabase db;
+  final String vocabularyId;
+  final String profileId;
   final UsageLogger logger;
   final ProfileSettings? settings;
   final VoidCallback onChanged;
+  final void Function(Profile)? onSwitchProfile;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        if (onSwitchProfile != null)
+          ListTile(
+            leading: const Icon(Icons.people_outline),
+            title: const Text('Profiles'),
+            subtitle: const Text(
+              'Switch to someone else, or set up a new person',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              final chosen = await ProfilePicker.show(
+                context,
+                db: db,
+                currentId: profileId,
+              );
+              if (chosen == null || !context.mounted) return;
+
+              onSwitchProfile!(chosen);
+              Navigator.of(context).pop();
+            },
+          ),
+        _VocabularyLevel(db: db, profileId: profileId, onChanged: onChanged),
+        if (settings != null)
+          _StrongLanguage(
+            db: db,
+            vocabularyId: vocabularyId,
+            profileId: profileId,
+            settings: settings!,
+            onChanged: onChanged,
+          ),
+        const Divider(),
         if (settings != null)
           SwitchListTile(
             value: settings!.contextualGrammar,
@@ -283,6 +331,155 @@ class _Settings extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// How much of the vocabulary is currently drawn.
+///
+/// Raising this reveals words that have been seeded and hidden since the day
+/// the profile was made, in the locations they have always occupied. It is the
+/// one control here that adds vocabulary without moving anything, which is why
+/// growing a board is a slider rather than an editing session.
+class _VocabularyLevel extends StatelessWidget {
+  const _VocabularyLevel({
+    required this.db,
+    required this.profileId,
+    required this.onChanged,
+  });
+
+  final WordbridgeDatabase db;
+  final String profileId;
+  final VoidCallback onChanged;
+
+  static const _descriptions = {
+    1: 'Core words only. The rest of the board stays reserved.',
+    2: 'Core words and the starter fringe vocabulary.',
+    3: 'Everything, including anything added since.',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Profile?>(
+      stream: (db.select(
+        db.profiles,
+      )..where((p) => p.id.equals(profileId))).watchSingleOrNull(),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        if (profile == null) return const SizedBox.shrink();
+
+        final level = profile.vocabLevel.clamp(1, 3);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.layers_outlined),
+              title: const Text('How many words are shown'),
+              subtitle: Text(_descriptions[level]!),
+              isThreeLine: true,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Slider(
+                value: level.toDouble(),
+                min: 1,
+                max: 3,
+                divisions: 2,
+                label: 'Level $level',
+                onChanged: (v) async {
+                  await (db.update(
+                    db.profiles,
+                  )..where((p) => p.id.equals(profileId))).write(
+                    ProfilesCompanion(
+                      vocabLevel: Value(v.round()),
+                      updatedAt: Value(nowMs()),
+                    ),
+                  );
+                  onChanged();
+                },
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(
+                'Words that appear when you raise this have been holding their '
+                'locations since the board was built. Nothing moves to make '
+                'room for them, and lowering it again puts them back out of '
+                'sight without losing them.',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Reveals or hides the strong-language band as a unit.
+///
+/// Only shown when the profile's preset carries those words at all. Toggling
+/// hides them in place rather than deleting them, so switching back on returns
+/// them to the same locations.
+class _StrongLanguage extends StatelessWidget {
+  const _StrongLanguage({
+    required this.db,
+    required this.vocabularyId,
+    required this.profileId,
+    required this.settings,
+    required this.onChanged,
+  });
+
+  final WordbridgeDatabase db;
+  final String vocabularyId;
+  final String profileId;
+  final ProfileSettings settings;
+  final VoidCallback onChanged;
+
+  Future<void> _apply(bool visible) async {
+    final labels = [for (final i in swearingBand.items) i.value.label];
+
+    await (db.update(db.buttons)..where(
+          (b) => b.vocabularyId.equals(vocabularyId) & b.label.isIn(labels),
+        ))
+        .write(
+          ButtonsCompanion(hidden: Value(!visible), updatedAt: Value(nowMs())),
+        );
+
+    await settings.set('profanity', visible);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Profile?>(
+      future: (db.select(
+        db.profiles,
+      )..where((p) => p.id.equals(profileId))).getSingleOrNull(),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        if (profile == null) return const SizedBox.shrink();
+
+        final birth = profile.birthDate;
+        final band = AgeBand.forBirthDate(
+          birth == null ? null : DateTime.fromMillisecondsSinceEpoch(birth),
+        );
+        if (!band.canSwear) return const SizedBox.shrink();
+
+        return SwitchListTile(
+          value: settings.profanity,
+          title: const Text('Include strong language'),
+          subtitle: const Text(
+            'Off hides these words where they are rather than removing them, '
+            'so turning it back on moves nothing.',
+          ),
+          isThreeLine: true,
+          onChanged: (v) async {
+            await _apply(v);
+            onChanged();
+          },
+        );
+      },
     );
   }
 }

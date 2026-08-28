@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'db/database.dart';
 import 'db/ids.dart';
-import 'db/seed/core_board_set.dart';
 import 'features/auth/pin.dart';
+import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
+import 'features/profiles/profile_setup.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/symbols/bundled_pack.dart';
 import 'features/symbols/symbol_registry.dart';
@@ -31,23 +32,21 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 
   late final _logger = UsageLogger(_db, deviceId: newId());
   late final _auth = PinAuth(_db);
-  late final _settings = ProfileSettings(_db, 'default');
+  late final _profiles = ProfileRepository(_db);
 
   late final _symbols = SymbolRegistry(packs: bundledSymbolPacks());
   late final _resolver = SymbolResolver(registry: _symbols);
 
-  late final Future<String> _ready = _bootstrap();
+  late Future<Profile?> _ready = _bootstrap();
 
-  Future<String> _bootstrap() async {
+  Future<Profile?> _bootstrap() async {
     await _speech.init();
+    return _profiles.resume();
+  }
 
-    final existing = await _db.select(_db.vocabularies).get();
-    final vocabId = existing.isNotEmpty
-        ? existing.first.id
-        : await seedCoreBoardSet(_db);
-
-    await _settings.load();
-    return vocabId;
+  /// Called after setup, and after a caregiver switches profile.
+  void _use(Profile profile) {
+    setState(() => _ready = Future.value(profile));
   }
 
   @override
@@ -80,7 +79,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
       title: 'wordbridge',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
-      home: FutureBuilder<String>(
+      home: FutureBuilder<Profile?>(
         future: _ready,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -88,24 +87,150 @@ class _WordbridgeAppState extends State<WordbridgeApp>
               body: Center(child: Text('Startup failed: ${snapshot.error}')),
             );
           }
-          final vocabId = snapshot.data;
-          if (vocabId == null) {
+
+          if (snapshot.connectionState != ConnectionState.done) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          return TalkScreen(
+
+          final profile = snapshot.data;
+          if (profile == null) return _FirstRun(db: _db, onCreated: _use);
+
+          // Keyed on the profile so switching rebuilds the whole screen rather
+          // than leaving one person's board holding another person's settings.
+          return _Session(
+            key: ValueKey(profile.id),
             db: _db,
+            profile: profile,
             speech: _speech,
-            vocabularyId: vocabId,
             logger: _logger,
             auth: _auth,
             resolver: _resolver,
             registry: _symbols,
-            settings: _settings,
+            onSwitchProfile: _use,
           );
         },
       ),
+    );
+  }
+}
+
+/// Nothing has been set up yet, so there is nobody to hand the device to.
+class _FirstRun extends StatelessWidget {
+  const _FirstRun({required this.db, required this.onCreated});
+
+  final WordbridgeDatabase db;
+  final void Function(Profile) onCreated;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'wordbridge',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'A few questions about how this device will be used, then '
+                  'the board is built and nothing on it moves again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+              const SizedBox(height: 28),
+              FilledButton(
+                onPressed: () async {
+                  final profile = await ProfileSetup.show(
+                    context,
+                    db: db,
+                    isFirstRun: true,
+                  );
+                  if (profile != null) onCreated(profile);
+                },
+                child: const Text('Get started'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One profile's session: its own settings object, its own vocabulary.
+class _Session extends StatefulWidget {
+  const _Session({
+    super.key,
+    required this.db,
+    required this.profile,
+    required this.speech,
+    required this.logger,
+    required this.auth,
+    required this.resolver,
+    required this.registry,
+    required this.onSwitchProfile,
+  });
+
+  final WordbridgeDatabase db;
+  final Profile profile;
+  final SpeechEngine speech;
+  final UsageLogger logger;
+  final PinAuth auth;
+  final SymbolResolver resolver;
+  final SymbolRegistry registry;
+  final void Function(Profile) onSwitchProfile;
+
+  @override
+  State<_Session> createState() => _SessionState();
+}
+
+class _SessionState extends State<_Session> {
+  late final _settings = ProfileSettings(widget.db, widget.profile.id);
+  late final Future<void> _loaded = _settings.load();
+
+  @override
+  Widget build(BuildContext context) {
+    final vocabularyId = widget.profile.activeVocabularyId;
+
+    if (vocabularyId == null) {
+      return const Scaffold(
+        body: Center(child: Text('This profile has no board set.')),
+      );
+    }
+
+    return FutureBuilder<void>(
+      future: _loaded,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return TalkScreen(
+          db: widget.db,
+          speech: widget.speech,
+          vocabularyId: vocabularyId,
+          logger: widget.logger,
+          auth: widget.auth,
+          resolver: widget.resolver,
+          registry: widget.registry,
+          settings: _settings,
+          profileId: widget.profile.id,
+          userName: widget.profile.displayName,
+          vocabLevel: widget.profile.vocabLevel,
+          onSwitchProfile: widget.onSwitchProfile,
+        );
+      },
     );
   }
 }
