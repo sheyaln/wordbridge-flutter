@@ -1,8 +1,7 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../db/database.dart';
 import '../../db/ids.dart';
@@ -10,6 +9,7 @@ import '../../db/tables.dart';
 
 import 'package:image_picker/image_picker.dart';
 
+import '../grid/symbol_view.dart';
 import '../symbols/custom_upload.dart';
 import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
@@ -349,7 +349,14 @@ class _SymbolPickerState extends State<SymbolPicker> {
   }
 }
 
-class _SymbolTile extends StatelessWidget {
+/// One search result: its picture, or its word until the picture exists.
+///
+/// A result from a downloading pack resolves to nothing on the first pass and
+/// to a file once the download lands, so the row watches for its own arrival.
+/// Waiting for something else to rebuild the sheet would leave a caregiver
+/// choosing between words, and the whole reason to open this screen is to
+/// choose between pictures.
+class _SymbolTile extends StatefulWidget {
   const _SymbolTile({
     required this.ref,
     required this.resolver,
@@ -361,42 +368,81 @@ class _SymbolTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<ResolvedSymbol>(
-      future: resolver.resolve(ref),
-      builder: (context, snapshot) {
-        final image = snapshot.data?.image;
+  State<_SymbolTile> createState() => _SymbolTileState();
+}
 
-        return InkWell(
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black12),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: const EdgeInsets.all(4),
-            child: image == null
-                ? Center(
-                    child: Text(
-                      ref.label,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  )
-                : _preview(image),
-          ),
-        );
-      },
-    );
+class _SymbolTileState extends State<_SymbolTile> {
+  SymbolImage? _image;
+
+  /// Which resolution the picture on screen belongs to.
+  int _generation = 0;
+
+  StreamSubscription<SymbolRef>? _arrivals;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+
+    // Matched on the symbol rather than on its word, unlike a board: a search
+    // deliberately puts several pictures of the same word side by side, and an
+    // arrival belongs to exactly one of them.
+    _arrivals = widget.resolver.ready
+        .where((ref) => ref.key == widget.ref.key)
+        .listen((_) => _resolve());
   }
 
-  Widget _preview(SymbolImage image) {
-    final isSvg = image.uri.toLowerCase().endsWith('.svg');
-    return switch ((image.kind, isSvg)) {
-      (SymbolImageKind.asset, true) => SvgPicture.asset(image.uri),
-      (SymbolImageKind.asset, false) => Image.asset(image.uri),
-      (SymbolImageKind.file, true) => SvgPicture.file(File(image.uri)),
-      (SymbolImageKind.file, false) => Image.file(File(image.uri)),
-    };
+  @override
+  void didUpdateWidget(_SymbolTile old) {
+    super.didUpdateWidget(old);
+    // A row is reused for whatever result now sits at its index, so a fresh
+    // search hands this state a different symbol.
+    if (old.ref.key != widget.ref.key) {
+      _image = null;
+      _resolve();
+    }
+  }
+
+  @override
+  void dispose() {
+    _arrivals?.cancel();
+    super.dispose();
+  }
+
+  /// Off the path of every tap in this sheet: a row that never resolves is a
+  /// row showing its word, not a sheet that fails to open.
+  Future<void> _resolve() async {
+    final generation = ++_generation;
+    final resolved = await widget.resolver.resolve(widget.ref);
+
+    // A resolution can land after the row has moved on to another result, and
+    // only the most recent one may draw.
+    if (!mounted || generation != _generation) return;
+    setState(() => _image = resolved.image);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = _image;
+
+    return InkWell(
+      onTap: widget.onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black12),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        padding: const EdgeInsets.all(4),
+        child: image == null
+            ? Center(
+                child: Text(
+                  widget.ref.label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              )
+            : SymbolPicture(image),
+      ),
+    );
   }
 }
