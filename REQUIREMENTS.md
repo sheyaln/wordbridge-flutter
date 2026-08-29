@@ -851,6 +851,49 @@ five of six reads as having a hole in a group a user takes to be complete.
 Level 1 goes from 99 words to 100, and the 36-per-page ceiling is untouched
 because the column is pinned rather than drawn from the content area.
 
+### 4.19 Labelled regions — agreed, not built
+
+A setting that segments each board into its regions and names them: the
+rightmost column as **questions**, the bottom row as the **system row**, the
+verb columns on the home board as **verbs**, and so on for every band.
+
+**Off by default.** It is scaffolding for the people teaching the board, not
+for the person speaking on it — and a label costs pixels a button was using.
+
+**The data already exists.** `BandLayout.bandLines` records the first and last
+line each band owns, including the lines it holds open and never filled, and
+`bandAt(row:, col:)` already answers "which band owns this location". Nothing
+needs to be inferred or recomputed. `system_cell_map` names the frame.
+
+Why it earns its place, given the thesis: the board's whole argument is that a
+column *means* something — the root board encodes Fitzgerald sentence order, so
+reading left to right builds a sentence, and category boards group by word
+class. That structure is invisible to a caregiver, a TA or a classroom
+assistant looking at the grid for the first time. They are the people who have
+to model the board, and Johnson et al. (2006) puts failure to maintain the
+system at the top of the abandonment list. A label that says *verbs* over that
+band is the cheapest possible way to teach the pattern the layout is built on.
+
+Open questions before it can be built:
+
+- **Where the label goes.** It cannot take a cell — that would displace
+  vocabulary, and the reserved lines are exactly where a caregiver's own words
+  are meant to land. So it has to be chrome: a thin strip outside the grid, or
+  drawn over the band's edge.
+- **Both axes at once.** The root board bands by column and category boards by
+  row, so the labels move edge with the axis. A board needs at most one strip;
+  the frame (question column, system row) needs the other.
+- **It must not move a single cell.** If the strip takes height or width from
+  the grid, it is a displacing change and needs the treatment §4.9 gave the
+  prediction strip — new profiles only, written down explicitly for existing
+  ones. If it can be drawn in the existing inset, it is free and can simply be
+  a toggle.
+- **What a reserved line is called.** The band names are internal
+  (`pronouns`, `endings`, `articles`); some are right for a caregiver and some
+  are not. Each band needs a display name written for a human, and an empty
+  reserved column needs one too — it is the most useful label on the board and
+  the one with no band word for it.
+
 ### 4.18 The trail is a path, not a tap log — delivered
 
 Pressing a category three times drew `home → body → body → body`. The trail

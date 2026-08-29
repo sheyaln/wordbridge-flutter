@@ -7,6 +7,8 @@ import '../../db/tables.dart';
 import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
+import '../editor/board_delete.dart';
+import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
 import '../prediction/word_prediction.dart';
@@ -132,9 +134,11 @@ class _Boards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Board>>(
-      stream: (db.select(
-        db.boards,
-      )..where((b) => b.vocabularyId.equals(vocabularyId))).watch(),
+      stream:
+          (db.select(db.boards)
+                ..where((b) => b.vocabularyId.equals(vocabularyId))
+                ..where((b) => b.deletedAt.isNull()))
+              .watch(),
       builder: (context, snapshot) {
         final boards = snapshot.data;
         if (boards == null) {
@@ -158,7 +162,20 @@ class _Boards extends StatelessWidget {
                   board.kind == BoardKind.root ? Icons.home : Icons.folder,
                 ),
                 title: Text(board.name),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Offered on every board, including the ones that cannot
+                    // go. The refusal names the reason; a control that is
+                    // simply missing reads as a bug and explains nothing.
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Remove "${board.name}"',
+                      onPressed: () => _deleteBoard(context, board),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => BoardEditor(
@@ -231,6 +248,43 @@ extension on _Boards {
         ),
       );
     }
+  }
+
+  /// Removes a board, or says why it cannot go.
+  ///
+  /// An empty board is one tap and a note afterwards: that is the case this
+  /// exists for, and a confirmation for a board with nothing on it is a
+  /// question with only one sensible answer. Everything else — words on it, a
+  /// key that opens it, a board the frame depends on — goes through the sheet.
+  Future<void> _deleteBoard(BuildContext context, Board board) async {
+    final impact = await BoardDeletion.preview(db, boardId: board.id);
+    if (!context.mounted) return;
+
+    if (impact.canDelete && impact.isEmpty) {
+      await BoardDeletion.apply(db, boardId: board.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Removed "${board.name}".')));
+      return;
+    }
+
+    final proceed = await BoardDeleteSheet.show(
+      context,
+      impact: impact,
+      userName: userName,
+    );
+    if (!proceed || !context.mounted) return;
+
+    await BoardDeletion.apply(db, boardId: board.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Removed "${board.name}". Every recorded tap against its locations '
+          'is still there.',
+        ),
+      ),
+    );
   }
 }
 

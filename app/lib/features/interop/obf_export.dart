@@ -13,9 +13,13 @@ import 'obf_model.dart';
 /// has no package for a `path` to address, so an importer can carry the intent
 /// forward but cannot resolve it — use [exportObz] when the links matter.
 Future<String> exportObf(WordbridgeDatabase db, String boardId) async {
-  final board = await (db.select(
-    db.boards,
-  )..where((b) => b.id.equals(boardId))).getSingle();
+  // Throws for a removed board rather than shipping one somebody deleted into
+  // a file they will hand to a school.
+  final board =
+      await (db.select(db.boards)
+            ..where((b) => b.id.equals(boardId))
+            ..where((b) => b.deletedAt.isNull()))
+          .getSingle();
   final vocabulary = await (db.select(
     db.vocabularies,
   )..where((v) => v.id.equals(board.vocabularyId))).getSingle();

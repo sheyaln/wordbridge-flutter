@@ -73,9 +73,13 @@ class _BoardEditorState extends State<BoardEditor> {
     final vocab = await (widget.db.select(
       widget.db.vocabularies,
     )..where((v) => v.id.equals(widget.vocabularyId))).getSingle();
-    final board = await (widget.db.select(
-      widget.db.boards,
-    )..where((b) => b.id.equals(widget.boardId))).getSingle();
+    // Throws for a board that has been removed rather than opening an editor
+    // over cells nothing can reach any more.
+    final board =
+        await (widget.db.select(widget.db.boards)
+              ..where((b) => b.id.equals(widget.boardId))
+              ..where((b) => b.deletedAt.isNull()))
+            .getSingle();
     if (mounted) {
       setState(() {
         _vocab = vocab;
@@ -373,9 +377,11 @@ class _BoardEditorState extends State<BoardEditor> {
   /// to land somewhere specific, and landing "wherever there is room" is how
   /// layouts drift.
   Future<void> _moveToBoard(Button button) async {
-    final boards = await (widget.db.select(
-      widget.db.boards,
-    )..where((b) => b.vocabularyId.equals(widget.vocabularyId))).get();
+    final boards =
+        await (widget.db.select(widget.db.boards)
+              ..where((b) => b.vocabularyId.equals(widget.vocabularyId))
+              ..where((b) => b.deletedAt.isNull()))
+            .get();
 
     if (!mounted) return;
     final destination = await showDialog<Board>(

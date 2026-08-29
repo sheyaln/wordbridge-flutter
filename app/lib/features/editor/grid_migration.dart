@@ -425,7 +425,13 @@ class GridMigration {
           innerJoin(db.boards, db.boards.id.equalsExp(db.cells.boardId)),
         ])..where(
           db.buttons.vocabularyId.equals(vocabularyId) &
-              db.buttons.isSystem.equals(false),
+              db.buttons.isSystem.equals(false) &
+              // A removed board is not part of this board set any more. Its
+              // words must neither be counted in what a rebuild would move nor
+              // carried onto the rebuilt boards, which would put a board a
+              // caregiver deleted back in front of the user.
+              db.boards.deletedAt.isNull() &
+              db.buttons.deletedAt.isNull(),
         );
 
     final result = <String, Map<String, _Word>>{};
@@ -455,9 +461,11 @@ class GridMigration {
     WordbridgeDatabase db,
     String vocabularyId,
   ) async {
-    final boards = await (db.select(
-      db.boards,
-    )..where((b) => b.vocabularyId.equals(vocabularyId))).get();
+    final boards =
+        await (db.select(db.boards)
+              ..where((b) => b.vocabularyId.equals(vocabularyId))
+              ..where((b) => b.deletedAt.isNull()))
+            .get();
     return {for (final b in boards) b.name: b.id};
   }
 

@@ -70,9 +70,14 @@ Future<VocabularyTopUp> topUpVocabulary(
     db.vocabularies,
   )..where((v) => v.id.equals(vocabularyId))).getSingle();
 
-  var boards = await (db.select(
-    db.boards,
-  )..where((b) => b.vocabularyId.equals(vocabularyId))).get();
+  // A removed board takes no new words and holds no name against a category
+  // that wants it. Writing to one would put shipped vocabulary somewhere
+  // nothing can reach.
+  var boards =
+      await (db.select(db.boards)
+            ..where((b) => b.vocabularyId.equals(vocabularyId))
+            ..where((b) => b.deletedAt.isNull()))
+          .get();
 
   final added = <({String label, String board, int row, int col})>[];
   final blocked = <({String label, String board, String occupant})>[];
@@ -137,9 +142,11 @@ Future<VocabularyTopUp> topUpVocabulary(
 
   added.addAll(newBoards.added);
   if (!dryRun && newBoards.addedBoards.isNotEmpty) {
-    boards = await (db.select(
-      db.boards,
-    )..where((b) => b.vocabularyId.equals(vocabularyId))).get();
+    boards =
+        await (db.select(db.boards)
+              ..where((b) => b.vocabularyId.equals(vocabularyId))
+              ..where((b) => b.deletedAt.isNull()))
+            .get();
   }
 
   // The root board, laid out by the same rule that built it. A word's location
@@ -370,9 +377,11 @@ Future<_NewCategories> _addMissingCategories(
       }
     }
 
-    carrying = await (db.select(
-      db.boards,
-    )..where((b) => b.vocabularyId.equals(vocab.id))).get();
+    carrying =
+        await (db.select(db.boards)
+              ..where((b) => b.vocabularyId.equals(vocab.id))
+              ..where((b) => b.deletedAt.isNull()))
+            .get();
   }
 
   if (!dryRun && frame != null && addedBoards.isNotEmpty) {
