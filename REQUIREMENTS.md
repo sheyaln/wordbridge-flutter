@@ -1392,6 +1392,102 @@ for real (bundle size), or stop declaring the ones that are not bundled and let
 since the licences require the credit to be reachable from inside the app and
 that must stay true either way.
 
+### 4.37 Joining words take the root board's spare column — agreed, not built
+
+The root board holds one empty column, labelled `THINGS`, reserved so a
+particular person's most-used nouns can be promoted to the root board and cost
+one movement instead of three. Beside it, `JOINING WORDS` — `a`, `the`, `and`,
+`but`, `because`, `so` — is exactly full.
+
+Decided: **joining words win the spare column.** They are the words that turn a
+run of content words into a sentence, they apply to *any* sentence rather than
+to one person's vocabulary, and on a starter board that generality is worth
+more than a reserve nobody has filled yet. A caregiver who wants their own
+nouns on the root board can still put them anywhere empty; what they lose is a
+column held open for that purpose in advance.
+
+**Nothing moves.** `articles` keeps the column it has and gains the one beside
+it as its reserve; the `nouns` band goes away. Every word on the board stays
+exactly where it is — this is a change to what a region *means* and to what its
+label says, not to any location.
+
+### 4.38 A band keeps its lines across every page of a group — agreed, not built
+
+Reported: on an iPad mini at medium icons, the `DOING` columns are 4, 5 and 6
+on `home` and columns 1 and 2 on `home 2`. Asked: what is the value of holding
+a region in the same place across pages?
+
+It is the same argument the whole board rests on, one level down. A region that
+means "doing" teaches somebody where to look, and a region that moves when you
+page is learned twice. It matters more for scanning: a row-column scan's first
+press narrows to a region, and a region that relocates per page makes that
+narrowing worth nothing. The visible symptom today is that the region labels
+differ between page one and page two of the same board.
+
+**Measured before deciding, and the result was the opposite of the expected
+trade.** Holding lines steady needs *fewer* pages, never more, at every grid
+size tried — 7×12: 12 pages today against 9; 7×11: 13 against 11; 5×8: 23
+against 17; and equal at 10×8, 11×7 and 9×14. The reason is that today each
+overflowing band claims a fresh whole line on page two, so five bands spilling
+one word each cost five lines; refilling the lines a band already owns, which
+are usually wider, packs better. So there is no consistency-versus-density
+trade here to weigh. It is simply better.
+
+#### The part that is not obvious
+
+A band shed *entirely* off page one owns no lines there, so "keep the same
+lines" is undefined for it. This is not an edge case: across every buildable
+grid and all four age presets there are **1,414** band-and-grid combinations
+where an overflowing band has no page-one line assignment, because `_shedALine`
+takes whole lines and a band that gives up all of them gets no entry at all.
+
+So the rule has two halves:
+
+- **A band that owns lines on page one keeps them on every page.**
+- **A band that owns none is given lines on the first page it appears on, from
+  the lines whose page-one owner has nothing to spill there — and then keeps
+  those on every later page.**
+
+Consistency from the page a band first appears on, which is the strongest
+promise available, rather than a rule that silently does nothing for half the
+bands.
+
+#### Free space beats a new page
+
+Refined after the first draft: **a band only has to page when a neighbour is
+competing for the space.** Where the lines beside it are not claimed by another
+band on that page, it is welcome to grow into them instead.
+
+So the anchor is the band's own lines, and the rule when it runs out of them
+is, in order:
+
+1. **Grow into adjacent lines nothing else needs on this page.** A line whose
+   page-one owner has nothing to spill here is free, and using it costs nobody
+   a position.
+2. **Only then page**, and on the next page the band starts from its own lines
+   again.
+
+This keeps consistency where consistency is free and refuses to buy it with a
+key press. A page is a movement every time the word is said; an empty column
+beside a band is not. It also lowers the page counts above further, since the
+measured figures assumed a band was confined to its own lines.
+
+What it costs is that a band's *extent* can differ page to page — `doing` might
+run 4–6 on page one and 1–6 on page two. Its **start** does not move, which is
+what a person reaches for, and the alternative is an extra page to protect an
+edge nobody navigates by.
+
+Two consequences worth stating:
+
+- **Pages get sparser and that is correct.** A band with nothing to spill
+  leaves its lines empty on page two rather than letting another band borrow
+  them. Half of every board already ships deliberately empty (§2); these are
+  reserved locations, not missing ones, and they are where that band's own
+  extra words go.
+- **The band map becomes a property of the group, not of the board.** Region
+  labels then read the same on every page, which is the same fix seen from the
+  caregiver's side.
+
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
 The proposal was a setting: instead of every cluster starting its own row
