@@ -213,7 +213,12 @@ class RemapService {
   }
 
   /// Hides a word. The location stays occupied, so nothing takes its place.
-
+  ///
+  /// Refused for the keys every board carries. Hiding an ordinary word takes it
+  /// off the board and holds its location; hiding `home` takes away the way off
+  /// the board, from somebody who cannot report that it happened. Their
+  /// pictures stay editable — what a key looks like costs nothing, and helping
+  /// somebody find it is the whole point.
   Future<void> setHidden({
     required String buttonId,
     required bool hidden,
@@ -222,6 +227,13 @@ class RemapService {
     final button = await (_db.select(
       _db.buttons,
     )..where((b) => b.id.equals(buttonId))).getSingle();
+
+    if (button.isSystem && hidden) {
+      throw StateError(
+        '"${button.label}" is one of the keys every board carries. Hidden, it '
+        'would leave a board nobody can get off.',
+      );
+    }
 
     final ts = nowMs();
 

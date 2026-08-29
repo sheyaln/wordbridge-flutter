@@ -324,9 +324,24 @@ class _BoardEditorState extends State<BoardEditor> {
                 title: Text(
                   button.hidden ? 'Show this word' : 'Hide this word',
                 ),
-                subtitle: const Text('Keeps its location either way'),
+                subtitle: Text(
+                  button.isSystem
+                      ? 'Not for a key every board carries'
+                      : 'Keeps its location either way',
+                ),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
+                  // Hiding an ordinary word takes it off the board and keeps
+                  // its location. Hiding home takes away the way off the
+                  // board, from somebody with no way to report it.
+                  if (button.isSystem) {
+                    _snack(
+                      '"${button.label}" is one of the keys every board '
+                      'carries. Hidden, it would leave a board nobody can get '
+                      'off. Its picture can still be changed.',
+                    );
+                    return;
+                  }
                   await _remap.setHidden(
                     buttonId: button.id,
                     hidden: !button.hidden,

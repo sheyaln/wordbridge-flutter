@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
@@ -258,6 +259,53 @@ void main() {
         ),
         throwsStateError,
       );
+    });
+  });
+
+  group('hiding a key every board carries', () {
+    Future<String> placeSystemHome() async {
+      final cell = await cellAt(db, boardId: boardId, row: 6, col: 0);
+      return placeButton(
+        db,
+        vocabularyId: vocabId,
+        cellId: cell.id,
+        label: 'home',
+        message: '',
+        action: ButtonAction.home,
+        isSystem: true,
+      );
+    }
+
+    test('is refused', () async {
+      final id = await placeSystemHome();
+
+      expect(
+        () => remap.setHidden(buttonId: id, hidden: true),
+        throwsStateError,
+        reason: 'a hidden home key is a board an AAC user cannot leave',
+      );
+
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(id))).getSingle();
+      expect(button.hidden, isFalse);
+    });
+
+    test('unhiding one is not refused', () async {
+      // Only the direction that takes a key away is blocked. Refusing to
+      // restore one would leave a board built before this rule with no way
+      // back.
+      final id = await placeSystemHome();
+      await (db.update(db.buttons)..where((b) => b.id.equals(id))).write(
+        const ButtonsCompanion(hidden: Value(true)),
+      );
+
+      await remap.setHidden(buttonId: id, hidden: false);
+
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(id))).getSingle();
+      expect(button.hidden, isFalse);
     });
   });
 

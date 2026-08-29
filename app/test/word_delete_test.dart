@@ -196,6 +196,43 @@ void main() {
     });
   });
 
+  group('a key every board carries', () {
+    testWidgets('cannot be hidden, but its picture is still its own', (
+      tester,
+    ) async {
+      await placeAt(
+        homeId,
+        3,
+        0,
+        'home',
+        isSystem: true,
+        action: ButtonAction.home,
+      );
+      await pumpEditor(tester, homeId);
+
+      await tester.tap(find.byKey(const ValueKey('3:0')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Not for a key every board carries'),
+        findsOneWidget,
+        reason: 'nothing on the sheet says hiding this one is not on offer',
+      );
+
+      await tester.tap(find.text('Hide this word'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('nobody can get off'), findsOneWidget);
+
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.label.equals('home'))).getSingle();
+      expect(button.hidden, isFalse);
+
+      await teardownScreen(tester);
+    });
+  });
+
   group('moving a word to another board', () {
     testWidgets('opens that board and places it where it is tapped', (
       tester,

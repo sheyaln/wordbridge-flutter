@@ -1136,74 +1136,6 @@ Two costs to state plainly when it is built:
   alternative is refusing a name because the software disagrees, on a board
   whose entire premise is that the people who know the user decide.
 
-### 4.30 Deleting a word — agreed, not built
-
-Requested: a word can be deleted, confirmed by typing `DELETE`, because
-mistakes happen and removing one has to be possible.
-
-Today the editor can hide a word, move it, relabel it and change its picture.
-It cannot remove one. A caregiver who adds `Nana` twice, or types a word wrong,
-or adds one for a child who has since moved on, has no way to take it back —
-only to hide it, which leaves the location occupied forever.
-
-**Delete is not hide, and the difference is the location.** Hiding keeps the
-cell occupied, which is the rule that makes "grow over time" and "never
-relocate" both true (§2). Deleting has to release the cell, or it is hiding
-with a harsher word. So the confirmation must say the thing that is actually at
-stake: **the location becomes free, and the next word put there will be reached
-by the movement this word had.** That is the cost, and it is not the same
-sentence as "this word will be gone".
-
-Shape:
-
-- **Typed `DELETE`**, matching the `REBUILD` confirmations for a grid change
-  and a seed rebuild (§4.20). Those are the two other operations that cost
-  learned positions, and one vocabulary for all three is worth more than three
-  shades of severity.
-- **State the practice first, in the user's own numbers**, the way
-  `RemapConfirmSheet` already does: how many taps this location has taken and
-  over how long. `usage_events` is anchored to `cell_id` with a
-  `label_snapshot`, so that history survives the word it was recorded for.
-- **Soft, and undoable in one tap.** `buttons.deletedAt` exists and
-  `edit_events` already carries `EditKind.delete`. Undo restores the word to
-  its own cell — and must refuse rather than guess if something else has taken
-  that cell since.
-- **A system button is not deletable.** Home, back, the category keys and the
-  paging keys are the frame; removing one is a board that cannot be navigated,
-  not a word somebody no longer needs. §4.15's board deletion offers the
-  control on every board and refuses with a reason, which reads better than a
-  control that is simply absent — the same applies here.
-
-### 4.31 Moving a word to another board picks the spot on the board — agreed, not built
-
-Requested: moving a word to another board should take you to that board to
-choose the location visually, rather than picking it out of a menu.
-
-Today "Move to another board" asks for the destination, then shows a
-`SimpleDialog` of up to forty entries reading `Row 3, column 5`. Moving a word
-*within* a board is already visual — you tap the word, then tap where it should
-go — so the cross-board path is the odd one out, and it is the one where seeing
-the board matters more, because the caregiver does not have that board's layout
-in their head.
-
-Reading coordinates off a list also asks somebody to translate a number into a
-place on a grid whose whole argument is that position carries meaning. The list
-is capped at forty, so on a large board some free locations cannot be chosen at
-all.
-
-Shape:
-
-- **The destination board is still a list**, because boards are a list. Only
-  the location becomes visual.
-- **Then the destination board opens in the editor with the word in hand**, and
-  a tap on any free location places it — the same gesture as a move within a
-  board, so there is one thing to learn rather than two.
-- **The confirmation stays.** Crossing boards is still a move, and it still
-  costs whatever practice the old location had.
-- **Afterwards the editor stays on the destination board**, because that is
-  where the word now is and the caregiver's next question is how it looks
-  there.
-
 ### 4.30 Deleting a word — delivered
 
 Requested: a word can be deleted, confirmed by typing `DELETE`, because
@@ -1296,6 +1228,38 @@ Two reasons it matters, and the second is the load-bearing one:
 
 `SymbolRef` already carries `packId` and `SymbolRegistry.packFor` returns the
 pack, whose `name` is written for a reader. Nothing new has to be stored.
+
+### 4.33 A key every board carries cannot be hidden — delivered
+
+Requested: system icons must not be hideable. Changing their picture stays
+allowed.
+
+The editor's hide control is offered on every button including `home`, `back`,
+the category keys and the paging keys. Hiding one of those does not remove a
+word somebody might not need — it removes the way off a board. A board whose
+`home` key is hidden is a board an AAC user cannot leave, and they have no way
+to say so.
+
+The picture is a different matter and stays editable. What a key *looks* like
+is exactly the kind of personalisation that helps somebody find it, and it
+costs nothing: the location, the action and the movement are all unchanged.
+
+Consistent with §4.15 and §4.30: **the control stays visible and refuses with
+a reason.** A control that is simply absent reads as a bug and explains
+nothing, and the reason here is worth reading — it is the same sentence that
+explains why the key exists at all.
+
+Refused in `RemapService.setHidden` as well as in the sheet, because the sheet
+is not the only caller and a rule enforced only in the UI is a rule until
+somebody writes a second caller. **Only the direction that takes a key away**:
+unhiding is allowed, so a board built before this rule has a way back.
+
+#### Found while building this
+
+The delete tile pushed the actions sheet 16 pixels past the bottom of the
+screen, which hid whichever action ended up last. It is a scrolling sheet now —
+how many actions it holds depends on the button and on whether pictures are
+available at all, so its height was never fixed to begin with.
 
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
