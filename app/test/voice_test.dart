@@ -49,6 +49,25 @@ class _RecordingEngine implements SpeechEngine {
   Future<void> stop() async {}
 }
 
+/// A voice as the platform would report it.
+VoiceOption voice(
+  String name, {
+  String locale = 'en-GB',
+  String? identifier,
+  String? gender,
+  String? quality,
+  bool isNovelty = false,
+  bool requiresNetwork = false,
+}) => (
+  name: name,
+  locale: locale,
+  identifier: identifier,
+  gender: gender,
+  quality: quality,
+  isNovelty: isNovelty,
+  requiresNetwork: requiresNetwork,
+);
+
 void main() {
   group('the tones that exist', () {
     test('only what rate, pitch and volume can honestly produce', () {
@@ -134,10 +153,7 @@ void main() {
       // corridor. A voice that works at home and not in an ambulance is a
       // trap, not a choice.
       final engine = _RecordingEngine(
-        available: const [
-          (name: 'Local', locale: 'en-GB', requiresNetwork: false),
-          (name: 'Cloud', locale: 'en-GB', requiresNetwork: true),
-        ],
+        available: [voice('Local'), voice('Cloud', requiresNetwork: true)],
       );
 
       final voices = await VoiceSetup(engine).usableVoices(locale: 'en');
@@ -146,9 +162,9 @@ void main() {
 
     test('only voices for the board\'s language', () async {
       final engine = _RecordingEngine(
-        available: const [
-          (name: 'English', locale: 'en-GB', requiresNetwork: false),
-          (name: 'Deutsch', locale: 'de-DE', requiresNetwork: false),
+        available: [
+          voice('English'),
+          voice('Deutsch', locale: 'de-DE'),
         ],
       );
 
@@ -159,6 +175,77 @@ void main() {
     test('an engine that cannot list voices is not an error', () async {
       final engine = _RecordingEngine(rejects: true);
       expect(await VoiceSetup(engine).usableVoices(), isEmpty);
+    });
+
+    test('the joke voices are kept out unless asked for', () async {
+      // A platform can list a couple of dozen of these. On a screen where
+      // somebody is choosing how another person will sound for years, they
+      // are mostly a way to make the real options hard to find.
+      final engine = _RecordingEngine(
+        available: [
+          voice('Daniel'),
+          voice('Bells', isNovelty: true),
+          voice('Zarvox', isNovelty: true),
+        ],
+      );
+      final setup = VoiceSetup(engine);
+
+      expect((await setup.usableVoices()).map((v) => v.name), ['Daniel']);
+      expect(await setup.noveltyCount(), 2);
+
+      final all = await setup.usableVoices(includeNovelty: true);
+      expect(all.map((v) => v.name), containsAll(['Bells', 'Zarvox']));
+    });
+
+    test('Apple files its joke voices under their own prefix', () {
+      // A steadier test than a list of names that changes each OS release.
+      expect(
+        FlutterTtsEngine.isNoveltyIdentifier(
+          'com.apple.speech.synthesis.voice.Bells',
+        ),
+        isTrue,
+      );
+      expect(
+        FlutterTtsEngine.isNoveltyIdentifier(
+          'com.apple.voice.compact.en-GB.Daniel',
+        ),
+        isFalse,
+      );
+      // Android reports no identifier and has no such voices.
+      expect(FlutterTtsEngine.isNoveltyIdentifier(null), isFalse);
+    });
+
+    test('better-sounding voices come first', () async {
+      final engine = _RecordingEngine(
+        available: [
+          voice('Alice', quality: 'default'),
+          voice('Zoe', quality: 'enhanced'),
+        ],
+      );
+
+      final voices = await VoiceSetup(engine).usableVoices();
+      expect(voices.first.name, 'Zoe');
+    });
+  });
+
+  group('how fast it speaks', () {
+    test('1.0 asks the engine for its ordinary speaking rate', () {
+      // The plugin's own scale puts normal speech at 0.5 on both platforms —
+      // iOS passes the number to AVSpeechUtterance.rate, whose default is 0.5,
+      // and Android doubles it before a synthesiser whose normal is 1.0.
+      // Sending 1.0 for "normal" therefore asks both for double speed, which
+      // is far too fast to make out.
+      expect(FlutterTtsEngine.engineRate(1.0), 0.5);
+    });
+
+    test('slower and faster land either side of it', () {
+      expect(FlutterTtsEngine.engineRate(0.5), lessThan(0.5));
+      expect(FlutterTtsEngine.engineRate(1.5), greaterThan(0.5));
+    });
+
+    test('nothing can be asked for past the top of the scale', () {
+      expect(FlutterTtsEngine.engineRate(9.0), 1.0);
+      expect(FlutterTtsEngine.engineRate(-1.0), 0.0);
     });
   });
 

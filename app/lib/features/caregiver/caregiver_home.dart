@@ -233,6 +233,32 @@ extension on _Boards {
   }
 }
 
+/// A heading in the settings list.
+///
+/// The list had grown to twenty-odd controls in one column, which is a wall
+/// rather than a page: a caregiver looking for the voice had to read every
+/// switch about grammar to be sure it was not there. Grouping does not remove
+/// anything, it just means a person can skip four-fifths of it.
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
+    child: Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+  );
+}
+
 class _Settings extends StatelessWidget {
   const _Settings({
     required this.db,
@@ -260,6 +286,8 @@ class _Settings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        if (onSwitchProfile != null)
+          const _SettingsSection('Who is using this'),
         if (onSwitchProfile != null)
           ListTile(
             leading: const Icon(Icons.people_outline),
@@ -295,6 +323,7 @@ class _Settings extends StatelessWidget {
             settings: settings!,
             onChanged: onChanged,
           ),
+        const _SettingsSection('The board'),
         if (settings != null)
           ListTile(
             leading: const Icon(Icons.grid_on_outlined),
@@ -323,6 +352,7 @@ class _Settings extends StatelessWidget {
               Navigator.of(context).pop();
             },
           ),
+        const _SettingsSection('How it sounds'),
         if (settings != null && speech != null)
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
@@ -338,7 +368,7 @@ class _Settings extends StatelessWidget {
               settings: settings!,
             ).then((_) => onChanged()),
           ),
-        const Divider(),
+        const _SettingsSection('How it behaves'),
         if (settings != null)
           SwitchListTile(
             value: settings!.autoReturn,
@@ -357,6 +387,7 @@ class _Settings extends StatelessWidget {
           ),
         if (settings != null)
           _SettleDelay(settings: settings!, onChanged: onChanged),
+        const _SettingsSection('Words and grammar'),
         if (settings != null)
           SwitchListTile(
             value: settings!.contextualGrammar,
@@ -422,7 +453,7 @@ class _Settings extends StatelessWidget {
               onChanged();
             },
           ),
-        const Divider(),
+        const _SettingsSection('Recording'),
         SwitchListTile(
           value: logger.enabled,
           title: const Text('Track word usage'),
@@ -432,7 +463,6 @@ class _Settings extends StatelessWidget {
             onChanged();
           },
         ),
-        const Divider(),
         const Padding(
           padding: EdgeInsets.all(16),
           child: Text(
@@ -442,7 +472,7 @@ class _Settings extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
           ),
         ),
-        const Divider(),
+        const _SettingsSection('About'),
         ListTile(
           leading: const Icon(Icons.image_outlined),
           title: const Text('Symbol credits'),

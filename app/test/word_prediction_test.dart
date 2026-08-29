@@ -32,15 +32,22 @@ void main() {
   Future<List<String>> suggest(
     WordPrediction p, {
     String? previous,
+    PartOfSpeech? previousPos,
     int limit = 5,
   }) async => [
-    for (final b in await p.suggest(previous: previous, limit: limit))
+    for (final b in await p.suggest(
+      previous: previous,
+      previousPos: previousPos,
+      limit: limit,
+    ))
       b.message,
   ];
 
-  Future<Button> buttonFor(String message) => (db.select(
+  /// The first button carrying this word. A word is allowed two locations on
+  /// two boards, so this cannot ask for exactly one.
+  Future<Button> buttonFor(String message) async => (await (db.select(
     db.buttons,
-  )..where((b) => b.message.equals(message))).getSingle();
+  )..where((b) => b.message.equals(message))).get()).first;
 
   group('what it offers', () {
     test('the word this user actually follows another with', () async {
@@ -75,21 +82,62 @@ void main() {
       }
     });
 
-    test('the home board\'s own opening words, on day one', () async {
-      // Day one is not an empty strip. Nothing is known about this user yet,
-      // so it reads the home board in the order the board itself is arranged:
-      // pronouns first, because that is what sentences open with. Ranking by
-      // level and then alphabetically would offer whatever starts with "a".
+    test('sentence openers on day one, from the shipped set', () async {
+      // Day one is not an empty strip and not a static one. Nothing is known
+      // about this user yet, so the shipped set answers: the words English
+      // sentences actually begin with.
       final suggestions = await suggest(predictor(), previous: null, limit: 5);
 
       expect(suggestions, hasLength(5));
       expect(suggestions.first, 'I');
+      expect(suggestions, containsAll(['I', 'you', 'it']));
 
       for (final word in suggestions) {
         final button = await buttonFor(word);
-        expect(button.vocabLevel, 1);
         expect(button.isSystem, isFalse);
       }
+    });
+
+    test('it moves when the sentence does, before learning anything', () async {
+      // The failure this replaced: the same five words after every word,
+      // which is a decoration that costs grid height, not a prediction.
+      final p = predictor();
+
+      final start = await suggest(p, previous: null, limit: 5);
+      final afterPronoun = await suggest(
+        p,
+        previous: 'I',
+        previousPos: PartOfSpeech.pronoun,
+        limit: 5,
+      );
+      final afterVerb = await suggest(
+        p,
+        previous: 'want',
+        previousPos: PartOfSpeech.verb,
+        limit: 5,
+      );
+
+      expect(afterPronoun, isNot(start));
+      expect(afterVerb, isNot(afterPronoun));
+      expect(afterPronoun.first, 'want', reason: 'a pronoun wants a verb');
+      expect(afterVerb, contains('more'));
+    });
+
+    test('the shipped set never outranks what the user has said', () async {
+      // "want" is what the shipped set puts after "I". If this person always
+      // says "go", that has to win — a guess must never displace a fact.
+      final p = predictor();
+      for (var i = 0; i < 3; i++) {
+        await p.learn(['I', 'go']);
+      }
+
+      final suggestions = await suggest(
+        p,
+        previous: 'I',
+        previousPos: PartOfSpeech.pronoun,
+        limit: 5,
+      );
+      expect(suggestions.first, 'go');
     });
 
     test('it tops up a thin history rather than showing one word', () async {
@@ -168,7 +216,13 @@ void main() {
     });
 
     test('another profile\'s history', () async {
-      await predictor().learn(['I', 'want']);
+      // "juice" is not something the shipped set ever offers after "I", so if
+      // p2 is shown it, it can only have come from p1.
+      final p1 = predictor();
+      for (var i = 0; i < 5; i++) {
+        await p1.learn(['I', 'juice']);
+      }
+      expect(await suggest(p1, previous: 'I', limit: 5), contains('juice'));
 
       final other = WordPrediction(
         db,
@@ -176,10 +230,10 @@ void main() {
         vocabularyId: vocabId,
         vocabLevel: 3,
       );
-      final suggestions = await suggest(other, previous: 'I', limit: 5);
-
-      // p2 falls back to core words, which do not put "want" first.
-      expect(suggestions.first, isNot('want'));
+      expect(
+        await suggest(other, previous: 'I', limit: 5),
+        isNot(contains('juice')),
+      );
     });
   });
 

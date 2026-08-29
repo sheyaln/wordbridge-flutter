@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../utterance/utterance.dart';
+import 'starter_predictions.dart';
 
 /// Discards everything prediction has learned about a profile.
 ///
@@ -33,6 +34,10 @@ Future<void> forgetPredictions(WordbridgeDatabase db, String profileId) =>
 ///
 /// **Counts, never a transcript.** [learn] stores pairs of words and how often
 /// one followed the other. It cannot reconstruct a sentence.
+///
+/// **Learning happens when a sentence is spoken**, not as each word arrives.
+/// Until it has learned anything — and to fill the gaps afterwards — the strip
+/// runs on [starterPredictions], which ships with the app.
 class WordPrediction {
   WordPrediction(
     this._db, {
@@ -70,11 +75,23 @@ class WordPrediction {
   /// text are already in hand, and speech can start on the same turn as the
   /// tap. Nothing may stand between a user and a word, a lookup included.
   ///
-  /// Falls back in three steps, so the strip is useful on day one and gets
-  /// sharper rather than appearing from nothing: what has followed this word,
-  /// then what this user says most at all, then the simplest words on their
-  /// board. Each step only tops up what the one before it left short.
-  Future<List<Button>> suggest({String? previous, int limit = 5}) async {
+  /// Four sources, each only topping up what the one above it left short:
+  ///
+  /// 1. what has followed this word **for this person**
+  /// 2. what usually follows it in English ([starterPredictions])
+  /// 3. what this person opens sentences with
+  /// 4. anything whose part of speech can follow the last word's
+  ///
+  /// The user's own history outranks the shipped guesses, always. The shipped
+  /// guesses are what make the strip work on the first tap of the first day,
+  /// and 4 is what stops it ever repeating itself: a list that shows the same
+  /// five words after every word is not a prediction, it is a decoration that
+  /// costs grid height.
+  Future<List<Button>> suggest({
+    String? previous,
+    PartOfSpeech? previousPos,
+    int limit = 5,
+  }) async {
     if (limit <= 0) return const [];
 
     final offerable = await _offerableWords();
@@ -96,22 +113,27 @@ class WordPrediction {
         ? sentenceStart
         : _key(previous);
 
+    // What this person has said, first and always.
     take(await _rankedAfter(last));
+
+    // Then what people say. Shipped, so the strip works on the first tap of
+    // the first day rather than after enough sentences to teach it.
+    if (chosen.length < limit) take(starterPredictions[last] ?? const []);
+
     if (chosen.length < limit && last != sentenceStart) {
       take(await _rankedAfter(sentenceStart));
     }
+
+    // Then anything that can grammatically follow, so the strip is never
+    // short and never the same list twice in a row.
     if (chosen.length < limit) {
-      take(await _simplestWords());
+      take(await _wordsThatCanFollow(previousPos));
     }
 
     return chosen;
   }
 
-  /// Records the sentence that was just spoken.
-  ///
-  /// Called when a sentence is spoken rather than as each word is added, so
-  /// what is learned is what the user meant to say, not every combination they
-  /// passed through while building it.
+  /// Records a whole sentence at once.
   Future<void> learn(List<String> words) async {
     final pairs = <({String previous, String word})>[];
     var previous = sentenceStart;
@@ -123,6 +145,10 @@ class WordPrediction {
       previous = key;
     }
 
+    return _record(pairs);
+  }
+
+  Future<void> _record(List<({String previous, String word})> pairs) async {
     if (pairs.isEmpty) return;
 
     await _db.batch((batch) {
@@ -179,13 +205,71 @@ class WordPrediction {
     return [for (final row in await query.get()) row.word];
   }
 
-  /// The board's own starting point, for a profile that has said nothing yet.
+  /// What kind of word usually comes after each kind of word.
   ///
-  /// Reading order on the home board, which is not an arbitrary order: columns
-  /// there run in sentence order and the leftmost are the pronouns, so the
-  /// first few cells are the words most sentences open with. Ranking by level
-  /// and then alphabetically would offer whatever happened to start with "a".
-  Future<List<String>> _simplestWords() async {
+  /// Ordinary English word order, and nothing cleverer. It is not a grammar —
+  /// it cannot tell you that "want" takes an object — but it is enough to stop
+  /// the strip offering five pronouns after a pronoun, and it works from the
+  /// very first tap on a profile that has taught it nothing.
+  ///
+  /// Earlier in a list means offered first.
+  static const _follows = <PartOfSpeech?, List<PartOfSpeech>>{
+    // Opening a sentence.
+    null: [
+      PartOfSpeech.pronoun,
+      PartOfSpeech.question,
+      PartOfSpeech.social,
+      PartOfSpeech.verb,
+    ],
+    PartOfSpeech.pronoun: [
+      PartOfSpeech.verb,
+      PartOfSpeech.negation,
+      PartOfSpeech.adverb,
+    ],
+    PartOfSpeech.verb: [
+      PartOfSpeech.determiner,
+      PartOfSpeech.noun,
+      PartOfSpeech.pronoun,
+      PartOfSpeech.preposition,
+      PartOfSpeech.adjective,
+    ],
+    PartOfSpeech.determiner: [PartOfSpeech.noun, PartOfSpeech.adjective],
+    PartOfSpeech.adjective: [PartOfSpeech.noun],
+    PartOfSpeech.noun: [
+      PartOfSpeech.verb,
+      PartOfSpeech.conjunction,
+      PartOfSpeech.preposition,
+      PartOfSpeech.adjective,
+    ],
+    PartOfSpeech.preposition: [
+      PartOfSpeech.determiner,
+      PartOfSpeech.noun,
+      PartOfSpeech.pronoun,
+    ],
+    PartOfSpeech.adverb: [PartOfSpeech.verb, PartOfSpeech.adjective],
+    PartOfSpeech.negation: [PartOfSpeech.verb, PartOfSpeech.pronoun],
+    PartOfSpeech.question: [
+      PartOfSpeech.pronoun,
+      PartOfSpeech.verb,
+      PartOfSpeech.noun,
+    ],
+    PartOfSpeech.conjunction: [
+      PartOfSpeech.pronoun,
+      PartOfSpeech.verb,
+      PartOfSpeech.noun,
+    ],
+    PartOfSpeech.social: [PartOfSpeech.pronoun, PartOfSpeech.noun],
+  };
+
+  /// The home board's words, with the ones that can follow [previousPos]
+  /// first.
+  ///
+  /// Home board only. A learned pair may surface any word on any board — that
+  /// is the shortcut worth having — but guessing from grammar alone across
+  /// several hundred words means picking arbitrarily between two hundred
+  /// nouns. The home board is the core vocabulary, and its own reading order
+  /// is meaningful: columns run in sentence order, leftmost are the pronouns.
+  Future<List<String>> _wordsThatCanFollow(PartOfSpeech? previousPos) async {
     final rootBoardId = await _rootBoardId();
     if (rootBoardId == null) return const [];
 
@@ -199,12 +283,29 @@ class WordPrediction {
           ..orderBy([
             OrderingTerm.asc(_db.cells.row),
             OrderingTerm.asc(_db.cells.col),
-          ])
-          ..limit(_candidatePool);
+          ]);
 
-    return [
-      for (final row in await query.get()) row.readTable(_db.buttons).message,
-    ];
+    final wanted = _follows[previousPos] ?? const <PartOfSpeech>[];
+
+    // A stable sort over board order, so words of an equally likely class stay
+    // in the order the board puts them and the strip does not reshuffle.
+    final ranked = <({int rank, String message})>[];
+    for (final row in await query.get()) {
+      final button = row.readTable(_db.buttons);
+      final index = wanted.indexOf(button.partOfSpeech ?? PartOfSpeech.other);
+      ranked.add((
+        rank: index == -1 ? wanted.length : index,
+        message: button.message,
+      ));
+    }
+
+    final order = List.generate(ranked.length, (i) => i)
+      ..sort((a, b) {
+        final byRank = ranked[a].rank.compareTo(ranked[b].rank);
+        return byRank != 0 ? byRank : a.compareTo(b);
+      });
+
+    return [for (final i in order.take(_candidatePool)) ranked[i].message];
   }
 
   Future<String?> _rootBoardId() async {

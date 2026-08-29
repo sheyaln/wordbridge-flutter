@@ -48,6 +48,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
   late final _setup = VoiceSetup(widget.speech);
 
   List<VoiceOption>? _voices;
+  int _hiddenNovelty = 0;
 
   @override
   void initState() {
@@ -56,8 +57,17 @@ class _VoiceScreenState extends State<VoiceScreen> {
   }
 
   Future<void> _loadVoices() async {
-    final voices = await _setup.usableVoices(locale: widget.locale);
-    if (mounted) setState(() => _voices = voices);
+    final voices = await _setup.usableVoices(
+      locale: widget.locale,
+      includeNovelty: _settings.noveltyVoices,
+    );
+    final hidden = await _setup.noveltyCount(locale: widget.locale);
+    if (mounted) {
+      setState(() {
+        _voices = voices;
+        _hiddenNovelty = hidden;
+      });
+    }
   }
 
   ProfileSettings get _settings => widget.settings;
@@ -72,6 +82,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
   Future<void> _applyAll() => _setup.apply(
     voiceName: _settings.voiceName,
     voiceLocale: _settings.voiceLocale,
+    voiceIdentifier: _settings.voiceIdentifier,
     rate: _settings.speechRate,
     pitch: _settings.speechPitch,
     volume: _settings.speechVolume,
@@ -105,7 +116,24 @@ class _VoiceScreenState extends State<VoiceScreen> {
             onSelected: (voice) async {
               await _set('voiceName', voice?.name);
               await _set('voiceLocale', voice?.locale);
+              await _set('voiceIdentifier', voice?.identifier);
               await _preview();
+            },
+          ),
+          SwitchListTile(
+            value: _settings.noveltyVoices,
+            title: const Text('Include the joke voices'),
+            subtitle: Text(
+              _hiddenNovelty == 0
+                  ? 'This device offers none.'
+                  : 'Robots, singing and cartoon characters — '
+                        '$_hiddenNovelty of them on this device. Left out by '
+                        'default so the speaking voices are easier to compare.',
+            ),
+            isThreeLine: _hiddenNovelty > 0,
+            onChanged: (v) async {
+              await _set('noveltyVoices', v);
+              await _loadVoices();
             },
           ),
           const Padding(
@@ -158,8 +186,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
           _Dial(
             label: 'Speed',
             value: _settings.speechRate,
-            min: 0.3,
-            max: 1.6,
+            min: 0.4,
+            max: 1.8,
             onChanged: (v) => _set('speechRate', v),
             onSettled: _preview,
           ),

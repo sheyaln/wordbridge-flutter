@@ -264,6 +264,14 @@ Six rules hold it in place:
   nothing, exactly as a masked cell does not.
 - **Deterministic order.** Equal counts break alphabetically, so two identical
   states give the same strip in the same order every time.
+- **It ships knowing English.** `starter_predictions.dart` is a hand-written
+  table of what usually follows what, over the shipped vocabulary. It is
+  ranked *below* the user's own history and above nothing else — a shipped
+  guess never displaces something a person actually said. Without it the strip
+  showed the same five words after every word until enough whole sentences had
+  been spoken to move it, which is a decoration that costs grid height, not a
+  prediction. A fourth tier ranks by what part of speech can follow the last
+  word, so the strip never repeats itself even for a word the table misses.
 - **Suggestion taps are logged as `prediction`, not `touch`.** The remap
   warning counts how often a *location* was reached for, and a word taken from
   the strip was not reached for at all.
@@ -282,7 +290,8 @@ empties it.
 
 Learning happens when a sentence is *spoken*, not as each word is added — what
 is recorded is what the user meant to say, and nothing at all from a sentence
-they built and then cleared.
+they built and then cleared. The shipped table is what makes the strip useful
+in the meantime.
 
 ### 4.4 Voice and tone — built, and short of what was asked
 
@@ -307,6 +316,19 @@ who reads slowly gets a slower **urgent**, not everybody's urgent.
 | Calm | Slower, a little lower |
 | Urgent | Faster, higher, full volume |
 | Quiet | The same voice turned down |
+
+**Speed is a real dial, and 1.0 means normal.** `SpeechEngine` takes a
+multiplier of the engine's ordinary rate and the adapter translates. It has to:
+`flutter_tts` puts normal speech at **0.5** on both platforms — iOS passes the
+number to `AVSpeechUtterance.rate` (default 0.5) and Android doubles it before
+a synthesiser whose normal is 1.0 — so a caller that passes 1.0 meaning
+"normal" gets double speed and an unintelligible board.
+
+**The joke voices are hidden by default**, behind a switch that says how many
+there are. Apple files them under their own identifier prefix
+(`com.apple.speech.synthesis.voice.*`), which is a steadier test than a list of
+names that changes each OS release. They stay reachable: it is not this app's
+place to rule that somebody may not sound like a robot if they want to.
 
 > ⚠️ **Two things asked for are absent, deliberately.**
 >

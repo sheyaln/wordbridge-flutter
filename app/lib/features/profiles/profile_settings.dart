@@ -81,6 +81,17 @@ class ProfileSettings extends ChangeNotifier {
 
   String? get voiceLocale => _values['voiceLocale'] as String?;
 
+  /// The platform's own handle for the voice, where it gives one. Two voices
+  /// can share a name at different qualities, and only this tells them apart.
+  String? get voiceIdentifier => _values['voiceIdentifier'] as String?;
+
+  /// Offer the platform's joke voices — robots, singing, cartoon characters.
+  ///
+  /// Off by default. They crowd out the speaking voices on a screen where
+  /// somebody is choosing how another person will sound, and the platform
+  /// lists a lot of them.
+  bool get noveltyVoices => _values['noveltyVoices'] as bool? ?? false;
+
   /// How fast, high and loud this profile's voice is, before tone.
   ///
   /// One is the engine's own default for each. Volume is a fraction of what

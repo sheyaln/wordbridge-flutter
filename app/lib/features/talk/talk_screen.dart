@@ -123,7 +123,11 @@ class _TalkScreenState extends State<TalkScreen> {
     }
 
     final request = ++_suggestionRequest;
-    final words = await _prediction.suggest(previous: _utterance.last?.text);
+    final last = _utterance.last;
+    final words = await _prediction.suggest(
+      previous: last?.text,
+      previousPos: last?.pos,
+    );
 
     if (!mounted || request != _suggestionRequest) return;
     setState(() => _suggestions = words);
@@ -321,17 +325,23 @@ class _TalkScreenState extends State<TalkScreen> {
 
   /// Speaks the sentence, and lets prediction watch it.
   ///
-  /// Learning happens here rather than as each word is added, so what is
-  /// recorded is a sentence the user chose to say — not every combination they
-  /// passed through on the way to it, and nothing at all from one they built
-  /// and then cleared.
+  /// A sentence the user chose to say is the thing worth learning from. Words
+  /// arriving in the bar are not that: they include everything tried and
+  /// backed out of, and a bar built and then cleared was never said at all.
+  ///
+  /// The strip is useful before it has learned anything because it ships
+  /// knowing ordinary English — see `starterPredictions`.
   Future<void> _speakSentence() async {
     final words = _utterance.words;
     await widget.speech.speak(_utterance.text);
 
     if (_predicting && words.isNotEmpty) {
-      await _prediction.learn(words);
-      await _refreshSuggestions();
+      unawaited(
+        _prediction
+            .learn(words)
+            .then((_) => _refreshSuggestions())
+            .catchError((Object _) {}),
+      );
     }
   }
 

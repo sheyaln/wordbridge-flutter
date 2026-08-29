@@ -36,7 +36,18 @@ It is also **separate from the usage log**, which is consent-gated, exportable, 
 
 **Learning happens when a sentence is spoken, not as each word is added.** What gets recorded is what the user chose to say. A sentence built and then cleared teaches nothing, and the intermediate states passed through on the way to a sentence are not sentences.
 
-**Day one is not an empty strip.** With nothing learned, it reads the home board in the board's own order — which is not arbitrary, because columns there run in Fitzgerald sentence order and the leftmost hold the pronouns. The first suggestions are therefore `I`, `we`, `all`, `want`, `get`: the words sentences open with. Ranking by level and then alphabetically would have offered whatever happened to start with "a".
+**So the app ships knowing English.** That follows directly from the rule above rather than sitting beside it: if learning waits for spoken sentences, the strip has to be useful before any have been spoken, or nobody keeps it on long enough to teach it anything. `starter_predictions.dart` is a hand-written table of what usually follows what, over the vocabulary this app ships.
+
+Four tiers, each only topping up what the one above left short:
+
+1. what has followed this word **for this person**
+2. what usually follows it in English — the shipped table
+3. what this person opens sentences with
+4. anything whose part of speech can follow the last word's
+
+**The user's own history outranks the shipped guesses, always.** A guess must never displace a fact. Tier 4 is what stops the strip ever repeating itself: without it, a word the table misses falls through to a fixed list and the strip shows the same five words after every word — a decoration that costs grid height, not a prediction.
+
+The table is deliberately not a corpus or a model. It is ordinary collocation, written out by hand, and anybody can read the whole of what this app believes about English in one sitting and argue with it. It works offline, it is identical for everybody, and it cannot leak.
 
 ## Consequences
 
@@ -44,6 +55,6 @@ A user who turns prediction on pays a slightly shorter button for a shorter sent
 
 The strip cannot make the board faster to learn, and it is not meant to — it is a shortcut for people who have already learned it, or a crutch for words they have not. Neither is a substitute for the motor plan, and neither is allowed to interfere with one forming.
 
-**What this rules out.** Predictive reordering of grid cells, in any form, at any setting. Suggestions drawn from a general language model rather than this user's own history. Any prediction store that could reconstruct an utterance. Any of these would be a different decision, not a tuning of this one.
+**What this rules out.** Predictive reordering of grid cells, in any form, at any setting. Any prediction store that could reconstruct an utterance. A shipped table that outranked the user's own history rather than backing it. A bundled language model, which would be a different decision on offline size, licensing and inspectability — not a tuning of this one.
 
 **Known limit.** Bigram counts are a weak model — they know what follows one word, not what follows a phrase, and they need a few dozen sentences before they beat the day-one fallback. That is an acceptable floor: it is honest about what it knows, it is cheap, it is offline, and its whole state is four columns anybody can read. A better model is a later decision that this one does not block.
