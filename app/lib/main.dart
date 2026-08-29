@@ -100,8 +100,14 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   }
 
   /// Called after setup, and after a caregiver switches profile.
+  ///
+  /// A block body, not an arrow: an arrow returns the value it assigned, and
+  /// assigning a future makes the closure look asynchronous to `setState`,
+  /// which then refuses it and leaves the app on whatever it was showing.
   void _use(Profile profile) {
-    setState(() => _ready = Future.value(profile));
+    setState(() {
+      _ready = Future.value(profile);
+    });
   }
 
   @override

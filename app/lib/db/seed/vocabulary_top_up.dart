@@ -89,6 +89,12 @@ Future<VocabularyTopUp> topUpVocabulary(
       ? const <String>{}
       : {swearingBand.name};
 
+  // Read once per board and kept up to date as words land, because the check
+  // below runs for every shipped word against every page of a board.
+  final labelsSeen = <String, Map<String, String>>{};
+  Future<Map<String, String>> labelsOn(String boardId) async =>
+      labelsSeen[boardId] ??= await _labelsOn(db, boardId);
+
   Future<void> consider(
     Board board,
     String label,
@@ -98,8 +104,13 @@ Future<VocabularyTopUp> topUpVocabulary(
     int col, {
     bool hidden = false,
   }) async {
-    final existing = await _labelsOn(db, board.id);
-    if (existing.containsKey(label)) return;
+    // Every page of the board, not just this one. A word the grid pushed onto
+    // page two is on the board; looking at page one alone places a second copy
+    // and gives one word two locations, which is the one thing a layout built
+    // on fixed positions cannot survive.
+    for (final page in _pageGroup(boards, board)) {
+      if ((await labelsOn(page.id)).containsKey(label)) return;
+    }
 
     final cell = await cellAt(db, boardId: board.id, row: row, col: col);
     if (cell.state == CellState.occupied) {
@@ -116,6 +127,8 @@ Future<VocabularyTopUp> topUpVocabulary(
 
     added.add((label: label, board: board.name, row: row, col: col));
     if (dryRun) return;
+
+    (await labelsOn(board.id))[label] = label;
 
     await placeButton(
       db,
@@ -437,6 +450,26 @@ Future<bool> _isFreeOnEvery(
     if (cell.state == CellState.occupied) return false;
   }
   return true;
+}
+
+/// The pages of one board, which are one board as far as a word is concerned.
+///
+/// Pages are named "home", "home 2", "home 3" — the same board, continued — so
+/// the group is everything sharing that stem.
+List<Board> _pageGroup(List<Board> boards, Board board) {
+  final base = _pageStem(board.name);
+  return [
+    for (final b in boards)
+      if (_pageStem(b.name) == base) b,
+  ];
+}
+
+String _pageStem(String name) {
+  final at = name.lastIndexOf(' ');
+  if (at < 0) return name;
+  return int.tryParse(name.substring(at + 1)) == null
+      ? name
+      : name.substring(0, at);
 }
 
 Future<Map<String, String>> _labelsOn(

@@ -320,6 +320,74 @@ class _SettingsSection extends StatelessWidget {
 /// One key holds three words, so something has to pick between them. Both
 /// answers agree with a subject that is already there, and they part company
 /// only at the start of a question, where there is nothing to agree with yet.
+/// Naming each region of the board, and saying so when there is nothing to
+/// name.
+///
+/// A board records which lines its bands own when it is built. One built
+/// before that was recorded has nothing to read, so the switch would go on and
+/// change nothing visible — which reads as a broken setting rather than as an
+/// older board.
+class _RegionLabels extends StatelessWidget {
+  const _RegionLabels({
+    required this.db,
+    required this.vocabularyId,
+    required this.settings,
+    required this.onChanged,
+  });
+
+  final WordbridgeDatabase db;
+  final String vocabularyId;
+  final ProfileSettings settings;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Board>>(
+      stream:
+          (db.select(db.boards)
+                ..where((b) => b.vocabularyId.equals(vocabularyId))
+                ..where((b) => b.deletedAt.isNull()))
+              .watch(),
+      builder: (context, snapshot) {
+        final boards = snapshot.data ?? const <Board>[];
+        final labelled = boards.any((b) => b.bandMap != null);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              value: settings.regionLabels,
+              title: const Text('Label what each part of the board is for'),
+              subtitle: const Text(
+                'A strip above the grid names each run of locations — who, '
+                'doing, where, asking. The board groups words by their job '
+                'and nothing on the grid says so, which is the first thing '
+                'anyone teaching it has to explain. It takes its height from '
+                'the grid, so every button is a little shorter while it is on.',
+              ),
+              isThreeLine: true,
+              onChanged: (v) async {
+                await settings.set('regionLabels', v);
+                onChanged();
+              },
+            ),
+            if (settings.regionLabels && boards.isNotEmpty && !labelled)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'These boards were built before they recorded which part is '
+                  'which, so there is nothing yet to label. Rebuilding them '
+                  'from the shipped vocabulary fills it in.',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _CopulaMode extends StatelessWidget {
   const _CopulaMode({required this.settings, required this.onChanged});
 
@@ -548,21 +616,11 @@ class _Settings extends StatelessWidget {
             },
           ),
         if (settings != null)
-          SwitchListTile(
-            value: settings!.regionLabels,
-            title: const Text('Label what each part of the board is for'),
-            subtitle: const Text(
-              'A strip above the grid names each run of locations — who, '
-              'doing, where, asking. The board groups words by their job and '
-              'nothing on the grid says so, which is the first thing anyone '
-              'teaching it has to explain. It takes its height from the grid, '
-              'so every button is a little shorter while it is on.',
-            ),
-            isThreeLine: true,
-            onChanged: (v) async {
-              await settings!.set('regionLabels', v);
-              onChanged();
-            },
+          _RegionLabels(
+            db: db,
+            vocabularyId: vocabularyId,
+            settings: settings!,
+            onChanged: onChanged,
           ),
         if (settings != null) const _SettingsSection('Words and grammar'),
         if (settings != null)

@@ -6,6 +6,7 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/age_presets.dart';
 import 'package:wordbridge/db/seed/band_layout.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/db/seed/core_vocabulary.dart';
 import 'package:wordbridge/db/seed/vocabulary_top_up.dart';
 import 'package:wordbridge/db/tables.dart';
 
@@ -360,6 +361,92 @@ void main() {
     // And the real run then does exactly what the preview said.
     final applied = await topUpVocabulary(db, vocabularyId: vocabId);
     expect(applied.added.length, preview.added.length);
+  });
+
+  test(
+    'a word the grid moved to page two is not added back to page one',
+    () async {
+      // What a board built by an older version looks like: the word is on the
+      // board, on the page that version put it on, and the layout rule now says
+      // page one. A top-up that only reads page one places a second copy, and
+      // the user meets one word in two places.
+      final home = await boardNamed('home');
+      final second = await boardNamed('home 2');
+
+      final moved = await removeWord('this');
+      expect(moved, isNotNull);
+
+      final free =
+          await (db.select(db.cells)
+                ..where(
+                  (c) =>
+                      c.boardId.equals(second.id) &
+                      c.state.equalsValue(CellState.emptyReserved) &
+                      c.row.isSmallerThanValue(5),
+                )
+                ..limit(1))
+              .getSingle();
+
+      await placeButton(
+        db,
+        vocabularyId: vocabId,
+        cellId: free.id,
+        label: 'this',
+        message: 'this',
+      );
+
+      await topUpVocabulary(db, vocabularyId: vocabId);
+
+      expect(
+        (await positionsOn(home.id)).containsKey('this'),
+        isFalse,
+        reason: '"this" is now in two places on one board',
+      );
+    },
+  );
+
+  test('a word already on page two is not placed again on page one', () async {
+    // Pages are one board continued. A word the grid pushed onto page two is
+    // on the board, and a top-up that only looked at page one would give one
+    // word two locations — which is the one thing a fixed layout cannot
+    // survive, and which a user meets as the same word in two places.
+    final labels = <String, List<String>>{};
+    for (final board in await db.select(db.boards).get()) {
+      final rows =
+          await (db.select(db.buttons).join([
+                innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+              ])..where(
+                db.cells.boardId.equals(board.id) &
+                    db.buttons.isSystem.equals(false),
+              ))
+              .get();
+
+      for (final r in rows) {
+        final label = r.readTable(db.buttons).label;
+        (labels[label] ??= []).add(board.name);
+      }
+    }
+
+    // The pinned questions are on every board on purpose; nothing else may be
+    // in two places within one board's pages.
+    final pinned = {for (final q in pinnedQuestions) q.value.label};
+
+    for (final entry in labels.entries) {
+      if (pinned.contains(entry.key)) continue;
+
+      final stems = {
+        for (final name in entry.value)
+          name.contains(RegExp(r' \d+$'))
+              ? name.substring(0, name.lastIndexOf(' '))
+              : name,
+      };
+
+      expect(
+        entry.value.length,
+        stems.length,
+        reason: '"${entry.key}" is on ${entry.value} — twice on one board',
+      );
+    }
   });
 
   test('a pinned question reaches every board, not just the root', () async {

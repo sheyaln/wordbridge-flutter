@@ -885,6 +885,32 @@ two immediately came apart. Page two is now rebuilt by looking each word up in
 the band's own declaration, so it reads the way page one does regardless of the
 order the shedding happened to take.
 
+### 4.23 Three bugs the macOS build surfaced — delivered
+
+Running the same code on a desktop window found three things the iPad had been
+hiding. Worth keeping the macOS target for that reason alone.
+
+- **One word in two places.** `to`, `out` and `this` appeared on both pages of
+  the home board. `topUpVocabulary` asked "is this word already here?" of a
+  single board, and pages are separate boards — so a word §4.21 had moved from
+  page two to page one looked missing and was placed again. It now asks the
+  whole page group. **This is the failure the project exists to prevent**: one
+  word, two locations, and no way for a user to know which one they learned.
+- **"Build the board" did nothing.** `setState(() => _ready = Future.value(p))`
+  — an arrow body returns the value it assigns, so the closure looked
+  asynchronous, and Flutter refuses an async `setState` and discards it. The
+  app stayed on the screen it was on. A block body fixes it. It was silent on
+  iOS only because the first run there had already happened.
+- **Setting a PIN failed on macOS** with `-34018`, *"a required entitlement
+  isn't present"*. The salt lives in the keychain and a sandboxed macOS app
+  cannot reach it without `keychain-access-groups`. Added to both the debug and
+  release entitlements.
+
+Also: the label switch now says when there is nothing to label, rather than
+going on and changing nothing. A board built before §4.19 recorded its regions
+has none to read, and a switch that appears to do nothing reads as broken
+rather than as an older board.
+
 ### 4.21 A narrow grid scattered related words — delivered
 
 Reported at 7×11: `we`, `they` and `my` on page two while their pronoun column
