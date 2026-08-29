@@ -2017,6 +2017,32 @@ because tapping a category key means you are already on its turn. The two only
 part company when a category board is reached another way, and that case now
 has a test.
 
+#### Paging had the same defect, found later
+
+`home → more words → back a page → <word>` records both presses of the paging
+keys. Going forward and coming back leaves the board exactly where it started,
+so neither press is part of the way to that word — the route is
+`home → <word>`.
+
+The cause is narrower than it looks. **The root board was never a crumb**, so
+coming back to it found nothing in the trail to rewind to and the return was
+appended as though it were a way onward. Every other board a paging key returns
+to *is* named in the trail, and stepping onto a board the trail already holds
+rewinds to it — which is why `category → more words → back a page` was always
+recorded correctly and only home was wrong.
+
+So the fix is one line: the root board is a route of no steps.
+
+**And a first attempt that was cut.** The obvious generalisation — walk a board
+back through its previous-page links, counting, and derive the route — was
+built, and then three mutations survived it: disabling the walk entirely broke
+nothing. The reason is the rewind above. Any way to page two passes through
+page one, because that is the only place the forward key exists, and arriving
+at page one rebuilds the route from scratch. The walk was correct and
+unobservable, which in this repo is a liability rather than insurance, so it
+came out along with the map and the query that fed it. Paging is still a step —
+a word on page two genuinely costs a press every time.
+
 ### 4.17 Home turns the category wheel back — delivered
 
 `home` reset the board, the navigation trail and the back target, and left the

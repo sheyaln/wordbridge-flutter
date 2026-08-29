@@ -457,6 +457,81 @@ void main() {
       expect(trail(tester), isNot(contains(first.name)));
     });
 
+    testWidgets('paging forward and back again is no steps at all', (
+      tester,
+    ) async {
+      // The detour, which is not the route. Going to page two and coming back
+      // leaves the board exactly where it started, so neither press is part of
+      // the way to a word on page one.
+      final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+      final forward = map['moreWords'] as int;
+      final back = map['backAPage'] as int;
+
+      final word = await rootWord();
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      await tapCell(tester, wheelRow, forward);
+      expect(
+        labelAt(tester, wheelRow, back),
+        isA<String>(),
+        reason: 'the board did not page, so nothing here is tested',
+      );
+
+      await tapCell(tester, wheelRow, back);
+      await tapCell(tester, word.cell.row, word.cell.col);
+
+      expect(
+        trail(tester),
+        'home → ${word.label}',
+        reason: 'the trail counted a round trip that goes nowhere',
+      );
+    });
+
+    testWidgets('a detour on the way to page two is not part of it', (
+      tester,
+    ) async {
+      // Ending back on page one clears the trail whatever the code does, so
+      // that case cannot tell a walked route from an accumulated one. This can:
+      // it ends on page *two*, reached the long way round.
+      final names = {for (final b in await db.select(db.boards).get()) b.name};
+      final paged = categories.indexWhere((c) => names.contains('${c.name} 2'));
+      expect(
+        paged,
+        isNonNegative,
+        reason: 'no category pages at ${rows}x$cols, so nothing here is tested',
+      );
+      expect(paged, lessThan(wheelCols.length));
+
+      final first = categories[paged];
+      final second = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('${first.name} 2'))).getSingle();
+      final cell = await place(second.id, 'quay');
+
+      final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+      final forward = map['moreWords'] as int;
+      final back = map['backAPage'] as int;
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      await tapCell(tester, wheelRow, wheelCols[paged]);
+      await tapCell(tester, wheelRow, forward);
+      await tapCell(tester, wheelRow, back);
+      await tapCell(tester, wheelRow, forward);
+      await tapCell(tester, cell.row, cell.col);
+
+      expect(
+        trail(tester),
+        'home → ${first.name} → more words → quay',
+        reason:
+            'the trail accumulated the presses that were made instead of the '
+            'ones that reach the word from home',
+      );
+    });
+
     testWidgets('paging is a step of its own', (tester) async {
       // The shape §4.8 asks for: a category, the paging key, then a word.
       final names = {for (final b in await db.select(db.boards).get()) b.name};

@@ -222,7 +222,7 @@ class TalkScreenState extends State<TalkScreen> {
     _reached = null;
     if (boardId == null) return;
 
-    final route = _routeToCategory(boardId);
+    final route = _routeTo(boardId);
     if (route != null) {
       _route
         ..clear()
@@ -238,6 +238,21 @@ class TalkScreenState extends State<TalkScreen> {
 
     _route.add(Crumb(label: label, boardId: boardId));
   }
+
+  /// The whole way to a board from home, or null for one no fixed key reaches.
+  ///
+  /// The root board is a route of no steps, which is the case that was wrong:
+  /// paging forward and back again returned to a board the trail had no crumb
+  /// for, so the way back was appended as though it were a way onward and
+  /// `home → more words → back a page → <word>` was recorded as the route to a
+  /// word on page one.
+  ///
+  /// Paging deeper is left to the step path below, which rewinds to a board
+  /// the trail already names. That is enough because the forward key only ever
+  /// exists on the page before, so any way to page two passes through page one
+  /// and rebuilds there.
+  List<Crumb>? _routeTo(String boardId) =>
+      boardId == _rootBoardId ? const [] : _routeToCategory(boardId);
 
   /// The whole way to a category from home, or null where [boardId] is not one.
   ///

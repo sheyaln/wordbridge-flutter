@@ -34,6 +34,12 @@ const defaultGridCols = 12;
 /// nobody touched.
 const cycleCategoriesLabel = 'more categories';
 
+/// What the key that turns to the next page reads.
+///
+/// Shared for the same reason: the seed writes it, and the trail names a page
+/// step with it.
+const moreWordsLabel = 'more words';
+
 /// Creates a vocabulary and returns its id.
 Future<String> seedCoreBoardSet(
   WordbridgeDatabase db, {
@@ -502,7 +508,7 @@ Future<void> addFixedKeys(
   if (pageForward != null) {
     await key(
       frame.pageForwardCol,
-      'more words',
+      moreWordsLabel,
       ButtonAction.navigate,
       target: pageForward,
     );
