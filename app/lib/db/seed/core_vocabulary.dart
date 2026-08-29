@@ -136,6 +136,22 @@ List<BandItem<SeedWord>> adverbs(List<String> l, {int level = 2}) =>
 List<BandItem<SeedWord>> phrases(List<String> l, {int level = 2}) =>
     _all(l, PartOfSpeech.social, level: level);
 
+/// A digit to read and a word to say.
+///
+/// The numeral is quicker to recognise and the word is what a listener needs
+/// to hear, so these are the first ordinary vocabulary where the label and the
+/// spoken text are deliberately different. Coloured as determiners because
+/// that is the work they do — `three` quantifies exactly as `some` and `more`
+/// do, and sharing their colour is what says so.
+BandItem<SeedWord> _numeral(String digit, String spoken, {int level = 2}) =>
+    BandItem((
+      label: digit,
+      message: spoken,
+      action: ButtonAction.speak,
+      morphemeKind: null,
+      pos: PartOfSpeech.determiner,
+    ), level: level);
+
 /// The root board.
 ///
 /// Band order is the order the words come out in: who, then what they do, then
@@ -444,6 +460,10 @@ const categoryNames = [
   'places',
   'body',
   'doing',
+  // Appended, which is what makes it safe: the wheel is a window onto this
+  // list in order, so a name added at the end leaves every key already learned
+  // opening exactly what it always opened.
+  'numbers',
 ];
 
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
@@ -1185,6 +1205,71 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['swap', 'meet', 'visit'], level: 3),
         ...verbs(['hug'], level: 1),
         ...verbs(['kiss', 'laugh', 'cry'], level: 2),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // Nothing here draws at level 1. `more` and `all` ship on the root board and
+  // do the quantity work a beginner needs; a board of single words does not
+  // need `seven`.
+  //
+  // A sequence rather than a set of choices, which is unlike every other
+  // cluster here: nobody reads `1 2 3 4 5 6 7 8 9 10` in one sweep, they scan
+  // along it. Kept to ten so that scan is one row and stays one movement wide
+  // — a person who needs a bigger number has words for it on the row below.
+  'numbers': [
+    Band(
+      name: 'counting',
+      shedRank: 0,
+      items: [
+        _numeral('1', 'one'),
+        _numeral('2', 'two'),
+        _numeral('3', 'three'),
+        _numeral('4', 'four'),
+        _numeral('5', 'five'),
+        // Six upward wait for level 3. Counting to five covers a young
+        // child's age, a small quantity and a choice between a few things,
+        // which is what the level that "most of a day is sayable" is
+        // measured against — and the locations are already here, so these
+        // appear where they have always been rather than arriving somewhere
+        // new.
+        _numeral('6', 'six', level: 3),
+        _numeral('7', 'seven', level: 3),
+        _numeral('8', 'eight', level: 3),
+        _numeral('9', 'nine', level: 3),
+        _numeral('10', 'ten', level: 3),
+      ],
+    ),
+
+    // What somebody says about a quantity when they do not have the numeral,
+    // which is most of the time. "how many" is a question the pinned column
+    // cannot ask: `how` is there, but `how many` is a different question and
+    // one a person is asked constantly.
+    Band(
+      name: 'how many',
+      shedRank: 1,
+      items: [
+        ...phrases(['how many'], level: 2),
+        ...adjectives(['none'], level: 2),
+        ...phrases(['a lot', 'a little'], level: 2),
+        ...adjectives(['both', 'half'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'in order',
+      shedRank: 2,
+      items: [
+        ...adjectives(['first', 'next', 'last'], level: 2),
+        ...adjectives(['before', 'after'], level: 3),
       ],
     ),
 

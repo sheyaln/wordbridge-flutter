@@ -528,7 +528,23 @@ class TalkScreenState extends State<TalkScreen> {
       return (cell: cell, button: null);
     }
 
-    return (cell: cell, button: _throughWheel(cell, button));
+    final shown = _throughWheel(cell, button);
+
+    // And for a category whose board holds nothing this level draws. A key
+    // onto a blank board is worse than not having the board: it teaches that
+    // navigating is pointless, to somebody who cannot report that it is.
+    //
+    // Read after the wheel has spoken, because which category a slot offers
+    // depends on the turn — the slot itself never moves, so this hides a key
+    // rather than closing a location.
+    if (shown != null &&
+        shown.action == ButtonAction.navigate &&
+        shown.isSystem &&
+        !_drawsContent(shown.targetBoardId)) {
+      return (cell: cell, button: null);
+    }
+
+    return (cell: cell, button: shown);
   }
 
   /// Whether a location holds one of the two keys that turn a page.

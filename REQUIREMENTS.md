@@ -1553,7 +1553,7 @@ Two consequences worth stating:
   labels then read the same on every page, which is the same fix seen from the
   caregiver's side.
 
-### 4.39 Numbers — agreed, not built
+### 4.39 Numbers — delivered
 
 Nothing on any board is a number. A person cannot ask for two, say how old
 they are, pick option three, or count anything.
@@ -1606,10 +1606,51 @@ choices, and that breaks two of this board's assumptions:
   level 1 and do the quantity work a beginner needs. A single-word board does
   not need `seven`.
 
-Still to settle when building it: how far the sequence runs, and whether the
-board carries anything besides the numerals — `how many`, `first`/`last`,
-`none`. Measure what it costs at every grid before committing, the way §4.28
-was measured.
+#### What shipped
+
+Three rows: `counting` (1–10), `how many` (`how many`, `none`, `a lot`,
+`a little`, then `both` and `half` at level 3) and `in order` (`first`, `next`,
+`last`, then `before` and `after`), plus the usual reserved row for a
+caregiver's own words.
+
+**Numerals 1–5 draw at level 2; 6–10 wait for level 3.** Not a guess — the
+level-2 vocabulary is capped against Hattingh & Tönsing's finding that roughly
+200–250 words cover about 80% of everyday speech, and the whole sequence at
+level 2 put the count at 269, past it. Counting to five covers a young child's
+age, a small quantity, and a choice between a few things. The locations exist
+either way, so six upward appear where they have always been. The calibration
+test warns in its own comment against editing the number to match, and that
+warning was right.
+
+**A digit is the label and the word is what is spoken** — `3` reads faster,
+"three" is what a listener needs. The first ordinary vocabulary here to need
+those to differ. Coloured as determiners, because quantifying is the work they
+do and `some` and `more` are already that colour.
+
+#### ⚠️ What it cost, and the decision behind it
+
+**An eighth category makes the wheel turn at 7×12**, which is the shipped
+default and the only grid where it did not. Six categories and the cycle key
+show at a time; `doing` and `numbers` sit on turn two and cost a press of the
+cycle key before their own. Every other grid already cycled, or has room.
+
+Chosen over the alternative, which was giving up the empty column between
+`back` and the first category key. That gap exists so an imprecise reach for
+`back` — which undoes what you just did — does not land on a category key,
+which takes you somewhere new. Its cost falls on exactly the people large
+buttons are for, and the wheel's cost falls on everybody a little. The gap
+stays.
+
+#### The invariant it exposed
+
+`vocab_level_calibration_test` held that every category board must draw
+something at level 1, because a key onto a blank board teaches that navigating
+is pointless. A level-2 category breaks that as stated — so the promise moved
+to where it belongs: **the talk screen no longer draws a category key whose
+board holds nothing this level would show**, the same rule already applied to
+the paging key (§4.6b), and for the same reason. The seed-level test now
+requires only that a board hold something at *some* level; the drawing side
+holds the rest.
 
 ### 4.25 Letting clusters share a row — measured, and not worth building
 

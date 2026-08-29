@@ -498,6 +498,17 @@ void main() {
   /// change available — so a profile that has invested most in its board is
   /// exactly the one that should receive it, rather than being told to rebuild.
   group('a category board that shipped later', () {
+    // A grid with room for every category on one turn of the wheel. What this
+    // group is about is appending — the board arrives, the key opens it, and
+    // nothing already placed moves — and on a wheel that has to start turning
+    // those questions get tangled up with which turn a key is showing. The
+    // turning case has its own group below.
+    setUp(() async {
+      await db.close();
+      db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 14);
+    });
+
     test('the board arrives, with its words in it', () async {
       await unship(db, vocabId, 'doing');
       expect(
@@ -565,6 +576,7 @@ void main() {
       final doing = await (db.select(
         db.boards,
       )..where((b) => b.name.equals('doing'))).getSingle();
+      final frame = await frameOf(db, vocabId);
 
       for (final board in await db.select(db.boards).get()) {
         final rows =
@@ -579,8 +591,8 @@ void main() {
 
         expect(rows, hasLength(1), reason: '"${board.name}" cannot reach it');
         expect(rows.single.readTable(db.buttons).targetBoardId, doing.id);
-        expect(rows.single.readTable(db.cells).row, 6);
-        expect(rows.single.readTable(db.cells).col, 9);
+        expect(rows.single.readTable(db.cells).row, frame.row);
+        expect(rows.single.readTable(db.cells).col, frame.categoryCols.last);
       }
     });
 
@@ -602,7 +614,7 @@ void main() {
         );
       }
 
-      expect(after['doing'], (page: 0, slot: 6));
+      expect(after['doing'], (page: 0, slot: 7));
       expect(frame.categories.map((c) => c.name).toList(), [
         'people',
         'food',
@@ -610,13 +622,17 @@ void main() {
         'feelings',
         'places',
         'body',
+        // Appended in the order they were missing, so the one unshipped for
+        // this test arrives last however many shipped after it.
+        'numbers',
         'doing',
       ]);
 
-      // At 7x12 a seventh category fits in a column the system row was not
-      // using, so the wheel still never turns.
+      // The grid this group uses has a column the system row was not using, so
+      // the arriving category takes it and the wheel still never turns. Every
+      // column already learned keeps the category it opened.
       expect(frame.categoryCols.take(colsBefore.length), colsBefore);
-      expect(frame.categoryCols, [...colsBefore, 9]);
+      expect(frame.categoryCols, [...colsBefore, colsBefore.last + 1]);
       expect(frame.cycleCol, isNull);
     });
 
@@ -640,7 +656,7 @@ void main() {
       );
       expect(
         (await frameOf(db, vocabId)).categories.map((c) => c.name),
-        hasLength(7),
+        hasLength(categoryNames.length),
       );
     });
 
@@ -696,18 +712,43 @@ void main() {
       // The last free column of the system row given to a caregiver's own
       // word. Taking a key that already opens something else would relocate
       // what a learned movement does, so the category does not arrive at all.
+      //
+      // Back on the shipped grid, because "no column to spare" is a property
+      // of a row that is exactly full, and the roomier grid this group uses
+      // has two to spare.
+      await db.close();
+      db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      vocabId = await seedCoreBoardSet(db);
       await unship(db, vocabId, 'doing');
 
+      // Whichever column the row is not using — with eight categories that is
+      // the gap, not the tail. Found rather than named, so this keeps testing
+      // "no column to spare" and not one grid's arithmetic.
+      // Every column the row is not using, whichever they are — with eight
+      // categories the spare one is the gap rather than the tail. Found rather
+      // than named, so this keeps testing "no column to spare" and not one
+      // grid's arithmetic.
       final home = await boardNamed('home');
-      final cell = await cellAt(db, boardId: home.id, row: 6, col: 9);
-      await placeButton(
-        db,
-        vocabularyId: vocabId,
-        cellId: cell.id,
-        label: 'Nana',
-        message: 'Nana',
-        partOfSpeech: PartOfSpeech.noun,
-      );
+      final spare =
+          await (db.select(db.cells)..where(
+                (c) =>
+                    c.boardId.equals(home.id) &
+                    c.row.equals(6) &
+                    c.state.equalsValue(CellState.emptyReserved),
+              ))
+              .get();
+      expect(spare, isNotEmpty, reason: 'the row already has nothing spare');
+
+      for (final cell in spare) {
+        await placeButton(
+          db,
+          vocabularyId: vocabId,
+          cellId: cell.id,
+          label: 'Nana',
+          message: 'Nana',
+          partOfSpeech: PartOfSpeech.noun,
+        );
+      }
 
       final before = await fingerprint(db);
       final result = await topUpVocabulary(db, vocabularyId: vocabId);
@@ -756,7 +797,7 @@ void main() {
       for (final entry in before.entries) {
         expect(after[entry.key], entry.value, reason: '"${entry.key}" moved');
       }
-      expect(after['doing'], (page: 2, slot: 0));
+      expect(after['doing'], (page: 2, slot: 1));
 
       for (final entry in fingerprintBefore.entries) {
         expect(
@@ -768,13 +809,13 @@ void main() {
     });
 
     test('a full row of slots gains the cycle key it needs', () async {
-      // 11 columns leaves room for exactly six category keys. The seventh
+      // 12 columns leaves room for exactly seven category keys. The eighth
       // cannot have one, so the wheel has to start turning — and the key that
       // turns it goes in the gap column, the only one the row is not using.
-      await seedAt(7, 11);
+      await seedAt(7, 12);
       final was = await frameOf(narrow, narrowId);
       expect(was.cycleCol, isNull, reason: 'the fixture already cycles');
-      expect(was.categoryCols, [3, 4, 5, 6, 7, 8]);
+      expect(was.categoryCols, [3, 4, 5, 6, 7, 8, 9]);
 
       final before = await wheelPositions(narrow, narrowId);
       final fingerprintBefore = await fingerprint(narrow);
@@ -906,6 +947,7 @@ void main() {
         'places',
         'body',
         'doing',
+        'numbers',
         'feelings',
       ]);
     });
