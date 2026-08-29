@@ -1688,6 +1688,19 @@ Small, real, and none of them urgent:
   questions, and the ones that do not fit are supposed to become ordinary root
   board words — an extra movement to ask "why" is a cost, losing "why" is a
   different thing entirely. Nothing tested it. Now something does.
+- **A region label longer than its band is truncated to nothing useful.** Seen
+  on the shipped 7×12 root board: `word endings` reads `WORD ENDIN…`,
+  `joining words` reads `JOINING WO…`, and `yes, no and how it is` reads
+  `YES, NO AND…`. A label runs along its band, so what fits is the band's own
+  width — one column for most of them — and the strip is a single 22px line
+  with nowhere to wrap. A label nobody can read teaches nothing, which is the
+  whole argument for §4.19.
+
+  Three ways out, none obviously right: shorten the names in `_spokenAs` and
+  lose the precision they were chosen for; let the strip wrap to two lines and
+  charge every board the height; or shrink the text to fit and let a one-column
+  band render its name unreadably small. It is a naming decision as much as a
+  layout one, so it wants the person who chose the names.
 - **The caregiver screen does not surface `addedBoards` or `refusedBoards`**
   from a top-up. A whole new board arriving, or being refused for want of a
   free system-row column, is worth a line of its own rather than being folded
