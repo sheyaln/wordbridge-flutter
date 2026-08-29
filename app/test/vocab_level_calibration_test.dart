@@ -34,11 +34,31 @@ void main() {
   /// to give "I's". `how` is the one English question word it omits, and a
   /// pinned column offering five of the six reads as having a hole. Adding to
   /// this set is adding to a beginner's first board, so it is spelled out
-  /// rather than counted.
-  const rootBoardAdditions = {'yes', 'no', "don't", 'wait', 'me', 'how'};
+  /// rather than counted. `maybe` is the third answer to a direct question:
+  /// the core can agree and it can refuse, and without a hedge a person asked
+  /// anything has to overstate what they mean or say nothing at all.
+  const rootBoardAdditions = {
+    'yes',
+    'no',
+    "don't",
+    'wait',
+    'me',
+    'how',
+    'maybe',
+  };
 
   /// Project Core's density for a whole-day beginning-communicator board.
   const universalCoreDensity = 36;
+
+  /// What the root board draws at level 1: that density and one location more.
+  ///
+  /// The extra one is `maybe`, and it is the only extra the root board gets.
+  /// The published figure is a board somebody built rather than a threshold
+  /// anything was measured against, and a beginner is not served differently
+  /// by thirty six locations than by thirty seven — so what this guards is
+  /// that the number stays one somebody argued for, word by word, in the set
+  /// above. Every other board holds to the published density.
+  const rootBoardDensity = universalCoreDensity + 1;
 
   Set<String> levelledAtMost(int level) => {
     for (final band in homeBands)
@@ -97,7 +117,7 @@ void main() {
             if (item.level == 1) item.value.label,
       ];
 
-      expect(content, hasLength(universalCoreDensity));
+      expect(content, hasLength(rootBoardDensity));
     });
   });
 
@@ -140,9 +160,16 @@ void main() {
           }
 
           for (final entry in ownContent.entries) {
+            // The root board is allowed its one extra location; a category
+            // board reaching the published density would be a category board
+            // that had become a second root board.
+            final ceiling = entry.key.startsWith('home')
+                ? rootBoardDensity
+                : universalCoreDensity;
+
             expect(
               entry.value,
-              lessThanOrEqualTo(universalCoreDensity),
+              lessThanOrEqualTo(ceiling),
               reason:
                   '"${entry.key}" draws ${entry.value} words at level 1, past '
                   'the density Project Core publishes for a beginner. A first '
@@ -225,9 +252,9 @@ void main() {
         for (final r in await query.get()) r.readTable(db.buttons).vocabLevel,
       ];
 
-      expect(levels.where((l) => l <= 1), hasLength(universalCoreDensity));
+      expect(levels.where((l) => l <= 1), hasLength(rootBoardDensity));
       expect(
-        levels.where((l) => l <= 2).length - universalCoreDensity,
+        levels.where((l) => l <= 2).length - rootBoardDensity,
         greaterThanOrEqualTo(15),
         reason:
             'raising the level on the board a person uses most reveals almost '

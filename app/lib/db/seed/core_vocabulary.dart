@@ -25,15 +25,17 @@
 ///
 /// **Level 1 draws exactly the Universal Core 36 on the root board.** Thirty
 /// one of those words sit in the content area and five are question words in
-/// the pinned column; five more content locations go to `yes`, `no`, `don't`,
-/// `wait` and `me`, which is what the Universal Core has no answer for — it
-/// carries `not`, which negates inside a sentence but cannot answer one or
-/// make an imperative, and its possessive key fires after `I` to give "I's".
-/// `how` joins them in the pinned column: it is the one English question word
-/// the core omits, and a column offering five of the six reads as a hole.
-/// Thirty six content locations is Project Core's own density for a beginning
-/// communicator's whole-day board (CLDS, UNC-Chapel Hill), and it is the
-/// ceiling for any page at level 1. The category boards are far below it.
+/// the pinned column; six more content locations go to `yes`, `no`, `don't`,
+/// `wait`, `me` and `maybe`, which is what the Universal Core has no answer
+/// for — it carries `not`, which negates inside a sentence but cannot answer
+/// one or make an imperative, its possessive key fires after `I` to give
+/// "I's", and it offers no way to hedge, so every answer it can give is a
+/// commitment. `how` joins them in the pinned column: it is the one English
+/// question word the core omits, and a column offering five of the six reads
+/// as a hole. Thirty six content locations is Project Core's own density for a
+/// beginning communicator's whole-day board (CLDS, UNC-Chapel Hill); the root
+/// board draws that and one more, which is the ceiling for any page at level
+/// 1. The category boards are far below it.
 ///
 /// **Level 2** adds the grammar engine — endings, articles, the copula, `will`
 /// — and the fringe of an ordinary day. It lands near 250 words, which is
@@ -353,6 +355,15 @@ final homeBands = <Band<SeedWord>>[
       // "don't" the board produces "I not go" where a user meant "don't go",
       // and the imperative is the one that stops something happening.
       w("don't", PartOfSpeech.negation, essential: true),
+      // The answer that is neither, beside the two that are. Without it every
+      // answer a person gives is a commitment, and nobody in the room can tell
+      // an overstated "yes" from a meant one.
+      //
+      // Level 1: hedging is not an advanced skill, and it is the answer a
+      // beginner most often has. Not essential even so — a grid too narrow to
+      // draw it should page it, and marking it would refuse that grid outright
+      // over one word.
+      w('maybe', PartOfSpeech.adverb),
     ],
   ),
 ];
@@ -851,6 +862,26 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...adjectives(['better'], level: 2),
         ...adjectives(['worse'], level: 3),
         ...adjectives(['enough'], level: 2),
+      ],
+    ),
+
+    // Degrees of not knowing, for the questions "yes" and "no" answer too
+    // strongly. The root board carries "maybe" at level 1 and that word does
+    // the job on its own, so nothing here is level 1 and this row gives way
+    // before the shipped feelings rows when the grid is short: the cost of
+    // reading it on page two is a key press, not a lost answer.
+    //
+    // Last of the rows that hold words, because the strips run in word-class
+    // order and these are adverbs. "unsure" leads, an adjective among them: it
+    // is the one that answers "how are you", so it sits against the adjectives
+    // in the row above.
+    Band(
+      name: 'not sure',
+      shedRank: 5,
+      items: [
+        ...adjectives(['unsure'], level: 2),
+        ...adverbs(['probably'], level: 2),
+        ...adverbs(['possibly', 'perhaps'], level: 3),
       ],
     ),
 

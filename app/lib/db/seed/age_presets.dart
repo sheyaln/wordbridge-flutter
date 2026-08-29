@@ -253,8 +253,10 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         startsLine: false,
         items: [
           ...adjectives(['frustrated', 'patronised', 'exhausted'], level: 2),
-          // Answers to a direct question, alongside yes and no.
-          ...adjectives(['fine', 'maybe'], level: 1),
+          // The answer that closes a question without opening anything. The
+          // hedges are elsewhere — "maybe" on the root board and the "not
+          // sure" row on this one — and one word has one location.
+          ...adjectives(['fine'], level: 1),
         ],
       ),
     ],

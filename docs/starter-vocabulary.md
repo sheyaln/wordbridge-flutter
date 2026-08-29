@@ -25,12 +25,12 @@ counting rule below is the durable part.
 count is over `homeBands` + `pinnedQuestions` + `categoryBands` in
 `core_vocabulary.dart`, which is how `vocab_level_calibration_test.dart` counts.
 
-At `28fb67a`: **372 locations, 366 distinct labels.** Six labels hold a
+At `HEADREF`: **377 locations, 371 distinct labels.** Six labels hold a
 location on two different boards — `like`, `doctor`, `nurse`, `thirsty`,
 `bike`, `outside` — which is a standing decision, not a defect (REQUIREMENTS
 §5.1). One label twice on *one* board would be a defect.
 
-Of the 372 locations, 364 speak a word. The other eight are grammar keys
+Of the 377 locations, 369 speak a word. The other eight are grammar keys
 (`+s`, `+ed`, `+ing`, `+'s`, `am/is/are`, `was/were`, `a`, `the`). No location
 carries punctuation: `?` is an utterance-bar action, not a board button.
 
@@ -40,16 +40,16 @@ Cumulative — a level-2 board draws its level-1 words too.
 
 | Board | Level 1 | ≤ Level 2 | ≤ Level 3 |
 |---|---|---|---|
-| root board, content area | 36 | 66 | 66 |
+| root board, content area | 37 | 67 | 67 |
 | pinned question column | 6 | 6 | 6 |
 | people | 6 | 25 | 33 |
 | food | 10 | 28 | 52 |
 | play | 8 | 23 | 44 |
-| feelings | 14 | 29 | 43 |
+| feelings | 14 | 31 | 47 |
 | places | 5 | 15 | 33 |
 | body | 8 | 31 | 47 |
 | doing | 6 | 26 | 48 |
-| **total** | **99** | **249** | **372** |
+| **total** | **100** | **252** | **377** |
 
 The pinned column is the same six locations on every board, so it is not any
 one board's own load.
@@ -66,20 +66,22 @@ four answers, not one:
 
 | Preset | Starting level | ≤ 1 | ≤ 2 | ≤ 3 |
 |---|---|---|---|---|
-| Under 6 | 1 | 99 | 249 | 372 |
-| 6 to 12 | 2 | 99 | 249 | 372 |
-| 13 to 17 | 2 | 108 | 270 | 399 |
-| 18 and over | 2 | 112 | 279 | 404 |
+| Under 6 | 1 | 100 | 252 | 377 |
+| 6 to 12 | 2 | 100 | 252 | 377 |
+| 13 to 17 | 2 | 109 | 273 | 404 |
+| 18 and over | 2 | 112 | 281 | 408 |
 
 And a fifth, because the strong-language band — seven locations, all level 2 —
 is appended to the `feelings` board for the teen and adult presets whether or
 not the toggle is on, hidden in place rather than omitted. Counting it: teen
-108 / 277 / 406, adult 112 / 286 / 411.
+109 / 280 / 411, adult 112 / 288 / 415.
 
 REQUIREMENTS §4.11 is why no total appears in the setup copy. What holds across
 every preset at every geometry is the **density**: never more than 36 drawn on
-one page at level 1, asserted for all seven tested grid geometries and all four
-presets in `vocab_level_calibration_test.dart`.
+one page at level 1 on a category board, and never more than 37 on the root
+board, asserted for all seven tested grid geometries and all four presets in
+`vocab_level_calibration_test.dart`. The root board's extra one is `maybe`;
+§2.5 is why it is there and why nothing else has been let in beside it.
 
 ---
 
@@ -95,16 +97,16 @@ The 36 words are recorded in this repo as `universalCore36` in
 in the shipped vocabulary, and every one must be *drawn* at level 1 rather than
 seeded and held back.
 
-Measured at `28fb67a`, the level-1 root board is **exactly** the Universal Core
-36 plus six named additions and nothing else:
+Measured at `HEADREF`, the level-1 root board is **exactly** the Universal Core
+36 plus seven named additions and nothing else:
 
 | | Count |
 |---|---|
 | Universal Core words in the root content area | 31 |
 | Universal Core words in the pinned question column (`what where who when why`) | 5 |
-| Additions in the content area (`yes no don't wait me`) | 5 |
+| Additions in the content area (`yes no don't wait me maybe`) | 6 |
 | Addition in the pinned column (`how`) | 1 |
-| **Root board at level 1** | **42 locations, 36 of them content** |
+| **Root board at level 1** | **43 locations, 37 of them content** |
 
 Thirty-six content locations is not an invented ceiling. Project Core publishes
 the *same* 36 words at 4, 6, 9 and 36 locations per page — verified on
@@ -160,7 +162,8 @@ Communication 35(1):42-55.
 Read in full text. It establishes that array size and navigation depth both
 cost accuracy and latency. It gives **no threshold** and recommends no maximum
 number of symbols per display. It is the reason a per-page ceiling exists at
-all; Project Core's published densities are the reason it is 36.
+all; Project Core's published densities are the reason it is 36, and the reason
+the one board that exceeds it exceeds it by one.
 
 ### 2.2 Real, unobtained, and therefore unused
 
@@ -252,11 +255,11 @@ order, which is an idea and was never copyrightable.
 
 ### 2.5 Ours, with no citation behind it
 
-Of 366 distinct labels, **36 come from a published list.** The other **330 are
+Of 371 distinct labels, **36 come from a published list.** The other **335 are
 judgement.** They are not evidence and this document does not present them as
 evidence.
 
-The six root-board additions are spelled out rather than counted, because
+The seven root-board additions are spelled out rather than counted, because
 adding to that set is adding to a beginning communicator's first board. The
 reasoning, from `core_vocabulary.dart` and REQUIREMENTS §4.11:
 
@@ -268,6 +271,7 @@ reasoning, from `core_vocabulary.dart` and REQUIREMENTS §4.11:
 | `wait` | Floor-holding. An AAC user composes slower than a speaker talks; this is the one-tap way to stop being talked over. |
 | `me` | The possessive key fires after `I` and produces "I's". The object pronoun on the `people` board is two movements from "help me". `me` is the one object pronoun level 1 keeps, because it is the one that follows a verb. |
 | `how` | The one English question word the list omits. It sits in the pinned column with the other five, which would otherwise offer five of the six and read as having a hole. |
+| `maybe` | The list can agree and, with `yes`/`no` above, refuse. It has no hedge. Without one, every answer to a direct question is a commitment, the person is made to overstate what they mean each time, and nobody around them can tell it is the board talking rather than them. |
 
 `?` is not on any board. It is an utterance-bar action, so a question can be
 punctuated from wherever the sentence was built rather than costing a location

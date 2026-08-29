@@ -852,7 +852,8 @@ class _VocabularyLevel extends StatelessWidget {
 
   static const _descriptions = {
     1:
-        'Learning single words. The Universal Core 36, and never more than 36 '
+        'Learning single words. The Universal Core 36, plus “maybe” so an '
+        'answer can be a hedge rather than a commitment. Never more than 37 '
         'on a page. No word endings and no am/is/are, so “are you ok?” and '
         'the past tense are out of reach at this level.',
     2:

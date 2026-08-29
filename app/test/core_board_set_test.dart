@@ -81,7 +81,7 @@ void main() {
       'he   my   same      can  get   take     +ing      and     . on   yes',
       'she  me   different do   make  put      +\'s      but     . up   no',
       'it   .    more      open close help     am/is/are because . to   don\'t',
-      'that .    this      look turn  finished was/were  so      . out  .',
+      'that .    this      look turn  finished was/were  so      . out  maybe',
     ];
 
     final home = await (db.select(
@@ -785,6 +785,69 @@ void main() {
       expect(b.targetBoardId, isNotNull, reason: '"${b.label}" goes nowhere');
       expect(boardIds, contains(b.targetBoardId));
     }
+  });
+
+  test('the answer between yes and no is on the root board', () async {
+    // Without it every answer is a commitment, and the people in the room have
+    // no way to tell an overstated "yes" from a meant one. It has to be one
+    // movement from wherever a question is asked, which means the root board
+    // and not a category behind a navigation step.
+    final home = await (db.select(
+      db.boards,
+    )..where((b) => b.name.equals('home'))).getSingle();
+
+    final query =
+        db.select(db.buttons).join([
+          innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+        ])..where(
+          db.buttons.label.equals('maybe') & db.cells.boardId.equals(home.id),
+        );
+
+    final rows = await query.get();
+    expect(
+      rows,
+      hasLength(1),
+      reason: 'a board that can say yes and no and not maybe overstates',
+    );
+    expect(rows.single.readTable(db.buttons).vocabLevel, 1);
+
+    // Beside the answers it qualifies, not stranded in another region.
+    final yes =
+        await (db.select(db.buttons).join([
+              innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+            ])..where(
+              db.buttons.label.equals('yes') & db.cells.boardId.equals(home.id),
+            ))
+            .getSingle();
+
+    expect(
+      rows.single.readTable(db.cells).col,
+      yes.readTable(db.cells).col,
+      reason: '"maybe" answers the same question as "yes" and "no"',
+    );
+  });
+
+  test('the degrees of not knowing are reachable on feelings', () async {
+    // "maybe" on the root board is the whole of the job at level 1; these are
+    // the refinements, and a board that cannot draw them all on page one has
+    // to page them rather than drop them.
+    final feelings = (await (db.select(
+      db.boards,
+    )..where((b) => b.name.like('feelings%'))).get()).map((b) => b.id).toSet();
+
+    final query = db.select(db.buttons).join([
+      innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+    ])..where(db.cells.boardId.isIn(feelings));
+
+    final onFeelings = {
+      for (final r in await query.get()) r.readTable(db.buttons).label,
+    };
+
+    expect(
+      onFeelings,
+      containsAll(['unsure', 'probably', 'possibly', 'perhaps']),
+      reason: 'a hedge a person cannot reach is a hedge they do not have',
+    );
   });
 
   test('refusal is reachable without navigating', () async {

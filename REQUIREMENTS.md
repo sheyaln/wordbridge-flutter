@@ -579,7 +579,7 @@ movement learned once is learned for good."*
 
 | Answer | What it says |
 |---|---|
-| Learning single words | "The Universal Core 36, and never more than 36 on a page. No word endings and no am/is/are, so “are you ok?” and the past tense are out of reach until the next step." |
+| Learning single words | "The Universal Core 36, plus “maybe” so an answer can be a hedge rather than a commitment. Never more than 37 on a page. No word endings and no am/is/are, so “are you ok?” and the past tense are out of reach until the next step." |
 | Putting words together | "Adds the word endings, a and the, and am/is/are — the keys a sentence needs — along with the words an ordinary day takes." |
 | Using the whole board | "Everything, including anything added later." |
 
@@ -596,11 +596,19 @@ The caregiver slider's three descriptions were still describing the old
 the same readiness phrase, so the setting found later is recognisably the
 question already answered.
 
-**No totals in the copy.** 99 / 241 / 372 counts the shipped vocabulary; the
-teen and adult presets add their own extras on top (108 / 262 / 399 and
-112 / 271 / 404), so a total printed on the setup page would be wrong for two
-of the four bands. The density — never more than 36 on a page — holds for every
-band at every geometry and is what the copy claims instead.
+**No totals in the copy.** 100 / 252 / 377 counts the shipped vocabulary; the
+teen and adult presets add their own extras on top (109 / 273 / 404 and
+112 / 281 / 408), so a total printed on the setup page would be wrong for two
+of the four bands. The density — never more than 36 on a page on a category
+board, 37 on the root board — holds for every band at every geometry and is
+what the copy claims instead.
+
+The root board's extra one is `maybe` (§4.28). Project Core's published figure
+is a board somebody built, not a threshold anything was measured against, and a
+beginner is not served differently by thirty-six locations than by
+thirty-seven. What the calibration test guards is that the number stays one
+somebody argued for word by word, so the additions are named in a set rather
+than counted — see `docs/starter-vocabulary.md` §2.5, which now lists seven.
 
 **Not claimed: -er/-est.** The endings band is `+s`, `+ed`, `+ing`, `+'s`,
 `am/is/are`, `was/were`. `MorphemeKind` has `comparativeEr` and
@@ -1018,9 +1026,10 @@ gesture. Five questions is already what setup asks; a sixth about seconds, from
 somebody who has not yet made the gesture once, is a number they cannot have an
 opinion about. It is a slider in settings instead.
 
-### 4.28 Time, and words for not being sure — agreed, not built
+### 4.28 Time, and words for not being sure — the uncertainty half delivered
 
-Two vocabulary additions, both for later.
+Two vocabulary additions. The uncertainty words shipped; the `time` category
+is still to build.
 
 **A `time` category.** Nothing on the board says when. Today, tomorrow,
 yesterday, morning, afternoon, night, now, later, soon, before, after, and the
@@ -1035,9 +1044,59 @@ that can say `yes` and `no` and not `maybe` puts somebody in the position of
 overstating what they mean, every time, and the people around them have no way
 to tell that it is the board talking rather than the person.
 
-Where they go is the open question. They are not nouns and do not belong on a
-category board of things; `maybe` in particular belongs near `yes` and `no`,
-which is the most contested part of the root board.
+Where they go was the open question. Settled by measurement, over the 29
+distinct grids `GridChoice.derive` can actually produce across four icon sizes,
+two orientations and ten plausible devices, plus 7×12 and 7×11 by hand, for all
+four age presets, comparing every word's page, row and column before and after.
+**No word is lost at any size.**
+
+**`maybe` joins the `describing` band on the root board**, last in it, so it
+lands beside `no` and `don't` at 7 rows and up. Level 1, because the level-1
+board is where the problem bites hardest: single words, and every answer a
+commitment. Not marked essential, so it cannot displace something more
+load-bearing on the smallest grid.
+
+Its measured cost across all 29 grids is **one word, at one size**: at 6×9,
+`out` moves from root page 2 to page 3. Everywhere else it is free. At 5×8,
+5×9 and 5×10 `maybe` itself lands on root page two, which is the band at its
+floor shedding its own last item rather than anything else paying.
+
+**`perhaps`, `possibly`, `probably` and `unsure` form a `not sure` row on the
+`feelings` board**, `shedRank: 5` — between `more feelings` and `strong words`,
+so at a level-3 tie this row goes first, because `maybe` already carries the
+job at level 1 and page two costs a key press rather than an answer.
+
+**⚠️ What that row costs, on the default grid.** At 7×12 — the grid this
+project uses — the `not sure` row is paid for by **the `ours` reserve row on
+the feelings board**, the row held open for a family's own words. Also at 7×13,
+11×7 and 11×8. It is softened rather than erased: the new row leaves seven open
+cells of its own on an eleven-wide board, so the space is still there. What is
+lost is the *named* reserve — a caregiver word added into that tail now belongs
+to `not sure` rather than to `ours`, which is a change of meaning and not only
+of label.
+
+**And the reason trimming the row would not help:** a band owns a whole row, so
+`unsure` on its own would cost the identical row at every grid size. The other
+three ride free. The question is therefore not "do four words earn a row" but
+"does `unsure` earn a row" — and `unsure` is the only one of the four saying
+something `maybe` cannot, because it is a state you report about yourself,
+which is what a feelings board is for. `perhaps` is a pure synonym of `maybe`
+and is present because it is free, not because it was argued for. **The only
+lever that returns the `ours` reserve is dropping the band entirely.**
+
+Elsewhere the row is paid for by level-2 and level-3 words moving one page
+later — `jealous`, `confused` and `surprised` at 10×8; `mean` and `worse` at
+5×8 — and at fourteen of the larger grids it costs nothing at all.
+
+`maybe` was also removed from the adult preset's own band, where it had been a
+workaround for its absence from the root board. Two locations for one word is
+against that file's own rule, and a per-preset test now holds it to one.
+
+**The level-1 density moved, deliberately.** `vocab_level_calibration_test.dart`
+asserted the root board's level-1 content area was *exactly* 36, Project Core's
+published whole-day figure. It is now 37, guarded separately from the category
+boards, which still hold to 36 — see §4.11 for why that is a number worth
+moving once and the copy that had to move with it.
 
 ### 4.26 A caregiver can name a row themselves — agreed, not built
 

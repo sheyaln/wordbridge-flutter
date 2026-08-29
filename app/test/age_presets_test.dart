@@ -217,4 +217,29 @@ void main() {
       }
     });
   });
+
+  group('one word, one location', () {
+    // A preset appends to the shipped bands, so a word it repeats is a second
+    // place to learn for the same thing and a second place usage is split
+    // between. Every preset, because the shipped board is the same underneath
+    // all of them and only the extras differ.
+    for (final ageBand in AgeBand.values) {
+      test('${ageBand.name} says "maybe" in exactly one place', () async {
+        final db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+        addTearDown(db.close);
+
+        final id = await seedCoreBoardSet(db, ageBand: ageBand);
+
+        final query = db.select(db.buttons)
+          ..where(
+            (b) =>
+                b.vocabularyId.equals(id) &
+                b.label.equals('maybe') &
+                b.deletedAt.isNull(),
+          );
+
+        expect(await query.get(), hasLength(1));
+      });
+    }
+  });
 }
