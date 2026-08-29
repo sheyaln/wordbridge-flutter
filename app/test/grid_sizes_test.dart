@@ -6,7 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/seed/core_vocabulary.dart';
+import 'package:wordbridge/db/seed/vocabulary_top_up.dart';
 import 'package:wordbridge/db/tables.dart';
+
+import 'vocabulary_top_up_test.dart'
+    show fingerprint, frameOf, unship, wheelPositions, wordsAcross;
 
 /// Every grid a caregiver could plausibly land on.
 ///
@@ -202,6 +206,30 @@ void main() {
         }
       });
 
+      test('the wheel keeps the order the keys were learned in', () async {
+        // The keys are a window onto this list, so the order is part of what a
+        // user learned. A category may only be appended.
+        final vocab = await (db.select(
+          db.vocabularies,
+        )..where((v) => v.id.equals(vocabId))).getSingle();
+
+        final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+        final order = [
+          for (final c
+              in (map['categories'] as List).cast<Map<String, dynamic>>())
+            c['name'] as String,
+        ];
+
+        expect(order.take(6), [
+          'people',
+          'food',
+          'play',
+          'feelings',
+          'places',
+          'body',
+        ]);
+      });
+
       test('the wheel turns through every category without a gap', () async {
         final vocab = await (db.select(
           db.vocabularies,
@@ -214,6 +242,81 @@ void main() {
         // A cycle key exists exactly when there is something to cycle to.
         expect(map.containsKey('cycleCol'), total > slots);
         expect(slots, greaterThan(0));
+      });
+
+      test('a category that ships later reaches this grid too', () async {
+        // Every grid a caregiver could be on has to be able to receive a new
+        // board, or the improvement only reaches the people who set up after
+        // it — which is the people who have invested least in their board.
+        await unship(db, vocabId, 'doing');
+
+        final before = await fingerprint(db);
+        final wheelBefore = await wheelPositions(db, vocabId);
+
+        final result = await topUpVocabulary(db, vocabularyId: vocabId);
+        expect(result.refusedBoards, isEmpty);
+        expect(result.addedBoards, ['doing']);
+
+        final after = await fingerprint(db);
+        for (final entry in before.entries) {
+          expect(
+            after[entry.key],
+            entry.value,
+            reason: '${entry.key} moved at ${g.rows}x${g.cols}',
+          );
+        }
+
+        final wheelAfter = await wheelPositions(db, vocabId);
+        for (final entry in wheelBefore.entries) {
+          expect(
+            wheelAfter[entry.key],
+            entry.value,
+            reason: '"${entry.key}" is on a different turn of the wheel',
+          );
+        }
+
+        // Reachable: a slot on the first turn, or a key that turns the wheel
+        // as many times as it takes.
+        final frame = await frameOf(db, vocabId);
+        expect(frame.categories.last.name, 'doing');
+        expect(
+          frame.cycleCol != null,
+          frame.categories.length > frame.categoryCols.length,
+          reason: 'a wheel that has to turn has no key that turns it',
+        );
+
+        if (frame.cycleCol != null) {
+          for (final board in await db.select(db.boards).get()) {
+            final query =
+                db.select(db.buttons).join([
+                  innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+                ])..where(
+                  db.cells.boardId.equals(board.id) &
+                      db.cells.row.equals(frame.row) &
+                      db.cells.col.equals(frame.cycleCol!),
+                );
+
+            final rows = await query.get();
+            expect(rows, hasLength(1), reason: '"${board.name}" cannot cycle');
+            expect(
+              rows.single.readTable(db.buttons).action,
+              ButtonAction.cycleCategories,
+            );
+          }
+        }
+
+        // And it is a board with the vocabulary in it, wherever the grid had
+        // to page that vocabulary to.
+        final doing = {
+          for (final band in categoryBands['doing']!)
+            for (final item in band.items) item.value.label,
+        };
+
+        expect(
+          (await wordsAcross(db, 'doing')).keys.toSet(),
+          containsAll(doing),
+          reason: 'the new board lost words at ${g.rows}x${g.cols}',
+        );
       });
 
       test('there is room left to grow', () async {

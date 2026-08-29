@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_resolver.dart';
 
 /// Draws a button's picture, or nothing at all.
+///
+/// The picture is the one chosen for this button; only a button that has none
+/// takes whatever the packs offer for its word.
 ///
 /// Nothing here is on the path between a tap and speech. Resolution is
 /// asynchronous, failure is silent, and the absence of a picture is a normal
@@ -17,6 +22,7 @@ class SymbolView extends StatefulWidget {
     super.key,
     required this.resolver,
     required this.label,
+    this.symbolId,
     this.packIds = const ['core'],
   });
 
@@ -25,7 +31,12 @@ class SymbolView extends StatefulWidget {
   /// Rendered when no picture resolves, which is most of the time early on.
   final String label;
 
-  /// Packs to look in, in order.
+  /// The symbol chosen for this button. It outranks anything the packs offer
+  /// for [label], and a button carrying one never falls back to them.
+  final String? symbolId;
+
+  /// Packs to look in, in order. Consulted only for a button with no symbol
+  /// of its own.
   final List<String> packIds;
 
   @override
@@ -35,28 +46,55 @@ class SymbolView extends StatefulWidget {
 class _SymbolViewState extends State<SymbolView> {
   SymbolImage? _image;
 
+  /// Which resolution the picture on screen belongs to.
+  int _generation = 0;
+
+  StreamSubscription<SymbolRef>? _arrivals;
+
   @override
   void initState() {
     super.initState();
     _resolve();
+
+    // A download queued by the first resolution lands after the grid is
+    // drawn. Auto-attached symbols carry the word they illustrate, so the word
+    // is what marks an arrival worth re-reading.
+    _arrivals = widget.resolver.ready
+        .where((ref) => _sameWord(ref.label, widget.label))
+        .listen((_) => _resolve());
   }
 
   @override
   void didUpdateWidget(SymbolView old) {
     super.didUpdateWidget(old);
-    if (old.label != widget.label) _resolve();
+    if (old.label != widget.label || old.symbolId != widget.symbolId) {
+      _resolve();
+    }
   }
 
-  Future<void> _resolve() async {
-    if (widget.packIds.isEmpty) return;
+  @override
+  void dispose() {
+    _arrivals?.cancel();
+    super.dispose();
+  }
 
-    final resolved = await widget.resolver.resolveLabel(
-      widget.label,
-      widget.packIds,
+  static bool _sameWord(String a, String b) =>
+      a.toLowerCase().trim() == b.toLowerCase().trim();
+
+  Future<void> _resolve() async {
+    final generation = ++_generation;
+
+    final resolved = await widget.resolver.resolveButton(
+      symbolId: widget.symbolId,
+      label: widget.label,
+      packIds: widget.packIds,
     );
-    if (mounted && resolved.image != null) {
-      setState(() => _image = resolved.image);
-    }
+
+    // A location outlives the words on it and a word outlives its pictures, so
+    // a resolution can land on a button it no longer describes. Only the most
+    // recent one may draw.
+    if (!mounted || generation != _generation) return;
+    setState(() => _image = resolved.image);
   }
 
   @override
@@ -67,9 +105,7 @@ class _SymbolViewState extends State<SymbolView> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Expanded(
-          child: _Picture(image: image, label: widget.label),
-        ),
+        Expanded(child: SymbolPicture(image)),
         const SizedBox(height: 2),
         _Label(widget.label, large: false),
       ],
@@ -77,11 +113,14 @@ class _SymbolViewState extends State<SymbolView> {
   }
 }
 
-class _Picture extends StatelessWidget {
-  const _Picture({required this.image, required this.label});
+/// Draws one resolved picture: asset or file, vector or raster.
+///
+/// Shared by every board so that a caregiver auditing pictures and the person
+/// using the device are looking at the same thing, drawn the same way.
+class SymbolPicture extends StatelessWidget {
+  const SymbolPicture(this.image, {super.key});
 
   final SymbolImage image;
-  final String label;
 
   @override
   Widget build(BuildContext context) {

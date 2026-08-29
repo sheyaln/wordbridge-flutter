@@ -26,6 +26,27 @@ library;
 /// nothing.
 enum BandAxis { columns, rows }
 
+/// Which direction a band's own words run inside the lines it claims.
+///
+/// A line is a column on [BandAxis.columns] and a row on [BandAxis.rows]. The
+/// band's region is the same either way; only the order within it differs.
+enum BandFill {
+  /// Along one line before starting the next. Consecutive words share a line,
+  /// which is what a paradigm wants — the root board's first pronoun column is
+  /// the subject set, and filling the other way would interleave it with the
+  /// column beside it.
+  alongLine,
+
+  /// Across the band's lines before moving along them. Consecutive words end
+  /// up side by side, which is what a run of alternatives wants: each is one
+  /// cell from the last, so the pair is learned as a pair.
+  ///
+  /// Only for a band that starts its own line. A band filled this way ends in
+  /// a ragged edge rather than one open tail, so there is nothing for a
+  /// following [Band.startsLine] band to fill.
+  acrossBand,
+}
+
 /// One word waiting for a location.
 class BandItem<T> {
   const BandItem(this.value, {this.level = 1, this.essential = false});
@@ -56,13 +77,16 @@ class Band<T> {
     this.reserveRank = 100,
     this.shedRank = 100,
     this.startsLine = true,
+    this.fill = BandFill.alongLine,
   });
 
   final String name;
 
-  /// In the order they should be read. Placement fills a column top to bottom
-  /// before starting the next one, so this order is what a user's eye follows.
+  /// In the order they should be read, which [fill] turns into a direction.
   final List<BandItem<T>> items;
+
+  /// Which way [items] run inside the band's region.
+  final BandFill fill;
 
   /// Lines held open whether or not there are words to fill them, and the last
   /// thing to give way when the grid runs short.
@@ -169,8 +193,8 @@ class BandLayout<T> {
   }
 }
 
-/// Places [bands] left to right across a grid, filling each column top to
-/// bottom.
+/// Places [bands] one after another across a grid, each in a contiguous run of
+/// lines and each filled in the direction its [Band.fill] asks for.
 ///
 /// [systemRows] rows are held at the bottom and [pinnedCols] columns at the
 /// right; neither is available to a band, because both carry keys that must be
@@ -200,6 +224,11 @@ BandLayout<T> layOutBands<T>({
   assert(
     {for (final b in bands) b.name}.length == bands.length,
     'two bands share a name: ${bands.map((b) => b.name).toList()}',
+  );
+
+  assert(
+    bands.every((b) => b.startsLine || b.fill == BandFill.alongLine),
+    'a band filled across its lines needs a region of its own to wrap inside',
   );
 
   // A line is what a band claims: a column on one axis, a row on the other.
@@ -257,8 +286,15 @@ BandLayout<T> layOutBands<T>({
     final items = kept[band.name]!;
     final start = band.startsLine ? line * lineLength : cell;
 
+    // Words wrap across the lines the band needs, never the ones it merely
+    // holds open, so a reserve stays a contiguous block of empty cells.
+    final wrap = linesOf(band);
+    final across = band.fill == BandFill.acrossBand;
+
     for (var i = 0; i < items.length; i++) {
-      final at = start + i;
+      final at = across
+          ? (line + i % wrap) * lineLength + i ~/ wrap
+          : start + i;
       placed.add((
         row: axis == BandAxis.columns ? at % lineLength : at ~/ lineLength,
         col: axis == BandAxis.columns ? at ~/ lineLength : at % lineLength,
@@ -269,12 +305,16 @@ BandLayout<T> layOutBands<T>({
     }
 
     if (band.startsLine) {
-      final width = linesOf(band) + extra[band.name]!;
+      final width = wrap + extra[band.name]!;
       if (width > 0) {
         bandLines[band.name] = (first: line, last: line + width - 1);
       }
       line += width;
-      if (items.isNotEmpty && start + items.length > cell) {
+      if (across) {
+        // A cross-filled block leaves a ragged edge rather than one open run,
+        // so a band that fills a tail starts past it instead.
+        cell = line * lineLength;
+      } else if (items.isNotEmpty && start + items.length > cell) {
         cell = start + items.length;
       }
     } else if (items.isNotEmpty) {

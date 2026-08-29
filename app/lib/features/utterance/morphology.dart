@@ -209,10 +209,15 @@ String _addComparative(String word, String suffix) {
 /// five separate cells. The agreement is what makes it worth doing: a user who
 /// taps "I" then the copula gets "I am", which is the correct sentence rather
 /// than a correct word next to a wrong one.
+///
+/// A null subject means the copula opens the sentence and the subject has yet
+/// to be tapped. The default it takes is settled by [copulaAgreeingWith].
 String copulaFor(String? subject, {required bool past}) {
   final s = subject?.trim().toLowerCase();
 
-  const plural = {'you', 'we', 'they', 'people', 'everybody', 'nobody'};
+  // "people" is the only plural noun here. The -body pronouns take the
+  // singular: "everybody is here", "nobody is listening".
+  const plural = {'you', 'we', 'they', 'people'};
   const firstPerson = {'i'};
 
   if (past) {
@@ -222,6 +227,36 @@ String copulaFor(String? subject, {required bool past}) {
   if (plural.contains(s)) return 'are';
   return 'is';
 }
+
+const _presentCopula = {'am', 'is', 'are'};
+const _pastCopula = {'was', 'were'};
+
+/// Whether [word] is a form of "to be".
+bool isCopula(String word) {
+  final form = word.trim().toLowerCase();
+  return _presentCopula.contains(form) || _pastCopula.contains(form);
+}
+
+/// The form of "to be" that agrees with a subject arriving after it.
+///
+/// A question inverts subject and verb — "are you ok?", "what is that?",
+/// "was it my turn?" — so the copula is placed before there is anything to
+/// agree with, and settles once the subject lands. Tense is read off the form
+/// already placed, so the two copula keys stay one path.
+///
+/// Null for a word that is not a form of "to be", which is left as it is.
+String? copulaAgreeingWith(String copula, String subject) {
+  final form = copula.trim().toLowerCase();
+  if (_presentCopula.contains(form)) return copulaFor(subject, past: false);
+  if (_pastCopula.contains(form)) return copulaFor(subject, past: true);
+  return null;
+}
+
+/// Determiners that stand for a thing, so a verb can follow one directly.
+///
+/// "this is mine" is a sentence. "a is", "the is", "some is" and "more is" are
+/// not: those are placed for a noun that has yet to be tapped.
+const _demonstratives = {'this', 'that', 'these', 'those'};
 
 /// Whether a grammar helper makes sense given what has been said so far.
 ///
@@ -237,6 +272,7 @@ String copulaFor(String? subject, {required bool past}) {
 bool grammarHelperApplies({
   required MorphemeKind? kind,
   required String tense,
+  required String? previousText,
   required PartOfSpeech? previousPos,
   required bool previousInflected,
   required bool atStart,
@@ -253,18 +289,26 @@ bool grammarHelperApplies({
     };
   }
 
-  if (atStart) return false;
-
-  // "to be" agrees with a subject, so it follows one. "want is" is not a
-  // sentence anyone means to build.
+  // "to be" agrees with a subject, and a question puts that subject after it —
+  // "are you ok?", "what is that?" — so it opens a sentence, and follows a
+  // question word, as readily as it follows a subject. Where it does follow a
+  // subject, that word has to be one: "want is" is not a sentence anyone means
+  // to build.
   if (kind == null && (tense == 'present' || tense == 'past')) {
+    if (atStart) return true;
     return switch (previousPos) {
       PartOfSpeech.pronoun ||
       PartOfSpeech.noun ||
-      PartOfSpeech.determiner => true,
+      PartOfSpeech.question => true,
+      PartOfSpeech.determiner => _demonstratives.contains(
+        previousText?.trim().toLowerCase(),
+      ),
       _ => false,
     };
   }
+
+  // An ending needs a word to attach to.
+  if (atStart) return false;
 
   // One suffix per word. Stacking them gives "wanteding".
   if (previousInflected) return false;

@@ -52,7 +52,7 @@ class GridSurface extends StatelessWidget {
   /// renders labels only, which is a complete, working board.
   final SymbolResolver? resolver;
 
-  /// Packs to look in, in order.
+  /// Packs to look in, in order, for buttons that have no symbol of their own.
   final List<String> symbolPackIds;
 
   /// Whether a button can be used right now.
@@ -150,11 +150,12 @@ class _Cell extends StatelessWidget {
       );
     }
 
-    // Keyed by label because that is what the bundled manifests index on. A
-    // button whose label a pack does not carry simply renders as text, which
-    // is a complete button, not a degraded one.
+    // The picture chosen for this button wins; a button with none takes
+    // whatever the packs carry for its word. A button neither illustrates
+    // renders as text, which is a complete button, not a degraded one.
     return SymbolView(
       resolver: resolver,
+      symbolId: button.symbolId,
       label: button.label,
       packIds: symbolPackIds,
     );

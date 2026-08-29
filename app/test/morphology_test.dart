@@ -152,6 +152,43 @@ void main() {
       expect(copulaFor('mum', past: false), 'is');
       expect(copulaFor(null, past: true), 'was');
     });
+
+    test('the -body pronouns are singular', () {
+      // They sit on the same row as "us" and "them" and read like a crowd,
+      // but "everybody is here" is the sentence.
+      expect(copulaFor('everybody', past: false), 'is');
+      expect(copulaFor('somebody', past: false), 'is');
+      expect(copulaFor('nobody', past: false), 'is');
+      expect(copulaFor('everybody', past: true), 'was');
+      expect(copulaFor('people', past: false), 'are');
+    });
+
+    test('a subject that arrives after the verb still settles the form', () {
+      // A yes/no question inverts the two, so the copula is placed with
+      // nothing yet to agree with.
+      expect(copulaAgreeingWith('is', 'you'), 'are');
+      expect(copulaAgreeingWith('is', 'I'), 'am');
+      expect(copulaAgreeingWith('is', 'we'), 'are');
+      expect(copulaAgreeingWith('is', 'they'), 'are');
+      expect(copulaAgreeingWith('is', 'it'), 'is');
+      expect(copulaAgreeingWith('is', 'mum'), 'is');
+    });
+
+    test('the placed form carries the tense', () {
+      expect(copulaAgreeingWith('was', 'you'), 'were');
+      expect(copulaAgreeingWith('was', 'it'), 'was');
+      expect(copulaAgreeingWith('was', 'I'), 'was');
+      expect(copulaAgreeingWith('were', 'it'), 'was');
+      expect(copulaAgreeingWith('am', 'they'), 'are');
+    });
+
+    test('a word that is not a form of "to be" is left alone', () {
+      // The bar settles only what the copula key placed. Anything else is a
+      // word the user chose and it stays as tapped.
+      expect(copulaAgreeingWith('want', 'you'), isNull);
+      expect(copulaAgreeingWith('a', 'you'), isNull);
+      expect(copulaAgreeingWith('', 'you'), isNull);
+    });
   });
 
   _grammarTests();
@@ -176,22 +213,32 @@ void _grammarTests() {
     MorphemeKind? kind,
     String tense = '',
     PartOfSpeech? after,
+    String? text,
     bool inflected = false,
     bool atStart = false,
   }) => grammarHelperApplies(
     kind: kind,
     tense: tense,
+    previousText: text,
     previousPos: after,
     previousInflected: inflected,
     atStart: atStart,
   );
 
   group('endings appear only where they apply', () {
-    test('nothing is offered before a word has been said', () {
+    test('no ending is offered before a word has been said', () {
       // "+ed" with no verb to attach it to does nothing, so it is not shown.
-      expect(applies(kind: MorphemeKind.pastEd, atStart: true), isFalse);
-      expect(applies(kind: MorphemeKind.pluralS, atStart: true), isFalse);
-      expect(applies(kind: null, tense: 'present', atStart: true), isFalse);
+      // The start of the sentence settles that on its own, whatever part of
+      // speech is passed alongside it.
+      for (final kind in MorphemeKind.values) {
+        for (final pos in [null, ...PartOfSpeech.values]) {
+          expect(
+            applies(kind: kind, after: pos, atStart: true),
+            isFalse,
+            reason: '$kind at the start of a sentence, after $pos',
+          );
+        }
+      }
     });
 
     test('tense endings follow a verb and nothing else', () {
@@ -256,6 +303,13 @@ void _grammarTests() {
   });
 
   group('the copula follows a subject', () {
+    test('or opens the sentence, where the subject follows it', () {
+      // "are you ok?" — a yes/no question inverts subject and verb, so the
+      // key has to be there before anything has been said.
+      expect(applies(kind: null, tense: 'present', atStart: true), isTrue);
+      expect(applies(kind: null, tense: 'past', atStart: true), isTrue);
+    });
+
     test('after a pronoun or noun', () {
       expect(
         applies(kind: null, tense: 'present', after: PartOfSpeech.pronoun),
@@ -273,6 +327,46 @@ void _grammarTests() {
         applies(kind: null, tense: 'present', after: PartOfSpeech.verb),
         isFalse,
       );
+    });
+
+    test('after a question word, which the subject follows', () {
+      // "what is that?", "where are you?" — the commonest questions there
+      // are, and the board builds them from this key.
+      expect(
+        applies(kind: null, tense: 'present', after: PartOfSpeech.question),
+        isTrue,
+      );
+      expect(
+        applies(kind: null, tense: 'past', after: PartOfSpeech.question),
+        isTrue,
+      );
+    });
+
+    test('after a determiner that stands for a thing, and no other', () {
+      // "this is mine" is a sentence. "a is" and "more is" are not: those are
+      // waiting for a noun.
+      expect(
+        applies(
+          kind: null,
+          tense: 'present',
+          after: PartOfSpeech.determiner,
+          text: 'this',
+        ),
+        isTrue,
+      );
+
+      for (final word in ['a', 'an', 'the', 'more', 'some', 'all']) {
+        expect(
+          applies(
+            kind: null,
+            tense: 'present',
+            after: PartOfSpeech.determiner,
+            text: word,
+          ),
+          isFalse,
+          reason: '"$word is" is not a sentence',
+        );
+      }
     });
   });
 

@@ -53,6 +53,12 @@ class _UsageSummaryState extends State<UsageSummary> {
       ? const UsageWindow.calendarDays(1)
       : UsageWindow.rollingDays(_days);
 
+  /// Names the stretch of time that is empty, which an empty panel would
+  /// otherwise report as an empty log.
+  String get _nothingRecorded => _days == 1
+      ? 'Nothing recorded today.'
+      : 'Nothing recorded in the last $_days days.';
+
   /// One read behind all three panels, so the sentences and the counts describe
   /// the same log rather than two moments of it. These figures are read against
   /// each other and copied into funding letters; panels that disagree are worse
@@ -62,7 +68,7 @@ class _UsageSummaryState extends State<UsageSummary> {
     final (taps, differentWords, recent, mostUsed) = await (
       _q.totalTaps(widget.profileId, window: window),
       _q.numberOfDifferentWords(widget.profileId, window: window),
-      _q.recentUtterances(widget.profileId),
+      _q.recentUtterances(widget.profileId, window: window),
       _q.mostUsedWords(widget.profileId, window: window),
     ).wait;
 
@@ -134,7 +140,7 @@ class _UsageSummaryState extends State<UsageSummary> {
           builder: (context, snap) {
             final items = snap.data?.recent;
             if (items == null) return const LinearProgressIndicator();
-            if (items.isEmpty) return const _Empty('Nothing recorded yet.');
+            if (items.isEmpty) return _Empty(_nothingRecorded);
             return Column(
               children: [
                 for (final u in items)
@@ -162,7 +168,7 @@ class _UsageSummaryState extends State<UsageSummary> {
           builder: (context, snap) {
             final items = snap.data?.mostUsed;
             if (items == null) return const LinearProgressIndicator();
-            if (items.isEmpty) return const _Empty('Nothing recorded yet.');
+            if (items.isEmpty) return _Empty(_nothingRecorded);
 
             final max = items.first.count;
             return Column(

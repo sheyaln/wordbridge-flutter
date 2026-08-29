@@ -40,7 +40,6 @@ Future<String> seedCoreBoardSet(
   // Seeded whether or not it is switched on. Hiding holds the locations, so
   // switching strong language on a year from now reveals it where it has
   // always been instead of pushing other words aside.
-  final swearing = ageBand.canSwear;
   final swearingVisible = profanity ?? ageBand.swearsByDefault;
 
   SystemRowPlan.validate(rows: rows, cols: cols);
@@ -134,11 +133,7 @@ Future<String> seedCoreBoardSet(
       vocabId: vocabId,
       name: category,
       axis: BandAxis.rows,
-      bands: [
-        ...categoryBands[category]!,
-        ...ageBand.extrasFor(category),
-        if (swearing && category == 'feelings') swearingBand,
-      ],
+      bands: categoryBandsFor(category, ageBand),
       rows: rows,
       cols: cols,
       hiddenBands: swearingVisible ? const {} : {swearingBand.name},
@@ -148,12 +143,12 @@ Future<String> seedCoreBoardSet(
   // Every category in a fixed order. The keys along the system row are a
   // window onto this list; the cycle key moves the window. Recording the order
   // here is what lets the talk screen do that without moving a button.
-  final wheel = [
+  final frame = SystemFrame.of(plan, [
     for (final c in categoryNames) (name: c, boardId: categoryPages[c]!.first),
-  ];
+  ]);
 
   await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId))).write(
-    VocabulariesCompanion(systemCellMap: Value(_systemCellMap(plan, wheel))),
+    VocabulariesCompanion(systemCellMap: Value(frame.toJson())),
   );
 
   final pageGroups = [homePages, ...categoryPages.values];
@@ -162,15 +157,14 @@ Future<String> seedCoreBoardSet(
   // one unchanging movement no matter where the user is.
   for (final group in pageGroups) {
     for (var index = 0; index < group.length; index++) {
-      await _addFixedKeys(
+      await addFixedKeys(
         db,
         vocabId: vocabId,
         boardId: group[index],
         rows: rows,
         cols: cols,
-        plan: plan,
+        frame: frame,
         questions: questions,
-        wheel: wheel,
         pageBack: index > 0 ? group[index - 1] : null,
         pageForward: index < group.length - 1 ? group[index + 1] : null,
       );
@@ -180,23 +174,42 @@ Future<String> seedCoreBoardSet(
   return vocabId;
 }
 
+/// What belongs on a category board for one age preset.
+///
+/// Extras are appended, never inserted, so two profiles of different ages put
+/// the same shipped word in the same place. One answer, shared by the seed, a
+/// rebuild's preview and a top-up: three that computed it separately would
+/// drift, and the drift would show up as words moving.
+List<Band<SeedWord>> categoryBandsFor(String category, AgeBand ageBand) => [
+  ...categoryBands[category]!,
+  ...ageBand.extrasFor(category),
+  if (ageBand.canSwear && category == 'feelings') swearingBand,
+];
+
+/// What page [index] of a board group is called.
+///
+/// Page one keeps the board's own name, so the name a category key navigates
+/// to is the same string whether or not the grid needed a second page.
+String pageName(String name, int index) =>
+    index == 0 ? name : '$name ${index + 1}';
+
 /// Lays a board's vocabulary out across as many pages as the grid needs.
 ///
 /// Paging rather than scrolling. A page is a grid, so a word on page two is
 /// still at one unchanging sequence of movements; a scrolling surface would
 /// put a word wherever the scroll happened to be, which is no position at all.
-Future<List<String>> _buildPagedBoards(
-  WordbridgeDatabase db, {
-  required String vocabId,
+///
+/// Pure, and the single answer to "where would this word land": a preview that
+/// paged differently from the seed would promise a location the board then
+/// does not deliver.
+List<BandLayout<SeedWord>> pageBands({
   required String name,
   required List<Band<SeedWord>> bands,
   required int rows,
   required int cols,
   BandAxis axis = BandAxis.columns,
-  bool rootKind = false,
-  Set<String> hiddenBands = const {},
-}) async {
-  final boardIds = <String>[];
+}) {
+  final pages = <BandLayout<SeedWord>>[];
   var remaining = bands;
 
   while (true) {
@@ -206,24 +219,9 @@ Future<List<String>> _buildPagedBoards(
       bands: remaining,
       axis: axis,
     );
+    pages.add(page);
 
-    final boardId = await materialiseBoard(
-      db,
-      vocabularyId: vocabId,
-      name: boardIds.isEmpty ? name : '$name ${boardIds.length + 1}',
-      kind: rootKind && boardIds.isEmpty ? BoardKind.root : BoardKind.category,
-    );
-    boardIds.add(boardId);
-
-    await _placeAll(
-      db,
-      vocabId,
-      boardId,
-      page.placed,
-      hiddenBands: hiddenBands,
-    );
-
-    if (page.overflow.isEmpty) return boardIds;
+    if (page.overflow.isEmpty) return pages;
 
     // A page that placed nothing would loop forever. The layout engine always
     // fits at least one column of words, so this guards a future change rather
@@ -235,20 +233,67 @@ Future<List<String>> _buildPagedBoards(
     // Overflow keeps its band name so a hidden band stays hidden wherever it
     // lands. Splitting a band across pages must not reveal half of it.
     //
+    // It keeps the band's fill for the same reason: a band reads one way, and
+    // a page where the same band ran the other way would be a second thing to
+    // learn about words that are already one group.
+    //
     // Shedding works from the end of a band backwards, so the overflow list
     // arrives reversed. Putting it back into declaration order is what makes
     // page two read the same way page one does.
+    final fills = {for (final b in remaining) b.name: b.fill};
     remaining = [
-      for (final name in page.overflowBands)
+      for (final band in page.overflowBands)
         Band(
-          name: name,
+          name: band,
+          fill: fills[band]!,
           items: [
             for (final o in page.overflow.reversed)
-              if (o.band == name) o.item,
+              if (o.band == band) o.item,
           ],
         ),
     ];
   }
+}
+
+Future<List<String>> _buildPagedBoards(
+  WordbridgeDatabase db, {
+  required String vocabId,
+  required String name,
+  required List<Band<SeedWord>> bands,
+  required int rows,
+  required int cols,
+  BandAxis axis = BandAxis.columns,
+  bool rootKind = false,
+  Set<String> hiddenBands = const {},
+}) async {
+  final pages = pageBands(
+    name: name,
+    bands: bands,
+    rows: rows,
+    cols: cols,
+    axis: axis,
+  );
+
+  final boardIds = <String>[];
+  for (var index = 0; index < pages.length; index++) {
+    final boardId = await materialiseBoard(
+      db,
+      vocabularyId: vocabId,
+      name: pageName(name, index),
+      kind: rootKind && index == 0 ? BoardKind.root : BoardKind.category,
+    );
+    boardIds.add(boardId);
+
+    await _placeAll(
+      db,
+      vocabId,
+      boardId,
+      pages[index].placed,
+      hiddenBands: hiddenBands,
+    );
+  }
+
+  return boardIds;
 }
 
 Future<void> _placeAll(
@@ -280,15 +325,14 @@ Future<void> _placeAll(
 /// The bottom row (home, back, categories, paging) and the rightmost column
 /// (questions). Reaching them is one fixed movement rather than a path that
 /// depends on which board happens to be open.
-Future<void> _addFixedKeys(
+Future<void> addFixedKeys(
   WordbridgeDatabase db, {
   required String vocabId,
   required String boardId,
   required int rows,
   required int cols,
-  required SystemRowPlan plan,
+  required SystemFrame frame,
   required List<BandItem<SeedWord>> questions,
-  required List<({String name, String boardId})> wheel,
   String? pageBack,
   String? pageForward,
 }) async {
@@ -298,7 +342,7 @@ Future<void> _addFixedKeys(
     ButtonAction action, {
     String? target,
   }) async {
-    final cell = await cellAt(db, boardId: boardId, row: plan.row, col: col);
+    final cell = await cellAt(db, boardId: boardId, row: frame.row, col: col);
     await placeButton(
       db,
       vocabularyId: vocabId,
@@ -330,24 +374,24 @@ Future<void> _addFixedKeys(
     );
   }
 
-  await key(plan.homeCol, 'home', ButtonAction.home);
-  await key(plan.backCol, 'back', ButtonAction.back);
+  await key(frame.homeCol, 'home', ButtonAction.home);
+  await key(frame.backCol, 'back', ButtonAction.back);
 
   // The keys as they stand on the first turn of the wheel. When there are more
   // categories than slots, the talk screen draws a different one of them in
   // each slot as the wheel turns; the location never changes, only what it
   // opens.
-  for (var i = 0; i < plan.categoryCols.length; i++) {
+  for (var i = 0; i < frame.categoryCols.length; i++) {
     await key(
-      plan.categoryCols[i],
-      wheel[i].name,
+      frame.categoryCols[i],
+      frame.categories[i].name,
       ButtonAction.navigate,
-      target: wheel[i].boardId,
+      target: frame.categories[i].boardId,
     );
   }
 
-  if (plan.cycleCol != null) {
-    await key(plan.cycleCol!, 'more categories', ButtonAction.cycleCategories);
+  if (frame.cycleCol != null) {
+    await key(frame.cycleCol!, 'more categories', ButtonAction.cycleCategories);
   }
 
   // Paging keys are drawn only where there is a page to go to, and reappear in
@@ -357,7 +401,7 @@ Future<void> _addFixedKeys(
   // accidentally delete their sentence from.
   if (pageBack != null) {
     await key(
-      plan.pageBackCol,
+      frame.pageBackCol,
       'back a page',
       ButtonAction.navigate,
       target: pageBack,
@@ -365,7 +409,7 @@ Future<void> _addFixedKeys(
   }
   if (pageForward != null) {
     await key(
-      plan.pageForwardCol,
+      frame.pageForwardCol,
       'more words',
       ButtonAction.navigate,
       target: pageForward,
@@ -373,22 +417,112 @@ Future<void> _addFixedKeys(
   }
 }
 
-/// Records where the fixed keys landed, so a later rebuild at the same size
-/// can be checked against what the user actually learned.
-String _systemCellMap(
-  SystemRowPlan plan,
-  List<({String name, String boardId})> wheel,
-) => jsonEncode({
-  'row': plan.row,
-  'home': plan.homeCol,
-  'back': plan.backCol,
-  'categoryCols': plan.categoryCols,
-  if (plan.cycleCol != null) 'cycleCol': plan.cycleCol,
-  'backAPage': plan.pageBackCol,
-  'moreWords': plan.pageForwardCol,
-  // The full ordered list, so the talk screen can turn the wheel without a
-  // button ever changing its location.
-  'categories': [
-    for (final c in wheel) {'name': c.name, 'boardId': c.boardId},
-  ],
-});
+/// Where the fixed keys landed, and which category each one opens.
+///
+/// Recorded on the vocabulary, and from then on the authority — not what
+/// [SystemRowPlan] would compute today. A board set gains a category by
+/// appending to this recording, so a key that has been learned keeps opening
+/// what it always opened.
+class SystemFrame {
+  const SystemFrame({
+    required this.row,
+    required this.homeCol,
+    required this.backCol,
+    required this.categoryCols,
+    required this.cycleCol,
+    required this.pageBackCol,
+    required this.pageForwardCol,
+    required this.categories,
+  });
+
+  SystemFrame.of(SystemRowPlan plan, this.categories)
+    : row = plan.row,
+      homeCol = plan.homeCol,
+      backCol = plan.backCol,
+      categoryCols = plan.categoryCols,
+      cycleCol = plan.cycleCol,
+      pageBackCol = plan.pageBackCol,
+      pageForwardCol = plan.pageForwardCol;
+
+  /// Reads a recording back, or null for one that does not describe a wheel —
+  /// an imported board set, or a vocabulary built before the wheel existed.
+  /// Nothing may be appended to a frame that cannot be read: a category board
+  /// no key opens is worse than not having the board.
+  static SystemFrame? parse(String json) {
+    try {
+      final map = jsonDecode(json) as Map<String, dynamic>;
+      final cols = (map['categoryCols'] as List?)?.cast<int>();
+      final categories = (map['categories'] as List?)
+          ?.cast<Map<String, dynamic>>();
+      if (cols == null || cols.isEmpty || categories == null) return null;
+
+      return SystemFrame(
+        row: map['row'] as int,
+        homeCol: map['home'] as int,
+        backCol: map['back'] as int,
+        categoryCols: cols,
+        cycleCol: map['cycleCol'] as int?,
+        pageBackCol: map['backAPage'] as int,
+        pageForwardCol: map['moreWords'] as int,
+        categories: [
+          for (final c in categories)
+            (name: c['name'] as String, boardId: c['boardId'] as String),
+        ],
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final int row;
+  final int homeCol;
+  final int backCol;
+
+  /// One per category showing at a time, left to right.
+  final List<int> categoryCols;
+
+  /// Where the key that turns the wheel goes, or null while every category has
+  /// a slot of its own.
+  final int? cycleCol;
+
+  final int pageBackCol;
+  final int pageForwardCol;
+
+  /// Every category, in the order its key was learned. The slots are a window
+  /// onto this list and [cycleCol] moves the window.
+  final List<({String name, String boardId})> categories;
+
+  /// Whether the slots show every category at once, so the wheel never turns.
+  bool get showsEveryCategory =>
+      cycleCol == null && categories.length <= categoryCols.length;
+
+  SystemFrame copyWith({
+    List<int>? categoryCols,
+    int? cycleCol,
+    List<({String name, String boardId})>? categories,
+  }) => SystemFrame(
+    row: row,
+    homeCol: homeCol,
+    backCol: backCol,
+    categoryCols: categoryCols ?? this.categoryCols,
+    cycleCol: cycleCol ?? this.cycleCol,
+    pageBackCol: pageBackCol,
+    pageForwardCol: pageForwardCol,
+    categories: categories ?? this.categories,
+  );
+
+  String toJson() => jsonEncode({
+    'row': row,
+    'home': homeCol,
+    'back': backCol,
+    'categoryCols': categoryCols,
+    if (cycleCol != null) 'cycleCol': cycleCol,
+    'backAPage': pageBackCol,
+    'moreWords': pageForwardCol,
+    // The full ordered list, so the talk screen can turn the wheel without a
+    // button ever changing its location.
+    'categories': [
+      for (final c in categories) {'name': c.name, 'boardId': c.boardId},
+    ],
+  });
+}

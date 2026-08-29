@@ -8,9 +8,13 @@ import '../../db/board_builder.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
+import '../../theme/fitzgerald.dart';
+import '../grid/grid_geometry.dart';
 import '../grid/grid_surface.dart';
+import '../grid/symbol_view.dart';
 import '../symbols/auto_symbol.dart';
 import '../symbols/global_symbols_pack.dart';
+import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import 'remap.dart';
@@ -230,7 +234,7 @@ class _BoardEditorState extends State<BoardEditor> {
 
     await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -256,7 +260,7 @@ class _BoardEditorState extends State<BoardEditor> {
                     ? const Text('This position looks learned')
                     : null,
                 onTap: () {
-                  Navigator.of(context).pop();
+                  Navigator.of(sheetContext).pop();
                   setState(() => _moving = button);
                   _snack('Now tap an empty location.');
                 },
@@ -267,8 +271,8 @@ class _BoardEditorState extends State<BoardEditor> {
                 title: const Text('Change the picture'),
                 subtitle: const Text('Search the packs, or use your own photo'),
                 onTap: () async {
-                  Navigator.of(context).pop();
-                  await SymbolPicker.show(
+                  Navigator.of(sheetContext).pop();
+                  final changed = await SymbolPicker.show(
                     context,
                     db: widget.db,
                     registry: widget.registry!,
@@ -276,6 +280,7 @@ class _BoardEditorState extends State<BoardEditor> {
                     fetcher: widget.fetcher,
                     button: button,
                   );
+                  if (changed) await _recordRemovalIfCleared(button.id);
                 },
               ),
             if (!button.isSystem)
@@ -284,7 +289,7 @@ class _BoardEditorState extends State<BoardEditor> {
                 title: const Text('Move to another board'),
                 subtitle: const Text('Keeps the word, changes where it lives'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(sheetContext).pop();
                   await _moveToBoard(button);
                 },
               ),
@@ -295,7 +300,7 @@ class _BoardEditorState extends State<BoardEditor> {
               title: Text(button.hidden ? 'Show this word' : 'Hide this word'),
               subtitle: const Text('Keeps its location either way'),
               onTap: () async {
-                Navigator.of(context).pop();
+                Navigator.of(sheetContext).pop();
                 await _remap.setHidden(
                   buttonId: button.id,
                   hidden: !button.hidden,
@@ -306,6 +311,59 @@ class _BoardEditorState extends State<BoardEditor> {
         ),
       ),
     );
+  }
+
+  /// Records a picture taken off a button on purpose.
+  ///
+  /// A button with no symbol takes whatever the packs carry for its word, so
+  /// "none chosen" and "taken off" cannot both be an empty `symbolId`: what
+  /// was taken off is usually the word's own keyword match, and it would come
+  /// straight back. Pointing at a symbol that carries no image says it once,
+  /// in the only per-button field there is, and it survives a restart and a
+  /// grid rebuild.
+  Future<void> _recordRemovalIfCleared(String buttonId) async {
+    final button = await (widget.db.select(
+      widget.db.buttons,
+    )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
+    if (button == null || button.symbolId != null) return;
+
+    final ts = nowMs();
+    await widget.db
+        .into(widget.db.symbols)
+        .insert(
+          SymbolsCompanion.insert(
+            id: removedPictureSymbolId,
+            // No pack owns it, which rules out the other two sources.
+            source: SymbolSource.custom,
+            label: '',
+            license: '',
+            attribution: '',
+            createdAt: ts,
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+
+    await (widget.db.update(
+      widget.db.buttons,
+    )..where((b) => b.id.equals(buttonId))).write(
+      ButtonsCompanion(
+        symbolId: const Value(removedPictureSymbolId),
+        updatedAt: Value(ts),
+      ),
+    );
+
+    await widget.db
+        .into(widget.db.editEvents)
+        .insert(
+          EditEventsCompanion.insert(
+            id: newId(),
+            vocabularyId: button.vocabularyId,
+            cellId: Value(button.cellId),
+            buttonId: Value(buttonId),
+            kind: EditKind.resymbol,
+            changedAt: ts,
+          ),
+        );
   }
 
   /// Moves a word onto a different board.
@@ -448,16 +506,13 @@ class _BoardEditorState extends State<BoardEditor> {
                 }
                 return Padding(
                   padding: const EdgeInsets.all(8),
-                  child: GridSurface(
+                  child: _EditorBoard(
                     rows: vocab.gridRows,
                     cols: vocab.gridCols,
                     cells: cells,
-                    // The editor shows everything, including words hidden from
-                    // the user, so a caregiver can see what a location holds
-                    // rather than mistaking it for free space.
-                    vocabLevel: 99,
-                    showHidden: true,
                     colourScheme: vocab.colourScheme,
+                    resolver: widget.resolver,
+                    pickedUpButtonId: moving?.id,
                     onSelect: _onCellTapped,
                   ),
                 );
@@ -465,6 +520,367 @@ class _BoardEditorState extends State<BoardEditor> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Packs the board draws from, in order, for words with no symbol of their own.
+///
+/// Must match what the talk screen renders through, or the caregiver audits
+/// pictures the user is not looking at.
+const _packIds = ['core'];
+
+/// The symbol a button points at to say it has no picture on purpose.
+///
+/// One row for the whole database, at a fixed id: `buttons.symbol_id` is a
+/// foreign key, so the row has to exist before anything can reference it, and
+/// a row per removal would accumulate for nothing.
+const removedPictureSymbolId = 'symbol-removed';
+
+/// A word whose picture has not resolved.
+const _noPicture = Color(0xFFEF6C00);
+
+/// A word whose picture is still being looked for.
+const _resolving = Color(0x8A000000);
+
+/// The word picked up for moving.
+const _pickedUp = Color(0xFF3F51B5);
+
+const _hiddenGround = Color(0xFFF0F0F0);
+const _hiddenOutline = Color(0xFFCCCCCC);
+const _reservedGround = Color(0xFFFAFAFA);
+const _reservedOutline = Color(0xFFEEEEEE);
+const _radius = 6.0;
+
+/// The board as a caregiver has to read it.
+///
+/// Distinct from [GridSurface] because the two audiences read different
+/// things: the user reads the picture, the caregiver reads the word *and*
+/// judges the picture. So this draws words the user cannot see, marks the ones
+/// with no picture, and marks the one picked up for moving — none of which
+/// belongs in front of the user.
+///
+/// Geometry comes from the same [GridGeometry] the user's board uses, so a
+/// location is the same location on both.
+class _EditorBoard extends StatelessWidget {
+  const _EditorBoard({
+    required this.rows,
+    required this.cols,
+    required this.cells,
+    required this.colourScheme,
+    required this.resolver,
+    required this.pickedUpButtonId,
+    required this.onSelect,
+  });
+
+  final int rows;
+  final int cols;
+  final List<PlacedCell> cells;
+  final ColourScheme colourScheme;
+
+  /// Absent wherever pictures are not wanted; the board then reads as labels
+  /// only and says nothing about which pictures are missing, because it does
+  /// not know.
+  final SymbolResolver? resolver;
+
+  final String? pickedUpButtonId;
+  final void Function(PlacedCell) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final geometry = GridGeometry(
+          rows: rows,
+          cols: cols,
+          size: Size(constraints.maxWidth, constraints.maxHeight),
+        );
+
+        return Stack(
+          children: [
+            for (final placed in cells)
+              Positioned.fromRect(
+                rect: geometry.rectFor(
+                  placed.cell.row,
+                  placed.cell.col,
+                  spanRows: placed.cell.spanRows,
+                  spanCols: placed.cell.spanCols,
+                ),
+                // Keyed by location, not by content, so a word moving away
+                // leaves the square standing.
+                child: KeyedSubtree(
+                  key: ValueKey('${placed.cell.row}:${placed.cell.col}'),
+                  child: placed.button == null
+                      ? _ReservedCell(onTap: () => onSelect(placed))
+                      : _WordCell(
+                          button: placed.button!,
+                          colourScheme: colourScheme,
+                          resolver: resolver,
+                          pickedUp: placed.button!.id == pickedUpButtonId,
+                          onTap: () => onSelect(placed),
+                        ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A free location. Drawn, not omitted, and tappable to fill.
+class _ReservedCell extends StatelessWidget {
+  const _ReservedCell({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _reservedGround,
+      borderRadius: BorderRadius.circular(_radius),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(_radius),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_radius),
+            border: Border.all(color: _reservedOutline),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A word, with the picture the user sees on it.
+///
+/// The picture is why this screen gets opened: symbols are fetched
+/// automatically and some land wrong, and a plausible wrong picture teaches a
+/// false association to someone who cannot contradict it. So a word with no
+/// picture is marked rather than left to look like a word that simply has a
+/// short label, and a word still being looked up is marked differently again —
+/// "none" and "not yet" ask for different actions.
+class _WordCell extends StatefulWidget {
+  const _WordCell({
+    required this.button,
+    required this.colourScheme,
+    required this.resolver,
+    required this.pickedUp,
+    required this.onTap,
+  });
+
+  final Button button;
+  final ColourScheme colourScheme;
+  final SymbolResolver? resolver;
+  final bool pickedUp;
+  final VoidCallback onTap;
+
+  @override
+  State<_WordCell> createState() => _WordCellState();
+}
+
+class _WordCellState extends State<_WordCell> {
+  SymbolImage? _image;
+  bool _pending = true;
+
+  /// Which resolution the picture on screen belongs to.
+  int _generation = 0;
+
+  StreamSubscription<SymbolRef>? _downloads;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+
+    // A download queued by the first resolution lands after the grid is
+    // drawn. Without this the picture appears only on the next visit, and the
+    // caregiver is looking at a mark that is no longer true.
+    final resolver = widget.resolver;
+    if (resolver != null) {
+      _downloads = resolver.ready
+          .where((ref) => _sameWord(ref.label, widget.button.label))
+          .listen((_) => _resolve());
+    }
+  }
+
+  @override
+  void didUpdateWidget(_WordCell old) {
+    super.didUpdateWidget(old);
+    // Locations outlive the words on them and words outlive their pictures, so
+    // this state can be handed a different word, or the same word with the
+    // picture changed under it.
+    if (old.button.label != widget.button.label ||
+        old.button.symbolId != widget.button.symbolId) {
+      _image = null;
+      _pending = true;
+      _resolve();
+    }
+  }
+
+  @override
+  void dispose() {
+    _downloads?.cancel();
+    super.dispose();
+  }
+
+  static bool _sameWord(String a, String b) =>
+      a.toLowerCase().trim() == b.toLowerCase().trim();
+
+  /// Off the path of every editor action: nothing here is awaited before the
+  /// grid paints, and a resolution that never returns leaves a working screen.
+  ///
+  /// The same call the user's board draws through, so this screen shows what
+  /// the user is looking at rather than a second opinion about it.
+  Future<void> _resolve() async {
+    final resolver = widget.resolver;
+    if (resolver == null) return;
+
+    final generation = ++_generation;
+    final resolved = await resolver.resolveButton(
+      symbolId: widget.button.symbolId,
+      label: widget.button.label,
+      packIds: _packIds,
+    );
+
+    if (!mounted || generation != _generation) return;
+    setState(() {
+      _image = resolved.image;
+      _pending = false;
+    });
+  }
+
+  bool get _stillLooking => widget.resolver != null && _pending;
+  bool get _hasNoPicture =>
+      widget.resolver != null && !_pending && _image == null;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = widget.button;
+    final hidden = button.hidden;
+
+    final (Color outline, double outlineWidth) = switch ((
+      widget.pickedUp,
+      _hasNoPicture,
+      hidden,
+    )) {
+      (true, _, _) => (_pickedUp, 3.0),
+      (_, true, _) => (_noPicture, 2.0),
+      (_, _, true) => (_hiddenOutline, 1.0),
+      _ => (Colors.transparent, 0.0),
+    };
+
+    Widget content = _content();
+    if (hidden) content = Opacity(opacity: 0.45, child: content);
+
+    return Material(
+      color: hidden
+          ? _hiddenGround
+          : Fitzgerald.colourFor(widget.colourScheme, button.partOfSpeech),
+      borderRadius: BorderRadius.circular(_radius),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(_radius),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_radius),
+            border: Border.all(color: outline, width: outlineWidth),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: Center(child: content),
+              ),
+              if (_hasNoPicture)
+                const Positioned(
+                  top: 2,
+                  right: 2,
+                  child: _Marker(
+                    icon: Icons.add_photo_alternate_outlined,
+                    colour: _noPicture,
+                  ),
+                ),
+              if (_stillLooking)
+                const Positioned(
+                  top: 2,
+                  right: 2,
+                  child: _Marker(icon: Icons.more_horiz, colour: _resolving),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _content() {
+    final image = _image;
+    final label = widget.button.label;
+    if (image == null) {
+      return _CellLabel(label, large: true, italic: widget.button.hidden);
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(child: SymbolPicture(image)),
+        const SizedBox(height: 2),
+        _CellLabel(label, large: false, italic: widget.button.hidden),
+      ],
+    );
+  }
+}
+
+/// Corner mark saying what a cell needs, if anything.
+///
+/// A corner rather than the middle: a caregiver scanning 84 locations for the
+/// ones to fix reads a column of marks far faster than 84 captions, and the
+/// picture underneath stays fully visible while they do it.
+class _Marker extends StatelessWidget {
+  const _Marker({required this.icon, required this.colour});
+
+  final IconData icon;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+      child: Icon(icon, size: 12, color: Colors.white),
+    );
+  }
+}
+
+class _CellLabel extends StatelessWidget {
+  const _CellLabel(this.text, {required this.large, required this.italic});
+
+  final String text;
+
+  /// True where the word carries the cell alone and is set to be read across
+  /// the room; false where it captions a picture.
+  final bool large;
+
+  /// Marks a word switched off for the user.
+  final bool italic;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: large ? 20 : 13,
+          fontWeight: large ? FontWeight.w600 : FontWeight.w500,
+          fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+          color: Colors.black87,
+        ),
       ),
     );
   }

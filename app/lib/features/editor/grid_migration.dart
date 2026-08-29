@@ -488,11 +488,7 @@ class GridMigration {
       for (final category in categoryNames)
         ..._pagedPositions(
           category,
-          [
-            ...categoryBands[category]!,
-            ...band.extrasFor(category),
-            if (band.canSwear && category == 'feelings') swearingBand,
-          ],
+          categoryBandsFor(category, band),
           rows,
           cols,
           axis: BandAxis.rows,
@@ -519,35 +515,24 @@ class GridMigration {
     int cols, {
     BandAxis axis = BandAxis.columns,
   }) {
-    final result = <String, Map<String, ({int row, int col})>>{};
-    var remaining = bands;
-    var page = 0;
+    // The seed's own paging, so the numbers a caregiver is shown are the board
+    // they will actually get. A preview that paged for itself would report a
+    // word as staying put and then move it.
+    final pages = pageBands(
+      name: name,
+      bands: bands,
+      rows: rows,
+      cols: cols,
+      axis: axis,
+    );
 
-    while (true) {
-      final layout = layOutBands(
-        rows: rows,
-        cols: cols,
-        bands: remaining,
-        axis: axis,
-      );
-      result[page == 0 ? name : '$name ${page + 1}'] = {
-        for (final p in layout.placed) p.value.label: (row: p.row, col: p.col),
-      };
-
-      if (layout.overflow.isEmpty || layout.placed.isEmpty) return result;
-
-      remaining = [
-        for (final bandName in layout.overflowBands)
-          Band(
-            name: bandName,
-            items: [
-              for (final o in layout.overflow.reversed)
-                if (o.band == bandName) o.item,
-            ],
-          ),
-      ];
-      page++;
-    }
+    return {
+      for (var page = 0; page < pages.length; page++)
+        pageName(name, page): {
+          for (final p in pages[page].placed)
+            p.value.label: (row: p.row, col: p.col),
+        },
+    };
   }
 
   static Set<String> _shippedLabels(AgeBand band) => {

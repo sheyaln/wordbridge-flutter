@@ -9,6 +9,7 @@ Band<String> band(
   int minLines = 0,
   int reserveRank = 100,
   int shedRank = 100,
+  BandFill fill = BandFill.alongLine,
 }) => Band(
   name: name,
   items: [for (final w in words) BandItem(w, level: level)],
@@ -16,6 +17,7 @@ Band<String> band(
   minLines: minLines,
   reserveRank: reserveRank,
   shedRank: shedRank,
+  fill: fill,
 );
 
 Band<String> levelled(
@@ -117,6 +119,175 @@ void main() {
           reason: '${p.value} collided at ${p.row},${p.col}',
         );
       }
+    });
+  });
+
+  group('filling across the band', () {
+    test('consecutive items land side by side', () {
+      // What a run of alternatives wants: each is one cell from the last, so
+      // the pair is learned as a pair rather than as two locations.
+      final layout = layOutBands(
+        rows: 5,
+        cols: 4,
+        bands: [
+          band('verbs', [
+            'a',
+            'b',
+            'c',
+            'd',
+            'e',
+            'f',
+            'g',
+          ], fill: BandFill.acrossBand),
+        ],
+      );
+
+      expect(coords(layout), {
+        'a': (row: 0, col: 0),
+        'b': (row: 0, col: 1),
+        'c': (row: 1, col: 0),
+        'd': (row: 1, col: 1),
+        'e': (row: 2, col: 0),
+        'f': (row: 2, col: 1),
+        'g': (row: 3, col: 0),
+      });
+    });
+
+    test('the band keeps the same region either way', () {
+      // Column position on the root board is sentence order. Only the order
+      // inside the region may change; the region itself is fixed.
+      List<Band<String>> makeBands(BandFill fill) => [
+        band('pronouns', ['I', 'you', 'he', 'she']),
+        band('verbs', [
+          'want',
+          'need',
+          'go',
+          'stop',
+          'get',
+          'take',
+          'do',
+        ], fill: fill),
+        band('places', ['here', 'in']),
+      ];
+
+      Map<String, ({int first, int last})> regions(BandFill fill) =>
+          layOutBands(rows: 4, cols: 8, bands: makeBands(fill)).bandLines;
+
+      expect(regions(BandFill.acrossBand), regions(BandFill.alongLine));
+
+      final across = layOutBands(
+        rows: 4,
+        cols: 8,
+        bands: makeBands(BandFill.acrossBand),
+      );
+      final verbs = across.bandLines['verbs']!;
+      for (final p in across.placed.where((p) => p.band == 'verbs')) {
+        expect(p.col, inInclusiveRange(verbs.first, verbs.last));
+      }
+    });
+
+    test('a reserved line stays empty', () {
+      // A reserve is a block of cells held open. Words wrap across the lines
+      // the band needs, never the ones it is only holding.
+      final layout = layOutBands(
+        rows: 4,
+        cols: 6,
+        bands: [
+          band(
+            'verbs',
+            ['a', 'b', 'c', 'd', 'e', 'f'],
+            reserveLines: 1,
+            reserveRank: 0,
+            fill: BandFill.acrossBand,
+          ),
+          band('rest', ['z']),
+        ],
+      );
+
+      expect(layout.bandLines['verbs'], (first: 0, last: 2));
+      for (final p in layout.placed) {
+        expect(p.col, isNot(2), reason: 'the reserved line took a word');
+      }
+      expect(coords(layout)['z']!.col, 3);
+    });
+
+    test('the same grid always produces the same coordinates', () {
+      List<Band<String>> makeBands() => [
+        band('verbs', [
+          'want',
+          'need',
+          'go',
+          'stop',
+          'get',
+        ], fill: BandFill.acrossBand),
+      ];
+
+      final first = coords(layOutBands(rows: 5, cols: 5, bands: makeBands()));
+      final second = coords(layOutBands(rows: 5, cols: 5, bands: makeBands()));
+
+      expect(second, first);
+    });
+
+    test('a band that fills a tail cannot also fill across', () {
+      // A cross-filled block ends in a ragged edge, not one open run, so
+      // there is nothing coherent for it to append to.
+      expect(
+        () => layOutBands(
+          rows: 5,
+          cols: 5,
+          bands: [
+            band('shipped', ['a', 'b']),
+            Band(
+              name: 'extra',
+              startsLine: false,
+              fill: BandFill.acrossBand,
+              items: [BandItem('x')],
+            ),
+          ],
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('the band after a cross-filled one never lands on top of it', () {
+      final layout = layOutBands(
+        rows: 4,
+        cols: 6,
+        bands: [
+          band('verbs', ['a', 'b', 'c', 'd', 'e'], fill: BandFill.acrossBand),
+          Band(
+            name: 'extra',
+            startsLine: false,
+            items: [BandItem('x'), BandItem('y')],
+          ),
+        ],
+      );
+
+      final seen = <String>{};
+      for (final p in layout.placed) {
+        expect(seen.add('${p.row}:${p.col}'), isTrue, reason: p.value);
+      }
+      expect(coords(layout)['x']!.col, greaterThan(1));
+    });
+
+    test('the row axis fills down the band instead of across it', () {
+      // A line is a row here, so the same rule reads the other way round.
+      final layout = layOutBands(
+        rows: 5,
+        cols: 4,
+        axis: BandAxis.rows,
+        bands: [
+          band('verbs', ['a', 'b', 'c', 'd', 'e'], fill: BandFill.acrossBand),
+        ],
+      );
+
+      expect(coords(layout), {
+        'a': (row: 0, col: 0),
+        'b': (row: 1, col: 0),
+        'c': (row: 0, col: 1),
+        'd': (row: 1, col: 1),
+        'e': (row: 0, col: 2),
+      });
     });
   });
 
@@ -455,6 +626,37 @@ void main() {
       expect(plan.cycleCol, isNotNull);
       expect(plan.cycleCol, greaterThan(plan.categoryCols.last));
       expect(plan.cycleCol, lessThan(plan.pageBackCol));
+    });
+
+    test('an extra category takes a new key without moving the others', () {
+      // Adding a category board is additive or it is not shippable: every key
+      // already on the system row has been learned.
+      for (final g in [
+        (rows: 7, cols: 12),
+        (rows: 9, cols: 15),
+        (rows: 8, cols: 7),
+        (rows: 12, cols: 8),
+      ]) {
+        final before = SystemRowPlan.forGrid(
+          rows: g.rows,
+          cols: g.cols,
+          categories: 6,
+        );
+        final after = SystemRowPlan.forGrid(
+          rows: g.rows,
+          cols: g.cols,
+          categories: 7,
+        );
+
+        expect(
+          after.categoryCols.take(before.categoryCols.length),
+          before.categoryCols,
+          reason: 'a category key moved at ${g.rows}x${g.cols}',
+        );
+        if (before.cycleCol != null) {
+          expect(after.cycleCol, before.cycleCol);
+        }
+      }
     });
 
     test('a grid too small for the fixed keys is refused', () {

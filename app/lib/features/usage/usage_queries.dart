@@ -59,14 +59,31 @@ class UsageQueries {
 
   final WordbridgeDatabase _db;
 
-  /// The ways of choosing a word that mean the user went to the location.
+  /// Answers "did the user go to this location" — the motor-plan question.
   ///
   /// An allowlist rather than a list of exclusions, so a source added later
-  /// has to be considered before it can count towards a motor plan. Partner
-  /// modelling is not here — a partner demonstrating a word teaches the user,
-  /// but it is not the user's own practice — and neither is a word taken from
-  /// the prediction strip, which was never reached for at all.
+  /// has to be considered before it can count towards a motor plan. A word
+  /// taken from the prediction strip is not here: it was never reached for,
+  /// and counting it would inflate the tap count a caregiver is shown before
+  /// moving a button. Neither is partner modelling — a partner demonstrating
+  /// a word teaches the user, but it is not the user's own practice.
   static const practisedSources = [UsageSource.touch, UsageSource.switchAccess];
+
+  /// Answers "what language did the user produce" — every figure and every
+  /// sentence on a report.
+  ///
+  /// The prediction strip counts here and not in [practisedSources] because
+  /// those are two questions, not two wordings of one. A strip word was never
+  /// reached for, so it is no evidence about a location; the user still chose
+  /// it and the device said it out loud, so it is language they produced.
+  /// These figures reach funders as evidence of how much a person says, and
+  /// leaving the strip out understates that. Partner modelling is outside both
+  /// — that is another person talking on the user's device.
+  static const spokenSources = [
+    UsageSource.touch,
+    UsageSource.switchAccess,
+    UsageSource.prediction,
+  ];
 
   /// Selections recorded at a location, counting only the user's own reaches.
   ///
@@ -121,7 +138,7 @@ class UsageQueries {
         _db.usageEvents.profileId.equals(profileId) &
             _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
             _db.usageEvents.action.equalsValue(ButtonAction.speak) &
-            _db.usageEvents.source.equalsValue(UsageSource.touch),
+            _db.usageEvents.source.isInValues(spokenSources),
       )
       ..groupBy([_db.usageEvents.labelSnapshot])
       ..orderBy([OrderingTerm.desc(count)])
@@ -150,7 +167,7 @@ class UsageQueries {
         _db.usageEvents.profileId.equals(profileId) &
             _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
             _db.usageEvents.action.equalsValue(ButtonAction.speak) &
-            _db.usageEvents.source.equalsValue(UsageSource.touch),
+            _db.usageEvents.source.isInValues(spokenSources),
       );
 
     return (await query.getSingle()).read(distinct) ?? 0;
@@ -168,7 +185,7 @@ class UsageQueries {
                   e.occurredAt.isBiggerOrEqualValue(
                     axis.first.millisecondsSinceEpoch,
                   ) &
-                  e.source.equalsValue(UsageSource.touch),
+                  e.source.isInValues(spokenSources),
             ))
             .get();
 
@@ -185,22 +202,43 @@ class UsageQueries {
   /// Sentences the user actually built, most recent first.
   ///
   /// Usually the most meaningful thing a parent sees — a list of what their
-  /// child said, rather than a statistic about it.
+  /// child said, rather than a statistic about it. Sits under the same window
+  /// as the counts, so the sentences and the figures above them describe one
+  /// stretch of time.
+  ///
+  /// The newest [limit] utterances are picked first and then read whole. A
+  /// sentence is many rows, so capping the rows and grouping whatever comes
+  /// back cuts the start off the oldest sentence, and a sentence carried over
+  /// the start of the window loses the words said before it. Half a sentence
+  /// is a misquote, so the window decides which sentences to show and never
+  /// how much of one to show.
   Future<List<Utterance>> recentUtterances(
     String profileId, {
+    UsageWindow window = const UsageWindow.rollingDays(7),
     int limit = 25,
   }) async {
+    final lastWord = _db.usageEvents.occurredAt.max();
+    final inWindow = _db.selectOnly(_db.usageEvents)
+      ..addColumns([_db.usageEvents.utteranceId])
+      ..where(
+        _db.usageEvents.profileId.equals(profileId) &
+            _db.usageEvents.utteranceId.isNotNull() &
+            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
+            _db.usageEvents.action.equalsValue(ButtonAction.speak) &
+            _db.usageEvents.source.isInValues(spokenSources),
+      )
+      ..groupBy([_db.usageEvents.utteranceId])
+      ..orderBy([OrderingTerm.desc(lastWord)])
+      ..limit(limit);
+
     final rows =
-        await (_db.select(_db.usageEvents)
-              ..where(
-                (e) =>
-                    e.profileId.equals(profileId) &
-                    e.utteranceId.isNotNull() &
-                    e.action.equalsValue(ButtonAction.speak) &
-                    e.source.equalsValue(UsageSource.touch),
-              )
-              ..orderBy([(e) => OrderingTerm.desc(e.occurredAt)])
-              ..limit(limit * 12))
+        await (_db.select(_db.usageEvents)..where(
+              (e) =>
+                  e.profileId.equals(profileId) &
+                  e.utteranceId.isInQuery(inWindow) &
+                  e.action.equalsValue(ButtonAction.speak) &
+                  e.source.isInValues(spokenSources),
+            ))
             .get();
 
     final grouped = <String, List<UsageEvent>>{};
@@ -208,15 +246,13 @@ class UsageQueries {
       grouped.putIfAbsent(r.utteranceId!, () => []).add(r);
     }
 
-    final utterances = grouped.values.map((events) {
+    return grouped.values.map((events) {
       events.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
       return (
         text: events.map((e) => e.labelSnapshot).join(' '),
         at: DateTime.fromMillisecondsSinceEpoch(events.last.occurredAt),
       );
     }).toList()..sort((a, b) => b.at.compareTo(a.at));
-
-    return utterances.take(limit).toList();
   }
 
   Future<int> totalTaps(
@@ -229,7 +265,7 @@ class UsageQueries {
       ..where(
         _db.usageEvents.profileId.equals(profileId) &
             _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
-            _db.usageEvents.source.equalsValue(UsageSource.touch),
+            _db.usageEvents.source.isInValues(spokenSources),
       );
 
     return (await query.getSingle()).read(count) ?? 0;

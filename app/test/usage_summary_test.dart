@@ -50,6 +50,7 @@ void main() {
     int at, {
     String profileId = 'p1',
     String? utteranceId,
+    UsageSource source = UsageSource.touch,
   }) => db
       .into(db.usageEvents)
       .insert(
@@ -61,7 +62,7 @@ void main() {
           cellId: 'c1',
           labelSnapshot: label,
           action: ButtonAction.speak,
-          source: UsageSource.touch,
+          source: source,
           sessionId: 's1',
           utteranceId: Value(utteranceId),
           occurredAt: at,
@@ -238,7 +239,10 @@ void main() {
       );
       expect(find.text('0'), findsWidgets);
       expect(find.text('i want'), findsNothing);
-      expect(find.text('Nothing recorded yet.'), findsNWidgets(2));
+      expect(
+        find.text('Nothing recorded in the last 7 days.'),
+        findsNWidgets(2),
+      );
     });
 
     testWidgets('another profile is another person', (tester) async {
@@ -281,6 +285,65 @@ void main() {
       expect(find.text('9'), findsWidgets);
     });
 
+    testWidgets('a window is a window on the sentences too', (tester) async {
+      final now = nowMs();
+      await record('go', daysAgo(20), utteranceId: 'u2');
+      await record('home', daysAgo(20) + 1000, utteranceId: 'u2');
+      await record('i', now - 1000, utteranceId: 'u1');
+      await record('want', now, utteranceId: 'u1');
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(find.text('i want'), findsOneWidget);
+      expect(
+        find.text('go home'),
+        findsNothing,
+        reason: 'three weeks ago is not the last seven days',
+      );
+
+      await tester.tap(find.text('Today'));
+      await settle(tester);
+
+      expect(find.text('i want'), findsOneWidget);
+      expect(
+        find.text('go home'),
+        findsNothing,
+        reason:
+            'the sentences sit under a control that says today, so a sentence '
+            'from three weeks ago there is a lie about when it was said',
+      );
+      expect(find.text('2'), findsWidgets, reason: 'two words spoken today');
+
+      await tester.tap(find.text('30 days'));
+      await settle(tester);
+
+      expect(find.text('go home'), findsOneWidget);
+      expect(find.text('i want'), findsOneWidget);
+      expect(find.text('4'), findsWidgets);
+    });
+
+    testWidgets('an empty window says which window is empty', (tester) async {
+      await record('go', daysAgo(20), utteranceId: 'u2');
+      await record('home', daysAgo(20) + 1000, utteranceId: 'u2');
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      await tester.tap(find.text('Today'));
+      await settle(tester);
+
+      expect(find.text('go home'), findsNothing);
+      expect(find.text('0'), findsWidgets);
+      expect(
+        find.text('Nothing recorded today.'),
+        findsNWidgets(2),
+        reason:
+            'the log is not empty, only today is, and a caregiver reading '
+            '"nothing recorded" has to know which of those they are looking at',
+      );
+    });
+
     testWidgets('switching recording back on asks the database again', (
       tester,
     ) async {
@@ -309,6 +372,122 @@ void main() {
         reason: 'the figures are of a log that is gone',
       );
       expect(find.text('0'), findsWidgets);
+    });
+  });
+
+  group('however the user reaches the board', () {
+    /// Six selections by switch scanning, three of them one sentence.
+    Future<void> seedSwitchAccess() async {
+      final now = nowMs();
+      for (final (i, word) in ['i', 'want', 'more'].indexed) {
+        await record(
+          word,
+          now - 3000 + i * 1000,
+          utteranceId: 'u1',
+          source: UsageSource.switchAccess,
+        );
+      }
+      for (var i = 0; i < 3; i++) {
+        await record('more', now, source: UsageSource.switchAccess);
+      }
+    }
+
+    testWidgets('a switch user gets a report, not a blank page', (
+      tester,
+    ) async {
+      await seedSwitchAccess();
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(
+        find.text('6'),
+        findsWidgets,
+        reason:
+            'six words were spoken by switch scanning, and this figure goes '
+            'to a funder as evidence that the device is used',
+      );
+      expect(find.text('3'), findsWidgets, reason: 'three different words');
+      expect(find.text('i want more'), findsOneWidget);
+      expect(
+        find.text('want'),
+        findsOneWidget,
+        reason: 'the most-used list is as much theirs as anyone else\'s',
+      );
+      expect(find.text('4'), findsOneWidget, reason: '"more" four times');
+      expect(find.textContaining('Nothing recorded'), findsNothing);
+    });
+
+    testWidgets('a word off the prediction strip stays in the sentence', (
+      tester,
+    ) async {
+      final now = nowMs();
+      await record(
+        'i',
+        now - 2000,
+        utteranceId: 'u1',
+        source: UsageSource.switchAccess,
+      );
+      await record('want', now - 1000, utteranceId: 'u1');
+      await record(
+        'cookie',
+        now,
+        utteranceId: 'u1',
+        source: UsageSource.prediction,
+      );
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(
+        find.text('i want cookie'),
+        findsOneWidget,
+        reason: 'a sentence quoted without its last word is a misquote',
+      );
+      expect(
+        find.text('3'),
+        findsNWidgets(2),
+        reason:
+            'three words were spoken and three were different; a report of '
+            'how much language came out cannot drop one of them',
+      );
+      expect(
+        find.text('cookie'),
+        findsOneWidget,
+        reason:
+            'a word the user picked and the device said belongs in the '
+            'most-used list like any other',
+      );
+    });
+
+    testWidgets('a partner modelling is not the user talking', (tester) async {
+      final now = nowMs();
+      await record(
+        'i',
+        now - 1000,
+        utteranceId: 'u1',
+        source: UsageSource.partnerModel,
+      );
+      await record(
+        'want',
+        now,
+        utteranceId: 'u1',
+        source: UsageSource.partnerModel,
+      );
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(
+        find.text('i want'),
+        findsNothing,
+        reason: 'what a partner demonstrated is not what the user said',
+      );
+      expect(find.text('0'), findsWidgets);
+      expect(
+        find.text('Nothing recorded in the last 7 days.'),
+        findsNWidgets(2),
+      );
     });
   });
 }

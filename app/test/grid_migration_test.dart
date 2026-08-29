@@ -43,6 +43,28 @@ void main() {
     };
   }
 
+  /// Where every word sits, board by board. Board name rather than id, because
+  /// a rebuild is a different set of boards carrying the same names.
+  Future<Map<String, Map<String, ({int row, int col})>>> positionsByBoard(
+    String vocab,
+  ) async {
+    final query =
+        db.select(db.buttons).join([
+          innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+          innerJoin(db.boards, db.boards.id.equalsExp(db.cells.boardId)),
+        ])..where(
+          db.buttons.vocabularyId.equals(vocab) &
+              db.buttons.isSystem.equals(false),
+        );
+
+    final out = <String, Map<String, ({int row, int col})>>{};
+    for (final r in await query.get()) {
+      (out[r.readTable(db.boards).name] ??= {})[r.readTable(db.buttons).label] =
+          (row: r.readTable(db.cells).row, col: r.readTable(db.cells).col);
+    }
+    return out;
+  }
+
   /// Vocabulary only. The keys along the system row are not words, and which
   /// of them is showing depends on where the category wheel is turned to.
   Future<Set<String>> labelsIn(String vocab) async {
@@ -183,6 +205,43 @@ void main() {
         GridMigration.preview(db, vocabularyId: vocabId, rows: 4, cols: 5),
         throwsArgumentError,
       );
+    });
+
+    test('the count is what the rebuild then actually does', () async {
+      // The number a caregiver decides on is the whole point of the preview.
+      // If it works out where a word will land by any rule other than the one
+      // that builds the board, it is a number about a board nobody gets.
+      final impact = await GridMigration.preview(
+        db,
+        vocabularyId: vocabId,
+        rows: 5,
+        cols: 9,
+      );
+
+      final before = await positionsByBoard(vocabId);
+      final rebuilt = await GridMigration.apply(
+        db,
+        profileId: 'default',
+        vocabularyId: vocabId,
+        rows: 5,
+        cols: 9,
+      );
+      final after = await positionsByBoard(rebuilt);
+
+      var stayed = 0;
+      var moved = 0;
+      for (final board in before.entries) {
+        for (final word in board.value.entries) {
+          if (after[board.key]?[word.key] == word.value) {
+            stayed++;
+          } else {
+            moved++;
+          }
+        }
+      }
+
+      expect(stayed, impact.staying);
+      expect(moved, impact.moving);
     });
   });
 

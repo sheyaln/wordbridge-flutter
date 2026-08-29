@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,21 +64,22 @@ void main() {
     db.buttons,
   )..where((b) => b.vocabularyId.equals(vocabId))).get();
 
-  test('the 7x12 home board is exactly where it has always been', () async {
+  test('the 7x12 home board is exactly where it ships', () async {
     // Anyone using this board has learned these positions, so the derived
-    // layout has to land on them to the cell. An update that moves a word is
-    // the precise failure this project exists to prevent.
+    // layout has to land on them to the cell. Changing a single expectation
+    // here is changing the board every new profile is set up with, and it is
+    // never a formality.
     //
     // Read this as the board. Each string is a row, "." is a location held
     // open. Column 11 carries the pinned questions and row 6 the system keys,
     // both asserted separately.
     const shipped = [
-      'I    we   all       want get  open     +s        a       . here good',
-      'you  they some      need take close    +ed       the     . in   not',
-      'he   my   same      like do   help     +ing      and     . on   yes',
-      'she  me   different go   make look     +\'s      but     . up   no',
-      'it   .    more      stop put  turn     am/is/are because . to   don\'t',
-      'that .    this      can  will finished was/were  so      . out  wait',
+      'I    we   all       want need  like     +s        a       . here good',
+      'you  they some      go   stop  can      +ed       the     . in   not',
+      'he   my   same      get  take  do       +ing      and     . on   yes',
+      'she  me   different make put   will     +\'s      but     . up   no',
+      'it   .    more      open close help     am/is/are because . to   don\'t',
+      'that .    this      look turn  finished was/were  so      . out  wait',
     ];
 
     final home = await (db.select(
@@ -338,6 +341,87 @@ void main() {
       }
     });
 
+    test('the wheel keeps the order the keys were learned in', () async {
+      // The system-row keys are a window onto this list. Inserting a name
+      // rather than appending one changes which board an existing key opens,
+      // which relocates what a learned movement does without moving a button.
+      final vocab = await (db.select(
+        db.vocabularies,
+      )..where((v) => v.id.equals(vocabId))).getSingle();
+
+      final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+      final order = [
+        for (final c
+            in (map['categories'] as List).cast<Map<String, dynamic>>())
+          c['name'] as String,
+      ];
+
+      expect(order.take(6), [
+        'people',
+        'food',
+        'play',
+        'feelings',
+        'places',
+        'body',
+      ]);
+      expect(order.last, 'doing');
+    });
+
+    test('the doing board is reachable and carries its verbs', () async {
+      // A category board nobody can open, or one that opens onto nothing, is
+      // worse than no key at all.
+      final vocab = await (db.select(
+        db.vocabularies,
+      )..where((v) => v.id.equals(vocabId))).getSingle();
+
+      final map = jsonDecode(vocab.systemCellMap) as Map<String, dynamic>;
+      final entry = (map['categories'] as List)
+          .cast<Map<String, dynamic>>()
+          .singleWhere((c) => c['name'] == 'doing');
+
+      final board = await (db.select(
+        db.boards,
+      )..where((b) => b.id.equals(entry['boardId'] as String))).getSingle();
+      expect(board.name, 'doing');
+
+      // And a system-row key on the home board actually opens it.
+      final home = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('home'))).getSingle();
+
+      final keys =
+          await (db.select(db.buttons).join([
+                innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+              ])..where(
+                db.cells.boardId.equals(home.id) &
+                    db.buttons.label.equals('doing'),
+              ))
+              .get();
+
+      expect(keys, hasLength(1));
+      expect(keys.single.readTable(db.buttons).targetBoardId, board.id);
+      expect(keys.single.readTable(db.cells).row, 6);
+
+      final placed =
+          await (db.select(db.buttons).join([
+                innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+              ])..where(
+                db.cells.boardId.equals(board.id) &
+                    db.buttons.isSystem.equals(false) &
+                    db.cells.col.isSmallerThanValue(11),
+              ))
+              .get();
+
+      final labels = {for (final r in placed) r.readTable(db.buttons).label};
+
+      expect(
+        labels,
+        containsAll(['wash', 'sit', 'ask', 'remember', 'hold', 'share']),
+        reason: 'a strip of the doing board was never placed',
+      );
+      expect(labels, hasLength(48));
+    });
+
     test('feelings can say the difficult things', () async {
       // A board that only manages "happy" and "sad" cannot report pain or
       // being overwhelmed, which are the feelings that most need saying.
@@ -386,10 +470,102 @@ void main() {
     test('want, need and like run together', () async {
       final p = await homePositions();
 
-      expect(p['want']!.col, p['need']!.col);
-      expect(p['need']!.col, p['like']!.col);
-      expect(p['need']!.row, p['want']!.row + 1);
-      expect(p['like']!.row, p['need']!.row + 1);
+      expect(p['want']!.row, p['need']!.row);
+      expect(p['need']!.row, p['like']!.row);
+      expect(p['need']!.col, p['want']!.col + 1);
+      expect(p['like']!.col, p['need']!.col + 1);
+    });
+
+    test('the verbs stay inside the Fitzgerald "does" region', () async {
+      // Filling the band across changes the order within it and nothing else.
+      // Column position on the root board is sentence order, so a verb that
+      // left these columns would be a verb in the wrong sentence slot.
+      final p = await homePositions();
+
+      const verbs = [
+        'want',
+        'need',
+        'like',
+        'go',
+        'stop',
+        'can',
+        'get',
+        'take',
+        'do',
+        'make',
+        'put',
+        'will',
+        'open',
+        'close',
+        'help',
+        'look',
+        'turn',
+        'finished',
+      ];
+
+      for (final verb in verbs) {
+        expect(
+          p[verb]!.col,
+          inInclusiveRange(3, 5),
+          reason: '"$verb" left the region the verbs own',
+        );
+      }
+    });
+
+    test('a band reads the same way on page two', () async {
+      // The verbs are filled across their band so alternatives sit side by
+      // side. The words the 7x12 grid pushes onto page two are the same band,
+      // so they run the same way there — a band that changed direction between
+      // pages would be a second thing to learn about one group of words.
+      final second = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('home 2'))).getSingle();
+
+      final query = db.select(db.buttons).join([
+        innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+      ])..where(db.cells.boardId.equals(second.id));
+
+      final p = {
+        for (final r in await query.get())
+          r.readTable(db.buttons).label: (
+            row: r.readTable(db.cells).row,
+            col: r.readTable(db.cells).col,
+          ),
+      };
+
+      for (final pair in [
+        ('know', 'think'),
+        ('say', 'tell'),
+        ('see', 'come'),
+        ('give', 'feel'),
+      ]) {
+        expect(
+          adjacent(p[pair.$1]!, p[pair.$2]!),
+          isTrue,
+          reason:
+              '"${pair.$1}" and "${pair.$2}" are not neighbours on page two, '
+              'so the band changed direction when it overflowed',
+        );
+        expect(p[pair.$1]!.row, p[pair.$2]!.row);
+      }
+    });
+
+    test('the pronoun paradigm still runs down its column', () async {
+      // The first pronoun column is the subject set. Filling it across would
+      // interleave it with "we", "they", "my" and "me" in the column beside
+      // it, which is a different thing to learn.
+      final p = await homePositions();
+
+      for (final subject in ['I', 'you', 'he', 'she', 'it', 'that']) {
+        expect(
+          p[subject]!.col,
+          0,
+          reason: '"$subject" left the subject column',
+        );
+      }
+      expect(p['you']!.row, p['I']!.row + 1);
+      expect(p['he']!.row, p['you']!.row + 1);
+      expect(p['we']!, (row: 0, col: 1));
     });
   });
 

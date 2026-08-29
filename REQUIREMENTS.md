@@ -118,6 +118,12 @@ Three consequences, all enforced in code:
 | A picture is found automatically when a word is added | **done** |
 | Pictures browsable and searchable, fetched on demand | **done** |
 | Word prediction in its own strip, learned per profile, off by default | **done** |
+| Yes/no and wh-questions — "are you ok?", "what is that?" | **done** |
+| A new shipped board reaches profiles already in use, moving nothing | **done** |
+| Related verbs side by side, and a `doing` board for the rest | **done** |
+| The picture chosen for a button is the picture drawn | **done** |
+| Pictures visible in the editor, with "no picture" the loudest thing there | **done** |
+| PIN recovery: hold, type RESET, set a new one. Board untouched | **done** |
 | Voice choice, offline voices only, per profile | **done** |
 | Tone, speed, pitch and volume, each previewed as a spoken sentence | **done** |
 
@@ -440,6 +446,62 @@ Carried forward, in the order they matter:
   trademark position, that is the one document that should exist.
 - **The root board has little slack left.** Two name cells beside the pronouns
   and one noun column. Further additions there displace something.
+- **The verb band is exactly full at 7×12** — 18 kept verbs in three columns of
+  six. Because that band fills across, the next verb added to it widens the
+  band to four columns and reflows every verb *and* every band to its right.
+  Adding a home-board verb is a rebuild-class change now, not an append. New
+  verbs belong on the `doing` board.
+
+### 4.6a Sentences the board still cannot build
+
+Each of these is a real utterance a person would want, named rather than
+quietly absent:
+
+- **A plural subject behind a determiner.** "where are the people?" comes out
+  *"where is the people"*. The copula settles against the word immediately
+  after it, so a determiner in between blocks the agreement. Deferring past
+  determiners only helps for the handful of words known to be plural —
+  `copulaFor` has no morphological plural detection, so "where is my shoes"
+  would stay wrong either way. The honest fix is plural detection, not a
+  smarter repair.
+- **A second sentence in one bar.** After a punctuation mark every grammar key
+  is hidden, so "are you ok? is it my turn?" needs a clear in between.
+- **Contracted negatives** — "isn't it my turn?", "aren't you coming?". `not`
+  is on the board, so only the contraction is missing.
+- **"some is left."** Deliberately traded: the copula key is hidden after
+  determiners that stand in for a noun not yet tapped, which is what stops the
+  board producing "an is", "the is" and "more is". Demonstratives still take
+  one, so "this is mine" survives.
+
+### 4.6b Loose ends, logged
+
+Small, real, and none of them urgent:
+
+- **`symbol_picker` writes a null on removal** and `board_editor` translates
+  that into the removal marker after the sheet closes, so the knowledge sits
+  one file from the write. The picker also still offers "Remove the picture"
+  on a button already marked as having none.
+- **`resolveLabel` honours no timeout**, unlike `resolve`. A pack that hangs
+  leaves cells marked "still looking" for good rather than for a second.
+- **`GridSurface` cannot render a cell differently**, so the editor carries its
+  own board — roughly eighty parallel lines, and a new image kind has to be
+  handled in two places. A `cellBuilder` hook would let both share one surface.
+- **The bundled pack list is written twice**, in `GridSurface.symbolPackIds`
+  and again in the editor. If they diverge a caregiver audits pictures the user
+  is not looking at.
+- **Nothing writes `UsageSource.switchAccess`.** The reports count it
+  correctly, but no scanning input path exists yet, so a switch user's
+  selections are still recorded as touches. The reporting is correct ahead of
+  the producer; the producer is Phase 8.
+- **The usage screen has no error branch.** A failed read leaves a spinner and
+  an em-dash for ever, with no retry, and one combined future means one failure
+  blanks all three panels.
+- **`logger.enabled` is a plain mutable bool** with no notification, so the
+  usage screen only notices a change when something else rebuilds it.
+- **The caregiver screen does not surface `addedBoards` or `refusedBoards`**
+  from a top-up. A whole new board arriving, or being refused for want of a
+  free system-row column, is worth a line of its own rather than being folded
+  into a word count.
 
 ### 4.7 Everything above is toggleable
 

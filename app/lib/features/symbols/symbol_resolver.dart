@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import '../../db/database.dart';
 import 'symbol_pack.dart';
 import 'symbol_registry.dart';
 
@@ -26,12 +28,14 @@ typedef ResolvedSymbol = ({String label, SymbolImage? image});
 /// 2. It never delays a press. Resolution is asynchronous and off the input
 ///    path; the button speaks whether or not a picture ever arrives.
 ///
-/// The chain is: bundled asset, then a file already on disk, then a queued
-/// download (which returns nothing now and fires [ready] later), then the
-/// label.
+/// The chain is: the symbol chosen for the button, and failing that its
+/// label — bundled asset, then a file already on disk, then a queued download
+/// (which returns nothing now and fires [ready] later), then the label itself.
+/// A button carrying a chosen symbol stops at it, drawn or not.
 class SymbolResolver {
   SymbolResolver({
     required this.registry,
+    this.db,
     this.budget = const Duration(seconds: 2),
   }) {
     registry.addListener(_attachToPacks);
@@ -40,11 +44,17 @@ class SymbolResolver {
 
   final SymbolRegistry registry;
 
+  /// Where the symbol chosen for a button is read from. Without it every
+  /// button falls to the pack picture for its word, and a caregiver's choice
+  /// of picture cannot be drawn at all.
+  final WordbridgeDatabase? db;
+
   /// Upper bound on one resolution. A pack that hangs yields a label rather
   /// than a cell that never paints.
   final Duration budget;
 
   final _memo = <String, ResolvedSymbol>{};
+  final _chosen = <String, SymbolImage>{};
   final _ready = StreamController<SymbolRef>.broadcast();
   final _subscriptions = <String, StreamSubscription<SymbolRef>>{};
 
@@ -70,6 +80,50 @@ class SymbolResolver {
     // Only successes are memoised. A miss usually means "queued for download",
     // and caching it would hold the button at label-only until the next launch.
     if (resolved.image != null) _memo[ref.key] = resolved;
+    return resolved;
+  }
+
+  /// What a button draws: the symbol chosen for it, or — only where none has
+  /// been chosen — whatever the packs carry for its word.
+  ///
+  /// The precedence is the whole point of letting anyone choose. A keyword
+  /// match that outranked a choice would make the picker inert, and the picker
+  /// is the only lever there is on a picture that is teaching the wrong thing.
+  ///
+  /// With no [db] there is no such thing as a chosen symbol, so a button is
+  /// read as one that has none rather than being stripped of the picture it
+  /// was drawing.
+  Future<ResolvedSymbol> resolveButton({
+    required String? symbolId,
+    required String label,
+    required List<String> packIds,
+  }) => symbolId == null || db == null
+      ? resolveLabel(label, packIds)
+      : resolveChosen(symbolId, label: label);
+
+  /// Resolves the symbol recorded on a button, and nothing else.
+  ///
+  /// Yields the label whenever that symbol cannot be drawn: a pack switched
+  /// off, a download still queued, a file that is gone, or a row deliberately
+  /// carrying no image. The word's keyword match is never consulted as a
+  /// fallback — it is what a recorded choice exists to override, and putting
+  /// it back would undo a removal or reinstate a replaced picture.
+  Future<ResolvedSymbol> resolveChosen(
+    String symbolId, {
+    required String label,
+  }) async {
+    final hit = _chosen[symbolId];
+    if (hit != null) return (label: label, image: hit);
+
+    final resolved = await _resolveChosen(
+      symbolId,
+      label,
+    ).timeout(budget, onTimeout: () => labelOnly(label));
+
+    // As in [resolve], only successes are held: a miss is usually a download
+    // still in flight, and caching it would pin the button to its word.
+    final image = resolved.image;
+    if (image != null) _chosen[symbolId] = image;
     return resolved;
   }
 
@@ -161,6 +215,43 @@ class SymbolResolver {
       );
     } catch (_) {
       return labelOnly(ref.label);
+    }
+  }
+
+  Future<ResolvedSymbol> _resolveChosen(String symbolId, String label) async {
+    final db = this.db;
+    if (db == null) return labelOnly(label);
+
+    try {
+      final row = await (db.select(
+        db.symbols,
+      )..where((s) => s.id.equals(symbolId))).getSingleOrNull();
+      if (row == null || row.deletedAt != null) return labelOnly(label);
+
+      // A symbol owned by a pack goes through that pack even though the row
+      // carries a path of its own: a pack switched off has to stop drawing,
+      // and a cache the OS has emptied has to be fetched again.
+      final packId = row.packId;
+      final externalId = row.externalId;
+      if (packId != null && externalId != null) {
+        final resolved = await resolve((
+          packId: packId,
+          externalId: externalId,
+          label: row.label,
+        ));
+        return (label: label, image: resolved.image);
+      }
+
+      // Everything else is a file this device owns, a caregiver's photograph
+      // above all. A photograph whose file has gone leaves the word doing the
+      // work rather than a gap where a picture used to be.
+      final uri = row.localUri;
+      if (uri == null || uri.isEmpty) return labelOnly(label);
+      if (!await File(uri).exists()) return labelOnly(label);
+
+      return (label: label, image: (kind: SymbolImageKind.file, uri: uri));
+    } catch (_) {
+      return labelOnly(label);
     }
   }
 

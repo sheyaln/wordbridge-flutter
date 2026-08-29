@@ -52,6 +52,12 @@ class PinAuth {
   static const _saltKey = 'wordbridge.pin.salt';
   static const _row = 'caregiver';
 
+  /// Device-wide rather than a row in `edit_events`: that log answers "what
+  /// changed on the board", and every row of it is anchored to a vocabulary
+  /// and read back by the editor's undo. A credential belongs to the device,
+  /// touches no cell, and must not sit at the head of that queue.
+  static const _resetAtKey = 'caregiverPinResetAt';
+
   static const maxAttempts = 5;
   static const _lockout = Duration(minutes: 5);
 
@@ -99,6 +105,48 @@ class PinAuth {
             updatedAt: ts,
           ),
         );
+  }
+
+  /// Clears the caregiver credential, and nothing else.
+  ///
+  /// A forgotten PIN costs the PIN. The board, the vocabulary, the profiles
+  /// and the usage log are none of this credential's business, and recovering
+  /// it never touches them: a recovery path that costs the motor plan is worse
+  /// than the lockout it fixes.
+  ///
+  /// Dropping the row takes the failure count and any lockout with it. That
+  /// gives nobody a shortcut — there is no longer a PIN to guess, and
+  /// caregiver mode stays shut until a new one is set. The salt stays where it
+  /// is; rotating it would reach into the keystore for no gain against a
+  /// threat model that already assumes whoever holds the device can read it.
+  Future<void> reset() async {
+    final ts = nowMs();
+
+    await _db.transaction(() async {
+      await (_db.delete(
+        _db.caregiverAuth,
+      )..where((r) => r.id.equals(_row))).go();
+
+      await _db
+          .into(_db.appState)
+          .insertOnConflictUpdate(
+            AppStateCompanion.insert(key: _resetAtKey, value: '$ts'),
+          );
+    });
+  }
+
+  /// When the PIN was last cleared through recovery, or null if it never was.
+  ///
+  /// Recorded because the person who resets the PIN is often not the only
+  /// person who uses it. A second parent or a school SLP learns that it
+  /// happened at their next unlock rather than by finding the PIN changed.
+  Future<DateTime?> lastResetAt() async {
+    final row = await (_db.select(
+      _db.appState,
+    )..where((s) => s.key.equals(_resetAtKey))).getSingleOrNull();
+
+    final ms = int.tryParse(row?.value ?? '');
+    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
   /// Remaining lockout, or null if unlocked.

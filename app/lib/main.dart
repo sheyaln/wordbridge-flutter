@@ -15,6 +15,17 @@ import 'features/symbols/symbol_resolver.dart';
 import 'features/talk/talk_screen.dart';
 import 'features/usage/logger.dart';
 
+/// The resolver every board on this device draws through.
+///
+/// Built here rather than inline so the one thing that is easy to leave out —
+/// the symbol store — is stated once and can be checked. Without the store a
+/// button falls back to the pack picture for its word, so a caregiver's chosen
+/// picture is written and never drawn, and nothing says so.
+SymbolResolver appSymbolResolver({
+  required WordbridgeDatabase db,
+  required SymbolRegistry registry,
+}) => SymbolResolver(registry: registry, db: db);
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const WordbridgeApp());
@@ -79,7 +90,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   late final _symbols = SymbolRegistry(
     packs: [...bundledSymbolPacks(), _globalSymbols],
   );
-  late final _resolver = SymbolResolver(registry: _symbols);
+  late final _resolver = appSymbolResolver(db: _db, registry: _symbols);
 
   late Future<Profile?> _ready = _bootstrap();
 

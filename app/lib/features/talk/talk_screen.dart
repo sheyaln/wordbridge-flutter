@@ -329,6 +329,10 @@ class TalkScreenState extends State<TalkScreen> {
     return button.copyWith(
       label: entry.name,
       targetBoardId: Value(entry.boardId),
+      // The slot shows a different category on each turn, so its picture has
+      // to come from the name it is showing rather than from the button
+      // underneath.
+      symbolId: const Value(null),
     );
   }
 
@@ -516,6 +520,7 @@ class TalkScreenState extends State<TalkScreen> {
     return grammarHelperApplies(
       kind: button.morphemeKind,
       tense: button.message,
+      previousText: previous?.text,
       previousPos: previous?.pos,
       previousInflected: previous?.inflected ?? false,
       atStart: previous == null,
@@ -540,9 +545,11 @@ class TalkScreenState extends State<TalkScreen> {
         return;
       }
 
-      final past = button.message == 'past';
-      final form = copulaFor(_utterance.last?.text, past: past);
-      _utterance.add(form, pos: PartOfSpeech.verb);
+      // Opening a yes/no question, the subject is still to come, so what is
+      // spoken here is the provisional form the bar then settles. Every tap
+      // speaks: a key that goes silent at the start of a sentence is one the
+      // user has to learn an exception for.
+      final form = _utterance.addCopula(past: button.message == 'past');
       await widget.speech.speak(form);
       return;
     }

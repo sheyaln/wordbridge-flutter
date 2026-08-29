@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -139,7 +140,7 @@ void main() {
 
     tearDown(() async => db.close());
 
-    Future<void> record(String label, int at) => db
+    Future<void> record(String label, int at, {String? utteranceId}) => db
         .into(db.usageEvents)
         .insert(
           UsageEventsCompanion.insert(
@@ -152,6 +153,7 @@ void main() {
             action: ButtonAction.speak,
             source: UsageSource.touch,
             sessionId: 's1',
+            utteranceId: Value(utteranceId),
             occurredAt: at,
           ),
         );
@@ -185,6 +187,44 @@ void main() {
         await q.totalTaps('p1', window: const UsageWindow.rollingDays(1)),
         2,
         reason: 'a rolling day is a different question and still answers it',
+      );
+    });
+
+    test('a sentence from last night is not a sentence from today', () async {
+      await record('go', startOfToday() - 2000, utteranceId: 'u1');
+      await record('home', startOfToday() - 1000, utteranceId: 'u1');
+
+      expect(
+        await q.recentUtterances(
+          'p1',
+          window: const UsageWindow.calendarDays(1),
+        ),
+        isEmpty,
+        reason: 'a sentence listed under today has to have been said today',
+      );
+      expect(
+        (await q.recentUtterances(
+          'p1',
+          window: const UsageWindow.rollingDays(7),
+        )).map((u) => u.text),
+        ['go home'],
+      );
+    });
+
+    test('a sentence carried over midnight is quoted whole', () async {
+      await record('i', startOfToday() - 2000, utteranceId: 'u1');
+      await record('want', startOfToday() - 1000, utteranceId: 'u1');
+      await record('breakfast', nowMs(), utteranceId: 'u1');
+
+      expect(
+        (await q.recentUtterances(
+          'p1',
+          window: const UsageWindow.calendarDays(1),
+        )).map((u) => u.text),
+        ['i want breakfast'],
+        reason:
+            'the words chosen before midnight are part of the sentence that '
+            'came out after it, and a quote missing its start is a misquote',
       );
     });
 
@@ -363,6 +403,153 @@ void main() {
       );
 
       expect(find.textContaining('last 90 days'), findsWidgets);
+    });
+  });
+
+  group('which selections count', () {
+    late WordbridgeDatabase db;
+    late UsageQueries q;
+
+    setUp(() {
+      db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      q = UsageQueries(db);
+    });
+
+    tearDown(() async => db.close());
+
+    Future<void> record(
+      String label, {
+      required UsageSource source,
+      String? utteranceId,
+      int? at,
+    }) => db
+        .into(db.usageEvents)
+        .insert(
+          UsageEventsCompanion.insert(
+            deviceId: 'test',
+            profileId: 'p1',
+            vocabularyId: 'v1',
+            boardId: 'b1',
+            cellId: 'c1',
+            labelSnapshot: label,
+            action: ButtonAction.speak,
+            source: source,
+            sessionId: 's1',
+            utteranceId: Value(utteranceId),
+            occurredAt: at ?? nowMs(),
+          ),
+        );
+
+    test('switch scanning is a user reaching a word', () async {
+      final now = nowMs();
+      await record(
+        'i',
+        source: UsageSource.switchAccess,
+        utteranceId: 'u1',
+        at: now - 1000,
+      );
+      await record(
+        'drink',
+        source: UsageSource.switchAccess,
+        utteranceId: 'u1',
+        at: now,
+      );
+      await record('drink', source: UsageSource.switchAccess, at: now);
+
+      expect(await q.totalTaps('p1'), 3);
+      expect(await q.numberOfDifferentWords('p1'), 2);
+      expect(
+        (await q.mostUsedWords('p1')).map((w) => (w.label, w.count)),
+        containsAll([('drink', 2), ('i', 1)]),
+      );
+      expect((await q.activityByDay('p1')).last.count, 3);
+      expect((await q.recentUtterances('p1')).map((u) => u.text), ['i drink']);
+      expect(
+        (await q.historyForCell('c1')).taps,
+        3,
+        reason: 'a remap warning has to count a switch user\'s practice too',
+      );
+    });
+
+    test('a partner modelling reaches no report', () async {
+      await record('eat', source: UsageSource.partnerModel, utteranceId: 'u1');
+
+      expect(await q.totalTaps('p1'), 0);
+      expect(await q.numberOfDifferentWords('p1'), 0);
+      expect(await q.mostUsedWords('p1'), isEmpty);
+      expect(await q.recentUtterances('p1'), isEmpty);
+      expect((await q.historyForCell('c1')).taps, 0);
+    });
+
+    test('a word a partner modelled is not quoted as the user\'s', () async {
+      final now = nowMs();
+      await record(
+        'i',
+        source: UsageSource.touch,
+        utteranceId: 'u1',
+        at: now - 2000,
+      );
+      await record(
+        'like',
+        source: UsageSource.partnerModel,
+        utteranceId: 'u1',
+        at: now - 1000,
+      );
+      await record(
+        'cookie',
+        source: UsageSource.prediction,
+        utteranceId: 'u1',
+        at: now,
+      );
+
+      expect(
+        (await q.recentUtterances('p1')).map((u) => u.text),
+        ['i cookie'],
+        reason:
+            'a partner demonstrating a word on the device said it, not the '
+            'user, so it is not part of what the user is quoted as saying',
+      );
+    });
+
+    test('a word off the prediction strip is said, not practised', () async {
+      final now = nowMs();
+      await record(
+        'i',
+        source: UsageSource.switchAccess,
+        utteranceId: 'u1',
+        at: now - 2000,
+      );
+      await record(
+        'want',
+        source: UsageSource.touch,
+        utteranceId: 'u1',
+        at: now - 1000,
+      );
+      await record(
+        'cookie',
+        source: UsageSource.prediction,
+        utteranceId: 'u1',
+        at: now,
+      );
+
+      expect((await q.recentUtterances('p1')).map((u) => u.text), [
+        'i want cookie',
+      ], reason: 'the user said all three words, in that order');
+      expect(
+        await q.totalTaps('p1'),
+        3,
+        reason: 'three words came out of the device, and the user chose each',
+      );
+      expect(await q.numberOfDifferentWords('p1'), 3);
+      expect(await q.mostUsedWords('p1'), hasLength(3));
+      expect((await q.activityByDay('p1')).last.count, 3);
+      expect(
+        (await q.historyForCell('c1')).taps,
+        2,
+        reason:
+            'the strip was never reached for, so it is no evidence about the '
+            'location and must not inflate a remap warning',
+      );
     });
   });
 }

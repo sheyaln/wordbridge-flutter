@@ -8,8 +8,14 @@
 ///
 /// Nothing here names a row or a column. Bands declare what belongs together
 /// and in what order; [layOutBands] turns that into coordinates for whatever
-/// grid the caregiver chose. The 7x12 result is identical to the layout this
-/// file replaced, which `core_board_set_test.dart` asserts word by word.
+/// grid the caregiver chose. `core_board_set_test.dart` pins the 7x12 result
+/// cell by cell, because that is the grid most boards are built on and every
+/// one of those cells is a movement somebody has learned.
+///
+/// Changing a band's order or its [BandFill] moves words. A board already in
+/// use is unaffected — it lives in the database, and only an explicit,
+/// measured rebuild recomputes it — but a change here is a different board for
+/// everyone set up after it.
 library;
 
 import '../tables.dart';
@@ -80,6 +86,10 @@ final homeBands = <Band<SeedWord>>[
   // most-requested personal vocabulary in every account of AAC use, and the
   // thing a shipped board can never guess. "we" and "they" take its first two
   // locations because they are core vocabulary and the pronoun column is full.
+  //
+  // Filled down its columns: the first is the subject paradigm — I, you, he,
+  // she, it, that — and filling the other way would interleave it with the
+  // column beside it.
   Band(
     name: 'pronouns',
     shedRank: 0,
@@ -115,13 +125,18 @@ final homeBands = <Band<SeedWord>>[
     ],
   ),
 
-  // Opposites and near-relations sit next to each other: want above need above
-  // like, open above close, go above stop, get above take. Neighbouring
+  // Opposites and near-relations sit side by side: want, need, like along one
+  // row, then go beside stop, get beside take, open beside close. Neighbouring
   // locations are learned as a pair; two positions that happen to be far apart
   // are learned twice.
+  //
+  // Filled across the band rather than down it, which is what puts those pairs
+  // shoulder to shoulder. The band keeps the same columns either way — this is
+  // the Fitzgerald "does" region and it does not move.
   Band(
     name: 'verbs',
     shedRank: 1,
+    fill: BandFill.acrossBand,
     items: [
       w('want', PartOfSpeech.verb, essential: true),
       w('need', PartOfSpeech.verb),
@@ -304,7 +319,20 @@ BandItem<SeedWord> _article(String label) => BandItem((
 ), level: 2);
 
 /// Category boards, in the order their keys appear on the system row.
-const categoryNames = ['people', 'food', 'play', 'feelings', 'places', 'body'];
+///
+/// Append only. The keys are a window onto this list and the cycle key moves
+/// the window, so inserting a name changes which board every key after it
+/// opens — a relocation of what a learned key does, without a single button
+/// moving.
+const categoryNames = [
+  'people',
+  'food',
+  'play',
+  'feelings',
+  'places',
+  'body',
+  'doing',
+];
 
 /// Fringe vocabulary, grouped by word class and ordered within it by meaning.
 ///
@@ -326,6 +354,10 @@ const categoryNames = ['people', 'food', 'play', 'feelings', 'places', 'body'];
 /// Rows rather than columns, because a row-column scan picks a row first: on a
 /// row-grouped board that first press narrows to a word class, and on a
 /// column-grouped one it narrows to nothing.
+///
+/// A board that is one word class throughout has no class order left to
+/// encode, so its strips group by meaning instead. The scan argument survives
+/// unchanged: the first press still narrows to a handful of related words.
 ///
 /// Band names must be unique within a board, including the bands an age preset
 /// appends — the layout engine keys bands by name.
@@ -758,6 +790,103 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         'sleepy',
         'poorly',
       ], level: 1),
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // The verbs a person needs constantly and the root board has no room for.
+  // "doing" rather than "verbs" or "actions" because it is the word a UK
+  // classroom already uses for them, so a caregiver scanning the keys reads it
+  // without being taught.
+  //
+  // Every strip is verbs, so the strips group by what a person is doing rather
+  // than by word class. Within a strip the words run in pairs — sit beside
+  // stand, remember beside forget, hold beside drop — because a pair learned
+  // as a pair is one location plus a direction, not two locations.
+  //
+  // Nothing here repeats a label that already has a location on another board.
+  // One word, one place.
+  'doing': [
+    // Self-care first. These are the daily needs a person can least route
+    // around, and the ones a listener is least willing to guess at.
+    Band(
+      name: 'caring',
+      shedRank: 0,
+      items: [
+        ...verbs(['wash', 'brush', 'dress'], level: 1),
+        ...verbs(['wear']),
+        ...verbs(['sleep'], level: 1),
+        ...verbs(['wake']),
+        ...verbs(['rest'], level: 1),
+        ...verbs(['breathe']),
+      ],
+    ),
+
+    // Directing another person's movement as well as describing one's own:
+    // "stay", "leave" and "follow" are instructions a user gives, which is the
+    // half of movement vocabulary a board usually forgets.
+    Band(
+      name: 'moving',
+      shedRank: 1,
+      items: [
+        ...verbs(['sit', 'stand', 'move', 'stay', 'leave'], level: 1),
+        ...verbs(['follow', 'carry', 'fall']),
+      ],
+    ),
+
+    // Talking about talking. Without these a user can answer a question but
+    // cannot say that they are answering one, ask for a turn, or report that
+    // somebody is not listening.
+    Band(
+      name: 'telling',
+      shedRank: 2,
+      items: [
+        ...verbs(['ask', 'answer', 'talk', 'listen'], level: 1),
+        ...verbs(['call']),
+        ...verbs(['show'], level: 1),
+        ...verbs(['spell', 'shout']),
+      ],
+    ),
+
+    Band(
+      name: 'thinking',
+      shedRank: 3,
+      items: [
+        ...verbs(['remember', 'forget', 'learn'], level: 1),
+        ...verbs(['understand']),
+        ...verbs(['try', 'choose'], level: 1),
+        ...verbs(['decide', 'wonder']),
+      ],
+    ),
+
+    Band(
+      name: 'handling',
+      shedRank: 4,
+      items: [
+        ...verbs(['hold', 'drop', 'find', 'lose'], level: 1),
+        ...verbs(['fix', 'clean', 'cut', 'cook']),
+      ],
+    ),
+
+    Band(
+      name: 'sharing',
+      shedRank: 5,
+      items: [
+        ...verbs(['share'], level: 1),
+        ...verbs(['swap']),
+        ...verbs(['meet'], level: 1),
+        ...verbs(['visit']),
+        ...verbs(['hug'], level: 1),
+        ...verbs(['kiss']),
+        ...verbs(['laugh', 'cry'], level: 1),
+      ],
     ),
 
     Band(
