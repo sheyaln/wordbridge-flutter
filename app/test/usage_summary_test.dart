@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart'
     show ApplyInterceptor, QueryExecutor, QueryInterceptor, Value;
 import 'package:drift/native.dart';
@@ -10,9 +12,20 @@ import 'package:wordbridge/features/usage/logger.dart';
 import 'package:wordbridge/features/usage/usage_summary.dart';
 
 /// Counts reads of the log, which is what the summary screen costs while a
-/// caregiver has it open.
+/// caregiver has it open, and breaks the ones a test asks it to.
 class _CountReads extends QueryInterceptor {
   int reads = 0;
+
+  /// Statement fragment whose read fails, as a locked or corrupt database
+  /// would fail it. One fragment per panel, so a test can break one figure and
+  /// leave the rest of the log readable.
+  String? failOn;
+
+  /// Statement fragment whose read is accepted and then never answered, which
+  /// is the shape of a wedged database rather than a failing one.
+  String? hangOn;
+
+  final _stuck = <Completer<List<Map<String, Object?>>>>[];
 
   @override
   Future<List<Map<String, Object?>>> runSelect(
@@ -21,9 +34,35 @@ class _CountReads extends QueryInterceptor {
     List<Object?> args,
   ) {
     if (statement.contains('usage_events')) reads++;
+
+    final hang = hangOn;
+    if (hang != null && statement.contains(hang)) {
+      final stuck = Completer<List<Map<String, Object?>>>();
+      _stuck.add(stuck);
+      return stuck.future;
+    }
+
+    final fail = failOn;
+    if (fail != null && statement.contains(fail)) {
+      return Future.error(StateError('the usage log could not be read'));
+    }
+
     return executor.runSelect(statement, args);
   }
+
+  /// Answers everything left hanging, so the database can be closed.
+  void release() {
+    for (final stuck in _stuck) {
+      if (!stuck.isCompleted) stuck.complete(const []);
+    }
+    _stuck.clear();
+  }
 }
+
+/// The reads behind the screen, by a fragment of the SQL each one emits.
+const _differentWords = 'COUNT(DISTINCT';
+const _sentences = 'utterance_id" IN (SELECT';
+const _mostUsed = 'GROUP BY "usage_events"."label_snapshot"';
 
 void main() {
   late _CountReads counter;
@@ -38,7 +77,10 @@ void main() {
     logger = UsageLogger(db, deviceId: 'test')..enabled = true;
   });
 
-  tearDown(() async => db.close());
+  tearDown(() async {
+    counter.release();
+    await db.close();
+  });
 
   int daysAgo(int days) {
     final n = DateTime.now();
@@ -488,6 +530,250 @@ void main() {
         find.text('Nothing recorded in the last 7 days.'),
         findsNWidgets(2),
       );
+    });
+  });
+
+  group('when the log cannot be read', () {
+    testWidgets('a figure that failed does not take the others with it', (
+      tester,
+    ) async {
+      await seed();
+      counter.failOn = _differentWords;
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(
+        find.textContaining('Could not read the counts'),
+        findsOneWidget,
+        reason: 'the panel that failed has to say which figures are missing',
+      );
+      expect(
+        find.text('i want'),
+        findsOneWidget,
+        reason: 'the sentences read fine and a parent came here to see them',
+      );
+      expect(
+        find.text('go'),
+        findsOneWidget,
+        reason: 'the most-used list read fine',
+      );
+      expect(
+        find.text('9'),
+        findsNothing,
+        reason: 'the counts are the panel that failed',
+      );
+      expect(
+        find.text('—'),
+        findsNothing,
+        reason: 'a dash where a number should be explains nothing',
+      );
+      expect(
+        find.byType(LinearProgressIndicator),
+        findsNothing,
+        reason: 'nothing is still loading, so nothing may still say it is',
+      );
+      expect(find.text('Try again'), findsOneWidget);
+    });
+
+    testWidgets('a list that failed is not a list with nothing in it', (
+      tester,
+    ) async {
+      await seed();
+      counter.failOn = _sentences;
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(
+        find.textContaining('Could not read the recent sentences'),
+        findsOneWidget,
+      );
+      expect(find.text('i want'), findsNothing);
+      expect(
+        find.textContaining('Nothing recorded'),
+        findsNothing,
+        reason:
+            'a week the device could not read is not a week in which nothing '
+            'was said, and an SLP reading the second would conclude the user '
+            'had stopped talking',
+      );
+      expect(find.text('9'), findsWidgets, reason: 'the counts read fine');
+      expect(find.text('go'), findsOneWidget);
+    });
+
+    testWidgets('the retry asks the database again', (tester) async {
+      await seed();
+      counter.failOn = _mostUsed;
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(
+        find.textContaining('Could not read the most-used words'),
+        findsOneWidget,
+      );
+      expect(find.text('9'), findsWidgets, reason: 'the counts read fine');
+      expect(find.text('i want'), findsOneWidget);
+
+      counter.failOn = null;
+      final beforeRetry = counter.reads;
+
+      await tester.tap(find.text('Try again'));
+      await settle(tester);
+
+      expect(
+        counter.reads,
+        beforeRetry + 1,
+        reason:
+            'a retry that does not go back to the database is a button that '
+            'does nothing',
+      );
+      expect(
+        find.textContaining('Could not read the most-used words'),
+        findsNothing,
+      );
+      expect(
+        find.text('go'),
+        findsOneWidget,
+        reason: 'the panel a caregiver retried has to fill in',
+      );
+      expect(
+        find.text('9'),
+        findsWidgets,
+        reason: 'retrying one panel must not throw away the other two',
+      );
+    });
+
+    testWidgets('a screen that cannot read anything says so three times', (
+      tester,
+    ) async {
+      await seed();
+      counter.failOn = 'usage_events';
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+
+      expect(find.textContaining('Could not read the counts'), findsOneWidget);
+      expect(
+        find.textContaining('Could not read the recent sentences'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Could not read the most-used words'),
+        findsOneWidget,
+      );
+      expect(find.text('Try again'), findsNWidgets(3));
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.text('—'), findsNothing);
+      expect(
+        find.textContaining('Nothing recorded'),
+        findsNothing,
+        reason:
+            'a log that could not be read is not a log with nothing in it, '
+            'and a caregiver must never be shown the second for the first',
+      );
+    });
+
+    testWidgets('a read that never answers gives up rather than spinning', (
+      tester,
+    ) async {
+      await seed();
+      counter.hangOn = 'usage_events';
+
+      await tester.pumpWidget(screen());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 5));
+
+      expect(
+        find.byType(LinearProgressIndicator),
+        findsWidgets,
+        reason: 'five seconds in, a read still on its way is fair enough',
+      );
+
+      await tester.pump(const Duration(seconds: 6));
+
+      expect(
+        find.byType(LinearProgressIndicator),
+        findsNothing,
+        reason:
+            'a bar that keeps moving over a read that will never land tells a '
+            'caregiver the opposite of what is happening',
+      );
+      expect(find.text('—'), findsNothing);
+      expect(find.text('Try again'), findsNWidgets(3));
+
+      counter.release();
+      await tester.pump();
+    });
+  });
+
+  group('switching recording is noticed at once', () {
+    testWidgets('switching it off empties a screen that is already open', (
+      tester,
+    ) async {
+      await seed();
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+      expect(find.text('9'), findsWidgets);
+
+      // No rebuild from anywhere else: the switch is the only thing that moved.
+      logger.enabled = false;
+      await settle(tester);
+
+      expect(
+        find.text('Word usage is not being tracked'),
+        findsOneWidget,
+        reason:
+            'a screen still showing figures after recording was switched off '
+            'says the log is being written when it is not',
+      );
+      expect(find.text('9'), findsNothing);
+    });
+
+    testWidgets('switching it on fills a screen that is already open', (
+      tester,
+    ) async {
+      await seed();
+      logger.enabled = false;
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+      expect(find.text('Word usage is not being tracked'), findsOneWidget);
+      expect(counter.reads, 0);
+
+      logger.enabled = true;
+      await settle(tester);
+
+      expect(
+        find.text('9'),
+        findsWidgets,
+        reason:
+            'the figures have to arrive on the switch, not on some later '
+            'unrelated rebuild',
+      );
+      expect(find.text('i want'), findsOneWidget);
+    });
+
+    testWidgets('setting it to what it already is changes nothing', (
+      tester,
+    ) async {
+      await seed();
+
+      await tester.pumpWidget(screen());
+      await settle(tester);
+      final onceLoaded = counter.reads;
+
+      logger.enabled = true;
+      await settle(tester);
+
+      expect(
+        counter.reads,
+        onceLoaded,
+        reason: 'nothing changed, so nothing should have been re-read',
+      );
+      expect(find.text('9'), findsWidgets);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../db/database.dart';
 import '../../db/ids.dart';
@@ -24,8 +25,20 @@ class UsageLogger {
   final WordbridgeDatabase _db;
   final String deviceId;
 
+  final ValueNotifier<bool> _enabled = ValueNotifier(false);
+
   /// Opt-in, per the AAC user or whoever speaks for them.
-  bool enabled = false;
+  bool get enabled => _enabled.value;
+  set enabled(bool value) => _enabled.value = value;
+
+  /// Fires when [enabled] is switched, and only then.
+  ///
+  /// A screen reporting on the log has no other way to know it has stopped
+  /// being written to, and waiting for whatever else happens to rebuild it
+  /// means showing figures for a switch that has already been flipped. Nothing
+  /// on the write path touches this: [log] reads the value and never notifies,
+  /// so a listener costs a selection nothing.
+  ValueListenable<bool> get enabledChanges => _enabled;
 
   final _pending = <UsageEventsCompanion>[];
   Timer? _flushTimer;
@@ -120,5 +133,6 @@ class UsageLogger {
   Future<void> dispose() async {
     await flush();
     _flushTimer?.cancel();
+    _enabled.dispose();
   }
 }
