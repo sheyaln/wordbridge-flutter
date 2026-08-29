@@ -11,6 +11,7 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/ids.dart';
 import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/editor/board_editor.dart';
+import 'package:wordbridge/features/editor/symbol_picker.dart';
 import 'package:wordbridge/features/grid/grid_surface.dart';
 import 'package:wordbridge/features/symbols/symbol_pack.dart';
 import 'package:wordbridge/features/symbols/symbol_registry.dart';
@@ -371,6 +372,43 @@ void main() {
       await settle(tester);
     }
 
+    /// Opens the picker on its own, with no editor behind it, so that what a
+    /// removal writes is whatever the picker itself decided to write.
+    Future<void> pumpPicker(
+      WidgetTester tester, {
+      required Button button,
+      required SymbolPack pack,
+    }) async {
+      tester.view.physicalSize = const Size(1600, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+
+      final registry = SymbolRegistry(packs: [pack]);
+      final resolver = resolverWith(pack);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => SymbolPicker.show(
+                  context,
+                  db: db,
+                  registry: registry,
+                  resolver: resolver,
+                  button: button,
+                ),
+                child: const Text('open the picker'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open the picker'));
+      await settle(tester, turns: 20);
+    }
+
     Future<void> closeBoard(WidgetTester tester) async {
       await tester.pumpWidget(const SizedBox.shrink());
       // Drift schedules a zero-duration timer when a query stream is dropped.
@@ -543,6 +581,61 @@ void main() {
       expect(pictureIn(tester, 0, 0), isNull);
 
       await closeBoard(tester);
+    });
+
+    testWidgets(
+      'the picker is what records a removal, with nothing behind it',
+      (tester) async {
+        final chosen = await packSymbol(externalId: 'cup.png', label: 'cup');
+        final button = await place(0, 0, 'water', symbolId: chosen);
+
+        await pumpPicker(tester, button: button, pack: packServingWater());
+        await tester.tap(find.text('Remove the picture'));
+        await settle(tester, turns: 20);
+
+        expect(
+          (await reread(button.id)).symbolId,
+          removedPictureSymbolId,
+          reason:
+              'the removal is only a removal once something else translates '
+              'it, which is not what the picker writes',
+        );
+
+        final events = await (db.select(
+          db.editEvents,
+        )..where((e) => e.buttonId.equals(button.id))).get();
+        expect(
+          events.map((e) => e.kind),
+          contains(EditKind.resymbol),
+          reason:
+              'a picture came off a button and the edit log does not say so',
+        );
+      },
+    );
+
+    testWidgets('a button already marked as having none is not offered it', (
+      tester,
+    ) async {
+      final chosen = await packSymbol(externalId: 'cup.png', label: 'cup');
+      final button = await place(0, 0, 'water', symbolId: chosen);
+
+      await pumpPicker(tester, button: button, pack: packServingWater());
+      await tester.tap(find.text('Remove the picture'));
+      await settle(tester, turns: 20);
+
+      await pumpPicker(
+        tester,
+        button: await reread(button.id),
+        pack: packServingWater(),
+      );
+
+      expect(
+        find.text('Remove the picture'),
+        findsNothing,
+        reason:
+            'a control offering to take off a picture that is already off '
+            'is reported as broken, because it is',
+      );
     });
 
     testWidgets('a picture still being looked for does not hold up a tap', (

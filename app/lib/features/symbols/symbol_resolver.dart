@@ -49,8 +49,8 @@ class SymbolResolver {
   /// of picture cannot be drawn at all.
   final WordbridgeDatabase? db;
 
-  /// Upper bound on one resolution. A pack that hangs yields a label rather
-  /// than a cell that never paints.
+  /// Upper bound on one resolution, whichever way it was asked for. A pack
+  /// that hangs yields a label rather than a cell that never paints.
   final Duration budget;
 
   final _memo = <String, ResolvedSymbol>{};
@@ -153,30 +153,19 @@ class SymbolResolver {
   /// notebook on the word "not" and a sheep on "she". A wrong picture is
   /// worse than none, because it teaches a false association to someone who
   /// cannot easily contradict it.
-  Future<ResolvedSymbol> resolveLabel(
-    String label,
-    List<String> packIds,
-  ) async {
+  ///
+  /// The [budget] covers the whole walk rather than each pack along it, so a
+  /// board full of words looking through several hanging packs still costs one
+  /// button one interval of showing its word alone.
+  Future<ResolvedSymbol> resolveLabel(String label, List<String> packIds) {
     final needle = label.toLowerCase().trim();
-    if (needle.isEmpty) return labelOnly(label);
+    if (needle.isEmpty) return Future.value(labelOnly(label));
 
-    for (final packId in packIds) {
-      if (!registry.isEnabled(packId)) continue;
-      final pack = registry.packFor(packId);
-      if (pack == null) continue;
-
-      try {
-        for (final ref in await pack.search(needle, limit: 4)) {
-          if (ref.label.toLowerCase().trim() != needle) continue;
-          final resolved = await resolve(ref);
-          if (resolved.image != null) return resolved;
-        }
-      } catch (_) {
-        // A pack that misbehaves costs this button its picture, nothing more.
-      }
-    }
-
-    return labelOnly(label);
+    return _resolveLabel(
+      needle,
+      label,
+      packIds,
+    ).timeout(budget, onTimeout: () => labelOnly(label));
   }
 
   /// Bundled candidates first, then the rest, each in the order given.
@@ -196,6 +185,30 @@ class SymbolResolver {
     }
     _subscriptions.clear();
     await _ready.close();
+  }
+
+  Future<ResolvedSymbol> _resolveLabel(
+    String needle,
+    String label,
+    List<String> packIds,
+  ) async {
+    for (final packId in packIds) {
+      if (!registry.isEnabled(packId)) continue;
+      final pack = registry.packFor(packId);
+      if (pack == null) continue;
+
+      try {
+        for (final ref in await pack.search(needle, limit: 4)) {
+          if (ref.label.toLowerCase().trim() != needle) continue;
+          final resolved = await resolve(ref);
+          if (resolved.image != null) return resolved;
+        }
+      } catch (_) {
+        // A pack that misbehaves costs this button its picture, nothing more.
+      }
+    }
+
+    return labelOnly(label);
   }
 
   Future<ResolvedSymbol> _resolve(SymbolRef ref) async {

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show InsertMode, Value;
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
@@ -15,6 +15,20 @@ import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
+
+/// The symbol a button points at to say it has no picture on purpose.
+///
+/// A button with no symbol takes whatever the packs carry for its word, so
+/// "none chosen" and "taken off" cannot both be an empty `symbolId`: what was
+/// taken off is usually the word's own keyword match, and it would come
+/// straight back. Pointing at a symbol that carries no image says it once, in
+/// the only per-button field there is, and it survives a restart and a grid
+/// rebuild.
+///
+/// One row for the whole database, at a fixed id: `buttons.symbol_id` is a
+/// foreign key, so the row has to exist before anything can reference it, and
+/// a row per removal would accumulate for nothing.
+const removedPictureSymbolId = 'symbol-removed';
 
 /// Choosing the picture on a button.
 ///
@@ -231,14 +245,34 @@ class _SymbolPickerState extends State<SymbolPicker> {
     await _assign(symbol.id);
   }
 
+  /// Takes the picture off, in the only per-button field there is.
+  ///
+  /// See [removedPictureSymbolId]: an empty `symbolId` reads as a button
+  /// nobody has chosen for, which is handed back the pack picture the
+  /// caregiver has just rejected.
   Future<void> _clear() async {
-    await (widget.db.update(
-      widget.db.buttons,
-    )..where((b) => b.id.equals(widget.button.id))).write(
-      ButtonsCompanion(symbolId: const Value(null), updatedAt: Value(nowMs())),
-    );
-    if (mounted) Navigator.of(context).pop(true);
+    await widget.db
+        .into(widget.db.symbols)
+        .insert(
+          SymbolsCompanion.insert(
+            id: removedPictureSymbolId,
+            // No pack owns it, which rules out the other two sources.
+            source: SymbolSource.custom,
+            label: '',
+            license: '',
+            attribution: '',
+            createdAt: nowMs(),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+
+    await _assign(removedPictureSymbolId);
   }
+
+  /// Whether there is a picture on the button for [_clear] to take off.
+  bool get _hasPicture =>
+      widget.button.symbolId != null &&
+      widget.button.symbolId != removedPictureSymbolId;
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +370,7 @@ class _SymbolPickerState extends State<SymbolPicker> {
                     ),
             ),
 
-            if (widget.button.symbolId != null)
+            if (_hasPicture)
               TextButton.icon(
                 icon: const Icon(Icons.hide_image_outlined),
                 label: const Text('Remove the picture'),

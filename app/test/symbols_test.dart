@@ -253,6 +253,25 @@ void main() {
       expect(resolved.image, isNull);
     });
 
+    test('a hanging pack yields a label by word too', () async {
+      // The same ceiling, reached the other way in: a button with no symbol of
+      // its own asks by word, and without a bound there it sits at "still
+      // looking" until the app is restarted.
+      final registry = SymbolRegistry(
+        packs: [_FakePack(id: 'slow', hangs: true)],
+      );
+      final resolver = SymbolResolver(
+        registry: registry,
+        budget: const Duration(milliseconds: 20),
+      );
+      addTearDown(resolver.dispose);
+
+      final resolved = await resolver.resolveLabel('more', const ['slow']);
+
+      expect(resolved.image, isNull);
+      expect(resolved.label, 'more');
+    });
+
     test('a bundled hit is an asset key, a downloaded one is a file', () async {
       final registry = SymbolRegistry(
         packs: [

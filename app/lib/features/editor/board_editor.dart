@@ -276,7 +276,7 @@ class _BoardEditorState extends State<BoardEditor> {
                 subtitle: const Text('Search the packs, or use your own photo'),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
-                  final changed = await SymbolPicker.show(
+                  await SymbolPicker.show(
                     context,
                     db: widget.db,
                     registry: widget.registry!,
@@ -284,7 +284,6 @@ class _BoardEditorState extends State<BoardEditor> {
                     fetcher: widget.fetcher,
                     button: button,
                   );
-                  if (changed) await _recordRemovalIfCleared(button.id);
                 },
               ),
             if (!button.isSystem)
@@ -315,59 +314,6 @@ class _BoardEditorState extends State<BoardEditor> {
         ),
       ),
     );
-  }
-
-  /// Records a picture taken off a button on purpose.
-  ///
-  /// A button with no symbol takes whatever the packs carry for its word, so
-  /// "none chosen" and "taken off" cannot both be an empty `symbolId`: what
-  /// was taken off is usually the word's own keyword match, and it would come
-  /// straight back. Pointing at a symbol that carries no image says it once,
-  /// in the only per-button field there is, and it survives a restart and a
-  /// grid rebuild.
-  Future<void> _recordRemovalIfCleared(String buttonId) async {
-    final button = await (widget.db.select(
-      widget.db.buttons,
-    )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
-    if (button == null || button.symbolId != null) return;
-
-    final ts = nowMs();
-    await widget.db
-        .into(widget.db.symbols)
-        .insert(
-          SymbolsCompanion.insert(
-            id: removedPictureSymbolId,
-            // No pack owns it, which rules out the other two sources.
-            source: SymbolSource.custom,
-            label: '',
-            license: '',
-            attribution: '',
-            createdAt: ts,
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
-
-    await (widget.db.update(
-      widget.db.buttons,
-    )..where((b) => b.id.equals(buttonId))).write(
-      ButtonsCompanion(
-        symbolId: const Value(removedPictureSymbolId),
-        updatedAt: Value(ts),
-      ),
-    );
-
-    await widget.db
-        .into(widget.db.editEvents)
-        .insert(
-          EditEventsCompanion.insert(
-            id: newId(),
-            vocabularyId: button.vocabularyId,
-            cellId: Value(button.cellId),
-            buttonId: Value(buttonId),
-            kind: EditKind.resymbol,
-            changedAt: ts,
-          ),
-        );
   }
 
   /// Moves a word onto a different board.
@@ -536,13 +482,6 @@ class _BoardEditorState extends State<BoardEditor> {
 /// Must match what the talk screen renders through, or the caregiver audits
 /// pictures the user is not looking at.
 const _packIds = ['core'];
-
-/// The symbol a button points at to say it has no picture on purpose.
-///
-/// One row for the whole database, at a fixed id: `buttons.symbol_id` is a
-/// foreign key, so the row has to exist before anything can reference it, and
-/// a row per removal would accumulate for nothing.
-const removedPictureSymbolId = 'symbol-removed';
 
 /// A word whose picture has not resolved.
 const _noPicture = Color(0xFFEF6C00);

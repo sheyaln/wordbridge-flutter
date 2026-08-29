@@ -233,6 +233,35 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pump();
     await tester.pump();
+
+    // Let the resolver's own ceiling on a pack that never answers expire.
+    await tester.pump(const Duration(seconds: 3));
+    await closeEditor(tester);
+  });
+
+  testWidgets('a lookup that never answers gives up rather than hanging', (
+    tester,
+  ) async {
+    await place(0, 0, 'water');
+    await pumpEditor(tester, resolverWith(_FakePack(hangs: true)));
+
+    expect(inCell(0, 0, find.byIcon(Icons.more_horiz)), findsOneWidget);
+
+    // Past the ceiling the resolver puts on a pack that never answers.
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    expect(
+      inCell(0, 0, find.byIcon(Icons.add_photo_alternate_outlined)),
+      findsOneWidget,
+      reason: 'a pack that hangs marks the location "still looking" for good',
+    );
+    expect(inCell(0, 0, find.byIcon(Icons.more_horiz)), findsNothing);
+    expect(inCell(0, 0, find.text('water')), findsOneWidget);
+    expect(find.byIcon(Icons.broken_image), findsNothing);
+    expect(tester.takeException(), isNull);
+
     await closeEditor(tester);
   });
 
