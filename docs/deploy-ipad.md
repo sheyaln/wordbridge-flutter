@@ -36,6 +36,28 @@ macos`), which reloads normally, and use the iPad to verify the things only
 real hardware can tell you — audio under the ringer switch, touch target size
 under an actual finger, switch-access hardware.
 
+### A locked iPad refuses the launch, and it looks like a failed install
+
+```
+The request was denied by service delegate (SBMainWorkspace) for reason:
+Locked ("Unable to launch org.wordbridge.wordbridge because the device was
+not, or could not be, unlocked").
+```
+
+The install already succeeded; only the launch was refused. Unlock the iPad
+and run the launch again — there is nothing to rebuild:
+
+```bash
+xcrun devicectl device process launch \
+  --device 17098DA6-61DE-5465-9EA0-34CE0782F3C9 \
+  org.wordbridge.wordbridge
+```
+
+The launch stays the proof the build arrived, because `devicectl` has been
+seen to drop the connection mid-install and still exit 0. So a refused launch
+cannot simply be ignored: it has to be retried until it succeeds, or the
+install is unverified.
+
 ### Debug builds will not launch from the home screen
 
 > "Debug mode Flutter apps can only be launched from Flutter tooling, IDEs with

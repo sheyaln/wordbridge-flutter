@@ -29,7 +29,20 @@ xcrun devicectl device install app \
   build/ios/iphoneos/Runner.app
 
 echo "Launching…"
-xcrun devicectl device process launch --device "$DEVICE" "$BUNDLE_ID"
+# A locked iPad refuses the launch — FBSOpenApplicationErrorDomain error 7,
+# "the device was not, or could not be, unlocked" — and the failure reads
+# exactly like an install that never arrived. The install above has already
+# succeeded at that point. Unlock the iPad and run the launch again; there is
+# no need to rebuild.
+if ! xcrun devicectl device process launch --device "$DEVICE" "$BUNDLE_ID"; then
+  echo >&2
+  echo "The app is installed. Launching it is what proves that, and the" >&2
+  echo "launch failed — if the reason above is \"Locked\", unlock the iPad" >&2
+  echo "and run:" >&2
+  echo >&2
+  echo "  xcrun devicectl device process launch --device $DEVICE $BUNDLE_ID" >&2
+  exit 1
+fi
 
 echo
 echo "Installed and launched. The board and every customisation on it are"
