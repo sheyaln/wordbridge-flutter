@@ -203,14 +203,10 @@ void main() {
           ),
         ),
       );
-      // Not pumpAndSettle: the futures are rebuilt on every frame, so the tree
-      // never goes quiet.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Today'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(
         find.text('2'),

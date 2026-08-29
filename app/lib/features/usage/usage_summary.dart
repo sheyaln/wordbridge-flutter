@@ -1,8 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import 'logger.dart';
 import 'usage_queries.dart';
+
+/// Every figure on the screen, read in one pass.
+typedef _Figures = ({
+  int taps,
+  int differentWords,
+  List<Utterance> recent,
+  List<WordCount> mostUsed,
+});
 
 /// What the AAC user has been saying.
 ///
@@ -30,15 +40,56 @@ class _UsageSummaryState extends State<UsageSummary> {
 
   int _days = 7;
 
+  /// Held rather than started from [build], which runs again for reasons that
+  /// have nothing to do with the figures: an ancestor rebuilding, a theme or
+  /// text-size change, the tab coming back. Replaced only by the four things
+  /// that change the answer — the window, the profile, recording being switched
+  /// on, and emptying the log.
+  Future<_Figures>? _figures;
+
   /// "Today" is a calendar day, ending at last midnight; the other two are
   /// rolling spans, which is what their labels say.
   UsageWindow get _window => _days == 1
       ? const UsageWindow.calendarDays(1)
       : UsageWindow.rollingDays(_days);
 
+  /// One read behind all three panels, so the sentences and the counts describe
+  /// the same log rather than two moments of it. These figures are read against
+  /// each other and copied into funding letters; panels that disagree are worse
+  /// than panels that arrive together a moment later.
+  Future<_Figures> _read() async {
+    final window = _window;
+    final (taps, differentWords, recent, mostUsed) = await (
+      _q.totalTaps(widget.profileId, window: window),
+      _q.numberOfDifferentWords(widget.profileId, window: window),
+      _q.recentUtterances(widget.profileId),
+      _q.mostUsedWords(widget.profileId, window: window),
+    ).wait;
+
+    return (
+      taps: taps,
+      differentWords: differentWords,
+      recent: recent,
+      mostUsed: mostUsed,
+    );
+  }
+
+  @override
+  void didUpdateWidget(UsageSummary oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profileId != widget.profileId) _figures = null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!widget.logger.enabled) return const _LoggingOff();
+    if (!widget.logger.enabled) {
+      // Nothing is being recorded while this is off, so there is no reason to
+      // hold a read; switching it back on asks the database again.
+      _figures = null;
+      return const _LoggingOff();
+    }
+
+    final figures = _figures ??= _read();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -50,24 +101,27 @@ class _UsageSummaryState extends State<UsageSummary> {
             ButtonSegment(value: 30, label: Text('30 days')),
           ],
           selected: {_days},
-          onSelectionChanged: (s) => setState(() => _days = s.first),
+          onSelectionChanged: (s) => setState(() {
+            _days = s.first;
+            _figures = _read();
+          }),
         ),
         const SizedBox(height: 24),
 
-        FutureBuilder<List<int>>(
-          future: Future.wait([
-            _q.totalTaps(widget.profileId, window: _window),
-            _q.numberOfDifferentWords(widget.profileId, window: _window),
-          ]),
+        FutureBuilder<_Figures>(
+          future: figures,
           builder: (context, snap) {
             final d = snap.data;
             return Row(
               children: [
-                _Stat(value: '${d?[0] ?? '—'}', label: 'words spoken'),
+                _Stat(value: '${d?.taps ?? '—'}', label: 'words spoken'),
                 const SizedBox(width: 32),
                 // The metric SLPs track for vocabulary growth, and the one
                 // that ends up in funding paperwork.
-                _Stat(value: '${d?[1] ?? '—'}', label: 'different words'),
+                _Stat(
+                  value: '${d?.differentWords ?? '—'}',
+                  label: 'different words',
+                ),
               ],
             );
           },
@@ -75,10 +129,10 @@ class _UsageSummaryState extends State<UsageSummary> {
 
         const SizedBox(height: 32),
         const _Heading('Recent sentences'),
-        FutureBuilder<List<Utterance>>(
-          future: _q.recentUtterances(widget.profileId),
+        FutureBuilder<_Figures>(
+          future: figures,
           builder: (context, snap) {
-            final items = snap.data;
+            final items = snap.data?.recent;
             if (items == null) return const LinearProgressIndicator();
             if (items.isEmpty) return const _Empty('Nothing recorded yet.');
             return Column(
@@ -103,10 +157,10 @@ class _UsageSummaryState extends State<UsageSummary> {
 
         const SizedBox(height: 32),
         const _Heading('Most used'),
-        FutureBuilder<List<WordCount>>(
-          future: _q.mostUsedWords(widget.profileId, window: _window),
+        FutureBuilder<_Figures>(
+          future: figures,
           builder: (context, snap) {
-            final items = snap.data;
+            final items = snap.data?.mostUsed;
             if (items == null) return const LinearProgressIndicator();
             if (items.isEmpty) return const _Empty('Nothing recorded yet.');
 
@@ -187,7 +241,11 @@ class _UsageSummaryState extends State<UsageSummary> {
 
     if (ok == true) {
       await _q.deleteAllFor(widget.profileId);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          _figures = _read();
+        });
+      }
     }
   }
 

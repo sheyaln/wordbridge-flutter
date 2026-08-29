@@ -396,18 +396,32 @@ need answering. Keep `SpeechEngine` engine-agnostic so this stays a swap rather
 than a rewrite. Until then, ship only the tones platform TTS can honestly
 produce.
 
-### 4.5a Known, not fixed
+### 4.5a Futures and streams are held, not built in `build`
 
-Two rebuild loops, both found while fixing something adjacent, both real and
-both outside the blast radius of the change that surfaced them:
+Two screens created their database work inside `build`. Both are fixed, and
+both were less dramatic than they first looked — worth recording, because the
+measurements are the useful part:
 
-- **`TalkScreen._cellsFor` builds a fresh drift query stream on every
-  rebuild**, so each `setState` — every tap — tears down and re-subscribes the
-  board's stream. It works, because the `StreamBuilder` retains data across the
-  swap, but it is wasted work on the one path that must never be slow.
-- **`UsageSummary` recreates its `FutureBuilder` futures on every build**, so
-  each completion triggers a rebuild that starts new queries: an unbounded loop
-  for as long as a caregiver leaves the screen open.
+- **The board's query stream is cached per board**, and the category-wheel
+  substitution moved to render time so a page change rides the ordinary rebuild
+  instead of needing a new subscription. It was *not* re-querying per tap:
+  drift caches query streams by SQL and defers closing a dropped one by an
+  event-loop turn, so the resubscribe hit the cache. The real per-tap cost was
+  SQL generation, a subscription teardown and rebuild, and a timer — and it
+  stayed cheap only through a drift implementation detail the widget has no
+  contract with.
+- **The usage summary reads once into one combined future.** There was **no
+  rebuild loop**: a `FutureBuilder` completing marks its own element dirty, not
+  its parent's, so the parent's `build` is never re-entered. The real defect is
+  that futures built in `build` are rebuilt by *any* ancestor rebuild — a tab
+  returning, a text-size change — and that three futures are three snapshots of
+  a log still being written to, on a screen whose panels get read against each
+  other and copied into funding paperwork.
+
+**The settle gate is a flag the timer clears**, not a deadline compared against
+`DateTime.now()`. The timer and the wall clock are the same thing in production
+and two different things under a test harness, and a gate on the tap path has to
+be testable.
 
 ### 4.6 Still to do
 

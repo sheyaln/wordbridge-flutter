@@ -111,16 +111,19 @@ class TalkScreenState extends State<TalkScreen> {
   /// two taps sometimes.
   bool get _autoReturn => widget.settings?.autoReturn ?? true;
 
-  /// Taps are ignored until this moment, after the board has changed.
+  /// Taps are ignored while this is set, just after the board has changed.
   ///
   /// A finger already on its way down when the screen changes lands on
   /// whatever now occupies that location. Without this, moving at speed
   /// through a learned sequence puts words into the sentence that nobody
   /// chose.
-  DateTime _operableAt = DateTime.fromMillisecondsSinceEpoch(0);
+  ///
+  /// A flag the timer clears, rather than a deadline compared against the wall
+  /// clock. The timer and the clock are the same thing in production and two
+  /// different things under a test harness, and a gate on the tap path is worth
+  /// being able to test.
+  bool _settling = false;
   Timer? _settleTimer;
-
-  bool get _settling => DateTime.now().isBefore(_operableAt);
 
   int get wheelPages => _wheel?.pages ?? 1;
 
@@ -174,9 +177,9 @@ class TalkScreenState extends State<TalkScreen> {
     if (delay <= Duration.zero) return;
 
     _settleTimer?.cancel();
-    _operableAt = DateTime.now().add(delay);
+    _settling = true;
     _settleTimer = Timer(delay, () {
-      if (mounted) setState(() {});
+      if (mounted) setState(() => _settling = false);
     });
   }
 
@@ -237,7 +240,25 @@ class TalkScreenState extends State<TalkScreen> {
     await _refreshSuggestions();
   }
 
+  String? _cellsBoardId;
+  Stream<List<PlacedCell>>? _cells;
+
+  /// The open board's locations as they are stored, held for as long as that
+  /// board stays open.
+  ///
+  /// A `StreamBuilder` re-subscribes whenever it is handed a different stream
+  /// object, so building one during `build` costs a teardown and a fresh
+  /// subscription on every tap, plus a re-read of the board wherever drift's
+  /// own stream cache does not happen to absorb it. One board, one
+  /// subscription; what each location currently shows is decided in
+  /// [_asDrawn], at render time.
+  ///
+  /// The subscription belongs to the `StreamBuilder`, which cancels it when
+  /// this stream is replaced and when the screen goes away.
   Stream<List<PlacedCell>> _cellsFor(String boardId) {
+    final held = _cells;
+    if (held != null && _cellsBoardId == boardId) return held;
+
     final query =
         widget.db.select(widget.db.cells).join([
             leftOuterJoin(
@@ -251,22 +272,42 @@ class TalkScreenState extends State<TalkScreen> {
             OrderingTerm.asc(widget.db.cells.col),
           ]);
 
-    return query.watch().map(
-      (rows) => rows.map((r) {
-        final cell = r.readTable(widget.db.cells);
-        final button = r.readTableOrNull(widget.db.buttons);
-
-        // "Back" has nowhere to go from the root board, so it is not drawn
-        // there. Its location stays reserved rather than being given to
-        // something else, so the button is in the same place every time it is
-        // actually usable — hiding it is a rendering decision, not a move.
-        final deadBack =
-            button?.action == ButtonAction.back && boardId == _rootBoardId;
-        if (deadBack) return (cell: cell, button: null);
-
-        return (cell: cell, button: _throughWheel(cell, button));
-      }).toList(),
+    _cellsBoardId = boardId;
+    return _cells = query.watch().map(
+      (rows) => [
+        for (final r in rows)
+          (
+            cell: r.readTable(widget.db.cells),
+            button: r.readTableOrNull(widget.db.buttons),
+          ),
+      ],
     );
+  }
+
+  /// What a stored location shows right now.
+  ///
+  /// Both substitutions turn on state that moves while the query stands still
+  /// — the turn of the wheel, and which board is the root — so they belong to
+  /// drawing the board rather than to reading it. Folded into the stream they
+  /// would hold whatever was true when the subscription opened, and the cycle
+  /// key would stop changing the category keys.
+  ///
+  /// The board is taken from the location itself rather than from whichever
+  /// board is open, so rows still in view from the board being left are drawn
+  /// under their own rules.
+  PlacedCell _asDrawn(PlacedCell placed) {
+    final cell = placed.cell;
+    final button = placed.button;
+
+    // "Back" has nowhere to go from the root board, so it is not drawn there.
+    // Its location stays reserved rather than being given to something else,
+    // so the button is in the same place every time it is actually usable —
+    // hiding it is a rendering decision, not a move.
+    final deadBack =
+        button?.action == ButtonAction.back && cell.boardId == _rootBoardId;
+    if (deadBack) return (cell: cell, button: null);
+
+    return (cell: cell, button: _throughWheel(cell, button));
   }
 
   /// Substitutes whichever category a slot is showing on this turn.
@@ -601,7 +642,7 @@ class TalkScreenState extends State<TalkScreen> {
                           child: GridSurface(
                             rows: vocab.gridRows,
                             cols: vocab.gridCols,
-                            cells: cells,
+                            cells: [for (final c in cells) _asDrawn(c)],
                             vocabLevel: widget.vocabLevel,
                             resolver: widget.resolver,
                             isAvailable: _isAvailable,
