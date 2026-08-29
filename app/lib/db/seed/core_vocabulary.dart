@@ -55,11 +55,12 @@
 /// assigned word by word as vocabulary accumulates converges on one board
 /// wearing three names.
 ///
-/// Level is also what a grid too small to hold everything sheds first, so
-/// raising a word here can move it to a later page. Nothing on the root board
-/// may sit above level 2 except the tail of the verb band, which is the run
-/// that pages off a 7x12 grid; a higher level anywhere else sheds ahead of it
-/// and takes a learned location with it.
+/// What a grid too small to hold everything sheds first is [BandItem.pageRank],
+/// which follows level by default and can be set apart from it where the two
+/// questions have different answers. The tail of the verb band is drawn at
+/// level 2 and paged off like level 3; the grammar keys are drawn at level 2
+/// and page off like level 1. Both would otherwise have to be answered by
+/// moving a word's level, which decides who sees it.
 library;
 
 import '../tables.dart';
@@ -79,6 +80,7 @@ BandItem<SeedWord> w(
   PartOfSpeech pos, {
   int level = 1,
   bool essential = false,
+  int? pageRank,
 }) => BandItem(
   (
     label: label,
@@ -89,7 +91,21 @@ BandItem<SeedWord> w(
   ),
   level: level,
   essential: essential,
+  pageRankOverride: pageRank,
 );
+
+/// Where the grammar keys sit in the order a small grid gives things up.
+///
+/// Between the level-1 core and ordinary level-2 vocabulary. One ending key
+/// multiplies every verb on the board, so it earns a page-one location ahead
+/// of any single word — and it earns it most on exactly the grids that have
+/// least room, because a grid is small when the buttons are large, and the
+/// buttons are large for the people least able to afford the extra movements
+/// a second page costs.
+///
+/// Not ahead of the level-1 core, which is the evidence-based floor and the
+/// only vocabulary some boards ever draw.
+const grammarKeyPageRank = 15;
 
 List<BandItem<SeedWord>> _all(
   List<String> labels,
@@ -207,17 +223,20 @@ final homeBands = <Band<SeedWord>>[
       w('finished', PartOfSpeech.verb, essential: true),
       // Cognition and communication: top-20 verbs in every published adult
       // core list, and "tell" is the word a user needs to disclose something.
-      // Level 3 because the 7x12 board has no room for them — they shed to a
-      // later page there, and appear on the root board at smaller icon sizes
-      // where the grid is wider.
-      w('know', PartOfSpeech.verb, level: 3),
-      w('think', PartOfSpeech.verb, level: 3),
-      w('say', PartOfSpeech.verb, level: 3),
-      w('tell', PartOfSpeech.verb, level: 3),
-      w('see', PartOfSpeech.verb, level: 3),
-      w('come', PartOfSpeech.verb, level: 3),
-      w('give', PartOfSpeech.verb, level: 3),
-      w('feel', PartOfSpeech.verb, level: 3),
+      //
+      // Drawn at level 2, and paged off like level 3. The 7x12 board has no
+      // room for them on page one, so they shed to a later page there and sit
+      // on the root board at smaller icon sizes where the grid is wider —
+      // but there is no reason a person ready for a 241-word board should be
+      // unable to say "I think" until they are ready for all 372.
+      w('know', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('think', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('say', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('tell', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('see', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('come', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('give', PartOfSpeech.verb, level: 2, pageRank: 30),
+      w('feel', PartOfSpeech.verb, level: 2, pageRank: 30),
     ],
   ),
 
@@ -332,49 +351,61 @@ final homeBands = <Band<SeedWord>>[
 /// looking at. Pinning them means "where" is one movement from anywhere rather
 /// than a trip back to the root board and out again, which is the difference
 /// between asking a question and giving up on asking it.
+///
+/// Six words and no punctuation, because the column is `rows - 1` long and a
+/// seventh item costs far more than a cell. Bands own whole lines, so a board
+/// this closely packed frees a line only by shedding every word that shares it
+/// — about fifteen at 7x12, the articles among them. The question mark belongs
+/// to the sentence rather than to the grid and lives on the utterance bar,
+/// where it costs no location on any board.
 final pinnedQuestions = <BandItem<SeedWord>>[
   w('what', PartOfSpeech.question, essential: true),
   w('where', PartOfSpeech.question, essential: true),
   w('who', PartOfSpeech.question),
   w('when', PartOfSpeech.question),
   w('why', PartOfSpeech.question),
-  // Appended rather than slotted in beside the question words, because every
-  // one of those already has a location somebody has learned.
-  _punctuation('?'),
+  // The one English question word the Universal Core omits. A column offering
+  // five of the six reads as having a hole in a group a user takes to be
+  // whole, so it draws at level 1 with the rest of them.
+  w('how', PartOfSpeech.question),
 ];
 
-BandItem<SeedWord> _punctuation(String mark) => BandItem((
-  label: mark,
-  message: mark,
-  action: ButtonAction.punctuate,
-  morphemeKind: null,
-  pos: PartOfSpeech.question,
-));
+BandItem<SeedWord> _morpheme(String label, MorphemeKind kind) => BandItem(
+  (
+    label: label,
+    message: '',
+    action: ButtonAction.morpheme,
+    morphemeKind: kind,
+    pos: PartOfSpeech.other,
+  ),
+  level: 2,
+  pageRankOverride: grammarKeyPageRank,
+);
 
-BandItem<SeedWord> _morpheme(String label, MorphemeKind kind) => BandItem((
-  label: label,
-  message: '',
-  action: ButtonAction.morpheme,
-  morphemeKind: kind,
-  pos: PartOfSpeech.other,
-), level: 2);
+BandItem<SeedWord> _copula(String label, String tense) => BandItem(
+  (
+    label: label,
+    // A copula carries its tense here; a suffix carries it in morphemeKind.
+    message: tense,
+    action: ButtonAction.morpheme,
+    morphemeKind: null,
+    pos: PartOfSpeech.other,
+  ),
+  level: 2,
+  pageRankOverride: grammarKeyPageRank,
+);
 
-BandItem<SeedWord> _copula(String label, String tense) => BandItem((
-  label: label,
-  // A copula carries its tense here; a suffix carries it in morphemeKind.
-  message: tense,
-  action: ButtonAction.morpheme,
-  morphemeKind: null,
-  pos: PartOfSpeech.other,
-), level: 2);
-
-BandItem<SeedWord> _article(String label) => BandItem((
-  label: label,
-  message: 'article',
-  action: ButtonAction.morpheme,
-  morphemeKind: null,
-  pos: PartOfSpeech.determiner,
-), level: 2);
+BandItem<SeedWord> _article(String label) => BandItem(
+  (
+    label: label,
+    message: 'article',
+    action: ButtonAction.morpheme,
+    morphemeKind: null,
+    pos: PartOfSpeech.determiner,
+  ),
+  level: 2,
+  pageRankOverride: grammarKeyPageRank,
+);
 
 /// Category boards, in the order their keys appear on the system row.
 ///

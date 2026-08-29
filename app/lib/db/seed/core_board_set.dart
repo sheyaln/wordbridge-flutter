@@ -115,8 +115,17 @@ Future<String> seedCoreBoardSet(
     cols: cols,
     bands: [
       ...homeBands,
+      // Filling the tail the band before it left rather than claiming a line
+      // of its own. One or two spilled items would otherwise cost a whole
+      // column at 7x12 and push every band to their right along with it — a
+      // price paid by the entire board so that one word need not move.
       if (spilledQuestions.isNotEmpty)
-        Band(name: 'questions', items: spilledQuestions, shedRank: 3),
+        Band(
+          name: 'questions',
+          items: spilledQuestions,
+          shedRank: 3,
+          startsLine: false,
+        ),
     ],
   );
 

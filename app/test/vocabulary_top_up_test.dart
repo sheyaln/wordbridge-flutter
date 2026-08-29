@@ -362,7 +362,7 @@ void main() {
     expect(applied.added.length, preview.added.length);
   });
 
-  test('the question mark reaches every board, not just the root', () async {
+  test('a pinned question reaches every board, not just the root', () async {
     // The pinned column is the same on every board or it is not pinned.
     for (final board in await db.select(db.boards).get()) {
       final button =
@@ -370,7 +370,7 @@ void main() {
                 innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
               ])..where(
                 db.cells.boardId.equals(board.id) &
-                    db.buttons.label.equals('?'),
+                    db.buttons.label.equals('how'),
               ))
               .get();
 
@@ -430,7 +430,9 @@ void main() {
         words.keys,
         containsAll(['wash', 'sit', 'ask', 'remember', 'hold', 'share']),
       );
-      expect(words.keys.where((l) => l != '?'), hasLength(48 + 5));
+      // The board's own verbs, plus the six question words every board
+      // carries in its pinned column.
+      expect(words.keys, hasLength(48 + 6));
       expect(
         result.added.where((a) => a.board == 'doing').map((a) => a.label),
         containsAll(['wash', 'breathe', 'cry']),

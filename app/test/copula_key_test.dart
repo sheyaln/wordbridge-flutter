@@ -200,6 +200,43 @@ void main() {
     expect(speech.said, ['is', 'are you']);
   });
 
+  testWidgets('the question mark is on the bar, not on any board', (
+    tester,
+  ) async {
+    // It marks the sentence rather than adding a word to it, so it lives where
+    // the sentence lives and costs no location on any board.
+    final onAnyBoard = await (db.select(
+      db.buttons,
+    )..where((b) => b.label.equals('?'))).get();
+    expect(onAnyBoard, isEmpty);
+
+    final you = await cellOf(label: 'you');
+
+    await pumpTalkScreen(tester);
+    await tap(tester, you);
+    await tester.tap(find.byTooltip('Make it a question'));
+    await pumpFrames(tester);
+
+    // The whole sentence, because tone belongs to the sentence — hearing it is
+    // the only thing that tells the user the mark did anything.
+    expect(speech.said, ['you', 'you?']);
+  });
+
+  testWidgets('every board carries "how" in the pinned column', (tester) async {
+    for (final board in await db.select(db.boards).get()) {
+      final pinned =
+          await (db.select(db.buttons).join([
+                innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+              ])..where(
+                db.cells.boardId.equals(board.id) &
+                    db.buttons.label.equals('how'),
+              ))
+              .get();
+
+      expect(pinned, hasLength(1), reason: '"${board.name}" cannot ask how');
+    }
+  });
+
   testWidgets('a word that corrects nothing is spoken on its own', (
     tester,
   ) async {

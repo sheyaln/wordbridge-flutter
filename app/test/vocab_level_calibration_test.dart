@@ -27,13 +27,15 @@ import 'grid_sizes_test.dart' show geometries;
 /// exact on purpose: it is the board every person meets first and the one the
 /// ceiling actually binds on.
 void main() {
-  /// The five locations the Universal Core has no answer for.
+  /// The locations the Universal Core has no answer for.
   ///
   /// It carries `not`, which negates inside a sentence but can neither answer
   /// a question nor make an imperative, and its possessive key fires after `I`
-  /// to give "I's". Adding to this set is adding to a beginner's first board,
-  /// so it is spelled out rather than counted.
-  const rootBoardAdditions = {'yes', 'no', "don't", 'wait', 'me', '?'};
+  /// to give "I's". `how` is the one English question word it omits, and a
+  /// pinned column offering five of the six reads as having a hole. Adding to
+  /// this set is adding to a beginner's first board, so it is spelled out
+  /// rather than counted.
+  const rootBoardAdditions = {'yes', 'no', "don't", 'wait', 'me', 'how'};
 
   /// Project Core's density for a whole-day beginning-communicator board.
   const universalCoreDensity = 36;
