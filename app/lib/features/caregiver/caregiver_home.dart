@@ -1047,12 +1047,17 @@ class _SettleDelay extends StatelessWidget {
   }
 }
 
-/// Words that have shipped since this board was built.
+/// Words, and whole categories, that have shipped since this board was built.
 ///
 /// A board is not rebuilt to receive them. Each one goes to the location the
 /// layout rule already assigns it on this grid, and only if that location is
 /// still free — so the board gains vocabulary without a single thing on it
 /// moving. Anything whose place is taken is reported rather than forced.
+///
+/// A category is the larger arrival and the larger loss: a whole board with a
+/// key of its own, or vocabulary that stays off the device because nothing on
+/// the system row could be made to open it. Both are named rather than folded
+/// into a word count, which would report the loss as silence.
 class _NewWords extends StatefulWidget {
   const _NewWords({
     required this.db,
@@ -1092,11 +1097,33 @@ class _NewWordsState extends State<_NewWords> {
     dryRun: true,
   );
 
+  /// Names the categories arriving. A category is a board and a key of its
+  /// own, so it is read out rather than counted among the words it holds.
+  static String _arriving(List<String> boards) =>
+      '${boards.length == 1 ? 'New category' : 'New categories'}: '
+      '${boards.join(', ')}';
+
+  /// Names the categories that could not arrive, and what that costs. Their
+  /// words are nowhere on the device and no key would reach them, which a
+  /// count of everything else would hide entirely.
+  static String _refused(List<String> boards) =>
+      '${boards.join(', ')} — no key could be made to open '
+      '${boards.length == 1 ? 'it' : 'them'}, so those words are not on this '
+      'board set at all.';
+
   Future<void> _apply(VocabularyTopUp preview) async {
+    final categories = preview.addedBoards.length == 1
+        ? 'a new category'
+        : '${preview.addedBoards.length} new categories';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Add ${preview.count} words?'),
+        title: Text(
+          preview.addedBoards.isEmpty
+              ? 'Add ${preview.count} words?'
+              : 'Add ${preview.count} words and $categories?',
+        ),
         content: SizedBox(
           width: 400,
           child: Column(
@@ -1108,6 +1135,15 @@ class _NewWordsState extends State<_NewWords> {
                 'already on the board moves.',
                 style: TextStyle(fontSize: 13),
               ),
+              if (preview.addedBoards.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  '${_arriving(preview.addedBoards)} — added at the end, so '
+                  'every key already on the board keeps opening what it '
+                  'always opened.',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ],
               const SizedBox(height: 12),
               Flexible(
                 child: SingleChildScrollView(
@@ -1126,6 +1162,13 @@ class _NewWordsState extends State<_NewWords> {
                 Text(
                   'Not added, because those locations are already in use:\n'
                   '${[for (final b in preview.blocked) '${b.label} (behind "${b.occupant}")'].join(', ')}',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+              if (preview.refusedBoards.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _refused(preview.refusedBoards),
                   style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],
@@ -1176,7 +1219,7 @@ class _NewWordsState extends State<_NewWords> {
           );
         }
 
-        if (preview.added.isEmpty) {
+        if (preview.added.isEmpty && preview.refusedBoards.isEmpty) {
           return const ListTile(
             leading: Icon(Icons.playlist_add_check),
             title: Text('New words'),
@@ -1184,13 +1227,34 @@ class _NewWordsState extends State<_NewWords> {
           );
         }
 
+        // A refusal on its own still has to be said. There is nothing to press
+        // here, and reporting "everything is here" over the top of it would
+        // leave a caregiver sure of vocabulary the device does not carry.
+        if (preview.added.isEmpty) {
+          return ListTile(
+            leading: const Icon(Icons.playlist_remove),
+            title: Text(
+              preview.refusedBoards.length == 1
+                  ? 'A new category could not be added'
+                  : 'New categories could not be added',
+            ),
+            subtitle: Text(_refused(preview.refusedBoards)),
+            isThreeLine: true,
+          );
+        }
+
+        final lines = [
+          if (preview.addedBoards.isNotEmpty) _arriving(preview.addedBoards),
+          if (preview.refusedBoards.isNotEmpty) _refused(preview.refusedBoards),
+          [for (final a in preview.added.take(6)) a.label].join(', ') +
+              (preview.count > 6 ? '…' : ''),
+        ];
+
         return ListTile(
           leading: const Icon(Icons.playlist_add),
           title: Text('${preview.count} new words available'),
-          subtitle: Text(
-            [for (final a in preview.added.take(6)) a.label].join(', ') +
-                (preview.count > 6 ? '…' : ''),
-          ),
+          subtitle: Text(lines.join('\n')),
+          isThreeLine: lines.length > 1,
           trailing: _applying
               ? const SizedBox(
                   width: 20,

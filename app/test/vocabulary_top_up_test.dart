@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
 import 'package:wordbridge/db/database.dart';
@@ -9,6 +10,8 @@ import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/seed/core_vocabulary.dart';
 import 'package:wordbridge/db/seed/vocabulary_top_up.dart';
 import 'package:wordbridge/db/tables.dart';
+import 'package:wordbridge/features/caregiver/caregiver_home.dart';
+import 'package:wordbridge/features/usage/logger.dart';
 
 /// Every button in the whole board set, keyed by what it is and where it lives.
 ///
@@ -688,6 +691,39 @@ void main() {
       expect(result.addedBoards, isEmpty);
       expect(await fingerprint(db), before);
     });
+
+    test('a system row with no column to spare refuses it', () async {
+      // The last free column of the system row given to a caregiver's own
+      // word. Taking a key that already opens something else would relocate
+      // what a learned movement does, so the category does not arrive at all.
+      await unship(db, vocabId, 'doing');
+
+      final home = await boardNamed('home');
+      final cell = await cellAt(db, boardId: home.id, row: 6, col: 9);
+      await placeButton(
+        db,
+        vocabularyId: vocabId,
+        cellId: cell.id,
+        label: 'Nana',
+        message: 'Nana',
+        partOfSpeech: PartOfSpeech.noun,
+      );
+
+      final before = await fingerprint(db);
+      final result = await topUpVocabulary(db, vocabularyId: vocabId);
+
+      expect(result.refusedBoards, ['doing']);
+      expect(result.addedBoards, isEmpty);
+      expect(result.added, isEmpty);
+      expect(
+        await (db.select(
+          db.boards,
+        )..where((b) => b.name.equals('doing'))).get(),
+        isEmpty,
+        reason: 'a board no key opens was built anyway',
+      );
+      expect(await fingerprint(db), before);
+    });
   });
 
   group('a category board on a grid that is not 7x12', () {
@@ -872,6 +908,108 @@ void main() {
         'doing',
         'feelings',
       ]);
+    });
+  });
+
+  /// What the caregiver is told, which is the whole of what they can act on.
+  ///
+  /// A category is a board and a key, not a longer word count. One arriving
+  /// and one refused are both events in their own right, and a refusal that
+  /// went unsaid would leave a caregiver certain of vocabulary the device
+  /// does not carry.
+  group('the report the caregiver screen gives', () {
+    /// Long enough for the preview's read and the dialog's animation.
+    /// `pumpAndSettle` is out: the board list holds a spinner until its first
+    /// frame of data.
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 25; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+    }
+
+    Future<void> pumpSettings(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CaregiverHome(
+            db: db,
+            vocabularyId: vocabId,
+            profileId: 'default',
+            logger: UsageLogger(db, deviceId: 'test'),
+          ),
+        ),
+      );
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+
+      await tester.tap(find.text('Settings'));
+      await settle(tester);
+    }
+
+    /// Drops the widget before the database goes, so nothing is still reading
+    /// from it when it closes.
+    Future<void> closeHome(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    testWidgets('a category that arrives is named', (tester) async {
+      await unship(db, vocabId, 'doing');
+      await pumpSettings(tester);
+
+      expect(find.textContaining('New category: doing'), findsOneWidget);
+      await closeHome(tester);
+    });
+
+    testWidgets('a category that is refused is named, with the cost', (
+      tester,
+    ) async {
+      await unship(db, vocabId, 'doing');
+      await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId)))
+          .write(const VocabulariesCompanion(systemCellMap: Value('{}')));
+
+      await pumpSettings(tester);
+
+      expect(find.text('A new category could not be added'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'doing — no key could be made to open it, so those words are not '
+          'on this board set at all.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('This board has everything wordbridge ships.'),
+        findsNothing,
+        reason: 'a refused category was reported as nothing missing',
+      );
+      await closeHome(tester);
+    });
+
+    testWidgets('the confirmation asks about the category too', (tester) async {
+      await unship(db, vocabId, 'doing');
+      await pumpSettings(tester);
+
+      await tester.tap(find.textContaining('new words available'));
+      await settle(tester);
+
+      expect(find.textContaining('and a new category?'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'New category: doing — added at the end, so every key already on '
+          'the board keeps opening what it always opened.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Not now'));
+      await settle(tester);
+      await closeHome(tester);
     });
   });
 }
