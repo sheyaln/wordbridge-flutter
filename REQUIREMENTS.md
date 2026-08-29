@@ -851,6 +851,40 @@ five of six reads as having a hole in a group a user takes to be complete.
 Level 1 goes from 99 words to 100, and the 36-per-page ceiling is untouched
 because the column is pinned rather than drawn from the content area.
 
+### 4.22 "wait" sits with the verbs — delivered
+
+It was in the yes/no band, at the bottom of the last column, under `don't`. It
+is a verb and it does a verb's job, so it now reads `go stop wait` across one
+row of the verb band.
+
+**The verb band was exactly full at 7×12**, so adding one paged one off. Every
+candidate but one is half of a pair the board deliberately keeps side by side —
+`open`/`close`, `go`/`stop`, `get`/`take`, `want`/`need`/`like`, all asserted in
+`core_board_set_test`. So **`will` goes to page two**. Its level is unchanged; it
+is drawn wherever it lands.
+
+`will` is also **declared last in the band** rather than among the modals. Page
+two is rebuilt in declaration order, and a word inserted into the middle of the
+overflow pushes every pair after it apart — which is exactly what happened
+first time round, splitting `know`/`think` and `say`/`tell` across rows.
+
+Two things this cost, stated plainly:
+
+- **`a` and `the` now page off at 8×10.** One more verb on a board that was
+  already full is one more column of pressure. The endings and the copula still
+  hold page one there, which is the right half to keep: a suffix key multiplies
+  every verb on the board, and a sentence missing its article is still
+  understood.
+- The yes/no column has a spare location where `wait` used to be. It is
+  reserved, not missing.
+
+A second defect surfaced while doing this. **The overflow list was ordered by
+when the grid ran out of room, not by how the words read.** It happened to work
+while shedding was one word at a time; §4.21 made it a batch per band, and page
+two immediately came apart. Page two is now rebuilt by looking each word up in
+the band's own declaration, so it reads the way page one does regardless of the
+order the shedding happened to take.
+
 ### 4.21 A narrow grid scattered related words — delivered
 
 Reported at 7×11: `we`, `they` and `my` on page two while their pronoun column

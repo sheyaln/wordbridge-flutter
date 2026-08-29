@@ -246,19 +246,31 @@ List<BandLayout<SeedWord>> pageBands({
     // a page where the same band ran the other way would be a second thing to
     // learn about words that are already one group.
     //
-    // Shedding works from the end of a band backwards, so the overflow list
-    // arrives reversed. Putting it back into declaration order is what makes
-    // page two read the same way page one does.
+    // Shedding takes words in whatever order the grid runs out of room, which
+    // is not the order they read. Page two is rebuilt in declaration order so
+    // that a band reads the same way on both pages — a run of alternatives
+    // whose pairs came apart between pages would be a second thing to learn
+    // about one group of words.
     final fills = {for (final b in remaining) b.name: b.fill};
+    final declared = {
+      for (final b in remaining)
+        b.name: {for (var i = 0; i < b.items.length; i++) b.items[i]: i},
+    };
+
     remaining = [
       for (final band in page.overflowBands)
         Band(
           name: band,
           fill: fills[band]!,
-          items: [
-            for (final o in page.overflow.reversed)
-              if (o.band == band) o.item,
-          ],
+          items:
+              [
+                for (final o in page.overflow)
+                  if (o.band == band) o.item,
+              ]..sort(
+                (a, b) => (declared[band]![a] ?? 0).compareTo(
+                  declared[band]![b] ?? 0,
+                ),
+              ),
         ),
     ];
   }

@@ -75,11 +75,11 @@ void main() {
     // both asserted separately.
     const shipped = [
       'I    we   all       want need  like     +s        a       . here good',
-      'you  they some      go   stop  can      +ed       the     . in   not',
-      'he   my   same      get  take  do       +ing      and     . on   yes',
-      'she  me   different make put   will     +\'s      but     . up   no',
+      'you  they some      go   stop  wait     +ed       the     . in   not',
+      'he   my   same      can  get   take     +ing      and     . on   yes',
+      'she  me   different do   make  put      +\'s      but     . up   no',
       'it   .    more      open close help     am/is/are because . to   don\'t',
-      'that .    this      look turn  finished was/were  so      . out  wait',
+      'that .    this      look turn  finished was/were  so      . out  .',
     ];
 
     final home = await (db.select(
@@ -488,13 +488,13 @@ void main() {
         'like',
         'go',
         'stop',
+        'wait',
         'can',
         'get',
         'take',
         'do',
         'make',
         'put',
-        'will',
         'open',
         'close',
         'help',

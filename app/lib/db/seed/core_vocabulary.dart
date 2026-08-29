@@ -208,15 +208,17 @@ final homeBands = <Band<SeedWord>>[
       w('like', PartOfSpeech.verb),
       w('go', PartOfSpeech.verb),
       w('stop', PartOfSpeech.verb, essential: true),
+      // Beside "stop", because it is the same movement with the difference
+      // that matters: stopping something and holding it. Floor-holding is its
+      // own job — an AAC user composes slower than a speaker talks, and this
+      // is the one tap that stops them being talked over mid-sentence.
+      w('wait', PartOfSpeech.verb, essential: true),
       w('can', PartOfSpeech.verb),
       w('get', PartOfSpeech.verb),
       w('take', PartOfSpeech.verb, level: 2),
       w('do', PartOfSpeech.verb),
       w('make', PartOfSpeech.verb),
       w('put', PartOfSpeech.verb),
-      // Tense arrives as a set: "will" waits for the endings and the past
-      // copula rather than leaving level 1 with a future and no past.
-      w('will', PartOfSpeech.verb, level: 2),
       w('open', PartOfSpeech.verb),
       w('close', PartOfSpeech.verb, level: 2),
       w('help', PartOfSpeech.verb, essential: true),
@@ -239,6 +241,17 @@ final homeBands = <Band<SeedWord>>[
       w('come', PartOfSpeech.verb, level: 2, pageRank: 30),
       w('give', PartOfSpeech.verb, level: 2, pageRank: 30),
       w('feel', PartOfSpeech.verb, level: 2, pageRank: 30),
+      // Tense arrives as a set: "will" waits for the endings and the past
+      // copula rather than leaving level 1 with a future and no past.
+      //
+      // Last in the band, and paged off with the run above it. The band is
+      // exactly full at 7x12, so one verb has to go, and this is the only
+      // candidate that is not half of a pair the board keeps side by side —
+      // open/close, go/stop, get/take, want/need/like. Declared here rather
+      // than among the modals so that page two keeps those pairs too: the
+      // overflow reads in declaration order, and a word inserted into the
+      // middle of it moves every pair after it apart.
+      w('will', PartOfSpeech.verb, level: 2, pageRank: 25),
     ],
   ),
 
@@ -340,9 +353,6 @@ final homeBands = <Band<SeedWord>>[
       // "don't" the board produces "I not go" where a user meant "don't go",
       // and the imperative is the one that stops something happening.
       w("don't", PartOfSpeech.negation, essential: true),
-      // Floor-holding. An AAC user composes slower than a speaker talks, and
-      // this is the one-tap way to stop being talked over mid-sentence.
-      w('wait', PartOfSpeech.verb, essential: true),
     ],
   ),
 ];

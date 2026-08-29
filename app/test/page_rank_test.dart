@@ -35,8 +35,16 @@ void main() {
   const endings = {'+s', '+ed', '+ing', "+'s"};
 
   group('the grammar engine holds page one ahead of ordinary vocabulary', () {
-    test('every key survives at 8x10, where none of them used to', () {
-      expect(pageOne(rows: 8, cols: 10), containsAll(grammarKeys));
+    test('the endings survive at 8x10, where no key used to', () {
+      // Not the articles: the root board is full enough that one more verb in
+      // the band costs their column here. The endings are the ones that earn
+      // the room — a suffix key multiplies every verb on the board, while an
+      // article is one word and a sentence without it is still understood.
+      expect(pageOne(rows: 8, cols: 10), containsAll(endings));
+      expect(
+        pageOne(rows: 8, cols: 10),
+        containsAll({'am/is/are', 'was/were'}),
+      );
     });
 
     test('the endings survive at 6x12', () {
@@ -50,7 +58,7 @@ void main() {
       expect(pageOne(rows: 5, cols: 14), containsAll(endings));
     });
 
-    test('the default grid is unaffected — it had room already', () {
+    test('the default grid keeps every key — it has room for all of them', () {
       expect(pageOne(rows: 7, cols: 12), containsAll(grammarKeys));
     });
   });
