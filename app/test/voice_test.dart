@@ -228,6 +228,159 @@ void main() {
     });
   });
 
+  group('grouping the voices by gender', () {
+    test('male and female get their own headings', () {
+      final groups = VoiceSetup.groupByGender([
+        voice('Serena', gender: 'female'),
+        voice('Daniel', gender: 'male'),
+        voice('Kate', gender: 'female'),
+      ]);
+
+      expect(groups.map((g) => g.heading), ['Female', 'Male']);
+      expect(groups.first.voices.map((v) => v.name), ['Serena', 'Kate']);
+      expect(groups.last.voices.map((v) => v.name), ['Daniel']);
+    });
+
+    test('the casing the platform uses is not trusted', () {
+      final groups = VoiceSetup.groupByGender([
+        voice('Serena', gender: 'FEMALE'),
+        voice('Daniel', gender: ' Male '),
+      ]);
+
+      expect(groups.map((g) => g.heading), ['Female', 'Male']);
+    });
+
+    test('the ones the device did not label go in their own group', () {
+      final groups = VoiceSetup.groupByGender([
+        voice('Serena', gender: 'female'),
+        voice('Daniel', gender: 'male'),
+        voice('Anonymous', gender: 'unspecified'),
+        voice('Nameless'),
+      ]);
+
+      expect(groups.map((g) => g.heading), [
+        'Female',
+        'Male',
+        'Gender not reported',
+      ]);
+      expect(groups.last.voices.map((v) => v.name), ['Anonymous', 'Nameless']);
+    });
+
+    test('a device that labels nothing gets a plain list, no headings', () {
+      // Android voice maps carry no gender key at all. A lone "Gender not
+      // reported" heading over every voice on the device is worse than none.
+      final voices = [voice('Daniel'), voice('Serena', gender: 'unspecified')];
+
+      final groups = VoiceSetup.groupByGender(voices);
+      expect(groups, hasLength(1));
+      expect(groups.single.heading, isNull);
+      expect(groups.single.voices, voices);
+      expect(VoiceSetup.reportsGender(voices), isFalse);
+    });
+
+    test('one gender throughout gets no lone heading either', () {
+      final groups = VoiceSetup.groupByGender([
+        voice('Serena', gender: 'female'),
+        voice('Kate', gender: 'female'),
+      ]);
+
+      expect(groups, hasLength(1));
+      expect(groups.single.heading, isNull);
+      expect(groups.single.voices.map((v) => v.name), ['Serena', 'Kate']);
+    });
+
+    test('no voices at all is no groups', () {
+      expect(VoiceSetup.groupByGender(const []), isEmpty);
+    });
+
+    test('grouping keeps the better-sounding voices at the top', () async {
+      final engine = _RecordingEngine(
+        available: [
+          voice('Daniel', gender: 'male', quality: 'default'),
+          voice('Serena', gender: 'female', quality: 'default'),
+          voice('Serena', gender: 'female', quality: 'enhanced'),
+        ],
+      );
+
+      final groups = VoiceSetup.groupByGender(
+        await VoiceSetup(engine).usableVoices(),
+      );
+
+      expect(groups.first.heading, 'Female');
+      expect(groups.first.voices.map((v) => v.quality), [
+        'enhanced',
+        'default',
+      ]);
+    });
+  });
+
+  group('telling two voices of the same name apart', () {
+    final compact = voice(
+      'Daniel',
+      identifier: 'com.apple.voice.compact.en-GB.Daniel',
+      quality: 'default',
+    );
+    final enhanced = voice(
+      'Daniel',
+      identifier: 'com.apple.voice.enhanced.en-GB.Daniel',
+      quality: 'enhanced',
+    );
+
+    test('each is separately selectable', () {
+      expect(
+        VoiceSetup.voiceKey(compact),
+        isNot(VoiceSetup.voiceKey(enhanced)),
+      );
+
+      expect(
+        VoiceSetup.storedVoice(
+          [compact, enhanced],
+          name: 'Daniel',
+          locale: 'en-GB',
+          identifier: enhanced.identifier,
+        ),
+        enhanced,
+      );
+    });
+
+    test('a device without identifiers still keys on something', () {
+      expect(
+        VoiceSetup.voiceKey(voice('Daniel')),
+        isNot(VoiceSetup.voiceKey(voice('Daniel', locale: 'en-US'))),
+      );
+    });
+
+    test('a stored identifier the device lost falls back to the name', () {
+      // An OS update can renumber identifiers. Reading the old one as "no
+      // voice chosen" would quietly move somebody back to the device default.
+      expect(
+        VoiceSetup.storedVoice(
+          [compact],
+          name: 'Daniel',
+          locale: 'en-GB',
+          identifier: 'com.apple.voice.gone.en-GB.Daniel',
+        ),
+        compact,
+      );
+    });
+
+    test('nothing stored selects nothing', () {
+      expect(VoiceSetup.storedVoice([compact, enhanced]), isNull);
+      expect(
+        VoiceSetup.storedVoice([compact], name: 'Karen', locale: 'en-AU'),
+        isNull,
+      );
+    });
+
+    test('the better grades are named on the row, the rest say nothing', () {
+      expect(VoiceSetup.qualityLabel('enhanced'), 'Enhanced');
+      expect(VoiceSetup.qualityLabel('Premium'), 'Premium');
+      expect(VoiceSetup.qualityLabel('default'), isNull);
+      expect(VoiceSetup.qualityLabel(null), isNull);
+      expect(VoiceSetup.qualityLabel('compact'), isNull);
+    });
+  });
+
   group('how fast it speaks', () {
     test('1.0 asks the engine for its ordinary speaking rate', () {
       // The plugin's own scale puts normal speech at 0.5 on both platforms —

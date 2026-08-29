@@ -1,6 +1,12 @@
 import 'speech_engine.dart';
 import 'tone.dart';
 
+/// A run of voices under one heading.
+///
+/// A null [heading] means the voices are shown plain, with no heading above
+/// them at all.
+typedef VoiceGroup = ({String? heading, List<VoiceOption> voices});
+
 /// Puts a profile's voice settings onto the engine.
 ///
 /// Applied when a session opens and again whenever a caregiver changes
@@ -97,7 +103,8 @@ class VoiceSetup {
     // compact and an enhanced "Daniel" should offer the good one at the top
     // rather than leaving them adjacent and indistinguishable.
     usable.sort((a, b) {
-      final quality = _qualityRank(b.quality).compareTo(_qualityRank(a.quality));
+      final quality = _qualityRank(b.quality)
+          .compareTo(_qualityRank(a.quality));
       if (quality != 0) return quality;
       final name = a.name.compareTo(b.name);
       return name != 0 ? name : a.locale.compareTo(b.locale);
@@ -122,4 +129,108 @@ class VoiceSetup {
     final withAll = await usableVoices(locale: locale, includeNovelty: true);
     return withAll.length - withOut.length;
   }
+
+  static const femaleHeading = 'Female';
+  static const maleHeading = 'Male';
+  static const unknownGenderHeading = 'Gender not reported';
+
+  /// Splits a list into female, male and unknown, keeping the order given.
+  ///
+  /// Only iOS reports a gender, and only for some voices; Android voice maps
+  /// carry no gender key at all. Where fewer than two groups would result the
+  /// list comes back as one unheaded run, because a screen listing every voice
+  /// under a single "Male" heading tells a caregiver less than no heading does
+  /// and implies the rest are hidden somewhere.
+  static List<VoiceGroup> groupByGender(List<VoiceOption> voices) {
+    if (voices.isEmpty) return const [];
+
+    final female = <VoiceOption>[];
+    final male = <VoiceOption>[];
+    final unknown = <VoiceOption>[];
+
+    for (final voice in voices) {
+      switch (_gender(voice.gender)) {
+        case femaleHeading:
+          female.add(voice);
+        case maleHeading:
+          male.add(voice);
+        case _:
+          unknown.add(voice);
+      }
+    }
+
+    final groups = [
+      if (female.isNotEmpty) (heading: femaleHeading, voices: female),
+      if (male.isNotEmpty) (heading: maleHeading, voices: male),
+      if (unknown.isNotEmpty) (heading: unknownGenderHeading, voices: unknown),
+    ];
+
+    if (groups.length < 2) return [(heading: null, voices: voices)];
+    return groups;
+  }
+
+  /// Whether the device labelled any of these voices male or female.
+  ///
+  /// False on Android, and on an iOS build that reports "unspecified"
+  /// throughout. The screen says so rather than leaving a caregiver looking for
+  /// a grouping that is not coming.
+  static bool reportsGender(Iterable<VoiceOption> voices) =>
+      voices.any((voice) => _gender(voice.gender) != null);
+
+  /// iOS spells this from `AVSpeechSynthesisVoice.gender.stringValue` and the
+  /// casing is not contractual; anything other than the two known words is
+  /// treated as unsaid rather than shown raw.
+  static String? _gender(String? gender) =>
+      switch (gender?.trim().toLowerCase()) {
+        'female' => femaleHeading,
+        'male' => maleHeading,
+        _ => null,
+      };
+
+  /// What selection is keyed on.
+  ///
+  /// The platform identifier where there is one: a device can carry two voices
+  /// called "Daniel" at different qualities, and keying on the name alone makes
+  /// them the same row.
+  static String voiceKey(VoiceOption voice) =>
+      voice.identifier ?? '${voice.name}|${voice.locale}';
+
+  /// Finds the stored voice in a list, or null if it is no longer there.
+  ///
+  /// The identifier decides it where both sides have one. The name is tried
+  /// after, so a selection stored before the device reported identifiers — or
+  /// one whose identifier an OS update changed — still shows as chosen instead
+  /// of silently reading as "whatever the device uses".
+  static VoiceOption? storedVoice(
+    List<VoiceOption> voices, {
+    String? name,
+    String? locale,
+    String? identifier,
+  }) {
+    if (identifier != null) {
+      for (final voice in voices) {
+        if (voice.identifier == identifier) return voice;
+      }
+    }
+    if (name == null) return null;
+    for (final voice in voices) {
+      if (voice.name == name && voice.locale == locale) return voice;
+    }
+    for (final voice in voices) {
+      if (voice.name == name) return voice;
+    }
+    return null;
+  }
+
+  /// The word for a voice's quality, or null where there is nothing to say.
+  ///
+  /// Only the grades that mean "this one sounds better" are named. "default"
+  /// and anything unrecognised get no marker, because a label nobody can act on
+  /// is just noise on the row.
+  static String? qualityLabel(String? quality) =>
+      switch (quality?.trim().toLowerCase()) {
+        'premium' => 'Premium',
+        'enhanced' => 'Enhanced',
+        _ => null,
+      };
 }

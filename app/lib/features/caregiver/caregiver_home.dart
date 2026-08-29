@@ -323,7 +323,7 @@ class _Settings extends StatelessWidget {
             settings: settings!,
             onChanged: onChanged,
           ),
-        const _SettingsSection('The board'),
+        if (settings != null) const _SettingsSection('The board'),
         if (settings != null)
           ListTile(
             leading: const Icon(Icons.grid_on_outlined),
@@ -352,7 +352,8 @@ class _Settings extends StatelessWidget {
               Navigator.of(context).pop();
             },
           ),
-        const _SettingsSection('How it sounds'),
+        if (settings != null && speech != null)
+          const _SettingsSection('How it sounds'),
         if (settings != null && speech != null)
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
@@ -368,7 +369,7 @@ class _Settings extends StatelessWidget {
               settings: settings!,
             ).then((_) => onChanged()),
           ),
-        const _SettingsSection('How it behaves'),
+        if (settings != null) const _SettingsSection('How it behaves'),
         if (settings != null)
           SwitchListTile(
             value: settings!.autoReturn,
@@ -387,7 +388,7 @@ class _Settings extends StatelessWidget {
           ),
         if (settings != null)
           _SettleDelay(settings: settings!, onChanged: onChanged),
-        const _SettingsSection('Words and grammar'),
+        if (settings != null) const _SettingsSection('Words and grammar'),
         if (settings != null)
           SwitchListTile(
             value: settings!.contextualGrammar,

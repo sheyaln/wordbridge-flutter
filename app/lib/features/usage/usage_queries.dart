@@ -26,10 +26,7 @@ class UsageQueries {
   /// modelling is not here — a partner demonstrating a word teaches the user,
   /// but it is not the user's own practice — and neither is a word taken from
   /// the prediction strip, which was never reached for at all.
-  static const practisedSources = [
-    UsageSource.touch,
-    UsageSource.switchAccess,
-  ];
+  static const practisedSources = [UsageSource.touch, UsageSource.switchAccess];
 
   /// Selections recorded at a location, counting only the user's own reaches.
   ///

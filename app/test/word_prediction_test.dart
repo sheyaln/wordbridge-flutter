@@ -89,8 +89,12 @@ void main() {
       final suggestions = await suggest(predictor(), previous: null, limit: 5);
 
       expect(suggestions, hasLength(5));
+
+      // The property, not the exact list. Naming every word here would make
+      // this a lock on the shipped table rather than a check on it, and the
+      // table is meant to be argued with.
       expect(suggestions.first, 'I');
-      expect(suggestions, containsAll(['I', 'you', 'it']));
+      expect(suggestions, containsAll(['I', 'you']));
 
       for (final word in suggestions) {
         final button = await buttonFor(word);

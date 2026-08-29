@@ -113,6 +113,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
           _VoiceList(
             voices: _voices,
             selectedName: _settings.voiceName,
+            selectedLocale: _settings.voiceLocale,
+            selectedIdentifier: _settings.voiceIdentifier,
             onSelected: (voice) async {
               await _set('voiceName', voice?.name);
               await _set('voiceLocale', voice?.locale);
@@ -246,11 +248,15 @@ class _VoiceList extends StatelessWidget {
   const _VoiceList({
     required this.voices,
     required this.selectedName,
+    required this.selectedLocale,
+    required this.selectedIdentifier,
     required this.onSelected,
   });
 
   final List<VoiceOption>? voices;
   final String? selectedName;
+  final String? selectedLocale;
+  final String? selectedIdentifier;
   final ValueChanged<VoiceOption?> onSelected;
 
   @override
@@ -276,27 +282,90 @@ class _VoiceList extends StatelessWidget {
       );
     }
 
-    final byName = {for (final voice in voices) voice.name: voice};
+    final byKey = <String, VoiceOption>{};
+    for (final voice in voices) {
+      byKey.putIfAbsent(VoiceSetup.voiceKey(voice), () => voice);
+    }
 
-    return RadioGroup<String?>(
-      groupValue: selectedName,
-      onChanged: (name) => onSelected(name == null ? null : byName[name]),
-      child: Column(
-        children: [
-          const RadioListTile<String?>(
-            value: null,
-            title: Text('Whatever the device uses'),
+    final selected = VoiceSetup.storedVoice(
+      voices,
+      name: selectedName,
+      locale: selectedLocale,
+      identifier: selectedIdentifier,
+    );
+
+    final groups = VoiceSetup.groupByGender(voices);
+    final unlabelled = !VoiceSetup.reportsGender(voices);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RadioGroup<String?>(
+          groupValue: selected == null ? null : VoiceSetup.voiceKey(selected),
+          onChanged: (key) => onSelected(key == null ? null : byKey[key]),
+          child: Column(
+            children: [
+              const RadioListTile<String?>(
+                value: null,
+                title: Text('Whatever the device uses'),
+              ),
+              for (final group in groups) ...[
+                if (group.heading case final heading?) _GroupHeader(heading),
+                for (final voice in group.voices)
+                  RadioListTile<String?>(
+                    value: VoiceSetup.voiceKey(voice),
+                    title: Text(voice.name),
+                    subtitle: Text(_describe(voice)),
+                  ),
+              ],
+            ],
           ),
-          for (final voice in voices)
-            RadioListTile<String?>(
-              value: voice.name,
-              title: Text(voice.name),
-              subtitle: Text(voice.locale),
+        ),
+        if (unlabelled)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'This device does not say which of its voices are male and which '
+              'are female, so they are listed together. The names are the only '
+              'clue it gives.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                height: 1.4,
+              ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
+
+  static String _describe(VoiceOption voice) {
+    final quality = VoiceSetup.qualityLabel(voice.quality);
+    return quality == null ? voice.locale : '${voice.locale} · $quality';
+  }
+}
+
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+          color: Colors.black54,
+        ),
+      ),
+    ),
+  );
 }
 
 /// A slider that previews when the finger comes off, not while it is moving.

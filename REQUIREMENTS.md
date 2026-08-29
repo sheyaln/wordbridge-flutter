@@ -330,6 +330,19 @@ there are. Apple files them under their own identifier prefix
 names that changes each OS release. They stay reachable: it is not this app's
 place to rule that somebody may not sound like a robot if they want to.
 
+**Voices are grouped male / female** where the device says which is which, with
+the better-sounding ones first inside each group and an `Enhanced`/`Premium`
+marker so two voices of the same name can be told apart. Selection is keyed on
+the platform identifier, not the name, because a device can carry two voices
+called "Daniel" at different qualities.
+
+> Gender and quality are **iOS-only and not contractual**. Android's voice maps
+> carry neither, and an iOS build can report "unspecified" throughout. Where the
+> device labels nothing the list comes back plain and unheaded and says so,
+> rather than leaving a caregiver hunting for a grouping that is not coming.
+> Anything other than a recognised `male`/`female` is treated as unsaid rather
+> than shown raw.
+
 > ⚠️ **Two things asked for are absent, deliberately.**
 >
 > **Sarcasm** needs a prosodic contour — a particular rise and fall across a
