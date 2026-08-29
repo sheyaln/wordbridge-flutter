@@ -60,11 +60,17 @@ class ProfileRepository {
   /// The vocabulary is materialised once, here, from the answers given at
   /// setup. Nothing recomputes it afterwards unless a person deliberately
   /// changes one of those answers.
+  ///
+  /// [vocabLevel] decides how much of that vocabulary is drawn, never how much
+  /// of it is placed: every word takes its location here whatever the level,
+  /// so raising it later reveals words where they have always been. Left null,
+  /// it follows the age band the birthday falls in.
   Future<Profile> create({
     required String displayName,
     required GridChoice grid,
     DateTime? birthDate,
     bool? profanity,
+    int? vocabLevel,
   }) async {
     if (!grid.isUsable) {
       throw ArgumentError(grid.refusal);
@@ -81,7 +87,7 @@ class ProfileRepository {
             id: profileId,
             displayName: displayName,
             birthDate: Value(birthDate?.millisecondsSinceEpoch),
-            vocabLevel: Value(band.startingLevel),
+            vocabLevel: Value(vocabLevel ?? band.startingLevel),
             settingsJson: Value(
               jsonEncode({
                 'orientation': grid.orientation.name,

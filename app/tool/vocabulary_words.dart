@@ -58,6 +58,8 @@ void main() {
   }
 
   // A tool that writes to stdout by design; the lint is about app code.
-  // ignore: avoid_print
-  for (final word in words.toList()..sort()) print(word);
+  for (final word in words.toList()..sort()) {
+    // ignore: avoid_print
+    print(word);
+  }
 }

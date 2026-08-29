@@ -5,9 +5,43 @@ import '../../db/seed/age_presets.dart';
 import 'grid_choice.dart';
 import 'profile_repository.dart';
 
+/// How much of the vocabulary starts out drawn, asked as what a person can do.
+///
+/// A caregiver knows whether words are being put together and does not know
+/// what "level 2" means, so the question is about the person and the level is
+/// what the answer sets. Each answer names what it costs: the first board
+/// carries no copula and no endings, which is the Universal Core's own shape
+/// and is also why it cannot say "are you ok?" or anything in the past.
+enum _Readiness {
+  single(
+    1,
+    'Learning single words',
+    'The Universal Core 36, and never more than 36 on a page. No word endings '
+        'and no am/is/are, so “are you ok?” and the past tense are out of '
+        'reach until the next step.',
+  ),
+  combining(
+    2,
+    'Putting words together',
+    'Adds the word endings, a and the, and am/is/are — the keys a sentence '
+        'needs — along with the words an ordinary day takes.',
+  ),
+  whole(
+    3,
+    'Using the whole board',
+    'Everything, including anything added later.',
+  );
+
+  const _Readiness(this.level, this.label, this.description);
+
+  final int level;
+  final String label;
+  final String description;
+}
+
 /// Setting up a person.
 ///
-/// Four questions, on one page, with their consequences visible. A wizard
+/// Five questions, on one page, with their consequences visible. A wizard
 /// would hide the fact that icon size and orientation decide each other's
 /// answers, and this is the one moment where the grid is chosen — everything
 /// after it is either additive or an explicit, warned migration.
@@ -38,6 +72,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
   BoardOrientation _orientation = BoardOrientation.landscape;
   IconSize _iconSize = IconSize.medium;
   bool? _profanity;
+  int? _vocabLevel;
   bool _creating = false;
 
   AgeBand get _band => AgeBand.forBirthDate(_birthDate);
@@ -72,6 +107,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
         _birthDate = picked;
         // The default follows the new band unless it has been set by hand.
         _profanity = null;
+        _vocabLevel = null;
       });
     }
   }
@@ -90,6 +126,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
         grid: choice,
         birthDate: _birthDate,
         profanity: _profanity,
+        vocabLevel: _vocabLevel,
       );
 
       if (mounted) Navigator.of(context).pop(profile);
@@ -153,6 +190,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
                     onPressed: () => setState(() {
                       _birthDate = null;
                       _profanity = null;
+                      _vocabLevel = null;
                     }),
                   ),
                 ],
@@ -199,6 +237,30 @@ class _ProfileSetupState extends State<ProfileSetup> {
                     choice: _choiceFor(context, size),
                     selected: _iconSize == size,
                     onTap: () => setState(() => _iconSize = size),
+                  ),
+              ],
+            ),
+          ),
+
+          _Section(
+            title: 'What are they ready for?',
+            note:
+                'Changeable at any time, in settings. Changing it moves '
+                'nothing — words appear and disappear where they have always '
+                'been, so a movement learned once is learned for good.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final option in _Readiness.values)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _OptionCard(
+                      title: option.label,
+                      subtitle: option.description,
+                      selected:
+                          (_vocabLevel ?? _band.startingLevel) == option.level,
+                      onTap: () => setState(() => _vocabLevel = option.level),
+                    ),
                   ),
               ],
             ),
