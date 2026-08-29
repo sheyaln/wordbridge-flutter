@@ -1652,6 +1652,58 @@ the paging key (§4.6b), and for the same reason. The seed-level test now
 requires only that a board hold something at *some* level; the drawing side
 holds the rest.
 
+### 4.40 Choosing an orientation does not lock it — agreed, not built
+
+Reported: picking landscape at setup does not lock the app to landscape, and
+picking portrait does not lock it to portrait. It should.
+
+Confirmed by looking: **`SystemChrome.setPreferredOrientations` is never called
+anywhere in the app**, and `ios/Runner/Info.plist` permits all four
+orientations on iPad. The setup answer only decides how many rows and columns
+to derive. Nothing then holds the device to it.
+
+**The app already promises this in its own words.** The setup page, under "How
+is the tablet held?", reads: *"Chosen, not sensed. The board locks to it, so
+turning the tablet over never rearranges anything."* That sentence is
+currently false.
+
+#### Why it is more than cosmetic
+
+The grid is derived once, from the chosen orientation, and every location on
+every board is then a permanent row in the database. Rotating the device does
+not re-derive it — it draws that same grid into a box of the opposite aspect.
+`GridGeometry` divides whatever box it is given, so every cell changes width,
+height and position while keeping its row and column.
+
+That is the motor plan measured in the only units a hand knows. A word learned
+at a particular place under the thumb is somewhere else the moment the tablet
+turns, without a single word having moved in the database — which is precisely
+the failure this project exists to prevent, arriving through the one route the
+invariant test cannot see.
+
+It also silently breaks two things that assume the layout they were built for:
+the caregiver gesture is a rectangle in screen coordinates whose clearance is
+the utterance bar's height, and the region label strip picks its edge from the
+band axis.
+
+#### Shape
+
+- **Applied from the active profile, not the app.** Orientation is a per-profile
+  setting, so it is set when a profile loads and set again when a caregiver
+  switches — the same place `applyProfileVoice` already runs, and for the same
+  reason.
+- **Both orientations of the chosen axis.** Landscape means landscape-left and
+  landscape-right, so a left-handed mount and a right-handed one both work; it
+  is the aspect that must not change, not which way up.
+- **Caregiver screens follow the same lock.** A rotation part-way through
+  editing would change the grid preview under the person's hands, and there is
+  no gain to weigh against that.
+- **Android needs no manifest change** — `setPreferredOrientations` covers both
+  platforms, and a manifest lock would be device-wide rather than per profile.
+- **Worth a test that fails on the promise, not the call.** Asserting the method
+  was called proves nothing about the board; the honest check is that a profile
+  set up for landscape reports landscape-only preferences after loading.
+
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
 The proposal was a setting: instead of every cluster starting its own row
