@@ -11,6 +11,7 @@ import '../editor/board_delete.dart';
 import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
+import '../editor/rebuild_sheet.dart';
 import '../prediction/word_prediction.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_picker.dart';
@@ -468,6 +469,30 @@ class _Settings extends StatelessWidget {
               Navigator.of(context).pop();
             },
           ),
+        ListTile(
+          leading: const Icon(Icons.restart_alt),
+          title: const Text('Rebuild from the shipped vocabulary'),
+          subtitle: const Text(
+            'Builds a new board set from the words this version of the app '
+            'ships, at the same grid. Words added by hand are discarded, and '
+            'every word lands where the current version puts it rather than '
+            'where these boards do.',
+          ),
+          isThreeLine: true,
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () async {
+            final rebuilt = await RebuildSheet.show(
+              context,
+              db: db,
+              profileId: profileId,
+              vocabularyId: vocabularyId,
+              userName: userName,
+            );
+            if (rebuilt == null || !context.mounted) return;
+
+            Navigator.of(context).pop();
+          },
+        ),
         if (settings != null && speech != null)
           const _SettingsSection('How it sounds'),
         if (settings != null && speech != null)

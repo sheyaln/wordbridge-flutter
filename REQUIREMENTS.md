@@ -851,6 +851,29 @@ five of six reads as having a hole in a group a user takes to be complete.
 Level 1 goes from 99 words to 100, and the 36-per-page ceiling is untouched
 because the column is pinned rather than drawn from the content area.
 
+### 4.20 Rebuild a board set from the shipped vocabulary — delivered
+
+A board set is materialised once, at profile creation, and nothing re-runs it.
+That is the right rule for a person who has learned a layout, and the wrong one
+while the layout is still being designed: a change to the seed reaches new
+profiles and leaves the device it was tested on showing the old board. The
+question mark was still sitting in the pinned column after being removed from
+the seed, because that column had been written months of taps earlier.
+
+So: **Rebuild from the shipped vocabulary**, in caregiver settings. It builds a
+fresh board set at the profile's current grid and points the profile at it.
+
+- **It discards, it does not merge.** Anything a caregiver added by hand is
+  gone. That is the honest description and the confirmation says it in those
+  words, with the count of hand-added words that would go.
+- **Typed confirmation**, like the grid change, because it is the same class of
+  act and reflex should not reach it.
+- **The old vocabulary is left in place**, not deleted. Usage rows point at its
+  cells, and the history is what the remap warning is built on.
+
+Not a migration and deliberately not one: a migration would have to guess which
+of two layouts a person had learned. This asks.
+
 ### 4.19 Labelled regions — agreed, not built
 
 A setting that segments each board into its regions and names them: the
@@ -1114,6 +1137,19 @@ Violating any of these is a bug regardless of what else it buys.
 
 ## 5.1 Standing decisions
 
+- **There is no installed base, and until there is, changes need not protect
+  one.** One device runs this, and it belongs to the person building it. A
+  change to the shipped vocabulary or layout does not need a path that carries
+  existing boards forward — it needs a way to rebuild them, which is §4.20.
+
+  What this does **not** suspend: the motor-plan invariants. Positions stored
+  and not computed, hiding never freeing a cell, `motor_plan_invariant_test`
+  blocking CI. Those are what the product *is*, not backwards compatibility.
+  Schema migrations are still written when the schema changes, because the
+  database on that one device holds real practice.
+
+  Several changes above were made more complicated than they needed to be by
+  defending boards that do not exist. This reverses at App Store release.
 - **Auto-return after a word is a setting, not a rule.** On by default,
   because it is what makes a word's motor path fixed rather than dependent on
   where the user happened to be. Off suits someone building longer utterances
