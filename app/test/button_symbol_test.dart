@@ -79,7 +79,8 @@ void main() {
   tearDown(() async => documents.delete(recursive: true));
 
   /// Serves "water" and nothing else, from disk rather than the network.
-  _FakePack packServingWater() => _FakePack(
+  _FakePack packServingWater({String name = 'core'}) => _FakePack(
+    name: name,
     words: const {'water': 'water.png'},
     files: {'water.png': packPicture, 'cup.png': chosenPicture},
   );
@@ -613,6 +614,26 @@ void main() {
       },
     );
 
+    testWidgets('a search result says which pack drew it', (tester) async {
+      // A search puts several packs' answers to one word side by side, and
+      // choosing between house styles nobody can name is how a board ends up
+      // assembled from four sets. The licences also require the credit to be
+      // reachable from inside the app, and this is where it is useful.
+      final button = await place(0, 0, 'water');
+
+      await pumpPicker(
+        tester,
+        button: button,
+        pack: packServingWater(name: 'Mulberry'),
+      );
+
+      expect(
+        find.text('Mulberry'),
+        findsWidgets,
+        reason: 'the result does not say where the picture came from',
+      );
+    });
+
     testWidgets('a button already marked as having none is not offered it', (
       tester,
     ) async {
@@ -696,7 +717,12 @@ void main() {
 ///
 /// Nothing here reaches the network.
 class _FakePack implements SymbolPack {
-  _FakePack({this.words = const {}, this.files = const {}, this.hangs = false});
+  _FakePack({
+    this.words = const {},
+    this.files = const {},
+    this.hangs = false,
+    this.name = 'core',
+  });
 
   /// Word to the symbol illustrating it, as a search answers.
   final Map<String, String> words;
@@ -711,7 +737,7 @@ class _FakePack implements SymbolPack {
   String get id => 'core';
 
   @override
-  String get name => 'core';
+  final String name;
 
   @override
   String get license => 'CC-BY-SA-4.0';

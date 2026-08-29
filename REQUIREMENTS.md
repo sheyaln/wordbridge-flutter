@@ -1204,6 +1204,31 @@ Shape:
   where the word now is and the caregiver's next question is how it looks
   there.
 
+### 4.32 Search results name the pack they came from — delivered
+
+Requested: attribution under a symbol while searching the packs, so it is clear
+which pack a picture came from.
+
+The picker draws a grid of pictures and nothing else. A search for one word
+deliberately puts several packs' answers side by side — that is the point of
+searching them all — and the caregiver choosing between them currently has no
+way to tell a Mulberry drawing from an OpenMoji one except by recognising the
+house style.
+
+Two reasons it matters, and the second is the load-bearing one:
+
+- **Consistency is the thing being chosen.** A board whose pictures all come
+  from one set is easier to read than one assembled from four, and a caregiver
+  cannot keep to a set they cannot identify.
+- **Attribution is a licence condition, not a courtesy.** Every bundled pack is
+  CC BY-SA or CC BY, and all of them require the credit to be reachable from
+  inside the running app. `SymbolCredits` satisfies that today for the app as a
+  whole, and naming the pack at the moment of choosing is where it is actually
+  useful to a person.
+
+`SymbolRef` already carries `packId` and `SymbolRegistry.packFor` returns the
+pack, whose `name` is written for a reader. Nothing new has to be stored.
+
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
 The proposal was a setting: instead of every cluster starting its own row

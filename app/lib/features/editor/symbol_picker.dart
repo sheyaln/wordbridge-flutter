@@ -365,6 +365,9 @@ class _SymbolPickerState extends State<SymbolPicker> {
                       itemBuilder: (context, i) => _SymbolTile(
                         ref: _results[i],
                         resolver: widget.resolver,
+                        packName: widget.registry
+                            .packFor(_results[i].packId)
+                            ?.name,
                         onTap: () => _assignFromPack(_results[i]),
                       ),
                     ),
@@ -394,8 +397,23 @@ class _SymbolTile extends StatefulWidget {
   const _SymbolTile({
     required this.ref,
     required this.resolver,
+    required this.packName,
     required this.onTap,
   });
+
+  /// Which set this drawing came from.
+  ///
+  /// A search puts several packs' answers to one word side by side, which is
+  /// the point of searching them all — and leaves the caregiver choosing
+  /// between house styles they cannot name. Consistency across a board is
+  /// easier to read than a board assembled from four sets, and nobody can keep
+  /// to a set they cannot identify.
+  ///
+  /// It is also where the licence is actually useful to a person. Every
+  /// bundled pack is CC BY-SA or CC BY and requires its credit to be reachable
+  /// from inside the app; the credits screen satisfies that for the app, and
+  /// this satisfies it at the moment somebody is choosing.
+  final String? packName;
 
   final SymbolRef ref;
   final SymbolResolver resolver;
@@ -459,6 +477,8 @@ class _SymbolTileState extends State<_SymbolTile> {
   Widget build(BuildContext context) {
     final image = _image;
 
+    final packName = widget.packName;
+
     return InkWell(
       onTap: widget.onTap,
       child: Container(
@@ -467,15 +487,29 @@ class _SymbolTileState extends State<_SymbolTile> {
           borderRadius: BorderRadius.circular(6),
         ),
         padding: const EdgeInsets.all(4),
-        child: image == null
-            ? Center(
-                child: Text(
-                  widget.ref.label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              )
-            : SymbolPicture(image),
+        child: Column(
+          children: [
+            Expanded(
+              child: image == null
+                  ? Center(
+                      child: Text(
+                        widget.ref.label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    )
+                  : SymbolPicture(image),
+            ),
+            if (packName != null)
+              Text(
+                packName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 9, color: Colors.black45),
+              ),
+          ],
+        ),
       ),
     );
   }
