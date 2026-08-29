@@ -198,10 +198,56 @@ class TalkScreenState extends State<TalkScreen> {
   }
 
   /// Records a step onto [boardId], which is the board in view afterwards.
+  ///
+  /// The trail is the way back to a word, not a record of what was pressed, so
+  /// it holds a path rather than a history. Pressing the same category three
+  /// times is one movement to repeat, and a category reached from another
+  /// category is still one movement from home — the keys sit on the system row
+  /// of every board, so where somebody happened to be when they pressed one
+  /// says nothing about how to get there again.
   void _stepTo(String? boardId, String label) {
     _restartTrailIfStale();
     _reached = null;
-    if (boardId != null) _route.add(Crumb(label: label, boardId: boardId));
+    if (boardId == null) return;
+
+    if (_reachableFromAnywhere(boardId)) {
+      // The turns of the wheel stay: a category on the second turn costs both
+      // presses. Whatever else the route collected on the way does not.
+      _route
+        ..removeWhere((crumb) => !crumb.turnsWheel)
+        ..add(Crumb(label: label, boardId: boardId));
+      return;
+    }
+
+    final at = _route.lastIndexWhere((crumb) => crumb.boardId == boardId);
+    if (at >= 0) {
+      _route.removeRange(at + 1, _route.length);
+      return;
+    }
+
+    _route.add(Crumb(label: label, boardId: boardId));
+  }
+
+  /// Whether a category key opens [boardId] from whatever board is showing.
+  ///
+  /// The wheel's own list, so a board a caregiver made and reaches through a
+  /// button on another board is not one of these — that really is a step, and
+  /// really does have to be repeated.
+  bool _reachableFromAnywhere(String boardId) =>
+      _wheel?.entries.any((e) => e.boardId == boardId) ?? false;
+
+  /// Records a turn of the category wheel.
+  ///
+  /// Always a step. It leaves the board where it is, but every key on the
+  /// system row means a different board afterwards, so a turn is a press
+  /// somebody has to make again to reach the same word.
+  void _turnedWheel(String label) {
+    _restartTrailIfStale();
+    _reached = null;
+    final boardId = _currentBoardId;
+    if (boardId != null) {
+      _route.add(Crumb(label: label, boardId: boardId, turnsWheel: true));
+    }
   }
 
   /// Rewinds the route to the board `back` returns to.
@@ -442,6 +488,11 @@ class TalkScreenState extends State<TalkScreen> {
           _reached = null;
           _currentBoardId = _rootBoardId;
           _previousBoardId = null;
+          // The wheel turns in place, so a category key means a different
+          // board on each turn. Leaving it where it stood would make home a
+          // place the board only half returns to, and the sequence to a word
+          // would depend on which turn somebody had stopped on.
+          _categoryPage = 0;
           _settle();
         });
 
@@ -464,9 +515,7 @@ class TalkScreenState extends State<TalkScreen> {
 
       case ButtonAction.cycleCategories:
         setState(() {
-          // A turn of the wheel is a step: it does not change the board, but
-          // it is a press somebody has to make again to find the same word.
-          _stepTo(_currentBoardId, button.label);
+          _turnedWheel(button.label);
           _categoryPage = (_categoryPage + 1) % wheelPages;
           _settle();
         });
@@ -506,6 +555,16 @@ class TalkScreenState extends State<TalkScreen> {
             .catchError((Object _) {}),
       );
     }
+  }
+
+  /// Ends the sentence as a question, and says it.
+  ///
+  /// Speaks the whole sentence rather than the mark, because tone belongs to
+  /// the sentence and hearing it is the only feedback that tells the user the
+  /// mark did anything.
+  Future<void> _askQuestion() async {
+    _utterance.punctuate('?');
+    if (!_utterance.isEmpty) await _speakSentence();
   }
 
   /// Finds the button the strip was showing, without going back to the disk.
@@ -709,6 +768,7 @@ class TalkScreenState extends State<TalkScreen> {
                 _UtteranceBarView(
                   utterance: _utterance,
                   onSpeak: _speakSentence,
+                  onQuestion: _askQuestion,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
@@ -774,12 +834,14 @@ class _UtteranceBarView extends StatelessWidget {
   const _UtteranceBarView({
     required this.utterance,
     required this.onSpeak,
+    required this.onQuestion,
     required this.onBackspace,
     required this.onClear,
   });
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
+  final VoidCallback onQuestion;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
 
@@ -813,6 +875,17 @@ class _UtteranceBarView extends StatelessWidget {
                 size: 40,
                 colour: const Color(0xFF1B5E20),
                 background: const Color(0xFFDCEDC8),
+              ),
+              const SizedBox(width: 4),
+              // Punctuation marks the sentence rather than adding a word to
+              // it, so it belongs where the sentence is and not on a grid
+              // where it would cost a location on every board. Beside speak
+              // and well away from the destructive pair: it produces speech,
+              // which is what those two are separated from.
+              _BarButton(
+                icon: Icons.question_mark_rounded,
+                tooltip: 'Make it a question',
+                onPressed: empty ? null : onQuestion,
               ),
               const SizedBox(width: _separation),
 

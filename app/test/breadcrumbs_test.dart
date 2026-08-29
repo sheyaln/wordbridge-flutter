@@ -316,6 +316,43 @@ void main() {
       );
     });
 
+    testWidgets('pressing one category three times is one crumb', (
+      tester,
+    ) async {
+      final target = categories.first;
+      final cell = await place(target.boardId, 'quay');
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      await tapCell(tester, wheelRow, wheelCols.first);
+      await tapCell(tester, wheelRow, wheelCols.first);
+      await tapCell(tester, wheelRow, wheelCols.first);
+      await tapCell(tester, cell.row, cell.col);
+
+      expect(trail(tester), 'home \u2192 ${target.name} \u2192 quay');
+    });
+
+    testWidgets('a category reached from another is still one press', (
+      tester,
+    ) async {
+      // Category keys sit on the system row of every board, so where somebody
+      // was standing when they pressed one is not part of the way back.
+      final first = categories.first;
+      final second = categories[1];
+      final cell = await place(second.boardId, 'quay');
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      await tapCell(tester, wheelRow, wheelCols.first);
+      await tapCell(tester, wheelRow, wheelCols[1]);
+      await tapCell(tester, cell.row, cell.col);
+
+      expect(trail(tester), 'home \u2192 ${second.name} \u2192 quay');
+      expect(trail(tester), isNot(contains(first.name)));
+    });
+
     testWidgets('paging is a step of its own', (tester) async {
       // The shape §4.8 asks for: a category, the paging key, then a word.
       final names = {for (final b in await db.select(db.boards).get()) b.name};
