@@ -55,9 +55,7 @@ Future<String> seedCoreBoardSet(
   // that do not fit become ordinary words on the root board rather than being
   // dropped: an extra movement to ask "why" is a cost, losing the word is a
   // different thing entirely.
-  final questionRows = rows - 1;
-  final questions = pinnedQuestions.take(questionRows).toList();
-  final spilledQuestions = pinnedQuestions.skip(questionRows).toList();
+  final questions = pinnedQuestions.take(rows - 1).toList();
 
   final vocabId = newId();
   final ts = nowMs();
@@ -114,20 +112,7 @@ Future<String> seedCoreBoardSet(
     rootKind: true,
     rows: rows,
     cols: cols,
-    bands: [
-      ...homeBands,
-      // Filling the tail the band before it left rather than claiming a line
-      // of its own. One or two spilled items would otherwise cost a whole
-      // column at 7x12 and push every band to their right along with it — a
-      // price paid by the entire board so that one word need not move.
-      if (spilledQuestions.isNotEmpty)
-        Band(
-          name: 'questions',
-          items: spilledQuestions,
-          shedRank: 3,
-          startsLine: false,
-        ),
-    ],
+    bands: rootBandsFor(rows),
   );
 
   await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabId))).write(
@@ -202,6 +187,70 @@ List<Band<SeedWord>> categoryBandsFor(String category, AgeBand ageBand) => [
 /// to is the same string whether or not the grid needed a second page.
 String pageName(String name, int index) =>
     index == 0 ? name : '$name ${index + 1}';
+
+/// What the root board holds on a grid this tall.
+///
+/// One answer, shared by the seed and by the fit check setup runs before
+/// offering a grid. Two derivations of the same thing drift, and this drift
+/// would show up as a grid a caregiver was offered and the seed then refused.
+List<Band<SeedWord>> rootBandsFor(int rows) {
+  final spilled = pinnedQuestions.skip(rows - 1).toList();
+
+  return [
+    ...homeBands,
+    // Filling the tail the band before it left rather than claiming a line of
+    // its own. One or two spilled items would otherwise cost a whole column at
+    // 7x12 and push every band to their right along with it — a price paid by
+    // the entire board so that one word need not move.
+    if (spilled.isNotEmpty)
+      Band(name: 'questions', items: spilled, shedRank: 3, startsLine: false),
+  ];
+}
+
+/// Why this grid cannot carry the shipped vocabulary, or null if it can.
+///
+/// [SystemRowPlan.validate] answers a narrower question — whether the frame
+/// every board carries fits — and a grid can pass that and still be one the
+/// layout engine refuses, because a band's essential words have nowhere to go.
+/// Setup has to ask the question the seed will ask rather than a proxy for it:
+/// they agree at every size the app can produce but one, and on that one a
+/// caregiver is offered a grid and profile creation then throws.
+///
+/// Answered by laying the boards out, because that is the only thing that
+/// knows. Memoised because the setup page asks it for every icon size on every
+/// rebuild, and the layout is a pure function of the grid.
+String? boardSetRefusal({required int rows, required int cols}) {
+  final key = (rows, cols);
+  if (_refusals.containsKey(key)) return _refusals[key];
+
+  String? refusal;
+  try {
+    SystemRowPlan.validate(rows: rows, cols: cols);
+    pageBands(name: 'home', bands: rootBandsFor(rows), rows: rows, cols: cols);
+
+    // Every preset, because the answer has to hold for whichever birthday the
+    // caregiver enters after choosing the grid.
+    for (final band in AgeBand.values) {
+      for (final category in categoryNames) {
+        pageBands(
+          name: category,
+          bands: categoryBandsFor(category, band),
+          rows: rows,
+          cols: cols,
+          axis: BandAxis.rows,
+        );
+      }
+    }
+  } on ArgumentError catch (error) {
+    refusal = '${error.message}';
+  } on StateError catch (error) {
+    refusal = error.message;
+  }
+
+  return _refusals[key] = refusal;
+}
+
+final _refusals = <(int, int), String?>{};
 
 /// Lays a board's vocabulary out across as many pages as the grid needs.
 ///

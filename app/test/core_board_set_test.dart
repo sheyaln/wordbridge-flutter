@@ -267,6 +267,42 @@ void main() {
       },
     );
 
+    test('a grid too short to pin them all keeps them anyway', () async {
+      // The pinned column is one short of the grid's height, so a board under
+      // seven rows cannot hold all six questions in it. The ones that do not
+      // fit become ordinary words on the root board. An extra movement to ask
+      // "why" is a cost; losing "why" is a different thing entirely.
+      final short = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(short.close);
+
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      await short
+          .into(short.profiles)
+          .insert(
+            ProfilesCompanion.insert(
+              id: 'p1',
+              displayName: 'Maya',
+              createdAt: ts,
+              updatedAt: ts,
+            ),
+          );
+      await seedCoreBoardSet(short, rows: 5, cols: 9, profileId: 'p1');
+
+      final spoken = {
+        for (final b in await short.select(short.buttons).get()) b.label,
+      };
+
+      for (final question in pinnedQuestions) {
+        expect(
+          spoken,
+          contains(question.value.label),
+          reason:
+              '"${question.value.label}" does not fit the pinned column on a '
+              'five-row grid and was dropped rather than placed on the board',
+        );
+      }
+    });
+
     test('questions stay ordinary vocabulary, not controls', () async {
       // Pinned is a placement decision. Treating them as system buttons would
       // strip their colour coding and lock a caregiver out of editing them.

@@ -15,7 +15,7 @@ library;
 
 import 'dart:ui';
 
-import '../../db/seed/band_layout.dart';
+import '../../db/seed/core_board_set.dart';
 import '../grid/grid_geometry.dart';
 
 /// Chosen, never sensed. The app locks to it.
@@ -104,13 +104,15 @@ class GridChoice {
     final cols = _fit(width, target, gutter);
     final rows = _fit(height, target, gutter);
 
-    String? refusal;
-    if (cols < SystemRowPlan.minCols || rows < SystemRowPlan.minRows) {
-      refusal =
-          '${iconSize.label} icons in ${orientation.label.toLowerCase()} '
-          'leave room for only ${rows}x$cols, which is too small for the '
-          'keys every board needs.';
-    }
+    // Asked of the layout engine rather than of a size threshold. A grid can
+    // be wide enough for the frame and still be one the seed refuses, and a
+    // refusal a caregiver reads at setup is worth having where a crash on
+    // "build the board" is not.
+    final refusal = boardSetRefusal(rows: rows, cols: cols) == null
+        ? null
+        : '${iconSize.label} icons in ${orientation.label.toLowerCase()} '
+              'leave room for only ${rows}x$cols, which is too small to hold '
+              'the keys and the words every board needs to reach.';
 
     return GridChoice(
       orientation: orientation,

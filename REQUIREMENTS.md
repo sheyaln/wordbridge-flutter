@@ -1667,6 +1667,27 @@ Small, real, and none of them urgent:
   settings on it at all. §4.27 makes the one-handed door impossible to close,
   which is as far as a gesture can go; the answer past that is a scan-reachable
   route, and it lands with the scanning work in Phase 8.
+- **Setup offered a grid the seed then refused — fixed.** `GridChoice.derive`
+  asked whether the *frame* fits, a size threshold; the layout engine asks
+  whether the words a board must always reach have anywhere to go. Two rules
+  for one question, agreeing at every grid the app can produce but one: an
+  iPad mini 5 or 10.2" held in landscape with extra-large icons derives 4×6,
+  which setup offered and "Build the board" then threw on. **That is Haley's
+  own tablet**, not a hypothetical device — the grid is derived from the real
+  screen, which is what made it reachable rather than theoretical.
+
+  Setup now asks the layout engine itself, memoised because the setup page
+  asks for every icon size on every rebuild. `rootBandsFor` is now one
+  derivation shared by the seed and the check, rather than the seed's own copy
+  — two derivations of one thing drift, and this drift *was* the bug.
+  `test/grid_offer_test.dart` sweeps all nine devices × two orientations ×
+  four icon sizes and asserts setup's answer and the seed's are the same.
+
+  A fourth mutation went further than the fix: dropping the spilled questions
+  from `rootBandsFor` broke nothing. A grid under seven rows cannot pin all six
+  questions, and the ones that do not fit are supposed to become ordinary root
+  board words — an extra movement to ask "why" is a cost, losing "why" is a
+  different thing entirely. Nothing tested it. Now something does.
 - **The caregiver screen does not surface `addedBoards` or `refusedBoards`**
   from a top-up. A whole new board arriving, or being refused for want of a
   free system-row column, is worth a line of its own rather than being folded
