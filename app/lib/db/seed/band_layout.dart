@@ -270,10 +270,11 @@ BandLayout<T> layOutBands<T>({
 
   int totalWidth() => bands.fold(0, (sum, b) => sum + linesOf(b));
 
-  // Shed one word at a time rather than a whole column, so what survives is
-  // chosen by importance instead of by which band happened to be widest.
+  // A line at a time, and all of it from one band. A band owns whole lines, so
+  // a word taken from a band with room to spare costs that word its place and
+  // buys the grid nothing.
   while (totalWidth() > lineCount) {
-    if (_shedLeastImportant(bands, kept, overflow)) continue;
+    if (_shedALine(bands, kept, held, overflow, lineLength)) continue;
     if (_giveUpReserve(bands, held)) continue;
 
     throw StateError(
@@ -360,43 +361,76 @@ BandLayout<T> layOutBands<T>({
   );
 }
 
-/// Moves the single least important remaining word to the overflow list.
+/// Moves exactly enough words off one band for it to need one line fewer.
+///
+/// A band claims whole lines, so a word taken from a band that is not about to
+/// cross a line boundary buys nothing: the grid is no narrower and the word is
+/// on page two. Shedding the globally least important word repeatedly does
+/// exactly that — it empties the bands with the most slack first, because
+/// their words are the ones ranked lowest, and takes fifteen words off a full
+/// board to free one column.
+///
+/// So the choice is made a line at a time. Every band is asked what it would
+/// cost to give up a line; the band whose most important sacrifice is the
+/// least important overall gives it up, and only that band loses anything.
 ///
 /// Importance is [BandItem.pageRank] first, then how readily the band gives
-/// way, then position within the band. The rank dominating is what keeps "not"
-/// and "want" on a small board while "turn" and "different" move to the
-/// overflow page.
+/// way, then position within the band.
 ///
-/// Returns false when nothing is left to shed.
-bool _shedLeastImportant<T>(
+/// Returns false when no band can give up a line.
+bool _shedALine<T>(
   List<Band<T>> bands,
   Map<String, List<BandItem<T>>> kept,
+  Map<String, int> held,
   List<BandOverflow<T>> overflow,
+  int lineLength,
 ) {
-  Band<T>? worstBand;
-  var worstIndex = -1;
-  var worstKey = <int>[];
+  Band<T>? chosen;
+  List<int>? chosenIndices;
+  List<int>? chosenKey;
 
   for (final band in bands) {
     final items = kept[band.name]!;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].essential) continue;
+    final lines = (items.length / lineLength).ceil();
 
-      final key = [items[i].pageRank, band.shedRank, i];
-      if (worstIndex < 0 || _greater(key, worstKey)) {
-        worstBand = band;
-        worstIndex = i;
-        worstKey = key;
-      }
+    // Already down to the lines it is guaranteed, so it has none to give.
+    if (lines <= held[band.name]!) continue;
+
+    final drop = items.length - (lines - 1) * lineLength;
+    if (drop <= 0) continue;
+
+    // The least important words in the band, not the last ones in it. A band
+    // holds its words in the order they read, so its final line is as likely
+    // to be core vocabulary as anything else — taking a line off the end would
+    // shed by position and lose "good" while keeping a word nobody has needed
+    // yet. What survives re-packs in declared order either way.
+    final candidates = [
+      for (var i = 0; i < items.length; i++)
+        if (!items[i].essential) [items[i].pageRank, band.shedRank, i],
+    ]..sort((a, b) => _greater(a, b) ? -1 : 1);
+    if (candidates.length < drop) continue;
+
+    final taken = candidates.take(drop).toList();
+    final indices = [for (final k in taken) k[2]]
+      ..sort((a, b) => b.compareTo(a));
+
+    // What this line costs is set by the most important word in it: a band
+    // does not get to hide a core word behind five it was happy to lose.
+    final key = taken.reduce((a, b) => _greater(a, b) ? b : a);
+
+    if (chosenKey == null || _greater(key, chosenKey)) {
+      chosen = band;
+      chosenIndices = indices;
+      chosenKey = key;
     }
   }
 
-  if (worstBand == null) return false;
+  if (chosen == null) return false;
 
-  overflow.add((
-    band: worstBand.name,
-    item: kept[worstBand.name]!.removeAt(worstIndex),
-  ));
+  // Descending, so each removal leaves the indices below it valid.
+  for (final i in chosenIndices!) {
+    overflow.add((band: chosen.name, item: kept[chosen.name]!.removeAt(i)));
+  }
   return true;
 }
 

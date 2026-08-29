@@ -520,9 +520,8 @@ void main() {
     });
 
     test('core words survive down to the smallest usable grid', () {
-      // Eight words, six locations. Level does all the work: every level-2
-      // word goes and the board keeps one of each kind, which is the
-      // difference between a small board and a broken one.
+      // Eight words, six locations. The board keeps one of each kind, which is
+      // the difference between a small board and a broken one.
       final layout = layOutBands(
         rows: 3,
         cols: 4,
@@ -542,7 +541,36 @@ void main() {
         coords(layout).keys,
         containsAll(['I', 'you', 'want', 'go', 'not']),
       );
-      expect(shed(layout)..sort(), ['good', 'turn', 'we']);
+
+      // Two words, not three. Only the two bands that had a line to give up
+      // lose anything; the negation band is never asked, so "good" keeps a
+      // location that was never contested. Shedding by rank across every band
+      // would have taken it to buy a column that was already free.
+      expect(shed(layout)..sort(), ['turn', 'we']);
+    });
+
+    test('a band with room to spare is not asked to pay', () {
+      // Two bands, one of them nearly empty. The grid is one line short, and
+      // the line has to come from the band that is actually using them.
+      final layout = layOutBands(
+        rows: 4,
+        cols: 4,
+        bands: [
+          levelled('sparse', {'I': 1, 'you': 2}, shedRank: 0),
+          levelled('crowded', {
+            'a': 1,
+            'b': 1,
+            'c': 2,
+            'd': 2,
+            'e': 2,
+            'f': 2,
+            'g': 2,
+          }, shedRank: 1),
+        ],
+      );
+
+      expect(coords(layout).keys, containsAll(['I', 'you']));
+      expect(shed(layout), isNot(contains('you')));
     });
 
     test('an essential word is kept even when its band gives way first', () {

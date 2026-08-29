@@ -851,6 +851,37 @@ five of six reads as having a hole in a group a user takes to be complete.
 Level 1 goes from 99 words to 100, and the 36-per-page ceiling is untouched
 because the column is pinned rather than drawn from the content area.
 
+### 4.21 A narrow grid scattered related words — delivered
+
+Reported at 7×11: `we`, `they` and `my` on page two while their pronoun column
+had five empty cells; `to` and `out` on page two while their column had three.
+Fifteen words left the board to free one column.
+
+**The layout sheds by line and was choosing by word.** A band claims whole
+lines, so a word taken from a band with room to spare costs that word its place
+and buys the grid nothing — the grid is no narrower, and the word is on page
+two. The loop took the globally least important word and repeated, which meant
+it emptied the bands with the *most* slack first, because slack is where the
+lowest-ranked words sit.
+
+Now a line is given up at a time, all of it from one band. Every band is asked
+what a line would cost it; the band whose most important sacrifice is the least
+important overall pays, and only that band loses anything.
+
+**Within the band, the words that go are the least important, not the last.**
+A band holds its words in the order they read, so its final line is as likely
+to be core vocabulary as anything else — taking a line off the end shed `good`
+while keeping a word nobody had needed yet.
+
+Measured at 7×11: **15 words lost became 6**, and the 6 are the articles band,
+whose column genuinely disappeared. `we they my`, `to out` and `this` all stay.
+7×12 is byte-identical. At 8×10 every grammar key now survives where none did;
+at 6×12 and 5×14 the endings do.
+
+One test was encoding the old behaviour and now asserts the better one: at the
+smallest usable grid two words are shed rather than three, because the third
+band was never asked and its word had a location nothing was competing for.
+
 ### 4.20 Rebuild a board set from the shipped vocabulary — delivered
 
 A board set is materialised once, at profile creation, and nothing re-runs it.

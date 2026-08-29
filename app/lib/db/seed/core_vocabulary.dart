@@ -3,7 +3,7 @@
 /// Independently designed. Word selection comes from Project Core's Universal
 /// Core 36 (Center for Literacy and Disability Studies, UNC-Chapel Hill);
 /// ordering follows the Fitzgerald Key's left-to-right sentence arrangement,
-/// published in 1926 and long out of copyright. No commercial vocabulary
+/// first published in 1926 and in the public domain. No commercial vocabulary
 /// layout was consulted or reproduced. See docs/starter-vocabulary.md.
 ///
 /// Nothing here names a row or a column. Bands declare what belongs together
@@ -29,12 +29,14 @@
 /// `wait` and `me`, which is what the Universal Core has no answer for — it
 /// carries `not`, which negates inside a sentence but cannot answer one or
 /// make an imperative, and its possessive key fires after `I` to give "I's".
+/// `how` joins them in the pinned column: it is the one English question word
+/// the core omits, and a column offering five of the six reads as a hole.
 /// Thirty six content locations is Project Core's own density for a beginning
 /// communicator's whole-day board (CLDS, UNC-Chapel Hill), and it is the
 /// ceiling for any page at level 1. The category boards are far below it.
 ///
 /// **Level 2** adds the grammar engine — endings, articles, the copula, `will`
-/// — and the fringe of an ordinary day. It lands near 240 words, which is
+/// — and the fringe of an ordinary day. It lands near 250 words, which is
 /// where roughly 80% of everyday speech is covered (Hattingh & Tönsing 2020,
 /// reporting the English and European figure of 200-250). **Level 3** is
 /// everything.
