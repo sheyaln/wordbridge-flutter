@@ -759,6 +759,27 @@ Carried forward, in the order they matter:
   what a small grid sheds first. `_shedLeastImportant` sorts by
   `[level, shedRank, index]`, so level dominates what pages off.
 
+  > **Being built now, as `pageRank`.** A second, independent rank on
+  > `BandItem` deciding what pages off, leaving `level` to decide only what is
+  > drawn. Default `level * 10`, so an item can be placed between two levels
+  > without renumbering anything: level 1 is 10, level 2 is 20, level 3 is 30.
+  >
+  > It buys the two fixes named directly below this one. The eight home verbs
+  > become **level 2, pageRank 30** — drawn a level earlier, still the run a
+  > 7×12 grid pages off, so not one of them moves. The endings and articles
+  > become **pageRank 15** — after the level-1 core, ahead of ordinary level-2
+  > vocabulary — so a small grid keeps the grammar engine on page 1.
+  >
+  > **This is a rebuild-class change** and the first one taken deliberately.
+  > Placement at 7×12 changes: the endings hold page-1 locations that ordinary
+  > level-2 words held. Existing boards are untouched by construction — the
+  > layout is materialised once at profile creation and nothing re-runs it —
+  > so this reaches new profiles only, and an existing profile sees it by
+  > being rebuilt. That is now an acceptable price (§5.1).
+  >
+  > It costs a level-1 user nothing: the spare page-1 capacity it moves was
+  > going to hold level-2 words that a level-1 board does not draw either.
+
   Its concrete shape: the eight verbs at the end of the home verb band
   (`know think say tell see come give feel`) sit at level 3 for a **layout**
   reason — they are the run a 7×12 grid pages off, and level is the only lever
@@ -773,9 +794,11 @@ Carried forward, in the order they matter:
   all level 2 with the highest shed ranks. So the users least able to afford
   an extra movement are the ones who lose the grammar engine. Worth a
   deliberate decision rather than leaving it as fallout.
-- **`docs/starter-vocabulary.md` does not exist** though `core_vocabulary.dart`
-  cites it and §7 calls the clean-room derivation "the evidence". Given the
-  trademark position, that is the one document that should exist.
+- **`docs/starter-vocabulary.md` — delivered.** The clean-room derivation the
+  `core_vocabulary.dart` header and §7 both point at: counts per level measured
+  from the code at `91df220`, every source named with how it was verified, what
+  was deliberately not done, and the words chosen on judgement labelled as
+  judgement rather than dressed up as evidence.
 - **The root board has little slack left.** Two name cells beside the pronouns
   and one noun column. Further additions there displace something.
 - **The verb band is exactly full at 7×12** — 18 kept verbs in three columns of
@@ -783,6 +806,171 @@ Carried forward, in the order they matter:
   band to four columns and reflows every verb *and* every band to its right.
   Adding a home-board verb is a rebuild-class change now, not an append. New
   verbs belong on the `doing` board.
+
+### 4.14 "how" joins the pinned question column
+
+Requested: `how` should be pinned alongside the other wh-words. It was not in
+the vocabulary at all.
+
+**The column holds exactly `rows - 1` words**, and at 7×12 those six were
+already spoken for: `what where who when why ?`. Adding a seventh means one of
+them spills onto the root board as an ordinary word. Three ways to pay for it
+were put up, and the answer chosen — pin `how`, spill `?` — was priced wrong
+when it was offered. Measured, it costs about **fifteen words off page one**,
+the whole articles band among them.
+
+> ⚠️ **A spilled word does not cost a cell. It costs a line.** Bands own whole
+> lines, and at 7×12 every band ends flush with zero slack, so the layout frees
+> a line only by shedding every word that shares it. One extra item took
+> `we they my`, `need take will close`, `this`, `to out` and
+> `a the and but because so` to page two — including `because`, which the seed
+> defends by name as the word that turns a refusal into a reason. Declaring the
+> spilled band `startsLine: false` does not help: with no ragged tail anywhere
+> there is nothing for it to fill.
+>
+> This is worth knowing beyond this change. **Any single addition to a full
+> root board is a fifteen-word change, not a one-word change.**
+
+**So `?` moved to the utterance bar instead, and the board is byte-identical to
+what it was apart from the one pinned slot.** It costs no location on any
+board, which is the right price for it: punctuation marks the sentence rather
+than adding a word to it, and the sentence lives on the bar. The seed already
+made this argument for the undo and clear keys — *"every duplicate costs a
+permanent location on every board"* — and the question mark had simply never
+been held to it. It sits beside Speak and well away from the destructive pair,
+because like Speak it produces speech.
+
+`pinnedQuestions` is now six question words and no punctuation, which is
+exactly `rows - 1` at the default grid, so nothing spills at all.
+
+**`how` draws at level 1**, with `who`, `when` and `why`. It is the sixth
+addition to the Universal Core 36, after `yes`, `no`, `don't`, `wait` and `me`,
+and the argument for it is narrower than theirs: the Universal Core carries
+five of the six English wh-words and omits this one, and a board that offers
+five of six reads as having a hole in a group a user takes to be complete.
+Level 1 goes from 99 words to 100, and the 36-per-page ceiling is untouched
+because the column is pinned rather than drawn from the content area.
+
+### 4.18 The trail is a path, not a tap log — delivered
+
+Pressing a category three times drew `home → body → body → body`. The trail
+appended a crumb per press, so it recorded what was pressed rather than the way
+to get back — which is the only thing it is for. A caregiver reading it is
+being told how to repeat the route, and repeating three presses of `body` is
+not the route.
+
+Two rules, and they come from how the board is actually reachable:
+
+- **A category key is one press from anywhere**, because it sits on the system
+  row of every board. So arriving at a category board makes the path
+  `home → that category`, whatever the user pressed to get there. Going
+  `body → people` reads `home → people`, because that is what somebody
+  repeating it would do.
+- **A step onto somewhere the route has already been rewinds to it** rather
+  than appending, which is what `back` already did.
+
+Two things stay a step, deliberately:
+
+- **A turn of the wheel**, which does not change the board but does change what
+  every category key means. Two turns is two presses to repeat, so it is two
+  crumbs.
+- **Paging**, which is reached by a key on the board it pages from.
+
+### 4.17 Home turns the category wheel back — delivered
+
+`home` reset the board, the navigation trail and the back target, and left the
+category wheel wherever it stood. So home was a place the board only half
+returned to: the category keys are a window onto one list and the cycle key
+moves the window, so `food` is a different board on each turn, and the sequence
+to a word depended on which turn somebody had stopped on.
+
+That is the one thing the whole layout exists to prevent. Home is now a
+complete reset, the wheel included.
+
+Deliberately **not** applied to `back` or to auto-return. `back` is a step in a
+route somebody is walking and rewinding the wheel underneath them would move a
+key they are about to press; auto-return happens after every word, and turning
+the wheel there would stop a user saying two words from the same second-turn
+category without re-cycling between them.
+
+### 4.15 Deleting a board created by mistake — built
+
+A caregiver could create a board and could not remove one. "New board" is two
+taps from the caregiver home, so a mistyped or duplicate board is easy to make
+and was permanent once made.
+
+Not a plain delete. A board holds cells, cells hold buttons, and buttons hold
+the usage history that the remap warning is built on. What it does:
+
+- **An empty board a caregiver just made is the easy case.** One tap on the
+  bin beside it in the board list, no confirmation, a note afterwards. That is
+  the case this exists for and it is the only path with no ceremony.
+- **A board with words on it states what would go**, in the count of words and
+  the recorded taps against those locations — "Maya has tapped those locations
+  341 times across 12 days in the last 90 days" — over the same 90-day window
+  a single word's move uses, so two numbers a caregiver reads in one sitting
+  were measured the same way.
+- **Deletion is a `deleted_at`**, like a profile. `boards.deleted_at` has
+  existed since schema version 1, so nothing migrated. The board's buttons take
+  a `deleted_at` and a `hidden` — `hidden` is what the grid and the prediction
+  strip read, `deleted_at` is what stops a bulk unhide such as the
+  strong-language switch, which matches on label and knows nothing about
+  boards, bringing the words back. Every cell is left exactly as it was,
+  occupied included: removing a board is not a way to make a location move.
+- **No key is orphaned.** Any button whose `targetBoardId` names the board is
+  hidden and set to `none` in the same transaction. It keeps its cell, because
+  a location somebody has reached for must never be handed to something else,
+  and a navigate key with a null target would strand the talk screen on a board
+  that is not there.
+- **Every recorded tap survives.** `usage_events` is untouched, and the whole
+  thing is written to `edit_events` with the tap count it cost and the prior
+  state of each key.
+
+**Only a caregiver-made board can go, and the reason is shown rather than the
+control being absent.** Refused: the home board; a board with a place on the
+category wheel; a board opened by a key that holds the same coordinates on
+every board, which is what the later pages of every seeded board are. That last
+test is what separates seeded structure from a caregiver's own board without a
+column to record it in — every seeded board-to-board link is placed
+`isSystem`, and nothing a caregiver can create is.
+
+The wheel is therefore never touched. `vocabularies.system_cell_map` is
+append-only because the keys are a window onto it, and taking a name out is
+that hazard in reverse: it would change which board every key after it opens
+without a single button moving. Emptying such a board is the alternative
+offered, and the refusal says so.
+
+Not built: any way back. Soft deletion means a removed board is recoverable in
+principle, and `edit_events` holds what would be needed, but there is no
+restore screen.
+
+### 4.16 Pinning a word to every board — agreed, not built
+
+Requested: a caregiver should be able to pin a word.
+
+The mechanism already exists and is not exposed. The question column is pinned
+— `what where who when why how` hold the same coordinates on **every** board,
+so they are reachable without going home first — and so is the system row. Both
+are described by `vocabularies.system_cell_map`. Nothing lets a caregiver put
+their own word in that class.
+
+Why it is worth having: the whole board is built so a word costs the same
+movements every time, and the one thing that breaks that promise is depth. A
+word on a category board costs the trip in and the trip back. Pinning is the
+existing answer to "this person says this constantly" — and today the only
+answer offered is to move the word to the root board, which is a displacing
+edit that competes for the scarcest space there.
+
+Open questions before it can be built:
+
+- **What it costs.** A pinned location is taken from every board at once, so
+  pinning one word is not one cell but one cell times the number of boards.
+  The confirmation has to say that in cells, not in words.
+- **Where it comes from.** The pinned column is `rows - 1` long and full at
+  7×12 (see §4.14). Pinning has to either extend the column, take from the
+  content area, or be refused with a reason.
+- **Unpinning must not strand the word.** It has to return somewhere, and the
+  somewhere has to be decided before the pin is offered.
 
 ### 4.6a Sentences the board still cannot build
 
@@ -825,19 +1013,18 @@ Small, real, and none of them urgent:
   correctly, but no scanning input path exists yet, so a switch user's
   selections are still recorded as touches. The reporting is correct ahead of
   the producer; the producer is Phase 8.
-- **The usage screen has no error branch.** A failed read leaves a spinner and
-  an em-dash for ever, with no retry, and one combined future means one failure
-  blanks all three panels.
-- **`logger.enabled` is a plain mutable bool** with no notification, so the
-  usage screen only notices a change when something else rebuilds it.
 - **The paging key is drawn whether or not the next page has anything on it at
   the current level.** A level-2 profile at 7×12 pages forward from home onto a
   board that draws nothing, because home page 2 holds only the eight level-3
   verbs.
-- **`docs/starter-vocabulary.md` is now more worth writing, not less.**
-  Universal Core 36 is verifiable from its primary source; the Banajee and
-  Marvin lists are paywalled and were not used. That distinction is the
-  clean-room evidence and should live in the repo, not in a chat log.
+- **`docs/starter-vocabulary.md` — delivered.** The distinction that mattered
+  is §2.1 against §2.2 of it: the Universal Core 36 verified from its primary
+  source and drawn at level 1, against Banajee (2003) and Marvin (1994) as real
+  papers whose paywalled word lists were never obtained and on which nothing
+  rests. It leaves two gaps open rather than closing them plausibly — the
+  med.unc.edu half of the Universal Core licence discrepancy could not be
+  reproduced, and the Fitzgerald Key's 1926 date, which the out-of-copyright
+  claim in `core_vocabulary.dart` depends on, is unconfirmed.
 - **The caregiver screen does not surface `addedBoards` or `refusedBoards`**
   from a top-up. A whole new board arriving, or being refused for want of a
   free system-row column, is worth a line of its own rather than being folded
