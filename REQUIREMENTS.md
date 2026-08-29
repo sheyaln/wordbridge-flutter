@@ -1026,7 +1026,7 @@ to describe a region that is part of a row. Both are `band_layout.dart` changes
 of real size. Worth revisiting only if a board turns up where own-row pages off
 something a person needs daily — §4.24 looked and found none.
 
-### 4.23 Three bugs the macOS build surfaced — delivered### 4.23 Three bugs the macOS build surfaced — delivered
+### 4.23 Three bugs the macOS build surfaced — delivered
 
 Running the same code on a desktop window found three things the iPad had been
 hiding. Worth keeping the macOS target for that reason alone.
