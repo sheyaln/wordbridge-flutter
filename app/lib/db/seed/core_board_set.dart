@@ -9,6 +9,7 @@ import '../tables.dart';
 import 'age_presets.dart';
 import 'band_layout.dart';
 import 'core_vocabulary.dart';
+import '../../features/grid/region_labels.dart';
 
 /// Builds the shipped vocabulary at whatever grid size was chosen.
 ///
@@ -304,6 +305,15 @@ Future<List<String>> _buildPagedBoards(
       kind: rootKind && index == 0 ? BoardKind.root : BoardKind.category,
     );
     boardIds.add(boardId);
+
+    // Which lines each band took, recorded rather than left to be worked out
+    // again. The layout is decided once; a second answer computed later could
+    // disagree with the board somebody is looking at.
+    await (db.update(db.boards)..where((b) => b.id.equals(boardId))).write(
+      BoardsCompanion(
+        bandMap: Value(BoardRegions.encode(axis, pages[index].bandLines)),
+      ),
+    );
 
     await _placeAll(
       db,

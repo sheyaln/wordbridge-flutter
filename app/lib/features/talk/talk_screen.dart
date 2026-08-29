@@ -11,6 +11,8 @@ import '../auth/pin.dart';
 import '../auth/pin_gate.dart';
 import '../caregiver/caregiver_home.dart';
 import '../grid/grid_surface.dart';
+import '../grid/region_label_strip.dart';
+import '../grid/region_labels.dart';
 import '../prediction/prediction_strip.dart';
 import '../prediction/word_prediction.dart';
 import '../speech/speech_engine.dart';
@@ -335,15 +337,32 @@ class TalkScreenState extends State<TalkScreen> {
       widget.db.vocabularies,
     )..where((v) => v.id.equals(widget.vocabularyId))).getSingle();
 
+    // Read once for the whole vocabulary. A board's regions are decided when it
+    // is built and never change afterwards, so re-reading them as the user
+    // moves between boards would be a query per tap for an answer that cannot
+    // have moved.
+    final boards = await (widget.db.select(
+      widget.db.boards,
+    )..where((b) => b.vocabularyId.equals(widget.vocabularyId))).get();
+
     setState(() {
       _vocab = vocab;
       _rootBoardId = vocab.rootBoardId;
       _currentBoardId = vocab.rootBoardId;
       _wheel = _CategoryWheel.parse(vocab.systemCellMap);
+      _bandMaps = {for (final b in boards) b.id: b.bandMap};
     });
 
     await _refreshSuggestions();
   }
+
+  /// Each board's regions, as recorded when it was built.
+  Map<String, String?> _bandMaps = const {};
+
+  bool get _showRegions => widget.settings?.regionLabels ?? false;
+
+  String? get _currentBandMap =>
+      _currentBoardId == null ? null : _bandMaps[_currentBoardId];
 
   String? _cellsBoardId;
   Stream<List<PlacedCell>>? _cells;
@@ -792,19 +811,47 @@ class TalkScreenState extends State<TalkScreen> {
                       if (cells == null) {
                         return const Center(child: CircularProgressIndicator());
                       }
+                      final regions = _showRegions
+                          ? BoardRegions.decode(_currentBandMap)
+                          : null;
+
                       return Padding(
                         padding: const EdgeInsets.all(gridInset),
-                        child: AbsorbPointer(
-                          absorbing: _settling,
-                          child: GridSurface(
-                            rows: vocab.gridRows,
-                            cols: vocab.gridCols,
-                            cells: [for (final c in cells) _asDrawn(c)],
-                            vocabLevel: widget.vocabLevel,
-                            resolver: widget.resolver,
-                            isAvailable: _isAvailable,
-                            colourScheme: vocab.colourScheme,
-                            onSelect: _onSelect,
+                        child: LayoutBuilder(
+                          builder: (context, box) => Column(
+                            children: [
+                              // Chrome, above the grid rather than in it. A
+                              // label that took a location would be teaching
+                              // the layout by damaging it, and the lines it
+                              // most needs to name are the reserved ones.
+                              if (regions != null && !regions.isEmpty)
+                                SizedBox(
+                                  height: regionLabelExtent,
+                                  child: RegionLabelStrip(
+                                    regions: regions,
+                                    rows: vocab.gridRows,
+                                    cols: vocab.gridCols,
+                                    axis: regions.axis,
+                                    gridWidth: box.maxWidth,
+                                    gridHeight: box.maxHeight,
+                                  ),
+                                ),
+                              Expanded(
+                                child: AbsorbPointer(
+                                  absorbing: _settling,
+                                  child: GridSurface(
+                                    rows: vocab.gridRows,
+                                    cols: vocab.gridCols,
+                                    cells: [for (final c in cells) _asDrawn(c)],
+                                    vocabLevel: widget.vocabLevel,
+                                    resolver: widget.resolver,
+                                    isAvailable: _isAvailable,
+                                    colourScheme: vocab.colourScheme,
+                                    onSelect: _onSelect,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );

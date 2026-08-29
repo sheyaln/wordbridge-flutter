@@ -939,7 +939,40 @@ fresh board set at the profile's current grid and points the profile at it.
 Not a migration and deliberately not one: a migration would have to guess which
 of two layouts a person had learned. This asks.
 
-### 4.19 Labelled regions — agreed, not built
+### 4.19 Labelled regions — delivered
+
+A caregiver setting, **off by default**, that names each run of locations by
+what it is for: `who`, `doing`, `where`, `word endings`, `asking`.
+
+**The regions are recorded, not inferred.** `boards.band_map` (schema 6) stores
+which lines each band took, written by the seed from the same `bandLines` the
+layout engine produced. Guessing from the words that happen to sit in a column
+would put a name on a grouping nobody chose, and would disagree with the board
+the moment a caregiver moved a word.
+
+- **Chrome, above the grid.** It takes height from the grid rather than a
+  location — the reserved lines are exactly where a caregiver's own words go,
+  and a label that consumed one would be teaching the layout by damaging it.
+  Switching it off puts every button back; nothing is rebuilt and no cell
+  moves.
+- **Both axes.** The root board bands by column so the labels run across the
+  top; a category board bands by row so they run down the side. The stored map
+  carries the axis.
+- **A label covers the lines its band owns, reserved ones included.** An empty
+  reserved column is the most useful thing on the board to be able to name and
+  the one with no word to give it away.
+- **Partial lines are fine**, as agreed: a band's boundary is its lines, and a
+  band that only half fills its last one still owns it.
+- **Names are rewritten only where they need it.** `pronouns` reads `who`,
+  `verbs` reads `doing`, `endings` reads `word endings`. Bands already named
+  after what they hold — `family`, `eating`, `moving` — are left alone rather
+  than given a second name to keep in step.
+
+**A board built before schema 6 has no map and is simply not labelled.** A
+board a caregiver made by hand has no bands and is not labelled either. Both
+fill in on a rebuild (§4.20).
+
+### 4.19-old The original brief
 
 A setting that segments each board into its regions and names them: the
 rightmost column as **questions**, the bottom row as the **system row**, the

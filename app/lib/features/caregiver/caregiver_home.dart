@@ -547,6 +547,23 @@ class _Settings extends StatelessWidget {
               onChanged();
             },
           ),
+        if (settings != null)
+          SwitchListTile(
+            value: settings!.regionLabels,
+            title: const Text('Label what each part of the board is for'),
+            subtitle: const Text(
+              'A strip above the grid names each run of locations — who, '
+              'doing, where, asking. The board groups words by their job and '
+              'nothing on the grid says so, which is the first thing anyone '
+              'teaching it has to explain. It takes its height from the grid, '
+              'so every button is a little shorter while it is on.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('regionLabels', v);
+              onChanged();
+            },
+          ),
         if (settings != null) const _SettingsSection('Words and grammar'),
         if (settings != null)
           SwitchListTile(

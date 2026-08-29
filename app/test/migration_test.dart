@@ -234,7 +234,7 @@ void main() {
     // Forces the upgrade to run.
     await db.select(db.profiles).get();
 
-    expect(db.schemaVersion, 5);
+    expect(db.schemaVersion, 6);
   });
 
   test('the board survives the upgrade untouched', () async {
@@ -292,6 +292,13 @@ void main() {
     // state it may arrive in: an upgrade must not start keeping a record of
     // somebody's speech that they did not ask for.
     expect(await db.select(db.predictionPairs).get(), isEmpty);
+
+    // A board built before its regions were recorded has none to read, so the
+    // grid simply does not name them. Guessing from the words that happen to
+    // sit in a column would put a label on a grouping nobody chose.
+    for (final board in await db.select(db.boards).get()) {
+      expect(board.bandMap, isNull);
+    }
   });
 
   test(

@@ -170,6 +170,19 @@ class Boards extends Table with _Timestamps {
   TextColumn get name => text()();
   TextColumn get kind => textEnum<BoardKind>()();
 
+  /// Which lines each band of this board occupies, as JSON.
+  ///
+  /// The layout engine works this out once and nothing recomputes it, so it is
+  /// stored for the same reason coordinates are: a board is what the database
+  /// says it is, not what a function would say if asked again. It is what lets
+  /// the grid name a region — the rightmost column as questions, a run of
+  /// columns as verbs — without inferring the grouping from the words that
+  /// happen to be in it.
+  ///
+  /// Null on a board built before it was recorded, and on one a caregiver made
+  /// by hand, which has no bands.
+  TextColumn get bandMap => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

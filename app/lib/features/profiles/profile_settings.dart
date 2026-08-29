@@ -153,6 +153,15 @@ class ProfileSettings extends ChangeNotifier {
   CopulaMode get copulaMode =>
       _enum('copulaMode', CopulaMode.values, CopulaMode.toggle);
 
+  /// Name each run of locations by what it is for.
+  ///
+  /// Off by default. It is scaffolding for the people teaching a board rather
+  /// than for the person speaking on it, and the strip takes its space from
+  /// the grid, so every button is a little shorter while it is on. Turning it
+  /// off puts them back exactly as they were: nothing is rebuilt and no cell
+  /// moves.
+  bool get regionLabels => _values['regionLabels'] as bool? ?? false;
+
   /// Whether strong language is revealed on the boards that carry it.
   ///
   /// The words are already placed either way; this only draws them. Turning it

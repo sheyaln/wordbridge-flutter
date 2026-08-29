@@ -30,7 +30,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -90,6 +90,13 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         // Empty on arrival. Prediction is off until somebody turns it on, and
         // it has nothing to say until it has watched a few sentences.
         await m.createTable(predictionPairs);
+      }
+
+      if (from < 6) {
+        // Boards built before this hold no record of their bands, so the grid
+        // has nothing to name their regions from and simply does not label
+        // them. Rebuilding a board set fills it in.
+        await m.addColumn(boards, boards.bandMap);
       }
 
       if (from < 5) {
