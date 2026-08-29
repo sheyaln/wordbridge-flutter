@@ -603,7 +603,7 @@ class _Settings extends StatelessWidget {
             title: const Text('Show how a word was reached'),
             subtitle: const Text(
               'A strip along the bottom reads home → body → more words → '
-              'buttocks, so you can see the route and help repeat it. It stays '
+              'dizzy, so you can see the route and help repeat it. It stays '
               'up after the board has gone back home, until the next word is '
               'started. It takes its height from the grid, so every button is '
               'a little shorter while it is on; turning it off puts them back '
