@@ -1406,10 +1406,50 @@ more than a reserve nobody has filled yet. A caregiver who wants their own
 nouns on the root board can still put them anywhere empty; what they lose is a
 column held open for that purpose in advance.
 
-**Nothing moves.** `articles` keeps the column it has and gains the one beside
-it as its reserve; the `nouns` band goes away. Every word on the board stays
-exactly where it is — this is a change to what a region *means* and to what its
-label says, not to any location.
+#### The defect underneath is worse than the label
+
+Measured across grid sizes, and the empty column is not the real problem:
+
+| grid | joining words | the empty reserve |
+|---|---|---|
+| 7×12 | all six on page one | keeps a column |
+| **7×11** (the tested iPad at medium icons) | **all six shed to page two** | keeps a column |
+| 8×10, 6×12, 5×14, 5×8, 10×8, 11×7 | **all six shed to page two** | keeps a column |
+
+So on every grid but one, `a`, `the`, `and`, `but`, `because` and `so` are on
+page two while a column nobody has filled sits on page one. `nouns` carries
+`minLines`, which the shedding treats as untouchable; `articles` carries no
+floor at all, so it is shed whole. `because` is the one that stings — this
+file's own note on that band says a user who can say "no" but not "because"
+gets overridden.
+
+**The ordering that causes it is explicit and general.** `_giveUpReserve` runs
+only after `_shedALine`, documented as "a word on the next page is still
+sayable and a reserve given away is not recoverable". That makes held-open
+space outrank real words everywhere, not just here.
+
+#### Four routes, all measured, none free
+
+| | 7×12 board | narrow grids |
+|---|---|---|
+| today | reserve empty, verbs keep 3 columns | all six joining words shed |
+| guarantee `articles` two lines | unchanged, region relabelled | the **word endings** shed instead |
+| guarantee one line, drop `nouns` | verbs grow to 4 columns | both bands survive |
+| give empty lines back before shedding words | verbs grow to 4 columns | both bands survive |
+
+The last is the principled fix — it repairs the class of bug rather than this
+instance — and both bottom rows share one casualty: freeing the column lets
+`verbs` grow from three lines to four, and that band fills *across* its lines,
+so the wrap changes and the deliberate pairings come apart. `go` stops being
+next to `stop`, `get` to `take`, `open` to `close`. That is a documented
+property with its own tests, and neighbouring locations are learned as a pair
+while two far apart are learned twice.
+
+**Not built pending a decision.** Holding the pairing needs a cap on how wide a
+band may grow — a `maxLines` the layout engine does not have — and that is a
+change to the motor-planning core worth making deliberately rather than as a
+side effect of relabelling a column. What is not in question is that joining
+words must stop being shed while an empty column survives.
 
 ### 4.38 A band keeps its lines across every page of a group — agreed, not built
 
