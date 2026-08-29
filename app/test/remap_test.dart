@@ -260,4 +260,110 @@ void main() {
       );
     });
   });
+
+  group('deleting', () {
+    test('releases the location, which is what hiding does not', () async {
+      final id = await placeAt(1, 2, 'trampoline');
+      await remap.deleteButton(buttonId: id);
+
+      final cell = await cellAt(db, boardId: boardId, row: 1, col: 2);
+      expect(
+        cell.state,
+        CellState.emptyReserved,
+        reason: 'a delete that held the location would just be a hide',
+      );
+
+      // The whole cost of the operation, stated as a test: whatever is put
+      // here next is reached by the movement the deleted word had.
+      await placeButton(
+        db,
+        vocabularyId: vocabId,
+        cellId: cell.id,
+        label: 'something else',
+        message: 'something else',
+      );
+    });
+
+    test('keeps the row so the history still resolves', () async {
+      final id = await placeAt(1, 2, 'trampoline');
+      await recordTaps(id, 5);
+      await remap.deleteButton(buttonId: id);
+
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(id))).getSingleOrNull();
+
+      expect(button, isNotNull, reason: 'a hard delete strands usage rows');
+      expect(button!.deletedAt, isNotNull);
+      expect(button.cellId, isNull);
+    });
+
+    test('refuses a key every board carries', () async {
+      final cell = await cellAt(db, boardId: boardId, row: 6, col: 0);
+      final id = await placeButton(
+        db,
+        vocabularyId: vocabId,
+        cellId: cell.id,
+        label: 'home',
+        message: '',
+        action: ButtonAction.home,
+        isSystem: true,
+      );
+
+      expect(() => remap.deleteButton(buttonId: id), throwsStateError);
+      expect(
+        (await cellAt(db, boardId: boardId, row: 6, col: 0)).state,
+        CellState.occupied,
+        reason: 'the refusal still let go of the location',
+      );
+    });
+
+    test('records what the location had taken', () async {
+      final id = await placeAt(1, 2, 'trampoline');
+      await recordTaps(id, 7);
+      await remap.deleteButton(buttonId: id);
+
+      final event = await (db.select(
+        db.editEvents,
+      )..where((e) => e.buttonId.equals(id))).getSingle();
+
+      expect(event.kind, EditKind.delete);
+      expect(event.motorImpactTaps, 7);
+    });
+
+    test('undo puts the word back where it was', () async {
+      final id = await placeAt(1, 2, 'trampoline');
+      await remap.deleteButton(buttonId: id);
+
+      expect(await remap.restoreButton(id), isTrue);
+
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(id))).getSingle();
+      final cell = await cellAt(db, boardId: boardId, row: 1, col: 2);
+
+      expect(button.deletedAt, isNull);
+      expect(button.cellId, cell.id);
+      expect(cell.state, CellState.occupied);
+    });
+
+    test('undo refuses once something else holds the location', () async {
+      final id = await placeAt(1, 2, 'trampoline');
+      await remap.deleteButton(buttonId: id);
+      await placeAt(1, 2, 'swing');
+
+      expect(
+        await remap.restoreButton(id),
+        isFalse,
+        reason:
+            'putting it somewhere else would be a move nobody asked for, and '
+            'overwriting would cost the new word its location',
+      );
+
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(id))).getSingle();
+      expect(button.deletedAt, isNotNull);
+    });
+  });
 }

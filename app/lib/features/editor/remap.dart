@@ -213,6 +213,7 @@ class RemapService {
   }
 
   /// Hides a word. The location stays occupied, so nothing takes its place.
+
   Future<void> setHidden({
     required String buttonId,
     required bool hidden,
@@ -221,6 +222,7 @@ class RemapService {
     final button = await (_db.select(
       _db.buttons,
     )..where((b) => b.id.equals(buttonId))).getSingle();
+
     final ts = nowMs();
 
     await _db.transaction(() async {
@@ -240,6 +242,130 @@ class RemapService {
               changedAt: ts,
             ),
           );
+    });
+  }
+
+  /// Removes a word and gives its location back.
+  ///
+  /// This is what separates deleting from hiding, and it is the whole cost:
+  /// hiding keeps the cell occupied so nothing can take it, and deleting
+  /// releases it. Whatever is put there next is reached by the movement this
+  /// word had, from a user who has no way to say the board answered with
+  /// something they did not mean.
+  ///
+  /// The row is kept and dated rather than dropped. `usage_events` refers to
+  /// the location rather than to the word, and `edit_events` refers to both, so
+  /// a hard delete would leave a history nothing could resolve — and would take
+  /// the undo with it.
+  Future<void> deleteButton({
+    required String buttonId,
+    String? profileId,
+  }) async {
+    final impact = await impactOfMoving(buttonId);
+
+    await _db.transaction(() async {
+      final button = await (_db.select(
+        _db.buttons,
+      )..where((b) => b.id.equals(buttonId))).getSingle();
+
+      if (button.isSystem) {
+        throw StateError(
+          '"${button.label}" is one of the keys every board carries. Removing '
+          'it would leave a board that cannot be navigated.',
+        );
+      }
+
+      final ts = nowMs();
+      final fromCellId = button.cellId;
+
+      await (_db.update(
+        _db.buttons,
+      )..where((b) => b.id.equals(buttonId))).write(
+        ButtonsCompanion(
+          cellId: const Value(null),
+          deletedAt: Value(ts),
+          updatedAt: Value(ts),
+        ),
+      );
+
+      if (fromCellId != null) {
+        await (_db.update(_db.cells)..where((c) => c.id.equals(fromCellId)))
+            .write(const CellsCompanion(state: Value(CellState.emptyReserved)));
+      }
+
+      await _db
+          .into(_db.editEvents)
+          .insert(
+            EditEventsCompanion.insert(
+              id: newId(),
+              profileId: Value(profileId),
+              vocabularyId: button.vocabularyId,
+              cellId: Value(fromCellId),
+              buttonId: Value(buttonId),
+              kind: EditKind.delete,
+              beforeJson: Value(
+                jsonEncode({'cellId': fromCellId, 'label': button.label}),
+              ),
+              motorImpactTaps: Value(impact.taps),
+              changedAt: ts,
+            ),
+          );
+    });
+  }
+
+  /// Puts a deleted word back where it was.
+  ///
+  /// Refuses rather than guesses when something has taken the location since.
+  /// Putting the word somewhere else would be a move nobody asked for, and the
+  /// caregiver undoing a delete is trying to get back to what they had.
+  Future<bool> restoreButton(String buttonId) async {
+    return _db.transaction(() async {
+      final button = await (_db.select(
+        _db.buttons,
+      )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
+      if (button == null || button.deletedAt == null) return false;
+
+      final event =
+          await (_db.select(_db.editEvents)
+                ..where(
+                  (e) =>
+                      e.buttonId.equals(buttonId) &
+                      e.kind.equalsValue(EditKind.delete),
+                )
+                ..orderBy([(e) => OrderingTerm.desc(e.changedAt)])
+                ..limit(1))
+              .getSingleOrNull();
+
+      final before =
+          jsonDecode(event?.beforeJson ?? '{}') as Map<String, dynamic>;
+      final cellId = before['cellId'] as String?;
+      if (cellId == null) return false;
+
+      final cell = await (_db.select(
+        _db.cells,
+      )..where((c) => c.id.equals(cellId))).getSingleOrNull();
+      if (cell == null || cell.state == CellState.occupied) return false;
+
+      final ts = nowMs();
+      await (_db.update(
+        _db.buttons,
+      )..where((b) => b.id.equals(buttonId))).write(
+        ButtonsCompanion(
+          cellId: Value(cellId),
+          deletedAt: const Value(null),
+          updatedAt: Value(ts),
+        ),
+      );
+      await (_db.update(_db.cells)..where((c) => c.id.equals(cellId))).write(
+        const CellsCompanion(state: Value(CellState.occupied)),
+      );
+
+      if (event != null) {
+        await (_db.delete(
+          _db.editEvents,
+        )..where((e) => e.id.equals(event.id))).go();
+      }
+      return true;
     });
   }
 }

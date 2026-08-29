@@ -20,6 +20,7 @@ import '../symbols/symbol_resolver.dart';
 import 'remap.dart';
 import 'remap_confirm_sheet.dart';
 import 'symbol_picker.dart';
+import 'word_delete_sheet.dart';
 
 /// Caregiver board editing.
 ///
@@ -37,6 +38,7 @@ class BoardEditor extends StatefulWidget {
     this.fetcher,
     this.resolver,
     this.userName,
+    this.placing,
   });
 
   final WordbridgeDatabase db;
@@ -49,6 +51,16 @@ class BoardEditor extends StatefulWidget {
   /// wherever the network is not wanted; the editor works either way.
   final GlobalSymbolsPack? fetcher;
   final String? userName;
+
+  /// A word arriving from another board, already picked up.
+  ///
+  /// The destination board opens with it in hand and a tap puts it down, which
+  /// is the same gesture as moving a word within a board. Choosing coordinates
+  /// off a list asks somebody to translate "row 3, column 5" into a place on a
+  /// grid whose whole argument is that position carries meaning — and they are
+  /// least able to do that on a board whose layout they are not carrying in
+  /// their head, which is exactly the board they are moving the word to.
+  final Button? placing;
 
   @override
   State<BoardEditor> createState() => _BoardEditorState();
@@ -66,6 +78,7 @@ class _BoardEditorState extends State<BoardEditor> {
   @override
   void initState() {
     super.initState();
+    _moving = widget.placing;
     _load();
   }
 
@@ -239,78 +252,144 @@ class _BoardEditorState extends State<BoardEditor> {
     await showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text(
-                button.label,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                impact.taps == 0
-                    ? 'Not used from this spot in the last '
-                          '${impact.windowDays} days'
-                    : '${impact.taps} taps here over ${impact.days} days, '
-                          'in the last ${impact.windowDays}',
-              ),
-            ),
-            const Divider(height: 1),
-            if (!button.isSystem)
+        // Scrolls, because how many actions there are depends on the button
+        // and on whether pictures are available at all. A sheet that runs off
+        // the bottom hides whichever action ended up last.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               ListTile(
-                leading: const Icon(Icons.open_with),
-                title: const Text('Move to another location'),
-                subtitle: impact.isLearned
-                    ? const Text('This position looks learned')
-                    : null,
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  setState(() => _moving = button);
-                  _snack('Now tap an empty location.');
-                },
+                title: Text(
+                  button.label,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  impact.taps == 0
+                      ? 'Not used from this spot in the last '
+                            '${impact.windowDays} days'
+                      : '${impact.taps} taps here over ${impact.days} days, '
+                            'in the last ${impact.windowDays}',
+                ),
               ),
-            if (widget.registry != null && widget.resolver != null)
+              const Divider(height: 1),
+              if (!button.isSystem)
+                ListTile(
+                  leading: const Icon(Icons.open_with),
+                  title: const Text('Move to another location'),
+                  subtitle: impact.isLearned
+                      ? const Text('This position looks learned')
+                      : null,
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    setState(() => _moving = button);
+                    _snack('Now tap an empty location.');
+                  },
+                ),
+              if (widget.registry != null && widget.resolver != null)
+                ListTile(
+                  leading: const Icon(Icons.image_outlined),
+                  title: const Text('Change the picture'),
+                  subtitle: const Text(
+                    'Search the packs, or use your own photo',
+                  ),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await SymbolPicker.show(
+                      context,
+                      db: widget.db,
+                      registry: widget.registry!,
+                      resolver: widget.resolver!,
+                      fetcher: widget.fetcher,
+                      button: button,
+                    );
+                  },
+                ),
+              if (!button.isSystem)
+                ListTile(
+                  leading: const Icon(Icons.drive_file_move_outlined),
+                  title: const Text('Move to another board'),
+                  subtitle: const Text(
+                    'Keeps the word, changes where it lives',
+                  ),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _moveToBoard(button);
+                  },
+                ),
               ListTile(
-                leading: const Icon(Icons.image_outlined),
-                title: const Text('Change the picture'),
-                subtitle: const Text('Search the packs, or use your own photo'),
+                leading: Icon(
+                  button.hidden ? Icons.visibility : Icons.visibility_off,
+                ),
+                title: Text(
+                  button.hidden ? 'Show this word' : 'Hide this word',
+                ),
+                subtitle: const Text('Keeps its location either way'),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
-                  await SymbolPicker.show(
-                    context,
-                    db: widget.db,
-                    registry: widget.registry!,
-                    resolver: widget.resolver!,
-                    fetcher: widget.fetcher,
-                    button: button,
+                  await _remap.setHidden(
+                    buttonId: button.id,
+                    hidden: !button.hidden,
                   );
                 },
               ),
-            if (!button.isSystem)
+              // Offered on the frame keys too, and refused there with a reason.
+              // A control that is simply absent reads as a bug and explains
+              // nothing — the same argument board deletion makes (§4.15).
               ListTile(
-                leading: const Icon(Icons.drive_file_move_outlined),
-                title: const Text('Move to another board'),
-                subtitle: const Text('Keeps the word, changes where it lives'),
+                leading: Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: const Text('Remove this word'),
+                subtitle: const Text('Frees its location for something else'),
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
-                  await _moveToBoard(button);
+                  await _deleteWord(button, impact);
                 },
               ),
-            ListTile(
-              leading: Icon(
-                button.hidden ? Icons.visibility : Icons.visibility_off,
-              ),
-              title: Text(button.hidden ? 'Show this word' : 'Hide this word'),
-              subtitle: const Text('Keeps its location either way'),
-              onTap: () async {
-                Navigator.of(sheetContext).pop();
-                await _remap.setHidden(
-                  buttonId: button.id,
-                  hidden: !button.hidden,
-                );
-              },
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Removes a word, once somebody has typed out that they mean it.
+  Future<void> _deleteWord(Button button, RemapImpact impact) async {
+    if (button.isSystem) {
+      _snack(
+        '"${button.label}" is one of the keys every board carries. Removing '
+        'it would leave a board that cannot be navigated.',
+      );
+      return;
+    }
+
+    final confirmed = await WordDeleteSheet.show(
+      context,
+      label: button.label,
+      impact: impact,
+      boardName: _board?.name ?? 'this board',
+    );
+    if (!confirmed || !mounted) return;
+
+    await _remap.deleteButton(buttonId: button.id);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Removed "${button.label}"'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            final back = await _remap.restoreButton(button.id);
+            if (!back && mounted) {
+              _snack(
+                'Something else has taken that location, so "${button.label}" '
+                'cannot go back where it was.',
+              );
+            }
+          },
         ),
       ),
     );
@@ -318,10 +397,15 @@ class _BoardEditorState extends State<BoardEditor> {
 
   /// Moves a word onto a different board.
   ///
-  /// The destination is picked first, then the location on it, because the
-  /// two questions are genuinely separate — a word crossing boards still has
-  /// to land somewhere specific, and landing "wherever there is room" is how
+  /// The destination is picked first and the location second, because the two
+  /// questions are genuinely separate — a word crossing boards still has to
+  /// land somewhere specific, and landing "wherever there is room" is how
   /// layouts drift.
+  ///
+  /// The board is a list because boards are a list. The location is not: that
+  /// board opens with the word in hand and a tap puts it down, so there is one
+  /// gesture for placing a word rather than one for this board and another for
+  /// every other.
   Future<void> _moveToBoard(Button button) async {
     final boards =
         await (widget.db.select(widget.db.boards)
@@ -347,16 +431,11 @@ class _BoardEditorState extends State<BoardEditor> {
     if (destination == null || !mounted) return;
 
     final free =
-        await (widget.db.select(widget.db.cells)
-              ..where(
-                (c) =>
-                    c.boardId.equals(destination.id) &
-                    c.state.equalsValue(CellState.emptyReserved),
-              )
-              ..orderBy([
-                (c) => OrderingTerm.asc(c.row),
-                (c) => OrderingTerm.asc(c.col),
-              ]))
+        await (widget.db.select(widget.db.cells)..where(
+              (c) =>
+                  c.boardId.equals(destination.id) &
+                  c.state.equalsValue(CellState.emptyReserved),
+            ))
             .get();
 
     if (free.isEmpty) {
@@ -365,45 +444,38 @@ class _BoardEditorState extends State<BoardEditor> {
     }
 
     if (!mounted) return;
-    final target = await showDialog<Cell>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text('Where on "${destination.name}"?'),
-        children: [
-          for (final cell in free.take(40))
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(cell),
-              child: Text('Row ${cell.row + 1}, column ${cell.col + 1}'),
-            ),
-        ],
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BoardEditor(
+          db: widget.db,
+          vocabularyId: widget.vocabularyId,
+          boardId: destination.id,
+          registry: widget.registry,
+          fetcher: widget.fetcher,
+          resolver: widget.resolver,
+          userName: widget.userName,
+          placing: button,
+        ),
       ),
     );
-    if (target == null || !mounted) return;
-
-    final impact = await _remap.impactOfMoving(button.id);
-    final warning = await _remap.warningFor(
-      button.id,
-      userName: widget.userName,
-    );
-    if (!mounted) return;
-
-    final proceed = await RemapConfirmSheet.show(
-      context,
-      impact: impact,
-      warning: warning,
-      destination:
-          '${destination.name}, row ${target.row + 1}, '
-          'column ${target.col + 1}',
-    );
-    if (!proceed) return;
-
-    await _remap.moveButton(buttonId: button.id, toCellId: target.id);
-    if (mounted) _snack('Moved "${button.label}" to ${destination.name}');
   }
 
   void _snack(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Puts the word back down where it was.
+  ///
+  /// A word that arrived from another board leaves with the caregiver: this
+  /// board was opened to place it, and staying here having not placed it is a
+  /// screen they did not ask for.
+  void _cancelMove() {
+    if (widget.placing != null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _moving = null);
   }
 
   @override
@@ -442,7 +514,7 @@ class _BoardEditorState extends State<BoardEditor> {
                     child: Text('Moving "${moving.label}" — tap an empty cell'),
                   ),
                   TextButton(
-                    onPressed: () => setState(() => _moving = null),
+                    onPressed: _cancelMove,
                     child: const Text('Cancel'),
                   ),
                 ],
