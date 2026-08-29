@@ -261,6 +261,53 @@ void main() {
       expect(find.text('WHERE'), findsOneWidget);
     });
 
+    testWidgets('a category board names its rows down the side', (
+      tester,
+    ) async {
+      // The board that is banded the other way. Drawn along the wrong edge
+      // every label lands on top of the others, which is invisible rather than
+      // wrong-looking, so the home board alone cannot prove this works.
+      await settings.set('regionLabels', true);
+      await pump(tester);
+
+      final food = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('food'))).getSingle();
+
+      final key = await (db.select(db.buttons).join([
+        innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+      ])..where(db.buttons.targetBoardId.equals(food.id))).get();
+
+      final cell = key.first.readTable(db.cells);
+      await tester.tap(find.byKey(ValueKey('${cell.row}:${cell.col}')));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.byType(RegionLabelStrip), findsOneWidget);
+      expect(find.text('DRINKS'), findsOneWidget);
+      expect(find.text('MEALS'), findsOneWidget);
+
+      // The strip has to run down the side, which means it is the narrow
+      // dimension that is fixed. Drawn as a band across the top instead, every
+      // label is still in the tree and still at a distinct offset — it is just
+      // positioned outside a 22-pixel-tall box where nobody can read it. So
+      // the shape of the strip is the thing to assert, not the labels in it.
+      final strip = tester.getSize(find.byType(RegionLabelStrip));
+      expect(strip.width, regionLabelExtent);
+      expect(
+        strip.height,
+        greaterThan(regionLabelExtent * 4),
+        reason: 'the row labels are laid out across the top, not down the side',
+      );
+
+      // And each one sits inside it.
+      for (final t in ['DRINKS', 'MEALS', 'FRUIT']) {
+        final box = tester.getRect(find.text(t));
+        expect(box.width, lessThanOrEqualTo(strip.width + 1));
+      }
+    });
+
     testWidgets('and switching it off puts the buttons back', (tester) async {
       await settings.set('regionLabels', true);
       await pump(tester);

@@ -68,7 +68,15 @@ class RegionLabelStrip extends StatelessWidget {
             for (final band in regions.bands)
               Positioned.fromRect(
                 rect: _rectFor(geometry, band, constraints),
-                child: _Label(text: regionLabel(band.name), colour: colour),
+                child: _Label(
+                  text: regionLabel(band.name),
+                  colour: colour,
+                  // Down the side, the strip is as narrow as a label is tall,
+                  // so the word has to run along the row rather than across
+                  // it. Reading bottom to top is the convention a spine uses
+                  // and keeps the first letter next to the first cell.
+                  quarterTurns: axis == BandAxis.columns ? 0 : 3,
+                ),
               ),
           ],
         );
@@ -94,32 +102,44 @@ class RegionLabelStrip extends StatelessWidget {
 }
 
 class _Label extends StatelessWidget {
-  const _Label({required this.text, required this.colour});
+  const _Label({
+    required this.text,
+    required this.colour,
+    required this.quarterTurns,
+  });
 
   final String text;
   final Color colour;
+  final int quarterTurns;
 
   @override
   Widget build(BuildContext context) {
+    final edge = BorderSide(color: colour.withValues(alpha: 0.4));
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: quarterTurns == 0
+          ? const EdgeInsets.symmetric(horizontal: 2)
+          : const EdgeInsets.symmetric(vertical: 2),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: colour.withValues(alpha: 0.4)),
-          ),
+          border: quarterTurns == 0
+              ? Border(bottom: edge)
+              : Border(right: edge),
         ),
-        child: Center(
-          child: Text(
-            text.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: colour,
+        child: RotatedBox(
+          quarterTurns: quarterTurns,
+          child: Center(
+            child: Text(
+              text.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: colour,
+              ),
             ),
           ),
         ),

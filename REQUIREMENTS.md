@@ -1052,6 +1052,35 @@ going on and changing nothing. A board built before §4.19 recorded its regions
 has none to read, and a switch that appears to do nothing reads as broken
 rather than as an older board.
 
+### 4.29 Row labels were invisible, and why nothing caught it — delivered
+
+The labels shipped working on the root board and invisible on every category
+board. Two faults, and the second one matters more than the first.
+
+**The strip was always drawn as a band across the top.** The root board bands
+by column so that is right for it; a category board bands by row, so every
+label was positioned at its row's offset inside a box 22 pixels tall and landed
+outside it. It now runs down the side for a row-banded board. And on the side
+the strip is only as wide as a label is tall, so the word has to run **along**
+the row — rotated, reading bottom to top, the way a spine does.
+
+**Every test passed while it was broken**, which is the part worth keeping.
+`find.text` found each label, `getTopLeft` reported distinct offsets, and the
+labels were genuinely in the tree — just drawn where nobody could see them.
+A test that asks "is the widget there" cannot tell that apart from working.
+
+So: **`test/board_render_test.dart` renders the real screen to a PNG.**
+Home and food, each with labels on and off. Regenerate with
+`flutter test --concurrency=1 --update-goldens test/board_render_test.dart`
+after a deliberate layout change, and **look at the file** — a golden nobody
+opens is only a checksum. Text renders as boxes without a font bundle, which
+does not matter: what these catch is geometry, and geometry is what was wrong.
+
+The narrower assertion now in `region_labels_test.dart` is the strip's own
+shape — down the side it is `regionLabelExtent` wide and taller than four of
+them. That is what bites when the axis is wrong; the label-finding assertions
+never did.
+
 ### 4.24 A category row is one cluster — delivered
 
 Reported against the food board: *"the columns and rows are not organized at

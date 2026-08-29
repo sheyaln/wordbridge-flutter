@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show OrderingTerm, Value, leftOuterJoin;
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
+import '../../db/seed/band_layout.dart';
 import '../../db/tables.dart';
 import '../auth/corner_hold_target.dart';
 import '../auth/pin.dart';
@@ -818,41 +819,61 @@ class TalkScreenState extends State<TalkScreen> {
                       return Padding(
                         padding: const EdgeInsets.all(gridInset),
                         child: LayoutBuilder(
-                          builder: (context, box) => Column(
-                            children: [
-                              // Chrome, above the grid rather than in it. A
-                              // label that took a location would be teaching
-                              // the layout by damaging it, and the lines it
-                              // most needs to name are the reserved ones.
-                              if (regions != null && !regions.isEmpty)
-                                SizedBox(
-                                  height: regionLabelExtent,
-                                  child: RegionLabelStrip(
-                                    regions: regions,
-                                    rows: vocab.gridRows,
-                                    cols: vocab.gridCols,
-                                    axis: regions.axis,
-                                    gridWidth: box.maxWidth,
-                                    gridHeight: box.maxHeight,
-                                  ),
-                                ),
-                              Expanded(
-                                child: AbsorbPointer(
-                                  absorbing: _settling,
-                                  child: GridSurface(
-                                    rows: vocab.gridRows,
-                                    cols: vocab.gridCols,
-                                    cells: [for (final c in cells) _asDrawn(c)],
-                                    vocabLevel: widget.vocabLevel,
-                                    resolver: widget.resolver,
-                                    isAvailable: _isAvailable,
-                                    colourScheme: vocab.colourScheme,
-                                    onSelect: _onSelect,
-                                  ),
-                                ),
+                          builder: (context, box) {
+                            final grid = AbsorbPointer(
+                              absorbing: _settling,
+                              child: GridSurface(
+                                rows: vocab.gridRows,
+                                cols: vocab.gridCols,
+                                cells: [for (final c in cells) _asDrawn(c)],
+                                vocabLevel: widget.vocabLevel,
+                                resolver: widget.resolver,
+                                isAvailable: _isAvailable,
+                                colourScheme: vocab.colourScheme,
+                                onSelect: _onSelect,
                               ),
-                            ],
-                          ),
+                            );
+
+                            if (regions == null || regions.isEmpty) return grid;
+
+                            // Chrome beside the grid rather than in it. A label
+                            // that took a location would be teaching the layout
+                            // by damaging it, and the lines it most needs to
+                            // name are the reserved ones.
+                            //
+                            // It runs along whichever edge the bands do: the
+                            // root board bands by column so its labels sit
+                            // above, a category board bands by row so they run
+                            // down the side. Drawn across the wrong edge, every
+                            // label lands on top of the others.
+                            final byColumn = regions.axis == BandAxis.columns;
+                            final strip = SizedBox(
+                              width: byColumn ? null : regionLabelExtent,
+                              height: byColumn ? regionLabelExtent : null,
+                              child: RegionLabelStrip(
+                                regions: regions,
+                                rows: vocab.gridRows,
+                                cols: vocab.gridCols,
+                                axis: regions.axis,
+                                gridWidth: box.maxWidth,
+                                gridHeight: box.maxHeight,
+                              ),
+                            );
+
+                            return byColumn
+                                ? Column(
+                                    children: [
+                                      strip,
+                                      Expanded(child: grid),
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      strip,
+                                      Expanded(child: grid),
+                                    ],
+                                  );
+                          },
                         ),
                       );
                     },
