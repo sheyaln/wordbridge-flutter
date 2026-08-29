@@ -406,7 +406,18 @@ final categoryBands = <String, List<Band<SeedWord>>>{
   ],
 
   'food': [
-    Band(name: 'eating', shedRank: 0, items: verbs(['eat', 'drink'], level: 1)),
+    // "food" is a word as well as the name of this board. Wanting food in
+    // general is a different request from wanting toast, and it is the one a
+    // person reaches for first. Appended rather than inserted, so every noun
+    // already on this board keeps the cell it has.
+    Band(
+      name: 'eating',
+      shedRank: 0,
+      items: [
+        ...verbs(['eat', 'drink'], level: 1),
+        ...nouns(['food'], level: 1),
+      ],
+    ),
 
     // One strip for every noun on the board. Splitting the clusters into
     // strips of their own costs a row each, and eight clusters do not fit in

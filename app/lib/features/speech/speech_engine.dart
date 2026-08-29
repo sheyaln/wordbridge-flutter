@@ -72,6 +72,8 @@ class FlutterTtsEngine implements SpeechEngine {
 
   final _tts = FlutterTts();
 
+  double _volume = 1.0;
+
   @override
   Future<void> init() async {
     // Without this an iPad with the ringer switch off is silent, which for an
@@ -82,7 +84,7 @@ class FlutterTtsEngine implements SpeechEngine {
     ], IosTextToSpeechAudioMode.defaultMode);
 
     await _tts.awaitSpeakCompletion(true);
-    await _tts.setVolume(1.0);
+    await setVolume(1.0);
   }
 
   @override
@@ -154,9 +156,31 @@ class FlutterTtsEngine implements SpeechEngine {
   @override
   Future<void> setRate(double rate) => _tts.setSpeechRate(engineRate(rate));
 
+  /// Sets pitch with the volume held at full for the duration of the write.
+  ///
+  /// The iOS and macOS sides of the plugin gate `setPitch` on the volume they
+  /// are currently holding rather than on the pitch, and drop the write
+  /// whenever that volume is under 0.5 — reporting the refusal only in a status
+  /// code the Dart wrapper discards. Quiet's 0.35 sits under it, as does any
+  /// volume dial below half, so a pitch written while one of those is in force
+  /// would never arrive and nothing would say so.
+  ///
+  /// Nothing is speaking at this point, so the raised volume is inaudible. It
+  /// is put back in a `finally` because leaving a profile set to 0.35 at full
+  /// volume would be loud, in a room somebody chose quiet for.
   @override
-  Future<void> setPitch(double pitch) => _tts.setPitch(pitch);
+  Future<void> setPitch(double pitch) async {
+    await _tts.setVolume(1.0);
+    try {
+      await _tts.setPitch(pitch);
+    } finally {
+      await _tts.setVolume(_volume);
+    }
+  }
 
   @override
-  Future<void> setVolume(double volume) => _tts.setVolume(volume);
+  Future<void> setVolume(double volume) async {
+    _volume = volume.clamp(0.0, 1.0);
+    await _tts.setVolume(_volume);
+  }
 }

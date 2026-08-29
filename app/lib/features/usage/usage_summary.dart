@@ -28,7 +28,13 @@ class UsageSummary extends StatefulWidget {
 class _UsageSummaryState extends State<UsageSummary> {
   late final UsageQueries _q = UsageQueries(widget.db);
 
-  Duration _window = const Duration(days: 7);
+  int _days = 7;
+
+  /// "Today" is a calendar day, ending at last midnight; the other two are
+  /// rolling spans, which is what their labels say.
+  UsageWindow get _window => _days == 1
+      ? const UsageWindow.calendarDays(1)
+      : UsageWindow.rollingDays(_days);
 
   @override
   Widget build(BuildContext context) {
@@ -43,9 +49,8 @@ class _UsageSummaryState extends State<UsageSummary> {
             ButtonSegment(value: 7, label: Text('7 days')),
             ButtonSegment(value: 30, label: Text('30 days')),
           ],
-          selected: {_window.inDays},
-          onSelectionChanged: (s) =>
-              setState(() => _window = Duration(days: s.first)),
+          selected: {_days},
+          onSelectionChanged: (s) => setState(() => _days = s.first),
         ),
         const SizedBox(height: 24),
 

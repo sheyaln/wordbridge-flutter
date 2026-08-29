@@ -46,6 +46,16 @@ enum Tone {
   final double pitch;
   final double volume;
 
+  /// The fastest [applyTone] will hand the engine, which is the top of the
+  /// platform scale once `FlutterTtsEngine.engineRate` has halved it.
+  static const maxRate = 2.0;
+
+  /// The largest profile rate this tone carries before [maxRate] takes over.
+  ///
+  /// Every setting above it speaks at the same speed, so a screen offering
+  /// rates past it has to say where it stops.
+  double get rateCeiling => maxRate / rate;
+
   static Tone byName(String? name) {
     for (final tone in values) {
       if (tone.name == name) return tone;
@@ -57,8 +67,12 @@ enum Tone {
 /// Rate, pitch and volume as they will be handed to the engine.
 ///
 /// Clamped, because the multipliers can take a profile that already sits near
-/// an end of a range past it, and a platform engine handed 1.4 for pitch does
-/// something different on each OS — or throws.
+/// an end of a range past it. Both platforms accept pitch only within 0.5–2.0
+/// and volume within 0.0–1.0, and refuse anything outside those ranges
+/// silently: the plugin answers with a status code the Dart wrapper drops, so
+/// an out-of-range dial does not fail, it leaves the previous value in force —
+/// a voice that sounds like the last one somebody set, with nothing on screen
+/// to say so.
 typedef VoiceParameters = ({double rate, double pitch, double volume});
 
 VoiceParameters applyTone(
@@ -67,7 +81,7 @@ VoiceParameters applyTone(
   required double pitch,
   required double volume,
 }) => (
-  rate: _clamp(rate * tone.rate, min: 0.1, max: 2.0),
+  rate: _clamp(rate * tone.rate, min: 0.1, max: Tone.maxRate),
   pitch: _clamp(pitch * tone.pitch, min: 0.5, max: 2.0),
   volume: _clamp(volume * tone.volume, min: 0.0, max: 1.0),
 );

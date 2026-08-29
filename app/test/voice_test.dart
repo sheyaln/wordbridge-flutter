@@ -1,7 +1,10 @@
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/features/caregiver/voice_screen.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/speech/tone.dart';
@@ -49,6 +52,60 @@ class _RecordingEngine implements SpeechEngine {
   Future<void> stop() async {}
 }
 
+/// Every call `FlutterTtsEngine` makes to the plugin, in the order it made it.
+///
+/// One level below [_RecordingEngine]: the platform quirks the adapter exists
+/// to absorb are only visible in the sequence of channel messages, not in the
+/// [SpeechEngine] calls that produced them.
+class _PluginCalls {
+  static const _channel = MethodChannel('flutter_tts');
+
+  final calls = <(String, Object?)>[];
+
+  void install() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_channel, (call) async {
+          calls.add((call.method, call.arguments));
+          return 1;
+        });
+  }
+
+  void remove() => TestDefaultBinaryMessengerBinding
+      .instance
+      .defaultBinaryMessenger
+      .setMockMethodCallHandler(_channel, null);
+
+  /// The volume the plugin was holding at the most recent pitch write, which is
+  /// what the iOS and macOS sides gate that write on.
+  ///
+  /// Read over the whole history rather than a cleared window, because the
+  /// volume in force is carried in from every earlier call.
+  ///
+  /// Null if pitch was never written at all — which is its own failure, and one
+  /// no exception would report.
+  double? get volumeAtPitch {
+    var held = _startingVolume;
+    double? atPitch;
+    for (final call in calls) {
+      if (call.$1 == 'setVolume') held = call.$2 as double;
+      if (call.$1 == 'setPitch') atPitch = held;
+    }
+    return atPitch;
+  }
+
+  /// What the plugin is left holding, which is what will actually be heard.
+  double get volume {
+    var held = _startingVolume;
+    for (final call in calls) {
+      if (call.$1 == 'setVolume') held = call.$2 as double;
+    }
+    return held;
+  }
+
+  /// The plugin's own default before anything is written to it.
+  static const _startingVolume = 1.0;
+}
+
 /// A voice as the platform would report it.
 VoiceOption voice(
   String name, {
@@ -69,6 +126,8 @@ VoiceOption voice(
 );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('the tones that exist', () {
     test('only what rate, pitch and volume can honestly produce', () {
       // The list is short on purpose. Sarcasm needs a prosodic contour and a
@@ -402,6 +461,144 @@ void main() {
     });
   });
 
+  group('pitch reaches the plugin at any volume', () {
+    // The iOS and macOS sides gate setPitch on the volume they are holding
+    // rather than on the pitch, and drop the write below 0.5, reporting it only
+    // in a status code the Dart wrapper discards. Quiet's 0.35 is under that
+    // line, as is any volume dial below half.
+    late _PluginCalls plugin;
+    late FlutterTtsEngine engine;
+
+    setUp(() {
+      plugin = _PluginCalls()..install();
+      engine = FlutterTtsEngine();
+    });
+    tearDown(() => plugin.remove());
+
+    test(
+      'the write happens at full volume, and the volume comes back',
+      () async {
+        await engine.setVolume(0.35);
+        plugin.calls.clear();
+
+        await engine.setPitch(1.18);
+
+        expect(plugin.calls, [
+          ('setVolume', 1.0),
+          ('setPitch', 1.18),
+          ('setVolume', 0.35),
+        ]);
+      },
+    );
+
+    test('Quiet then Urgent still gets Urgent\'s pitch', () async {
+      // Urgent is the tone for "stop", "it hurts", "help". Quiet leaves the
+      // plugin holding 0.35, and a pitch written under the guard is discarded
+      // without anything throwing, so Urgent would arrive with Quiet's pitch.
+      final setup = VoiceSetup(engine);
+      await setup.apply(rate: 1.0, pitch: 1.0, volume: 1.0, tone: Tone.quiet);
+      await setup.apply(rate: 1.0, pitch: 1.0, volume: 1.0, tone: Tone.urgent);
+
+      expect(plugin.calls.map((c) => c.$1), contains('setPitch'));
+      expect(
+        plugin.volumeAtPitch,
+        greaterThanOrEqualTo(0.5),
+        reason:
+            'Urgent\'s pitch was written while Quiet\'s volume was in force',
+      );
+    });
+
+    test('every volume the slider offers still lets pitch through', () async {
+      // The volume dial's own floor is 0.1, so the guard is reachable with no
+      // tone at all.
+      final setup = VoiceSetup(engine);
+
+      for (final volume in [1.0, 0.5, 0.49, 0.3, 0.1]) {
+        await setup.apply(
+          rate: 1.0,
+          pitch: 1.2,
+          volume: volume,
+          tone: Tone.normal,
+        );
+
+        expect(
+          plugin.volumeAtPitch,
+          greaterThanOrEqualTo(0.5),
+          reason: 'a pitch written at a volume of $volume is dropped',
+        );
+      }
+    });
+
+    test('apply leaves the plugin holding the volume it was given', () async {
+      // apply writes rate, then pitch, then volume. Raising the volume for the
+      // pitch write must not outlive the volume that follows it, and the
+      // adapter's own record has to agree with the plugin afterwards or the
+      // next pitch write restores the wrong number.
+      final setup = VoiceSetup(engine);
+      await setup.apply(rate: 1.0, pitch: 1.0, volume: 1.0, tone: Tone.quiet);
+      expect(plugin.volume, closeTo(0.35, 1e-9));
+
+      await engine.setPitch(1.4);
+      expect(plugin.volume, closeTo(0.35, 1e-9));
+    });
+
+    test('init leaves the plugin above the guard', () async {
+      // Nothing has set a volume yet at that point, so whatever init leaves is
+      // what the first pitch write is gated on.
+      await engine.init();
+      expect(plugin.volume, greaterThanOrEqualTo(0.5));
+    });
+  });
+
+  group('the sliders and the clamp', () {
+    test('no dial has travel a tone quietly swallows', () {
+      // applyTone clamps the product of dial and tone. Where a slider offers
+      // settings past that clamp, every one of them speaks identically, and the
+      // screen has to name where that starts.
+      for (final tone in Tone.values) {
+        final top = applyTone(
+          tone,
+          rate: VoiceScreen.speedMax,
+          pitch: VoiceScreen.pitchMax,
+          volume: VoiceScreen.volumeMax,
+        );
+
+        expect(
+          top.pitch,
+          closeTo(VoiceScreen.pitchMax * tone.pitch, 1e-9),
+          reason:
+              '${tone.label} clamps pitch inside the pitch slider\'s travel',
+        );
+        expect(
+          top.volume,
+          closeTo(VoiceScreen.volumeMax * tone.volume, 1e-9),
+          reason:
+              '${tone.label} clamps volume inside the volume slider\'s '
+              'travel',
+        );
+
+        final clamped = top.rate < VoiceScreen.speedMax * tone.rate - 1e-9;
+        expect(
+          clamped,
+          tone.rateCeiling < VoiceScreen.speedMax,
+          reason:
+              '${tone.label} clamps the speed slider somewhere the screen '
+              'does not say — the note only appears below the slider max',
+        );
+      }
+    });
+
+    test('the named ceiling is the last setting that still moves', () {
+      for (final tone in Tone.values) {
+        expect(
+          applyTone(tone, rate: tone.rateCeiling, pitch: 1.0, volume: 1.0).rate,
+          closeTo(Tone.maxRate, 1e-9),
+        );
+      }
+      expect(Tone.urgent.rateCeiling, closeTo(1.6, 1e-9));
+    });
+  });
+
   group('applying settings to the engine', () {
     test('the stored voice and the tone-adjusted dials both land', () async {
       final engine = _RecordingEngine();
@@ -479,6 +676,94 @@ void main() {
       // will not open on a device somebody speaks with.
       expect(Tone.byName('sarcastic'), Tone.normal);
       expect(Tone.byName(null), Tone.normal);
+    });
+  });
+
+  group('what the dials say they are doing', () {
+    late WordbridgeDatabase db;
+    late ProfileSettings settings;
+
+    setUp(() async {
+      db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      await seedCoreBoardSet(db);
+      settings = ProfileSettings(db, 'default');
+      await settings.load();
+    });
+    tearDown(() async => db.close());
+
+    /// Renders the whole screen at once. The dials sit well below a phone's
+    /// fold, and a lazy list would not build them.
+    Future<void> open(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VoiceScreen(speech: _RecordingEngine(), settings: settings),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('the tone-adjusted figure is shown beside the setting', (
+      tester,
+    ) async {
+      // Quiet takes volume to 0.35 of whatever the slider says. A screen
+      // reading 100% while the engine is given 0.35 is the reason a wrong
+      // voice setting cannot be diagnosed by the person who set it.
+      await settings.set('tone', Tone.quiet.name);
+      await settings.set('speechVolume', 1.0);
+
+      await open(tester);
+
+      expect(find.text('100% · 35% with Quiet'), findsOneWidget);
+    });
+
+    testWidgets('the setting itself is still on screen', (tester) async {
+      // It is the number being dragged; a slider whose figure does not follow
+      // the thumb cannot be aimed.
+      await settings.set('tone', Tone.calm.name);
+      await settings.set('speechRate', 1.0);
+
+      await open(tester);
+
+      expect(find.text('100% · 82% with Calm'), findsOneWidget);
+    });
+
+    testWidgets('Normal shows one figure, because there is only one', (
+      tester,
+    ) async {
+      await settings.set('speechVolume', 0.5);
+
+      await open(tester);
+
+      expect(find.text('50%'), findsOneWidget);
+      expect(find.textContaining('with Normal'), findsNothing);
+    });
+
+    testWidgets('the speed slider says where Urgent stops mattering', (
+      tester,
+    ) async {
+      await settings.set('tone', Tone.urgent.name);
+      await settings.set('speechRate', VoiceScreen.speedMax);
+
+      await open(tester);
+
+      expect(
+        find.textContaining('anything above 160% sounds the same'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('and says nothing where the travel is real', (tester) async {
+      await settings.set('tone', Tone.urgent.name);
+      await settings.set('speechRate', Tone.urgent.rateCeiling);
+
+      await open(tester);
+
+      expect(find.textContaining('sounds the same'), findsNothing);
     });
   });
 }

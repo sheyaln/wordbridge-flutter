@@ -65,7 +65,14 @@ class MigrationImpact {
   /// separately because they are the ones nobody can recreate from a default.
   final int customWords;
 
-  /// Selections recorded at the locations that change.
+  /// Selections recorded at the locations that change, over the whole life of
+  /// this board set.
+  ///
+  /// Not a recent-practice window like the one a single word's move uses. A
+  /// rebuild moves every location at once and leaves this vocabulary's whole
+  /// recorded history behind with it, so the honest question is how much
+  /// learning the board represents in total. Bounded anyway: a board set's
+  /// counts start when it was built.
   final int totalTaps;
 
   final List<({String label, int taps, String from, String to})> mostPractised;
@@ -100,8 +107,9 @@ class MigrationImpact {
       );
     } else {
       buffer.write(
-        '$who has used those locations $totalTaps times. Anything learned '
-        'there has to be learned again, which can take weeks.',
+        '$who has used those locations $totalTaps times since this board set '
+        'was built. Anything learned there has to be learned again, which can '
+        'take weeks.',
       );
     }
 
@@ -570,11 +578,14 @@ class GridMigration {
   static String _baseName(String name) =>
       name.replaceAll(RegExp(r'\s+\d+$'), '');
 
-  /// How much practice a location has had.
+  /// How much practice a location has had, across everything recorded against
+  /// it.
   ///
   /// Counts only the ways of choosing a word that involved going to the
   /// location, so the number a caregiver is shown before a rebuild means what
-  /// it says.
+  /// it says. Deliberately unwindowed — see [MigrationImpact.totalTaps] — and
+  /// so it is a larger number than a single word's move reports for the same
+  /// cell. Both are stated with their span in the text a caregiver reads.
   static Future<int> _tapsAt(WordbridgeDatabase db, String cellId) async {
     final count = db.usageEvents.id.count();
     final query = db.selectOnly(db.usageEvents)

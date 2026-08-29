@@ -20,6 +20,42 @@ void main() {
   runApp(const WordbridgeApp());
 }
 
+/// A profile's vocabulary level as it stands, not as it stood when the session
+/// opened.
+///
+/// Every other per-user setting lives in `settingsJson` behind a
+/// [ProfileSettings] listener, which the board is already subscribed to. This
+/// one is a column, so it needs its own way in: raising it reveals words that
+/// are already placed, and a caregiver who has to relaunch the app to see that
+/// happen has no reason to believe it did.
+///
+/// Distinct because the same row carries every other setting, and a settings
+/// write must not rebuild the board.
+Stream<int> watchVocabLevel(WordbridgeDatabase db, String profileId) =>
+    (db.select(db.profiles)..where((p) => p.id.equals(profileId)))
+        .watchSingleOrNull()
+        .where((profile) => profile != null)
+        .map((profile) => profile!.vocabLevel)
+        .distinct();
+
+/// Puts a profile's stored voice on the engine.
+///
+/// Every field the caregiver chose travels together, the identifier included:
+/// a device can carry two voices of the same name at different qualities, and
+/// the identifier is the only thing that tells them apart. Left out, the
+/// engine picks by quality order and the person is given a voice nobody
+/// listened to.
+Future<void> applyProfileVoice(SpeechEngine speech, ProfileSettings settings) =>
+    VoiceSetup(speech).apply(
+      voiceName: settings.voiceName,
+      voiceLocale: settings.voiceLocale,
+      voiceIdentifier: settings.voiceIdentifier,
+      rate: settings.speechRate,
+      pitch: settings.speechPitch,
+      volume: settings.speechVolume,
+      tone: settings.tone,
+    );
+
 class WordbridgeApp extends StatefulWidget {
   const WordbridgeApp({super.key});
 
@@ -208,6 +244,10 @@ class _Session extends StatefulWidget {
 class _SessionState extends State<_Session> {
   late final _settings = ProfileSettings(widget.db, widget.profile.id);
   late final Future<void> _loaded = _open();
+  late final Stream<int> _vocabLevel = watchVocabLevel(
+    widget.db,
+    widget.profile.id,
+  );
 
   /// Loads the settings and puts this profile's voice on the engine.
   ///
@@ -217,14 +257,7 @@ class _SessionState extends State<_Session> {
   /// this one they are somebody else.
   Future<void> _open() async {
     await _settings.load();
-    await VoiceSetup(widget.speech).apply(
-      voiceName: _settings.voiceName,
-      voiceLocale: _settings.voiceLocale,
-      rate: _settings.speechRate,
-      pitch: _settings.speechPitch,
-      volume: _settings.speechVolume,
-      tone: _settings.tone,
-    );
+    await applyProfileVoice(widget.speech, _settings);
   }
 
   @override
@@ -246,20 +279,24 @@ class _SessionState extends State<_Session> {
           );
         }
 
-        return TalkScreen(
-          db: widget.db,
-          speech: widget.speech,
-          vocabularyId: vocabularyId,
-          logger: widget.logger,
-          auth: widget.auth,
-          resolver: widget.resolver,
-          registry: widget.registry,
-          fetcher: widget.fetcher,
-          settings: _settings,
-          profileId: widget.profile.id,
-          userName: widget.profile.displayName,
-          vocabLevel: widget.profile.vocabLevel,
-          onSwitchProfile: widget.onSwitchProfile,
+        return StreamBuilder<int>(
+          stream: _vocabLevel,
+          initialData: widget.profile.vocabLevel,
+          builder: (context, level) => TalkScreen(
+            db: widget.db,
+            speech: widget.speech,
+            vocabularyId: vocabularyId,
+            logger: widget.logger,
+            auth: widget.auth,
+            resolver: widget.resolver,
+            registry: widget.registry,
+            fetcher: widget.fetcher,
+            settings: _settings,
+            profileId: widget.profile.id,
+            userName: widget.profile.displayName,
+            vocabLevel: level.data ?? widget.profile.vocabLevel,
+            onSwitchProfile: widget.onSwitchProfile,
+          ),
         );
       },
     );

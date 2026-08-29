@@ -40,6 +40,18 @@ class VoiceScreen extends StatefulWidget {
   /// of a sentence and cannot be heard in one syllable.
   static const previewSentence = 'I want to go outside now';
 
+  /// The travel of each dial.
+  ///
+  /// Named rather than inline because a tone multiplies these and [applyTone]
+  /// clamps the product, so where a bound lands decides whether the top of a
+  /// slider does anything.
+  static const speedMin = 0.4;
+  static const speedMax = 1.8;
+  static const pitchMin = 0.6;
+  static const pitchMax = 1.6;
+  static const volumeMin = 0.1;
+  static const volumeMax = 1.0;
+
   @override
   State<VoiceScreen> createState() => _VoiceScreenState();
 }
@@ -96,6 +108,16 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tone = _settings.tone;
+    final heard = applyTone(
+      tone,
+      rate: _settings.speechRate,
+      pitch: _settings.speechPitch,
+      volume: _settings.speechVolume,
+    );
+    final toneLabel = tone == Tone.normal ? null : tone.label;
+    final rateCeiling = tone.rateCeiling;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Voice'),
@@ -188,34 +210,42 @@ class _VoiceScreenState extends State<VoiceScreen> {
           _Dial(
             label: 'Speed',
             value: _settings.speechRate,
-            min: 0.4,
-            max: 1.8,
+            heard: heard.rate,
+            toneLabel: toneLabel,
+            min: VoiceScreen.speedMin,
+            max: VoiceScreen.speedMax,
+            ceiling: rateCeiling < VoiceScreen.speedMax ? rateCeiling : null,
             onChanged: (v) => _set('speechRate', v),
             onSettled: _preview,
           ),
           _Dial(
             label: 'Pitch',
             value: _settings.speechPitch,
-            min: 0.6,
-            max: 1.6,
+            heard: heard.pitch,
+            toneLabel: toneLabel,
+            min: VoiceScreen.pitchMin,
+            max: VoiceScreen.pitchMax,
             onChanged: (v) => _set('speechPitch', v),
             onSettled: _preview,
           ),
           _Dial(
             label: 'Volume',
             value: _settings.speechVolume,
-            min: 0.1,
-            max: 1.0,
+            heard: heard.volume,
+            toneLabel: toneLabel,
+            min: VoiceScreen.volumeMin,
+            max: VoiceScreen.volumeMax,
             onChanged: (v) => _set('speechVolume', v),
             onSettled: _preview,
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 32),
             child: Text(
-              'Volume here is a share of the device\'s own volume and cannot '
-              'go above it. If this is not loud enough across a room or from '
-              'the back of a car, turn the device up too — the app cannot do '
-              'it for you.',
+              'A tone multiplies these, so where one is set the second figure '
+              'is what the voice is actually given. Volume here is a share of '
+              'the device\'s own volume and cannot go above it. If this is not '
+              'loud enough across a room or from the back of a car, turn the '
+              'device up too — the app cannot do it for you.',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.black54,
@@ -376,38 +406,89 @@ class _Dial extends StatelessWidget {
   const _Dial({
     required this.label,
     required this.value,
+    required this.heard,
+    required this.toneLabel,
     required this.min,
     required this.max,
     required this.onChanged,
     required this.onSettled,
+    this.ceiling,
   });
 
   final String label;
+
+  /// Where the slider sits: the profile's own setting, before any tone.
   final double value;
+
+  /// What the engine is handed once the tone has multiplied [value].
+  ///
+  /// Shown beside the setting rather than instead of it, because the setting is
+  /// the thing being dragged and a slider whose number does not follow the
+  /// thumb is unusable. Both have to be on screen: a caregiver is matching what
+  /// they hear against a number, for somebody who cannot tell them it is wrong.
+  final double heard;
+
+  /// Null under Normal, where the two figures are the same.
+  final String? toneLabel;
+
   final double min;
   final double max;
+
+  /// The highest [value] the tone carries before the engine's own limit takes
+  /// over, or null where every setting on this slider still moves the voice.
+  final double? ceiling;
+
   final ValueChanged<double> onChanged;
   final VoidCallback onSettled;
 
+  static String _percent(double value) => '${(value * 100).round()}%';
+
   @override
-  Widget build(BuildContext context) => ListTile(
-    title: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label),
-        Text(
-          '${(value * 100).round()}%',
-          style: const TextStyle(color: Colors.black54),
-        ),
-      ],
-    ),
-    subtitle: Slider(
-      value: value.clamp(min, max),
-      min: min,
-      max: max,
-      divisions: ((max - min) * 20).round(),
-      onChanged: onChanged,
-      onChangeEnd: (_) => onSettled(),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final setting = _percent(value);
+    final effective = _percent(heard);
+    final ceiling = this.ceiling;
+
+    return ListTile(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            toneLabel == null || effective == setting
+                ? setting
+                : '$setting · $effective with $toneLabel',
+            style: const TextStyle(color: Colors.black54),
+          ),
+        ],
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            divisions: ((max - min) * 20).round(),
+            onChanged: onChanged,
+            onChangeEnd: (_) => onSettled(),
+          ),
+          if (ceiling != null && value > ceiling)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '$toneLabel already takes this to the limit of what the '
+                'device\'s speech accepts, so anything above '
+                '${_percent(ceiling)} sounds the same.',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

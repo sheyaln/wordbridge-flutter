@@ -99,6 +99,14 @@ void main() {
         expect(warning, contains('341'));
         expect(warning, contains('"eat"'));
         expect(warning, contains('relearn'));
+        expect(
+          warning,
+          contains('in the last ${RemapService.practiceWindow.days} days'),
+          reason:
+              'a rebuild counts the same cell over its whole history, so a '
+              'count shown without its span reads as whichever the caregiver '
+              'assumes',
+        );
       },
     );
 

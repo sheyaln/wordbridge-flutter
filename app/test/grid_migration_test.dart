@@ -143,6 +143,26 @@ void main() {
       expect(impact.warningFor('Maya'), contains('${impact.totalTaps}'));
     });
 
+    test('the warning says how far back its count reaches', () async {
+      await tap('turn', 341);
+
+      final impact = await GridMigration.preview(
+        db,
+        vocabularyId: vocabId,
+        rows: 5,
+        cols: 9,
+      );
+
+      expect(
+        impact.warningFor('Maya'),
+        contains('since this board set was built'),
+        reason:
+            'a rebuild counts every tap ever recorded and a single word\'s '
+            'move counts a recent window, so the same cell reads differently '
+            'on the two screens unless each says which it is',
+      );
+    });
+
     test('it says so when it cannot tell you the cost', () async {
       // Usage tracking is off by default. A confident "0 taps" would read as
       // "this is free", which is the opposite of what is known.

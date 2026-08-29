@@ -241,8 +241,10 @@ class _BoardEditorState extends State<BoardEditor> {
               ),
               subtitle: Text(
                 impact.taps == 0
-                    ? 'Not used from this spot yet'
-                    : '${impact.taps} taps here over ${impact.days} days',
+                    ? 'Not used from this spot in the last '
+                          '${impact.windowDays} days'
+                    : '${impact.taps} taps here over ${impact.days} days, '
+                          'in the last ${impact.windowDays}',
               ),
             ),
             const Divider(height: 1),

@@ -317,6 +317,24 @@ who reads slowly gets a slower **urgent**, not everybody's urgent.
 | Urgent | Faster, higher, full volume |
 | Quiet | The same voice turned down |
 
+**Each dial shows what the voice is actually given.** A tone multiplies the
+profile's own setting, so with Quiet selected a volume dial at maximum reads
+`100% · 35% with Quiet`. Showing only the setting made the number on screen
+disagree with what a caregiver was hearing, which is exactly the state in which
+a wrong voice goes unnoticed — the person it is set for cannot say it sounds
+wrong. Where a tone would take a dial past what the engine accepts, the dial
+says so rather than letting the last stretch of its travel do nothing.
+
+> ⚠️ **`setPitch` is gated on volume, not pitch, in the plugin's iOS and macOS
+> code**, and it drops the write whenever the volume it currently holds is
+> under 0.5 — reporting that only in a status code the Dart wrapper discards.
+> Quiet's 0.35 sits under it, as does any volume dial below half. So
+> `FlutterTtsEngine.setPitch` raises the volume to full for the duration of the
+> write and restores it in a `finally`. Nothing is speaking at that moment, so
+> the raised volume is inaudible; the `finally` matters because leaving a
+> profile set to 0.35 at full volume would be loud, in a room somebody chose
+> quiet for.
+
 **Speed is a real dial, and 1.0 means normal.** `SpeechEngine` takes a
 multiplier of the engine's ordinary rate and the adapter translates. It has to:
 `flutter_tts` puts normal speech at **0.5** on both platforms — iOS passes the
@@ -377,6 +395,19 @@ Substantial work: model size, licensing, per-locale coverage, and latency all
 need answering. Keep `SpeechEngine` engine-agnostic so this stays a swap rather
 than a rewrite. Until then, ship only the tones platform TTS can honestly
 produce.
+
+### 4.5a Known, not fixed
+
+Two rebuild loops, both found while fixing something adjacent, both real and
+both outside the blast radius of the change that surfaced them:
+
+- **`TalkScreen._cellsFor` builds a fresh drift query stream on every
+  rebuild**, so each `setState` — every tap — tears down and re-subscribes the
+  board's stream. It works, because the `StreamBuilder` retains data across the
+  swap, but it is wasted work on the one path that must never be slow.
+- **`UsageSummary` recreates its `FutureBuilder` futures on every build**, so
+  each completion triggers a rebuild that starts new queries: an unbounded loop
+  for as long as a caregiver leaves the screen open.
 
 ### 4.6 Still to do
 

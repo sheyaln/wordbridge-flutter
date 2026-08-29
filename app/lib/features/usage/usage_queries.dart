@@ -12,12 +12,52 @@ typedef Utterance = ({String text, DateTime at});
 /// learned about where it is.
 typedef CellHistory = ({int taps, int days, DateTime? firstUsed});
 
+/// The [days] calendar days ending on [today], oldest first, each at local
+/// midnight.
+///
+/// Stepped by date rather than by a twenty-four hour duration, because a local
+/// day is 23 or 25 hours long across a daylight-saving change and an axis built
+/// from durations stops landing on the midnights that day buckets are keyed by.
+/// Out-of-range day numbers normalise, so month and year ends need no case of
+/// their own.
+List<DateTime> calendarDaysEnding(DateTime today, int days) => [
+  for (var i = days - 1; i >= 0; i--)
+    DateTime(today.year, today.month, today.day - i),
+];
+
+/// Whole calendar days from [from] to [to], counting date changes rather than
+/// elapsed time.
+///
+/// Rounded through hours because the 23- and 25-hour days either side of a
+/// daylight-saving change would otherwise gain or lose one.
+int calendarDaysBetween(DateTime from, DateTime to) {
+  final start = DateTime(from.year, from.month, from.day);
+  final end = DateTime(to.year, to.month, to.day);
+  return (end.difference(start).inHours / 24).round();
+}
+
+/// How far back a figure looks, resolved to an epoch cutoff when the query runs.
+///
+/// The two kinds answer different questions and a figure has to carry the one
+/// it was labelled with. "Today" ends at the last local midnight whatever the
+/// hour, so a number shown under that word never quietly includes yesterday
+/// evening — these numbers reach funding letters.
+class UsageWindow {
+  const UsageWindow.rollingDays(this.days) : _calendar = false;
+  const UsageWindow.calendarDays(this.days) : _calendar = true;
+
+  final int days;
+  final bool _calendar;
+
+  int cutoffMs() => _calendar
+      ? calendarDaysEnding(DateTime.now(), days).first.millisecondsSinceEpoch
+      : nowMs() - Duration(days: days).inMilliseconds;
+}
+
 class UsageQueries {
   UsageQueries(this._db);
 
   final WordbridgeDatabase _db;
-
-  static int _cutoff(Duration window) => nowMs() - window.inMilliseconds;
 
   /// The ways of choosing a word that mean the user went to the location.
   ///
@@ -35,9 +75,9 @@ class UsageQueries {
   /// practised", which is what a motor plan actually is.
   Future<CellHistory> historyForCell(
     String cellId, {
-    Duration window = const Duration(days: 90),
+    UsageWindow window = const UsageWindow.rollingDays(90),
   }) async {
-    final since = _cutoff(window);
+    final since = window.cutoffMs();
 
     final rows =
         await (_db.select(_db.usageEvents)..where(
@@ -71,7 +111,7 @@ class UsageQueries {
 
   Future<List<WordCount>> mostUsedWords(
     String profileId, {
-    Duration window = const Duration(days: 7),
+    UsageWindow window = const UsageWindow.rollingDays(7),
     int limit = 50,
   }) async {
     final count = _db.usageEvents.id.count();
@@ -79,7 +119,7 @@ class UsageQueries {
       ..addColumns([_db.usageEvents.labelSnapshot, count])
       ..where(
         _db.usageEvents.profileId.equals(profileId) &
-            _db.usageEvents.occurredAt.isBiggerOrEqualValue(_cutoff(window)) &
+            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
             _db.usageEvents.action.equalsValue(ButtonAction.speak) &
             _db.usageEvents.source.equalsValue(UsageSource.touch),
       )
@@ -101,14 +141,14 @@ class UsageQueries {
   /// the one that goes into funding paperwork.
   Future<int> numberOfDifferentWords(
     String profileId, {
-    Duration window = const Duration(days: 7),
+    UsageWindow window = const UsageWindow.rollingDays(7),
   }) async {
     final distinct = _db.usageEvents.labelSnapshot.count(distinct: true);
     final query = _db.selectOnly(_db.usageEvents)
       ..addColumns([distinct])
       ..where(
         _db.usageEvents.profileId.equals(profileId) &
-            _db.usageEvents.occurredAt.isBiggerOrEqualValue(_cutoff(window)) &
+            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
             _db.usageEvents.action.equalsValue(ButtonAction.speak) &
             _db.usageEvents.source.equalsValue(UsageSource.touch),
       );
@@ -116,13 +156,17 @@ class UsageQueries {
     return (await query.getSingle()).read(distinct) ?? 0;
   }
 
+  /// One entry per calendar day, oldest first, days with nothing recorded
+  /// included as zero.
   Future<List<DayCount>> activityByDay(String profileId, {int days = 7}) async {
+    final axis = calendarDaysEnding(DateTime.now(), days);
+
     final rows =
         await (_db.select(_db.usageEvents)..where(
               (e) =>
                   e.profileId.equals(profileId) &
                   e.occurredAt.isBiggerOrEqualValue(
-                    _cutoff(Duration(days: days)),
+                    axis.first.millisecondsSinceEpoch,
                   ) &
                   e.source.equalsValue(UsageSource.touch),
             ))
@@ -135,15 +179,7 @@ class UsageQueries {
       buckets[key] = (buckets[key] ?? 0) + 1;
     }
 
-    final today = DateTime.now();
-    return List.generate(days, (i) {
-      final day = DateTime(
-        today.year,
-        today.month,
-        today.day,
-      ).subtract(Duration(days: days - 1 - i));
-      return (day: day, count: buckets[day] ?? 0);
-    });
+    return [for (final day in axis) (day: day, count: buckets[day] ?? 0)];
   }
 
   /// Sentences the user actually built, most recent first.
@@ -185,14 +221,14 @@ class UsageQueries {
 
   Future<int> totalTaps(
     String profileId, {
-    Duration window = const Duration(days: 7),
+    UsageWindow window = const UsageWindow.rollingDays(7),
   }) async {
     final count = _db.usageEvents.id.count();
     final query = _db.selectOnly(_db.usageEvents)
       ..addColumns([count])
       ..where(
         _db.usageEvents.profileId.equals(profileId) &
-            _db.usageEvents.occurredAt.isBiggerOrEqualValue(_cutoff(window)) &
+            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
             _db.usageEvents.source.equalsValue(UsageSource.touch),
       );
 
@@ -201,9 +237,10 @@ class UsageQueries {
 
   /// Deletes everything older than the retention window.
   Future<int> pruneOlderThan(Duration retention) {
+    final cutoff = nowMs() - retention.inMilliseconds;
     return (_db.delete(
       _db.usageEvents,
-    )..where((e) => e.occurredAt.isSmallerThanValue(_cutoff(retention)))).go();
+    )..where((e) => e.occurredAt.isSmallerThanValue(cutoff))).go();
   }
 
   Future<int> deleteAllFor(String profileId) {

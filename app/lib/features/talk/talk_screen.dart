@@ -22,6 +22,31 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 
+/// Height of the utterance bar. Fixed chrome; the grid gets what is left.
+///
+/// `GridChoice` derives rows and columns from the same figure, so the two have
+/// to move together or a board is laid out for a screen it is not drawn on.
+const utteranceBarHeight = 80.0;
+
+/// Gap between the grid and the edge of the screen.
+const gridInset = 8.0;
+
+/// Where the caregiver gesture sits, in the talk screen's own coordinates.
+///
+/// The utterance bar's band, at the left end. The grid begins below the bar,
+/// so no reach for a cell can land here however small the cells get — the
+/// clearance is the bar itself, not a margin that shrinks with the grid.
+///
+/// It shares that band with the Speak button, which keeps every touch: the
+/// target passes them through, and the button's own tooltip claims a long
+/// press, so a hold that opens caregiver mode does not also speak.
+const caregiverGestureRect = Rect.fromLTWH(
+  0,
+  0,
+  CornerHoldTarget.defaultSize,
+  CornerHoldTarget.defaultSize,
+);
+
 /// The only screen the AAC user sees.
 class TalkScreen extends StatefulWidget {
   const TalkScreen({
@@ -60,10 +85,10 @@ class TalkScreen extends StatefulWidget {
   final void Function(Profile)? onSwitchProfile;
 
   @override
-  State<TalkScreen> createState() => _TalkScreenState();
+  State<TalkScreen> createState() => TalkScreenState();
 }
 
-class _TalkScreenState extends State<TalkScreen> {
+class TalkScreenState extends State<TalkScreen> {
   final _utterance = UtteranceBar();
 
   Vocabulary? _vocab;
@@ -101,12 +126,21 @@ class _TalkScreenState extends State<TalkScreen> {
 
   bool get _predicting => widget.settings?.prediction ?? false;
 
-  late final _prediction = WordPrediction(
+  late WordPrediction _prediction = _predictionForLevel();
+
+  /// The engine reads the ceiling once, at construction, so a level that moves
+  /// while the board is open needs a new one. An engine left on the old level
+  /// offers words the grid is not drawing, or withholds words it is.
+  WordPrediction _predictionForLevel() => WordPrediction(
     widget.db,
     profileId: widget.profileId,
     vocabularyId: widget.vocabularyId,
     vocabLevel: widget.vocabLevel,
   );
+
+  /// The level the strip is currently filtering on.
+  @visibleForTesting
+  int get predictionLevel => _prediction.vocabLevel;
 
   /// What the strip is showing. Held rather than rebuilt inline so a rebuild
   /// for any other reason cannot change it — the suggestions move only when
@@ -156,6 +190,18 @@ class _TalkScreenState extends State<TalkScreen> {
     // it on has to reach the board without going back out and in again.
     widget.settings?.addListener(_onSettingsChanged);
     _load();
+  }
+
+  @override
+  void didUpdateWidget(TalkScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Raising the level reveals words that are already placed, so the board
+    // has to show them without being rebuilt from scratch. The grid reads the
+    // level during build; the strip has its own copy and needs replacing.
+    if (oldWidget.vocabLevel != widget.vocabLevel) {
+      _prediction = _predictionForLevel();
+      _refreshSuggestions();
+    }
   }
 
   void _onSettingsChanged() {
@@ -549,7 +595,7 @@ class _TalkScreenState extends State<TalkScreen> {
                         return const Center(child: CircularProgressIndicator());
                       }
                       return Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(gridInset),
                         child: AbsorbPointer(
                           absorbing: _settling,
                           child: GridSurface(
@@ -569,12 +615,8 @@ class _TalkScreenState extends State<TalkScreen> {
                 ),
               ],
             ),
-            // Bottom-left, away from the utterance bar's controls and outside
-            // the grid's own padding, so an ordinary reach for a cell does not
-            // land on it.
-            Positioned(
-              left: 0,
-              bottom: 0,
+            Positioned.fromRect(
+              rect: caregiverGestureRect,
               child: CornerHoldTarget(onTriggered: _openCaregiver),
             ),
           ],
@@ -614,7 +656,7 @@ class _UtteranceBarView extends StatelessWidget {
         final empty = utterance.isEmpty;
 
         return Container(
-          height: 80,
+          height: utteranceBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           color: Colors.white,
           child: Row(

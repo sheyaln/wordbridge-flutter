@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../usage/usage_queries.dart';
 import 'remap.dart';
 
 /// Shown before a word is moved.
@@ -150,18 +151,30 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Stat(value: '${impact.taps}', label: 'taps here'),
-        const SizedBox(width: 24),
-        _Stat(value: '${impact.days}', label: 'days used'),
-        if (impact.firstUsed != null) ...[
-          const SizedBox(width: 24),
-          _Stat(
-            value: '${DateTime.now().difference(impact.firstUsed!).inDays}',
-            label: 'days since first use',
-          ),
-        ],
+        Row(
+          children: [
+            _Stat(value: '${impact.taps}', label: 'taps here'),
+            const SizedBox(width: 24),
+            _Stat(value: '${impact.days}', label: 'days used'),
+            if (impact.firstUsed != null) ...[
+              const SizedBox(width: 24),
+              _Stat(
+                value:
+                    '${calendarDaysBetween(impact.firstUsed!, DateTime.now())}',
+                label: 'days since first use',
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'From the last ${impact.windowDays} days. Any older use is not '
+          'counted.',
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
       ],
     );
   }

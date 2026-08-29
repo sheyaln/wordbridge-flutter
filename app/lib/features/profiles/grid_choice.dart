@@ -129,8 +129,15 @@ class GridChoice {
         derive(screen: screen, orientation: orientation, iconSize: iconSize),
   ];
 
-  /// Cells are laid out as `n * target + (n + 1) * gutter <= available`, so the
-  /// count that fits is the inverse of that.
+  /// How many cells of [target] fit, counting gutters *between* them:
+  /// `n * target + (n - 1) * gutter <= available`.
+  ///
+  /// The outer gutters are not charged against the target, so a cell can come
+  /// out up to a gutter under it — about a pixel at tablet sizes, against a
+  /// target that is itself a judgement call rather than a measured threshold.
+  /// Charging them would cost a whole row or column on a dozen real device and
+  /// icon-size combinations, and a row of vocabulary is worth more than a
+  /// pixel of button. `grid_choice_test` allows exactly that tolerance.
   static int _fit(double available, double target, double gutter) {
     if (available <= 0) return 0;
     final n = (available + gutter) ~/ (target + gutter);

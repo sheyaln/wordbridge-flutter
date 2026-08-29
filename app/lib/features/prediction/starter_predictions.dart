@@ -46,7 +46,7 @@ const starterPredictions = <String, List<String>>{
   'me': ['more', 'please', 'that', 'it', 'up'],
 
   // Verbs want an object, a direction, or another verb.
-  'want': ['more', 'to', 'that', 'it', 'drink', 'snack', 'toilet', 'water'],
+  'want': ['more', 'to', 'food', 'drink', 'that', 'it', 'snack', 'toilet'],
   'need': ['help', 'to', 'toilet', 'more', 'drink', 'medicine', 'that'],
   'like': ['it', 'that', 'this', 'more', 'you'],
   'go': ['to', 'home', 'out', 'outside', 'school', 'park', 'in', 'up'],
@@ -104,7 +104,7 @@ const starterPredictions = <String, List<String>>{
   'yes': ['please', 'I', 'more', 'thank you'],
   'no': ['thank you', 'not', 'I', 'more', 'stop'],
   "don't": ['want', 'like', 'know', 'go', 'stop'],
-  'more': ['please', 'drink', 'water', 'snack', 'that', 'it'],
+  'more': ['please', 'food', 'drink', 'water', 'snack', 'that'],
   'some': ['more', 'water', 'juice', 'milk', 'that', 'it'],
   'all': ['finished', 'more', 'good'],
   'this': ['good', 'not', 'more', 'it', 'please'],
@@ -130,9 +130,10 @@ const starterPredictions = <String, List<String>>{
 
   // Food. A drink or a meal is nearly always a request, so "please" and "more"
   // sit near the front of every one of these.
-  'eat': ['more', 'it', 'lunch', 'dinner', 'breakfast', 'snack', 'toast'],
+  'eat': ['food', 'more', 'lunch', 'dinner', 'breakfast', 'snack', 'toast'],
   'drink': ['water', 'milk', 'juice', 'squash', 'more', 'please'],
-  'hungry': ['please', 'I', 'snack', 'lunch', 'more', 'dinner'],
+  'hungry': ['food', 'please', 'snack', 'lunch', 'more', 'dinner'],
+  'food': ['please', 'more', 'I', 'yummy', 'hungry'],
   'thirsty': ['please', 'water', 'drink', 'juice', 'squash', 'I'],
   'yummy': ['more', 'please', 'I', 'thank you'],
   'yucky': ['no', 'not', 'stop', 'different', 'I'],

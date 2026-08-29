@@ -13,14 +13,23 @@ import 'package:flutter/material.dart';
 /// touch has at once: a specific location, an unbroken hold, and duration.
 /// Nothing is drawn until the hold is already underway, so there is no
 /// affordance inviting exploration.
+///
+/// Whatever it is placed over keeps working. The target adds a meaning to a
+/// location; it never takes one away.
 class CornerHoldTarget extends StatefulWidget {
   const CornerHoldTarget({
     super.key,
     required this.onTriggered,
     this.holdDuration = const Duration(seconds: 2),
     this.revealAfter = const Duration(milliseconds: 500),
-    this.size = 56,
+    this.size = defaultSize,
   });
+
+  /// Edge length of the target, in logical pixels.
+  ///
+  /// Public so that whatever places it and whatever reasons about where it
+  /// lands work from one number rather than two that agree today.
+  static const double defaultSize = 56;
 
   final VoidCallback onTriggered;
   final Duration holdDuration;
@@ -75,7 +84,11 @@ class _CornerHoldTargetState extends State<CornerHoldTarget>
       onPointerDown: _start,
       onPointerUp: _reset,
       onPointerCancel: _reset,
-      behavior: HitTestBehavior.opaque,
+      // Translucent, so every touch also reaches whatever is underneath. On a
+      // screen where a control that quietly does nothing is a control the user
+      // cannot report, the entrance to caregiver mode must not be able to cost
+      // anyone a key wherever it is placed.
+      behavior: HitTestBehavior.translucent,
       child: SizedBox(
         width: widget.size,
         height: widget.size,

@@ -8,12 +8,16 @@ import '../../db/tables.dart';
 import '../usage/usage_queries.dart';
 
 /// What moving a word would cost, in the user's own recorded practice.
+///
+/// [windowDays] is how far back the counts look, and travels with them so
+/// anything displaying them can say so.
 typedef RemapImpact = ({
   String label,
   int taps,
   int days,
   DateTime? firstUsed,
   bool isLearned,
+  int windowDays,
 });
 
 /// Moving and placing words, with the cost of moving stated before it happens.
@@ -37,6 +41,18 @@ class RemapService {
   /// for a word that is no longer there.
   static const learnedThreshold = 20;
 
+  /// How far back a single word's move looks.
+  ///
+  /// Recent practice, not everything ever recorded, because the question here
+  /// is whether *this* position is live. A spot drilled two years ago and
+  /// untouched since is not a motor plan a move destroys, and counting it would
+  /// talk a caregiver out of a correction the user needs. Roughly a school
+  /// term.
+  ///
+  /// A grid rebuild asks a different question and uses a different window; see
+  /// `GridMigration`.
+  static const practiceWindow = UsageWindow.rollingDays(90);
+
   /// What a user has practised at this location.
   Future<RemapImpact> impactOfMoving(String buttonId) async {
     final button = await (_db.select(
@@ -50,16 +66,21 @@ class RemapService {
         days: 0,
         firstUsed: null,
         isLearned: false,
+        windowDays: practiceWindow.days,
       );
     }
 
-    final history = await _usage.historyForCell(button.cellId!);
+    final history = await _usage.historyForCell(
+      button.cellId!,
+      window: practiceWindow,
+    );
     return (
       label: button.label,
       taps: history.taps,
       days: history.days,
       firstUsed: history.firstUsed,
       isLearned: history.taps >= learnedThreshold,
+      windowDays: practiceWindow.days,
     );
   }
 
@@ -76,15 +97,16 @@ class RemapService {
 
     if (!impact.isLearned) {
       return '$who has used $word from this spot ${impact.taps} '
-          '${impact.taps == 1 ? 'time' : 'times'} in the last 90 days. '
-          'Moving it is probably low risk, but the pattern will change.';
+          '${impact.taps == 1 ? 'time' : 'times'} in the last '
+          '${impact.windowDays} days. Moving it is probably low risk, but the '
+          'pattern will change.';
     }
 
     return 'Moving $word will change its motor pattern. '
         '$who has tapped this location ${impact.taps} times across '
-        '${impact.days} ${impact.days == 1 ? 'day' : 'days'} in the last 90 '
-        'days. If they have learned this position, moving it may take weeks '
-        'to relearn.';
+        '${impact.days} ${impact.days == 1 ? 'day' : 'days'} in the last '
+        '${impact.windowDays} days. If they have learned this position, moving '
+        'it may take weeks to relearn.';
   }
 
   /// Moves a word to a different location.
