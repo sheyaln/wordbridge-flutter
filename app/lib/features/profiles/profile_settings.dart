@@ -112,13 +112,34 @@ class ProfileSettings extends ChangeNotifier {
 
   /// Offer likely next words in a strip above the grid.
   ///
-  /// Off by default, and it is not free: the strip takes its height from the
-  /// grid, so every button is a little shorter while it is on. That is a
-  /// change to where things are, which is why it is a deliberate choice rather
-  /// than a default. Switching it back off restores the previous layout
-  /// exactly — nothing is rebuilt and no cell moves, so this is the one
-  /// layout change that costs nothing to undo.
-  bool get prediction => _values['prediction'] as bool? ?? false;
+  /// On for profiles created from here, and not free: the strip takes its
+  /// height from the grid, so every button is a little shorter. Profiles that
+  /// predate it were written down as not having it, so the fallback here is
+  /// only ever reached by a profile made after it existed. Switching it off
+  /// restores the previous layout exactly — nothing is rebuilt and no cell
+  /// moves, so this is the one layout change that costs nothing to undo.
+  bool get prediction =>
+      _values['prediction'] as bool? ?? predictionForNewProfiles;
+
+  /// What a profile created from here is given for [prediction].
+  static const predictionForNewProfiles = true;
+
+  /// Show the route to the word just spoken along the bottom of the screen.
+  ///
+  /// On for profiles created from here. The strip takes its height from the
+  /// grid, so profiles that predate it were written down as not having it and
+  /// this fallback is only ever reached by a profile made after it existed.
+  /// Switching it off restores the previous layout exactly — nothing is
+  /// rebuilt and no cell moves.
+  bool get breadcrumbs =>
+      _values['breadcrumbs'] as bool? ?? breadcrumbsForNewProfiles;
+
+  /// What a profile created from here is given for [breadcrumbs].
+  ///
+  /// A default has to be written at creation rather than fall out of the
+  /// getter, so that it reaches new profiles without reaching boards that were
+  /// laid out before it existed.
+  static const breadcrumbsForNewProfiles = true;
 
   /// Whether strong language is revealed on the boards that carry it.
   ///

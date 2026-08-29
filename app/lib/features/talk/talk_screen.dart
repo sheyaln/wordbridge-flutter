@@ -21,6 +21,7 @@ import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
+import 'breadcrumb_strip.dart';
 
 /// Height of the utterance bar. Fixed chrome; the grid gets what is left.
 ///
@@ -168,6 +169,64 @@ class TalkScreenState extends State<TalkScreen> {
 
     if (!mounted || request != _suggestionRequest) return;
     setState(() => _suggestions = words);
+  }
+
+  bool get _showTrail => widget.settings?.breadcrumbs ?? false;
+
+  /// The steps walked since the board was last at home.
+  final List<Crumb> _route = [];
+
+  /// The word the route reached, held after the board has moved on.
+  String? _reached;
+
+  /// The board the recorded route stands on.
+  String? get _routeBoard =>
+      _route.isEmpty ? _rootBoardId : _route.last.boardId;
+
+  /// Drops a trail that no longer describes the way to where the user is.
+  ///
+  /// A finished trail stays on screen after auto-return has taken the board
+  /// home — one that vanished at the moment it finished would never be read.
+  /// It stops being the route the instant a step is taken from somewhere it
+  /// does not account for, so the check happens at that step rather than on a
+  /// timer: nothing on this screen moves except when the user moves it.
+  ///
+  /// Read before the board changes, while [_currentBoardId] is still where the
+  /// step was taken from.
+  void _restartTrailIfStale() {
+    if (_routeBoard != _currentBoardId) _route.clear();
+  }
+
+  /// Records a step onto [boardId], which is the board in view afterwards.
+  void _stepTo(String? boardId, String label) {
+    _restartTrailIfStale();
+    _reached = null;
+    if (boardId != null) _route.add(Crumb(label: label, boardId: boardId));
+  }
+
+  /// Rewinds the route to the board `back` returns to.
+  ///
+  /// Appending the step instead would show a route nobody can walk: a second
+  /// `back` from the same place moves nothing, and a trail that keeps the dead
+  /// end in view is not a route to repeat. Where the destination is not in the
+  /// trail the route is dropped rather than guessed at.
+  void _rewindTo(String? boardId) {
+    _reached = null;
+    if (boardId == null || boardId == _rootBoardId) {
+      _route.clear();
+      return;
+    }
+    final at = _route.lastIndexWhere((crumb) => crumb.boardId == boardId);
+    _route.removeRange(at + 1, _route.length);
+  }
+
+  /// Completes the trail with the word it reached.
+  void _markReached(String label) {
+    if (!mounted) return;
+    setState(() {
+      _restartTrailIfStale();
+      _reached = label;
+    });
   }
 
   /// Starts the delay, and schedules the rebuild that ends it.
@@ -352,6 +411,7 @@ class TalkScreenState extends State<TalkScreen> {
     switch (button.action) {
       case ButtonAction.speak:
         _utterance.add(button.message, pos: button.partOfSpeech);
+        _markReached(button.label);
         await widget.speech.speak(button.speakText ?? button.message);
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
@@ -363,6 +423,7 @@ class TalkScreenState extends State<TalkScreen> {
 
       case ButtonAction.navigate:
         setState(() {
+          _stepTo(button.targetBoardId, button.label);
           _previousBoardId = _currentBoardId;
           _currentBoardId = button.targetBoardId;
           _settle();
@@ -371,8 +432,11 @@ class TalkScreenState extends State<TalkScreen> {
       case ButtonAction.home:
         // Home is a reset, not a step. Anything that walked the user here is
         // discarded, so the next "back" cannot rewind into a board they have
-        // already left.
+        // already left, and the trail does not describe a route away from the
+        // board they are now on.
         setState(() {
+          _route.clear();
+          _reached = null;
           _currentBoardId = _rootBoardId;
           _previousBoardId = null;
           _settle();
@@ -380,7 +444,9 @@ class TalkScreenState extends State<TalkScreen> {
 
       case ButtonAction.back:
         setState(() {
-          _currentBoardId = _previousBoardId ?? _rootBoardId;
+          final destination = _previousBoardId ?? _rootBoardId;
+          _rewindTo(destination);
+          _currentBoardId = destination;
           _settle();
         });
 
@@ -395,6 +461,9 @@ class TalkScreenState extends State<TalkScreen> {
 
       case ButtonAction.cycleCategories:
         setState(() {
+          // A turn of the wheel is a step: it does not change the board, but
+          // it is a press somebody has to make again to find the same word.
+          _stepTo(_currentBoardId, button.label);
           _categoryPage = (_categoryPage + 1) % wheelPages;
           _settle();
         });
@@ -661,6 +730,12 @@ class TalkScreenState extends State<TalkScreen> {
                     },
                   ),
                 ),
+                // Below the grid, where the route reads left to right and ends
+                // under the board it was walked on. Absent entirely when off,
+                // so a profile that does not use it does not pay for it in
+                // grid height.
+                if (_showTrail)
+                  BreadcrumbStrip(route: _route, destination: _reached),
               ],
             ),
             Positioned.fromRect(

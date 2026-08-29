@@ -6,6 +6,7 @@ import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/core_board_set.dart';
+import 'profile_settings.dart';
 import 'grid_choice.dart';
 
 /// Creating, listing and resuming profiles.
@@ -86,6 +87,12 @@ class ProfileRepository {
                 'orientation': grid.orientation.name,
                 'iconSize': grid.iconSize.name,
                 'profanity': profanity ?? band.swearsByDefault,
+                // Written here rather than left to the getters. A default that
+                // falls out of a getter reaches every profile that never chose
+                // — including boards laid out before it existed, which these
+                // two would shrink.
+                'prediction': ProfileSettings.predictionForNewProfiles,
+                'breadcrumbs': ProfileSettings.breadcrumbsForNewProfiles,
               }),
             ),
             createdAt: ts,

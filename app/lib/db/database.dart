@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -28,7 +30,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -89,9 +91,48 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         // it has nothing to say until it has watched a few sentences.
         await m.createTable(predictionPairs);
       }
+
+      if (from < 5) {
+        // The suggestion strip and the breadcrumb trail are given to new
+        // profiles, and both take their height from the grid. A profile that
+        // predates them is written down as not having them, so that arriving
+        // at a default cannot shorten every button on a board somebody has
+        // already learned.
+        await _recordStripsAsOff(this);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+}
+
+/// Writes an explicit value for a setting a profile never chose.
+///
+/// Settings live as JSON on the profile row, so a new key is normally absent
+/// and its getter decides. That is fine for a setting nothing can see, and
+/// wrong for one that changes the size of every button: a getter defaulting to
+/// on would reach every board already in use. Writing the current behaviour
+/// down leaves those boards as they are, and leaves the choice with a
+/// caregiver.
+Future<void> _recordStripsAsOff(WordbridgeDatabase db) async {
+  final profiles = await db.select(db.profiles).get();
+
+  for (final profile in profiles) {
+    Map<String, dynamic> settings;
+    try {
+      settings = Map<String, dynamic>.from(
+        jsonDecode(profile.settingsJson) as Map,
+      );
+    } catch (_) {
+      settings = {};
+    }
+
+    settings.putIfAbsent('prediction', () => false);
+    settings.putIfAbsent('breadcrumbs', () => false);
+
+    await (db.update(db.profiles)..where((p) => p.id.equals(profile.id))).write(
+      ProfilesCompanion(settingsJson: Value(jsonEncode(settings))),
+    );
+  }
 }

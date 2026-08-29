@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:wordbridge/db/database.dart';
+import 'package:wordbridge/features/profiles/profile_settings.dart';
 
 /// Upgrading a device that someone already relies on.
 ///
@@ -231,7 +234,7 @@ void main() {
     // Forces the upgrade to run.
     await db.select(db.profiles).get();
 
-    expect(db.schemaVersion, 4);
+    expect(db.schemaVersion, 5);
   });
 
   test('the board survives the upgrade untouched', () async {
@@ -290,6 +293,32 @@ void main() {
     // somebody's speech that they did not ask for.
     expect(await db.select(db.predictionPairs).get(), isEmpty);
   });
+
+  test(
+    'an upgraded board does not gain a strip that would shrink it',
+    () async {
+      // Both strips take their height from the grid, so arriving at a default
+      // would shorten every button on a board somebody has already learned. The
+      // upgrade writes the current behaviour down instead, which is what lets
+      // the getters default to on for everyone who comes after.
+      final db = openUpgraded();
+      addTearDown(db.close);
+
+      final profile = await (db.select(
+        db.profiles,
+      )..where((p) => p.id.equals('default'))).getSingle();
+
+      final settings = jsonDecode(profile.settingsJson) as Map<String, dynamic>;
+
+      expect(settings['prediction'], isFalse);
+      expect(settings['breadcrumbs'], isFalse);
+
+      final live = ProfileSettings(db, 'default');
+      await live.load();
+      expect(live.prediction, isFalse);
+      expect(live.breadcrumbs, isFalse);
+    },
+  );
 
   test('no word is taken off the board by the upgrade', () async {
     // The stored level decides what is drawn from version 3 onward, and no

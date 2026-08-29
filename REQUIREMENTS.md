@@ -117,7 +117,8 @@ Three consequences, all enforced in code:
 | Greetings, toileting, safeguarding and money vocabulary | **done** |
 | A picture is found automatically when a word is added | **done** |
 | Pictures browsable and searchable, fetched on demand | **done** |
-| Word prediction in its own strip, learned per profile, off by default | **done** |
+| Word prediction in its own strip, learned per profile, on for new profiles | **done** |
+| Breadcrumb trail of the route to a word, on for new profiles | **done** |
 | Yes/no and wh-questions — "are you ok?", "what is that?" | **done** |
 | A new shipped board reaches profiles already in use, moving nothing | **done** |
 | Related verbs side by side, and a `doing` board for the rest | **done** |
@@ -428,6 +429,159 @@ measurements are the useful part:
 `DateTime.now()`. The timer and the wall clock are the same thing in production
 and two different things under a test harness, and a gate on the tap path has to
 be testable.
+
+### 4.8 Breadcrumbs — agreed, not built
+
+A strip at the bottom of the screen showing the path taken to reach a word:
+`home → body → more words → buttocks`. **Toggleable, default on.**
+
+The crumbs read what the keys read — the paging key says `more words` and the
+wheel key says `more categories` — because a crumb naming something the board
+does not is a route nobody can follow. The trail starts at `home`, which is
+what makes a one-step route read as a route.
+
+What it is for: a word two or three movements deep is reached by a sequence,
+and the sequence is the thing being learned. Showing it makes the route legible
+to whoever is sitting alongside — so a caregiver can see how a word was found
+and help repeat it, rather than watching a word appear and not knowing where
+from.
+
+Constraints it inherits:
+
+- **It costs grid height**, like the prediction strip, so it is subject to the
+  same rule: turning it on shrinks every button. New profiles get it on;
+  existing boards keep their geometry until a caregiver chooses otherwise, and
+  the toggle is instantly reversible with nothing rebuilt.
+- Auto-return is on by default, so most trails are one or two steps. The strip
+  has to read well at length 1 and not jump about between lengths.
+- It must never become a navigation control. Tapping a crumb to jump back would
+  be a second route to a board, and a word's motor path has to be one sequence,
+  not two.
+
+### 4.9 Word prediction on by default — agreed, not built
+
+Prediction (§4.3) currently defaults off. It should default **on**.
+
+⚠️ **The default cannot simply be flipped.** `ProfileSettings.prediction`
+falls back to `false` when no value is stored, so changing the fallback would
+switch it on for every existing profile that never chose — shrinking every
+button on a board somebody has already learned, silently, on update. That is
+the exact failure this project exists to prevent.
+
+So: on by default for profiles created from here, and a migration that writes
+the current effective value explicitly for profiles that already exist, leaving
+their boards untouched. Turning it on afterwards stays a caregiver's choice and
+stays instantly reversible.
+
+### 4.10 Two ways to choose a form of "to be" — agreed, not built
+
+The copula keys (`am/is/are`, `was/were`) hold one location each and produce a
+form that agrees with the subject. Two ways of choosing between the forms, as a
+per-profile setting.
+
+**Toggle — the default.** The first tap gives the form that agrees with
+whatever subject is already there, and each further tap cycles to the next form
+of the same tense, replacing the one before it rather than appending. Every tap
+speaks the new form, so the choice is made by ear. Nothing is repaired
+afterwards: the user has chosen, and a repair would overwrite them.
+
+The first tap staying agreement-driven is what makes this cheap — mid-sentence
+it is right first time and the cycle is never needed. It only earns its keep at
+the start of a question, where there is nothing to agree with yet.
+
+**Agree — the existing behaviour.** A provisional form goes in and settles once
+the subject arrives: "is" then "you" becomes "are you", the same way `a` becomes
+`an`.
+
+⚠️ **The repair has to re-speak.** Every word speaks as it is tapped, so the
+user hears "is", then "you" — and never hears the correction. The sentence they
+heard themselves say is not the sentence in the bar. When a repair changes the
+form, the corrected pair has to be spoken.
+
+That gap is the reason toggle is the default: it never says a word it then has
+to take back.
+
+### 4.11 Vocabulary level — recalibrate, and ask at setup
+
+**The levels do not currently mean anything.** Measured on the shipped
+vocabulary:
+
+| Level | Words drawn | Description shown |
+|---|---|---|
+| 1 | 236 of 408 | "Core words only. The rest of the board stays reserved." |
+| 2 | 400 of 408 | "Core words and the starter fringe vocabulary." |
+| 3 | 408 of 408 | "Everything, including anything added since." |
+
+Level 2 to 3 is **eight words**. Level 1 draws 58% of the vocabulary and is not
+a beginner board by any reading. Two of the three positions are
+indistinguishable and the third does not do what its own description claims.
+
+This is a calibration failure, not a design failure. The mechanism is the
+best-attested practice in the customization literature — Ekis, Klein,
+AssistiveWare's Progressive Language and LAMP's own Vocabulary Builder all say
+the same thing: **start at the final grid size and hide, never resize.** Every
+cell is materialised from day one and most are simply not drawn, so revealing a
+word months later puts it exactly where it always was. Levels were assigned word
+by word as vocabulary was added, and the total was never counted.
+
+**To do:**
+
+- **Recalibrate.** Level 1 a genuine one-hit board, level 2 a real transition,
+  level 3 everything. The counts have to match the descriptions, or the
+  descriptions have to change.
+- **Ask at profile setup**, alongside orientation and icon size, rather than
+  leaving it as a slider a caregiver has to go looking for. Phrase it as what a
+  person is ready for, not as a level number.
+- **Say it is reversible.** The setup copy should note that if the board looks
+  overwhelming it can be changed in settings, and that changing it moves
+  nothing — words appear and disappear where they always were.
+
+Safe for existing profiles by construction: `buttons.vocab_level` is a stored
+column per vocabulary, so recalibrating the seed changes what *new* boards get
+and cannot take a word off a board already in use.
+
+### 4.12 Search results show no pictures until one is chosen
+
+In "Change the picture", searching lists results as **alt text only**. Pick one,
+and the pictures for the whole result set appear at once — as though nothing is
+fetched until something *has* to be, and then everything is.
+
+Which makes the picker close to unusable for its actual purpose: choosing
+between pictures by looking at them. A caregiver reading a list of words is
+choosing blind, and the one thing this screen exists for is to see the picture
+before committing to it.
+
+Suspected: the picker never subscribes to `SymbolResolver.ready`, so a queued
+download that lands does not repaint the row that asked for it. Assigning a
+symbol rebuilds the sheet, which is why everything appears at once. `SymbolView`
+was given that subscription; the picker was not. Confirm before fixing — the
+symptom also fits a resolver that only queues on a *visible* row.
+
+### 4.13 Levels as words per page, and an evidenced first level
+
+Two corrections to §4.11, which framed the levels as totals across the whole
+vocabulary:
+
+- **Think in words per page, not words in total.** What a person faces is one
+  board at a time. "236 words" says nothing about whether the home board is
+  approachable; forty words on a page is a different experience at 7×12 than at
+  12×18, and the same total spread over seven boards is not the same thing
+  twice. The level bands should be expressed and tested per page.
+- **The first level should be evidenced, not assembled by taste.** There is
+  published work on what a starting AAC vocabulary should contain, and it
+  should decide this rather than a judgement call:
+  - **Project Core Universal Core 36** (CLDS, UNC-Chapel Hill) — the
+    evidence-based floor already cited in §7.
+  - **Banajee, DiCarlo & Buras-Stricklin (2003)** — toddler core, covers 96.3%
+    of toddler word use from a very short list.
+  - **Marvin, Beukelman & Bilyeu (1994)** — preschool core.
+  - **Boenisch & Soto (2015)**, *AAC* 31(1) — the core vocabulary of school-age
+    children who use AAC, which is the population, not a proxy for it.
+  - **Thistle & Wilkinson (2013)** on how many symbols a display should carry
+    before search cost outweighs vocabulary gained — the direct evidence for a
+    per-page ceiling.
+
+  Where the sources disagree, say so and pick with the reason stated.
 
 ### 4.6 Still to do
 
