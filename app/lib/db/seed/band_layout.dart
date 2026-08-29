@@ -94,6 +94,7 @@ class Band<T> {
     required this.name,
     required this.items,
     this.minLines = 0,
+    this.maxLines,
     this.reserveLines = 0,
     this.reserveRank = 100,
     this.shedRank = 100,
@@ -123,6 +124,19 @@ class Band<T> {
   /// reserved column costs a whole column — at 7x12 that is 11 against 6 — so
   /// a guaranteed reserve is nearly twice as expensive on the row axis.
   final int minLines;
+
+  /// The widest this band may ever be, however much room the grid has.
+  ///
+  /// For a band whose arrangement, not just its order, carries meaning. The
+  /// verbs are read as rows of three — go beside stop, get beside take, open
+  /// beside close — and [BandFill.acrossBand] produces those rows only while
+  /// the band is exactly three lines wide. A fourth line is not extra room for
+  /// the same band; it is a different band with the same words in it.
+  ///
+  /// Words past the cap page like any others, which is the cheaper loss: a word
+  /// on the next page is one press away, while a pair pulled apart is two
+  /// locations to learn where there was one.
+  final int? maxLines;
 
   /// Extra empty lines this band would like if the grid turns out to have room
   /// to spare. Unlike [minLines], never at the expense of a word.
@@ -263,6 +277,21 @@ BandLayout<T> layOutBands<T>({
   final held = {for (final b in bands) b.name: b.minLines};
   final overflow = <BandOverflow<T>>[];
 
+  assert(
+    bands.every((b) => b.maxLines == null || b.minLines <= b.maxLines!),
+    'a band cannot be guaranteed more lines than it is allowed',
+  );
+
+  // A capped band gives up its surplus before the grid is measured at all. The
+  // cap is not about room — the words past it would break the arrangement even
+  // on a board with columns to spare.
+  for (final band in bands) {
+    final cap = band.maxLines;
+    if (cap == null) continue;
+    final drop = kept[band.name]!.length - cap * lineLength;
+    if (drop > 0) _shedFrom(band, kept[band.name]!, overflow, drop);
+  }
+
   int linesOf(Band<T> b) {
     final needed = (kept[b.name]!.length / lineLength).ceil();
     return needed > held[b.name]! ? needed : held[b.name]!;
@@ -273,9 +302,14 @@ BandLayout<T> layOutBands<T>({
   // A line at a time, and all of it from one band. A band owns whole lines, so
   // a word taken from a band with room to spare costs that word its place and
   // buys the grid nothing.
+  //
+  // Empty lines go first: words that exist beat space held for words that do
+  // not. A line held open is worth something only while there is room for it,
+  // and a reserve kept at the price of "because" is a reserve bought with the
+  // words it was meant to sit beside.
   while (totalWidth() > lineCount) {
+    if (_giveUpReserve(bands, kept, held, lineLength)) continue;
     if (_shedALine(bands, kept, held, overflow, lineLength)) continue;
-    if (_giveUpReserve(bands, held)) continue;
 
     throw StateError(
       'A ${rows}x$cols grid cannot hold the words that must always be '
@@ -317,13 +351,7 @@ BandLayout<T> layOutBands<T>({
       final at = across
           ? (line + i % wrap) * lineLength + i ~/ wrap
           : start + i;
-      placed.add((
-        row: axis == BandAxis.columns ? at % lineLength : at ~/ lineLength,
-        col: axis == BandAxis.columns ? at ~/ lineLength : at % lineLength,
-        band: band.name,
-        value: items[i].value,
-        level: items[i].level,
-      ));
+      placed.add(_placement(at, lineLength, axis, band.name, items[i]));
     }
 
     if (band.startsLine) {
@@ -399,15 +427,7 @@ bool _shedALine<T>(
     final drop = items.length - (lines - 1) * lineLength;
     if (drop <= 0) continue;
 
-    // The least important words in the band, not the last ones in it. A band
-    // holds its words in the order they read, so its final line is as likely
-    // to be core vocabulary as anything else — taking a line off the end would
-    // shed by position and lose "good" while keeping a word nobody has needed
-    // yet. What survives re-packs in declared order either way.
-    final candidates = [
-      for (var i = 0; i < items.length; i++)
-        if (!items[i].essential) [items[i].pageRank, band.shedRank, i],
-    ]..sort((a, b) => _greater(a, b) ? -1 : 1);
+    final candidates = _disposable(band, items);
     if (candidates.length < drop) continue;
 
     final taken = candidates.take(drop).toList();
@@ -434,15 +454,258 @@ bool _shedALine<T>(
   return true;
 }
 
-/// Takes one column back from the largest remaining reserve.
+/// Lays a later page of a group onto the lines its bands already own.
 ///
-/// Only reached once every non-essential word has already moved to the
-/// overflow list, because a word on the next page is still sayable and a
-/// reserve given away is not recoverable.
-bool _giveUpReserve<T>(List<Band<T>> bands, Map<String, int> held) {
+/// Page one decides where a region is and every page after it agrees. A region
+/// that moved when the user paged would be a second thing to learn about one
+/// group of words, and under row-column scanning it would make the first press
+/// — the one that narrows to a region — worth nothing.
+///
+/// [anchors] is what the pages before this one assigned. A band shed entirely
+/// off page one owns no lines there, so it is given lines on the first page it
+/// appears on, out of the ones whose owner has nothing to put here; the caller
+/// keeps that assignment and hands it back for every page after.
+///
+/// A band that has run out of its own lines grows into adjacent ones nothing
+/// else needs on this page before it pages anything. A page is a movement every
+/// time the word is said; an unclaimed column beside a band is not. What that
+/// costs is that a band's *extent* can differ page to page — its start, which
+/// is what a person reaches for, does not.
+BandLayout<T> layOutOnto<T>({
+  required int rows,
+  required int cols,
+  required List<Band<T>> bands,
+  required Map<String, ({int first, int last})> anchors,
+  BandAxis axis = BandAxis.columns,
+  int systemRows = 1,
+  int pinnedCols = 1,
+}) {
+  final contentRows = rows - systemRows;
+  final contentCols = cols - pinnedCols;
+  final lineLength = axis == BandAxis.columns ? contentRows : contentCols;
+  final lineCount = axis == BandAxis.columns ? contentCols : contentRows;
+
+  final kept = {
+    for (final b in bands) b.name: [...b.items],
+  };
+  final overflow = <BandOverflow<T>>[];
+
+  for (final band in bands) {
+    final cap = band.maxLines;
+    if (cap == null) continue;
+    final drop = kept[band.name]!.length - cap * lineLength;
+    if (drop > 0) _shedFrom(band, kept[band.name]!, overflow, drop);
+  }
+
+  // A band absent from this page is absent from every page after it — a page
+  // is built from the overflow of the one before it, and overflow only shrinks.
+  // So
+  // its lines are free here for good, and handing them to a band that has none
+  // cannot collide with an owner returning later.
+  final free = List<bool>.filled(lineCount, true);
+  final lines = <String, ({int first, int last})>{};
+
+  // A band takes its own lines from the start of its run, and only as many as
+  // its words here need. The rest of the run is nobody's on this page: holding
+  // it would be holding empty space at the price of a band that has none, which
+  // is the ordering page one already refuses.
+  for (final band in bands) {
+    final anchor = anchors[band.name];
+    if (anchor == null) continue;
+
+    final need = (kept[band.name]!.length / lineLength).ceil();
+    final width = anchor.last - anchor.first + 1;
+    final take = need < width ? need : width;
+    lines[band.name] = (first: anchor.first, last: anchor.first + take - 1);
+    for (var l = anchor.first; l < anchor.first + take; l++) {
+      free[l] = false;
+    }
+  }
+
+  // Bands with no lines yet are given some, as near as the free space allows to
+  // where declaration order puts them. On the root board that order is the
+  // Fitzgerald sentence order, so a band dropped in at the far end would read
+  // as a different sentence.
+  for (final band in bands) {
+    if (lines.containsKey(band.name)) continue;
+
+    var after = 0;
+    for (final other in bands) {
+      if (other.name == band.name) break;
+      final anchor = anchors[other.name];
+      if (anchor != null && anchor.last + 1 > after) after = anchor.last + 1;
+    }
+
+    final need = (kept[band.name]!.length / lineLength).ceil();
+    final run = _freeRun(free, need, after);
+    if (run == null) continue;
+
+    lines[band.name] = run;
+    for (var l = run.first; l <= run.last; l++) {
+      free[l] = false;
+    }
+  }
+
+  // Only now, once every band has somewhere to be, does a band that wants more
+  // room take what is going spare.
+  for (final band in bands) {
+    final own = lines[band.name];
+    if (own == null) continue;
+
+    // No cap to check here: a capped band has already given up everything past
+    // it, so what is left never asks for more lines than it may have.
+    var last = own.last;
+    final need = (kept[band.name]!.length / lineLength).ceil();
+    while (last - own.first + 1 < need &&
+        last + 1 < lineCount &&
+        free[last + 1]) {
+      last += 1;
+      free[last] = false;
+    }
+    lines[band.name] = (first: own.first, last: last);
+  }
+
+  final placed = <BandPlacement<T>>[];
+
+  for (final band in bands) {
+    final own = lines[band.name];
+    final items = kept[band.name]!;
+
+    if (own == null) {
+      for (final item in items) {
+        overflow.add((band: band.name, item: item));
+      }
+      continue;
+    }
+
+    final width = own.last - own.first + 1;
+    final drop = items.length - width * lineLength;
+    if (drop > 0) _shedFrom(band, items, overflow, drop);
+
+    final across = band.fill == BandFill.acrossBand;
+    for (var i = 0; i < items.length; i++) {
+      final at = across
+          ? (own.first + i % width) * lineLength + i ~/ width
+          : own.first * lineLength + i;
+      placed.add(_placement(at, lineLength, axis, band.name, items[i]));
+    }
+  }
+
+  // Left to right, which is not declaration order once a band has been given
+  // lines somewhere else. The map is what names the regions on the board, and
+  // a caregiver reading it should read it the way the board is drawn.
+  final ordered = lines.entries.toList()
+    ..sort((a, b) => a.value.first.compareTo(b.value.first));
+
+  return BandLayout(
+    placed: placed,
+    overflow: overflow,
+    bandOrder: [for (final b in bands) b.name],
+    bandLines: {for (final e in ordered) e.key: e.value},
+    axis: axis,
+    contentRows: contentRows,
+    contentCols: contentCols,
+  );
+}
+
+/// The first run of [need] free lines at or after [from], or the longest free
+/// run anywhere if nothing that wide is left.
+({int first, int last})? _freeRun(List<bool> free, int need, int from) {
+  ({int first, int last})? longest;
+
+  for (var start = 0; start < free.length; start++) {
+    if (!free[start]) continue;
+    var end = start;
+    while (end + 1 < free.length && free[end + 1]) {
+      end += 1;
+    }
+
+    if (start >= from && end - start + 1 >= need) {
+      return (first: start, last: start + need - 1);
+    }
+    if (longest == null || end - start > longest.last - longest.first) {
+      longest = (first: start, last: end);
+    }
+    start = end;
+  }
+
+  if (longest == null) return null;
+  final width = longest.last - longest.first + 1;
+  return width > need
+      ? (first: longest.first, last: longest.first + need - 1)
+      : longest;
+}
+
+BandPlacement<T> _placement<T>(
+  int at,
+  int lineLength,
+  BandAxis axis,
+  String band,
+  BandItem<T> item,
+) => (
+  row: axis == BandAxis.columns ? at % lineLength : at ~/ lineLength,
+  col: axis == BandAxis.columns ? at ~/ lineLength : at % lineLength,
+  band: band,
+  value: item.value,
+  level: item.level,
+);
+
+/// A band's words ordered most disposable first, as `[pageRank, shedRank,
+/// index]` keys.
+///
+/// The least important words in the band, not the last ones in it. A band holds
+/// its words in the order they read, so its final line is as likely to be core
+/// vocabulary as anything else — shedding by position would lose "good" while
+/// keeping a word nobody has needed yet. What survives re-packs in declared
+/// order either way.
+List<List<int>> _disposable<T>(Band<T> band, List<BandItem<T>> items) => [
+  for (var i = 0; i < items.length; i++)
+    if (!items[i].essential) [items[i].pageRank, band.shedRank, i],
+]..sort((a, b) => _greater(a, b) ? -1 : 1);
+
+/// Moves [drop] words off one band, least important first.
+void _shedFrom<T>(
+  Band<T> band,
+  List<BandItem<T>> items,
+  List<BandOverflow<T>> overflow,
+  int drop,
+) {
+  final candidates = _disposable(band, items);
+  if (candidates.length < drop) {
+    throw StateError(
+      'The "${band.name}" band holds $drop words more than it may show, and '
+      'too many of them must always be reachable to give any up.',
+    );
+  }
+
+  // Descending, so each removal leaves the indices below it valid.
+  final indices = [for (final k in candidates.take(drop)) k[2]]
+    ..sort((a, b) => b.compareTo(a));
+  for (final i in indices) {
+    overflow.add((band: band.name, item: items.removeAt(i)));
+  }
+}
+
+/// Takes one line back from the largest reserve still holding an empty one.
+///
+/// Tried before any word is shed. A reserve is space held for words nobody has
+/// added yet, and the words already in the vocabulary are not what it should be
+/// paid for. What it costs the reserve is a page press, not the line: the
+/// caller hands a denied reserve to the first page with room for it.
+///
+/// Only lines a band is holding beyond what its words need count. Decrementing
+/// past that frees nothing, because the band's own words still ask for the
+/// line — it would spin without narrowing the board.
+bool _giveUpReserve<T>(
+  List<Band<T>> bands,
+  Map<String, List<BandItem<T>>> kept,
+  Map<String, int> held,
+  int lineLength,
+) {
   String? widest;
   for (final b in bands) {
-    if (held[b.name]! < 1) continue;
+    final needed = (kept[b.name]!.length / lineLength).ceil();
+    if (held[b.name]! <= needed) continue;
     if (widest == null || held[b.name]! > held[widest]!) widest = b.name;
   }
 

@@ -1393,7 +1393,7 @@ for real (bundle size), or stop declaring the ones that are not bundled and let
 since the licences require the credit to be reachable from inside the app and
 that must stay true either way.
 
-### 4.37 Joining words take the root board's spare column — agreed, not built
+### 4.37 Joining words take the root board's spare column — delivered
 
 The root board holds one empty column, labelled `THINGS`, reserved so a
 particular person's most-used nouns can be promoted to the root board and cost
@@ -1476,7 +1476,56 @@ Ordering, stated once so it is not re-derived: **words that exist beat space
 held for words that do not.** Within the words, `level` then `pageRank` decide,
 unchanged.
 
-### 4.38 A band keeps its lines across every page of a group — agreed, not built
+#### What shipped
+
+Three changes, built with §4.38 as one piece of work.
+
+- **`_giveUpReserve` runs before `_shedALine`, not after.** The ordering that
+  caused the bug, reversed where it was written. It only offers lines a band is
+  holding *beyond* what its own words need, because decrementing past that frees
+  nothing and loses the band's floor — and the shedding that follows then takes
+  the words the floor was there to keep.
+- **`Band.maxLines`**, the cap the engine did not have. `verbs` is capped at
+  three, which is the arrangement rather than a limit that happens to be three:
+  the band fills across its lines and the rows are triples — want/need/like,
+  go/stop/wait, can/get/take. Without the cap the freed column goes to `verbs`
+  at 7x12 and 9x14, re-wrapping every one of those rows. Words past the cap page
+  like any others.
+- **A denied reserve is carried to the first page with room for it**, by the
+  paging loop rather than by the layout, since a band with no words produces no
+  overflow to carry it.
+
+Measured across all 98 buildable grids, against the same measurement on the
+previous commit:
+
+| | result |
+|---|---|
+| **7x12** | byte-identical to the board that shipped |
+| **7x11, 8x10** | all six joining words back on page one, `THINGS` on page two |
+| **9x14** | `verbs` was four columns wide and its pairs were already apart; now three |
+| every grid | no word pages to keep a held line — asserted by laying the board out again with the reserve removed and comparing page one |
+
+**The verb pairs still come apart on a grid narrow enough that the band has to
+shed** — the words between `go` and `stop` are gone, so no width saves them.
+That is a cost of the grid, not of the cap, and it is what the test says.
+
+#### Left open
+
+**`articles` still sheds whole at 6x12, 5x14, 5x8, 10x8 and 11x7.** On those
+grids the reserve was already given up and the board is genuinely short of
+columns; `shedRank: 7` puts articles second from last, so they are what goes.
+The decision recorded here was joining words against `THINGS`, which is settled.
+Whether joining words should also outrank `determiners`, `places` or `endings`
+is a different question and has not been asked. Raising their rank changes no
+board at 7x11, 7x12, 8x10 or 9x14.
+
+**`verbs` has no `minLines: 3`.** Guaranteeing the arrangement rather than
+capping it would keep the pairs together on narrow grids, at the price of a band
+holding three columns while another sheds words — which is the ordering §4.37
+just refused, except that here the lines would be held for words that exist.
+Worth deciding; not decided.
+
+### 4.38 A band keeps its lines across every page of a group — delivered
 
 Reported: on an iPad mini at medium icons, the `DOING` columns are 4, 5 and 6
 on `home` and columns 1 and 2 on `home 2`. Asked: what is the value of holding
@@ -1552,6 +1601,55 @@ Two consequences worth stating:
 - **The band map becomes a property of the group, not of the board.** Region
   labels then read the same on every page, which is the same fix seen from the
   caregiver's side.
+
+#### What shipped
+
+`layOutOnto` lays out every page after the first onto the lines the pages before
+it assigned. `pageBands` keeps that assignment and hands it back each time.
+Order within a page: a band takes its own lines from its start, and only as many
+as its words here need; a band with none is given some, as near as the free
+space allows to where declaration order puts it; then a band short of room grows
+rightward into lines nothing else needs. Its **start** never moves, which is what
+the tests assert across every buildable grid and every board group.
+
+A band's own map is now sorted left to right rather than by declaration order,
+because once a band has been given lines somewhere else the two disagree, and
+the map is what names the regions on the board.
+
+**A capped band's growth needs no cap check.** The cap is applied before the
+grid is measured, so what is left never asks for more lines than it may have.
+The guard was written, mutation-tested, found unreachable, and deleted.
+
+#### The measurement was wrong, and the trade is real
+
+The figures in the section above — 7x12: 12 pages against 9, 7x11: 13 against
+11, 5x8: 23 against 17 — **do not reproduce.** Measured again across all 98
+buildable grids, home board plus every category at the child preset:
+
+| | total pages, 98 grids |
+|---|---|
+| before | 1421 |
+| anchoring + the reserve ordering | 1430 |
+| plus `verbs` capped at three | 1448 |
+
+So consistency costs **one page on 8 of 98 grids**, every one of them at or one
+column from the minimum width — 4x7, 5x12, 6x6, 6x8, 7x6, 8x6 (two), 9x6, 10x6.
+The other 90 are unchanged, 7x11 and 7x12 among them. The `verbs` cap costs one
+page on 18 more, all of them wide or tall grids where the band had room to
+sprawl into four columns.
+
+That is still worth it, but it is a cost and not a free win, and the earlier
+claim should not be repeated.
+
+#### Left open
+
+**A band grows rightward only.** Free lines to its left are not offered, because
+its start is what a person reaches for. A band hemmed in on the right pages
+while space sits unused beside it.
+
+**Growth is settled by declaration order, not by `pageRank`.** The band declared
+first takes a contested free line even if the word it puts there matters less
+than the one the next band pages.
 
 ### 4.39 Numbers — delivered
 

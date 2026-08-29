@@ -219,6 +219,10 @@ final homeBands = <Band<SeedWord>>[
   Band(
     name: 'verbs',
     shedRank: 1,
+    // Three, because the rows above are triples: want/need/like, go/stop/wait,
+    // can/get/take. A fourth column re-wraps every one of them and the pairs
+    // this band is arranged around end up in different rows.
+    maxLines: 3,
     fill: BandFill.acrossBand,
     items: [
       w('want', PartOfSpeech.verb, essential: true),

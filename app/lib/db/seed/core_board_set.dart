@@ -283,18 +283,34 @@ List<BandLayout<SeedWord>> pageBands({
   BandAxis axis = BandAxis.columns,
 }) {
   final pages = <BandLayout<SeedWord>>[];
+  final anchors = <String, ({int first, int last})>{};
   var remaining = bands;
 
   while (true) {
-    final page = layOutBands(
-      rows: rows,
-      cols: cols,
-      bands: remaining,
-      axis: axis,
-    );
+    final page = pages.isEmpty
+        ? layOutBands(rows: rows, cols: cols, bands: remaining, axis: axis)
+        : layOutOnto(
+            rows: rows,
+            cols: cols,
+            bands: remaining,
+            anchors: anchors,
+            axis: axis,
+          );
     pages.add(page);
 
-    if (page.overflow.isEmpty) return pages;
+    // The lines a band is given the first time it appears, and what it owns
+    // from then on — not the extent it ended up with, which is narrower on a
+    // page it had little to put on and wider on one where it borrowed a free
+    // line. The two never disagree about what fits, because a page is built
+    // from the last one's overflow and a band's needs only shrink; the
+    // distinction is which of them the rule is.
+    for (final entry in page.bandLines.entries) {
+      anchors.putIfAbsent(entry.key, () => entry.value);
+    }
+
+    if (page.overflow.isEmpty) {
+      return _withReserves(pages, bands, anchors, rows, cols, axis);
+    }
 
     // A page that placed nothing would loop forever. The layout engine always
     // fits at least one column of words, so this guards a future change rather
@@ -316,6 +332,7 @@ List<BandLayout<SeedWord>> pageBands({
     // whose pairs came apart between pages would be a second thing to learn
     // about one group of words.
     final fills = {for (final b in remaining) b.name: b.fill};
+    final caps = {for (final b in remaining) b.name: b.maxLines};
     final declared = {
       for (final b in remaining)
         b.name: {for (var i = 0; i < b.items.length; i++) b.items[i]: i},
@@ -326,6 +343,7 @@ List<BandLayout<SeedWord>> pageBands({
         Band(
           name: band,
           fill: fills[band]!,
+          maxLines: caps[band],
           items:
               [
                 for (final o in page.overflow)
@@ -338,6 +356,122 @@ List<BandLayout<SeedWord>> pageBands({
         ),
     ];
   }
+}
+
+/// Gives a reserve that lost page one a home on a later one.
+///
+/// A band held open for words nobody has added yet yields to words that exist —
+/// that is what makes "because" survive a narrow grid. What it yields is page
+/// one, not the reserve: a caregiver's own nouns still have a column of their
+/// own, one page press away, rather than being appended wherever there happens
+/// to be room years later.
+///
+/// It has no words, so nothing carries it forward on its own: paging moves
+/// items, and a band with none is not moved.
+List<BandLayout<SeedWord>> _withReserves(
+  List<BandLayout<SeedWord>> pages,
+  List<Band<SeedWord>> bands,
+  Map<String, ({int first, int last})> anchors,
+  int rows,
+  int cols,
+  BandAxis axis,
+) {
+  final denied = [
+    for (final band in bands)
+      if (band.minLines > 0 && !anchors.containsKey(band.name)) band,
+  ];
+  if (denied.isEmpty) return pages;
+
+  final lineCount = axis == BandAxis.columns ? cols - 1 : rows - 1;
+  final out = [...pages];
+
+  for (final band in denied) {
+    // Where declaration order puts it, so a reserve on the root board keeps its
+    // place in the Fitzgerald sentence order rather than landing in the first
+    // gap on the left.
+    var after = 0;
+    for (final other in bands) {
+      if (other.name == band.name) break;
+      final anchor = anchors[other.name];
+      if (anchor != null && anchor.last + 1 > after) after = anchor.last + 1;
+    }
+
+    final free = List<bool>.filled(lineCount, true);
+    var at = -1;
+
+    // From page two on, because page one is the one it gave up.
+    for (var page = 1; page < out.length; page++) {
+      free.fillRange(0, lineCount, true);
+      for (final entry in out[page].bandLines.values) {
+        for (var l = entry.first; l <= entry.last; l++) {
+          free[l] = false;
+        }
+      }
+      if (_runOf(free, band.minLines, after) != null) {
+        at = page;
+        break;
+      }
+    }
+
+    // Every page full, so the reserve gets one of its own. Guaranteed means
+    // guaranteed: a column a caregiver was promised and cannot find is worse
+    // than the page press it costs to reach.
+    if (at < 0) {
+      free.fillRange(0, lineCount, true);
+      at = out.length;
+      out.add(
+        BandLayout(
+          placed: const [],
+          overflow: const [],
+          bandOrder: const [],
+          bandLines: const {},
+          axis: axis,
+          contentRows: rows - 1,
+          contentCols: cols - 1,
+        ),
+      );
+    }
+
+    final run = _runOf(free, band.minLines, after)!;
+    final page = out[at];
+    final ordered = [...page.bandLines.entries, MapEntry(band.name, run)]
+      ..sort((a, b) => a.value.first.compareTo(b.value.first));
+
+    out[at] = BandLayout(
+      placed: page.placed,
+      overflow: page.overflow,
+      bandOrder: page.bandOrder,
+      bandLines: {for (final e in ordered) e.key: e.value},
+      axis: page.axis,
+      contentRows: page.contentRows,
+      contentCols: page.contentCols,
+    );
+    anchors[band.name] = run;
+  }
+
+  return out;
+}
+
+/// The first run of [need] free lines at or after [from], or the first one
+/// anywhere when there is none that late. Null when the page has no room.
+({int first, int last})? _runOf(List<bool> free, int need, int from) {
+  ({int first, int last})? earlier;
+
+  for (var start = 0; start < free.length; start++) {
+    if (!free[start]) continue;
+    var end = start;
+    while (end + 1 < free.length && free[end + 1]) {
+      end += 1;
+    }
+    if (end - start + 1 >= need) {
+      final run = (first: start, last: start + need - 1);
+      if (start >= from) return run;
+      earlier ??= run;
+    }
+    start = end;
+  }
+
+  return earlier;
 }
 
 Future<List<String>> _buildPagedBoards(

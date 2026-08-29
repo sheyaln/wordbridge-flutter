@@ -607,6 +607,250 @@ void main() {
     });
   });
 
+  group('a line held open against a word that exists', () {
+    test('the held line goes first', () {
+      // Four columns, and the two bands need three between them, but one of
+      // them is holding a column open for words nobody has added yet. The held
+      // column is what gives way — a word on the next page is a press away, and
+      // a word nobody has written yet is not there to lose anything.
+      final layout = layOutBands(
+        rows: 3,
+        cols: 5,
+        bands: [
+          band('verbs', ['go', 'stop', 'get', 'take']),
+          band('things', const [], minLines: 1),
+          band('joining', ['and', 'but', 'because', 'so']),
+        ],
+      );
+
+      expect(
+        shed(layout),
+        isEmpty,
+        reason: 'a word was pushed off to keep an empty column',
+      );
+      expect(layout.bandLines.containsKey('things'), isFalse);
+    });
+
+    test('a line the band\'s own words need is not a held line', () {
+      // Only the empty ones are on offer. A band asked to give back a line its
+      // own words are sitting on frees nothing and loses its floor, and then
+      // the shedding that follows takes the words it was guaranteed to keep.
+      final layout = layOutBands(
+        rows: 3,
+        cols: 4,
+        bands: [
+          band('names', ['mum', 'dad', 'nan', 'pop'], minLines: 2),
+          band('things', const [], minLines: 1),
+          band('verbs', ['a', 'b', 'c', 'd', 'e', 'f']),
+        ],
+      );
+
+      expect(
+        coords(layout).keys,
+        containsAll(['mum', 'dad', 'nan', 'pop']),
+        reason: 'a guaranteed band was stripped of its floor and then shed',
+      );
+      expect(layout.bandLines['names'], (first: 0, last: 1));
+      expect(layout.bandLines.containsKey('things'), isFalse);
+    });
+  });
+
+  group('a band that may not grow', () {
+    test('is capped even where the grid has room to spare', () {
+      // The cap is not about room. This band is read as rows of two — go beside
+      // stop, get beside take — and a third column re-wraps every one of them,
+      // so the words past the cap page rather than rearrange the rest.
+      final layout = layOutBands(
+        rows: 3,
+        cols: 9,
+        bands: [
+          Band(
+            name: 'verbs',
+            maxLines: 2,
+            fill: BandFill.acrossBand,
+            items: [
+              for (final w in ['go', 'stop', 'get', 'take', 'open', 'close'])
+                BandItem(w),
+            ],
+          ),
+        ],
+      );
+
+      expect(shed(layout), ['close', 'open']);
+      expect(coords(layout)['go']!.col, 0);
+      expect(coords(layout)['stop']!.col, 1);
+      expect(coords(layout)['get']!.col, 0);
+      expect(coords(layout)['take']!.col, 1);
+    });
+
+    test('sheds its least important words, not its last ones', () {
+      final layout = layOutBands(
+        rows: 4,
+        cols: 6,
+        bands: [
+          Band(
+            name: 'verbs',
+            maxLines: 1,
+            items: [
+              BandItem('go'),
+              BandItem('later', level: 3),
+              BandItem('stop'),
+              BandItem('wait'),
+            ],
+          ),
+        ],
+      );
+
+      expect(shed(layout), ['later']);
+    });
+  });
+
+  group('a later page of the same group', () {
+    test('puts a band back on the lines it owns', () {
+      // The whole argument of the board, one level down: a region that means
+      // "doing" teaches somebody where to look, and a region that moves when
+      // you page is learned twice. It matters more under row-column scanning,
+      // where the first press narrows to a region.
+      final layout = layOutOnto(
+        rows: 3,
+        cols: 6,
+        bands: [
+          band('verbs', ['open', 'close']),
+        ],
+        anchors: {
+          'pronouns': (first: 0, last: 1),
+          'verbs': (first: 2, last: 4),
+        },
+      );
+
+      expect(coords(layout)['open']!.col, 2);
+      expect(coords(layout)['close']!.col, 2);
+    });
+
+    test('a band shed off page one is given lines where it belongs', () {
+      // 1,414 band-and-grid combinations have an overflowing band with no
+      // page-one lines at all, because shedding takes whole lines and a band
+      // that gives up all of them gets no entry. "Keep your lines" has to say
+      // something for those, and what it says is where they start.
+      //
+      // The pronouns are not on this page, so their columns are free — and
+      // taking them would put the joining words to the left of the verbs, which
+      // on the root board is a different sentence.
+      final layout = layOutOnto(
+        rows: 3,
+        cols: 6,
+        bands: [
+          band('verbs', ['open']),
+          band('joining', ['and', 'but']),
+        ],
+        anchors: {
+          'pronouns': (first: 0, last: 1),
+          'verbs': (first: 2, last: 2),
+        },
+      );
+
+      expect(
+        layout.bandLines['joining']!.first,
+        3,
+        reason:
+            'a band with no lines of its own landed out of declaration order, '
+            'which on the root board is the sentence order',
+      );
+    });
+
+    test('takes only the lines its words here need', () {
+      // A band holding lines it has nothing to put in would be holding empty
+      // space at the price of a band that has none — the same ordering page one
+      // refuses. The verbs own three columns and have one word to put here, so
+      // two of them are the joining words' only way onto this page.
+      final layout = layOutOnto(
+        rows: 3,
+        cols: 4,
+        bands: [
+          band('verbs', ['open']),
+          band('joining', ['and', 'but']),
+        ],
+        anchors: {'verbs': (first: 0, last: 2)},
+      );
+
+      expect(
+        shed(layout),
+        isEmpty,
+        reason: 'the verbs held two empty columns and two words paged for them',
+      );
+      expect(layout.bandLines['verbs'], (first: 0, last: 0));
+    });
+
+    test('grows into free lines rather than costing a page', () {
+      // A page is a movement every time the word is said; an unclaimed column
+      // beside a band is not. Where nothing else needs the line, the band takes
+      // it and keeps its start.
+      final layout = layOutOnto(
+        rows: 3,
+        cols: 6,
+        bands: [
+          band('verbs', ['open', 'close', 'get', 'take']),
+        ],
+        anchors: {'verbs': (first: 1, last: 1)},
+      );
+
+      expect(shed(layout), isEmpty);
+      expect(layout.bandLines['verbs'], (first: 1, last: 2));
+    });
+
+    test('a capped band is still capped here', () {
+      final layout = layOutOnto(
+        rows: 4,
+        cols: 6,
+        bands: [
+          Band(
+            name: 'verbs',
+            maxLines: 1,
+            items: [
+              for (final w in ['open', 'close', 'get', 'take']) BandItem(w),
+            ],
+          ),
+        ],
+        anchors: {'verbs': (first: 1, last: 1)},
+      );
+
+      expect(shed(layout), ['take']);
+      expect(layout.bandLines['verbs'], (first: 1, last: 1));
+    });
+
+    test('will not grow over a line another band needs here', () {
+      final layout = layOutOnto(
+        rows: 4,
+        cols: 5,
+        bands: [
+          band('verbs', ['open', 'close', 'get', 'take']),
+          band('joining', ['and']),
+        ],
+        anchors: {'verbs': (first: 0, last: 0), 'joining': (first: 1, last: 1)},
+      );
+
+      expect(shed(layout), ['take']);
+      expect(coords(layout)['and']!.col, 1);
+    });
+
+    test('names its regions left to right', () {
+      // The map is what labels the regions on the board, and a caregiver
+      // reading it should read it the way the board is drawn — not in the order
+      // the bands happened to be declared.
+      final layout = layOutOnto(
+        rows: 3,
+        cols: 6,
+        bands: [
+          band('verbs', ['open']),
+          band('joining', ['and']),
+        ],
+        anchors: {'verbs': (first: 3, last: 3), 'joining': (first: 0, last: 0)},
+      );
+
+      expect(layout.bandLines.keys.toList(), ['joining', 'verbs']);
+    });
+  });
+
   test('a grid with no room for vocabulary is refused, not fudged', () {
     expect(
       () => layOutBands(

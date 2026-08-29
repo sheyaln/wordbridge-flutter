@@ -158,6 +158,22 @@ void main() {
     );
   });
 
+  testWidgets('the second page of the home board, with its regions named', (
+    tester,
+  ) async {
+    // The one to look at for the regions. Every band here sits on the columns
+    // it holds on page one, so the strip along the top reads the same on both —
+    // and the columns a band has nothing to put here stay empty rather than
+    // being handed to its neighbour.
+    await settings.set('regionLabels', true);
+    await pump(tester);
+    await openBoard(tester, 'home 2');
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/home_page_two_labelled.png'),
+    );
+  });
+
   testWidgets('a category board', (tester) async {
     await pump(tester);
     await openBoard(tester, 'food');
