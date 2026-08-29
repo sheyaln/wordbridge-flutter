@@ -1396,13 +1396,26 @@ Open questions before it can be built:
 Each of these is a real utterance a person would want, named rather than
 quietly absent:
 
-- **A plural subject behind a determiner.** "where are the people?" comes out
-  *"where is the people"*. The copula settles against the word immediately
-  after it, so a determiner in between blocks the agreement. Deferring past
-  determiners only helps for the handful of words known to be plural —
-  `copulaFor` has no morphological plural detection, so "where is my shoes"
-  would stay wrong either way. The honest fix is plural detection, not a
-  smarter repair.
+- **A plural subject behind a determiner, in the settling mode only.**
+  "where are the people?" comes out *"where is the people"* under
+  `CopulaMode.agree`: the copula settles against the word immediately after it,
+  so a determiner in between blocks the agreement.
+
+  ⚠️ **This was overstated. Under the default mode it is not a defect at all** —
+  toggle does not settle anything, so pressing the key twice gives "are" and
+  nothing overwrites it. It costs one extra press and is otherwise exactly the
+  sentence wanted. This is only reachable by a profile that has chosen the
+  other mode.
+
+  Also worth recording: **`people` is not a word this board can say.** It is a
+  category name and a band name, and `copulaFor` lists it among the plural
+  subjects, but nothing places it as a speakable button — so the example
+  sentence cannot be built at all, in either mode, for a different reason than
+  the one this entry claimed.
+
+  If it is fixed, the honest fix is plural detection rather than a smarter
+  repair: deferring past determiners only helps for the handful of words known
+  to be plural, and "where is my shoes" would stay wrong either way.
 - **A second sentence in one bar.** After a punctuation mark every grammar key
   is hidden, so "are you ok? is it my turn?" needs a clear in between.
 - **Contracted negatives** — "isn't it my turn?", "aren't you coming?". `not`
