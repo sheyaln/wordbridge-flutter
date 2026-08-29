@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../speech/tone.dart';
+import '../utterance/morphology.dart';
 import 'grid_choice.dart';
 
 /// Per-user preferences, held in the profile row.
@@ -140,6 +141,17 @@ class ProfileSettings extends ChangeNotifier {
   /// getter, so that it reaches new profiles without reaching boards that were
   /// laid out before it existed.
   static const breadcrumbsForNewProfiles = true;
+
+  /// How the copula keys choose between the forms of "to be".
+  ///
+  /// Cycling by default, because it never says a word it then has to take
+  /// back. Unlike the two strips, this default may live in the getter and
+  /// reach profiles that predate it: no cell moves, no button changes size,
+  /// and the first press produces the same word under either answer. The two
+  /// differ only from the second press onwards, which under the other answer
+  /// did nothing a person would want.
+  CopulaMode get copulaMode =>
+      _enum('copulaMode', CopulaMode.values, CopulaMode.toggle);
 
   /// Whether strong language is revealed on the boards that carry it.
   ///

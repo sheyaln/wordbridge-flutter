@@ -216,6 +216,7 @@ void _grammarTests() {
     String? text,
     bool inflected = false,
     bool atStart = false,
+    bool copulaCycles = false,
   }) => grammarHelperApplies(
     kind: kind,
     tense: tense,
@@ -223,6 +224,7 @@ void _grammarTests() {
     previousPos: after,
     previousInflected: inflected,
     atStart: atStart,
+    copulaCycles: copulaCycles,
   );
 
   group('endings appear only where they apply', () {

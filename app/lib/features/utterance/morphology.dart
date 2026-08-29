@@ -228,13 +228,63 @@ String copulaFor(String? subject, {required bool past}) {
   return 'is';
 }
 
-const _presentCopula = {'am', 'is', 'are'};
-const _pastCopula = {'was', 'were'};
+/// The forms of "to be", in the order the copula keys cycle them.
+///
+/// A fixed ring rather than one reordered by what fits: the number of presses
+/// between any two forms is then the same every time, which is the same
+/// promise the rest of the board makes. "are" sits second because a sentence
+/// that opens with the copula is far more often "are you...?" than "am I...?",
+/// so the second press is the one worth making cheap.
+const presentCopulaRing = <String>['is', 'are', 'am'];
+
+const pastCopulaRing = <String>['was', 'were'];
 
 /// Whether [word] is a form of "to be".
 bool isCopula(String word) {
   final form = word.trim().toLowerCase();
-  return _presentCopula.contains(form) || _pastCopula.contains(form);
+  return presentCopulaRing.contains(form) || pastCopulaRing.contains(form);
+}
+
+/// The ring [word] belongs to, or null if it is not a form of "to be".
+List<String>? copulaRingFor(String word) {
+  final form = word.trim().toLowerCase();
+  if (presentCopulaRing.contains(form)) return presentCopulaRing;
+  if (pastCopulaRing.contains(form)) return pastCopulaRing;
+  return null;
+}
+
+/// The form after [word] in its own ring, wrapping at the end.
+///
+/// Null for a word that is not a form of "to be".
+String? nextCopulaForm(String word) {
+  final ring = copulaRingFor(word);
+  if (ring == null) return null;
+
+  final at = ring.indexOf(word.trim().toLowerCase());
+  return ring[(at + 1) % ring.length];
+}
+
+/// How the copula keys choose between the forms of "to be".
+///
+/// One key holds am/is/are and one holds was/were, so something has to decide
+/// which form a press produces. The two answers differ only where the subject
+/// has yet to be tapped, which is to say at the start of a question.
+enum CopulaMode {
+  /// Each further press replaces the form before it with the next in the ring
+  /// and speaks it, so the choice is made by ear and nothing is corrected
+  /// afterwards.
+  ///
+  /// The first press still agrees with a subject already in the bar, which is
+  /// what keeps this cheap: mid-sentence it is right without a second press.
+  toggle('Press again to change it'),
+
+  /// A provisional form goes in and settles when the subject arrives, the way
+  /// "a" becomes "an".
+  agree('Correct it once the subject arrives');
+
+  const CopulaMode(this.label);
+
+  final String label;
 }
 
 /// The form of "to be" that agrees with a subject arriving after it.
@@ -247,8 +297,8 @@ bool isCopula(String word) {
 /// Null for a word that is not a form of "to be", which is left as it is.
 String? copulaAgreeingWith(String copula, String subject) {
   final form = copula.trim().toLowerCase();
-  if (_presentCopula.contains(form)) return copulaFor(subject, past: false);
-  if (_pastCopula.contains(form)) return copulaFor(subject, past: true);
+  if (presentCopulaRing.contains(form)) return copulaFor(subject, past: false);
+  if (pastCopulaRing.contains(form)) return copulaFor(subject, past: true);
   return null;
 }
 
@@ -276,6 +326,7 @@ bool grammarHelperApplies({
   required PartOfSpeech? previousPos,
   required bool previousInflected,
   required bool atStart,
+  required bool copulaCycles,
 }) {
   // Articles come before a noun phrase, so they belong at the start of a
   // sentence or after a verb or preposition — "want a drink", "in a car".
@@ -296,6 +347,13 @@ bool grammarHelperApplies({
   // to build.
   if (kind == null && (tense == 'present' || tense == 'past')) {
     if (atStart) return true;
+
+    // A key that changes the word it just produced has to stay reachable while
+    // that word is the last one, or the second press has nowhere to land.
+    // Every other rule here withholds a key that would do nothing; this one is
+    // the reverse, and it only opens where the press does something.
+    if (copulaCycles && isCopula(previousText ?? '')) return true;
+
     return switch (previousPos) {
       PartOfSpeech.pronoun ||
       PartOfSpeech.noun ||

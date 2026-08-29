@@ -410,9 +410,12 @@ class TalkScreenState extends State<TalkScreen> {
 
     switch (button.action) {
       case ButtonAction.speak:
-        _utterance.add(button.message, pos: button.partOfSpeech);
+        final repaired = _utterance.add(
+          button.message,
+          pos: button.partOfSpeech,
+        );
         _markReached(button.label);
-        await widget.speech.speak(button.speakText ?? button.message);
+        await widget.speech.speak(_withRepair(repaired, button));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
             _currentBoardId = _rootBoardId;
@@ -527,10 +530,21 @@ class TalkScreenState extends State<TalkScreen> {
   /// Nothing is read from the database first — the button arrived with the
   /// suggestion — so speech starts here as fast as it does from the grid.
   Future<void> _onSuggestion(Button button) async {
-    _utterance.add(button.message, pos: button.partOfSpeech);
-    await widget.speech.speak(button.speakText ?? button.message);
+    final repaired = _utterance.add(button.message, pos: button.partOfSpeech);
+    await widget.speech.speak(_withRepair(repaired, button));
 
     unawaited(_recordSuggestion(button));
+  }
+
+  /// What to say for a word that corrected the word in front of it.
+  ///
+  /// The pair is spoken rather than the correction alone: hearing "are" on its
+  /// own after "is" leaves the two to be assembled by someone who cannot see
+  /// the bar, while "are you" is the phrase as it now stands. Nothing is said
+  /// twice — this replaces the word's own utterance rather than following it.
+  String _withRepair(String? repaired, Button button) {
+    final spoken = button.speakText ?? button.message;
+    return repaired == null ? spoken : '$repaired $spoken';
   }
 
   /// Logs the word against the location it lives at, marked as a suggestion.
@@ -593,8 +607,12 @@ class TalkScreenState extends State<TalkScreen> {
       previousPos: previous?.pos,
       previousInflected: previous?.inflected ?? false,
       atStart: previous == null,
+      copulaCycles: _copulaMode == CopulaMode.toggle,
     );
   }
+
+  CopulaMode get _copulaMode =>
+      widget.settings?.copulaMode ?? CopulaMode.toggle;
 
   /// Inflects the last word, or appends an agreeing form of "to be".
   ///
@@ -614,11 +632,14 @@ class TalkScreenState extends State<TalkScreen> {
         return;
       }
 
-      // Opening a yes/no question, the subject is still to come, so what is
-      // spoken here is the provisional form the bar then settles. Every tap
-      // speaks: a key that goes silent at the start of a sentence is one the
-      // user has to learn an exception for.
-      final form = _utterance.addCopula(past: button.message == 'past');
+      // Every press speaks the form it produced, whether it appended one or
+      // changed the one already there. A key that goes silent is one the user
+      // has to learn an exception for, and under the cycling mode the sound is
+      // the only thing telling them which form they have landed on.
+      final form = _utterance.addCopula(
+        past: button.message == 'past',
+        mode: _copulaMode,
+      );
       await widget.speech.speak(form);
       return;
     }

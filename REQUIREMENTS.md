@@ -473,7 +473,52 @@ the current effective value explicitly for profiles that already exist, leaving
 their boards untouched. Turning it on afterwards stays a caregiver's choice and
 stays instantly reversible.
 
-### 4.10 Two ways to choose a form of "to be" — agreed, not built
+### 4.10 Two ways to choose a form of "to be" — delivered
+
+Both modes ship, as a per-profile radio choice under **Words and grammar**,
+defaulting to toggle.
+
+**Shipped as specified, with three things worth writing down:**
+
+- **The cycle is a fixed ring — `is → are → am` and `was → were`** — rather
+  than an order that reshuffles to put the likely form first. The number of
+  presses between any two forms is then the same every time, which is the
+  promise the rest of the board makes. `are` sits second because a sentence
+  that opens with the copula is far more often "are you…?" than "am I…?", so
+  the second press is the one worth making cheap. **"are you ok?" is two
+  presses.**
+- **Pressing the other tense switches rather than stacks.** "I am" on the past
+  key is "I was", agreeing with the subject in front of it, not "I am was".
+- **Cycling needed a hole cut in the availability rule.** `grammarHelperApplies`
+  hides the copula key after a verb, and a copula *is* a verb — so with the
+  contextual-grammar setting on, which is the default, the second press had
+  nowhere to land and toggle mode would have been dead on arrival while every
+  unit test passed. The key now stays reachable while a form of "to be" is the
+  last word, and only then. This is the one rule in that function that opens a
+  key rather than withholding one.
+
+**The repair now speaks, in both directions.** `UtteranceBar.add` returns the
+word it corrected, and the talk screen speaks the corrected pair in place of
+the word's own utterance — "is" then "you" is heard as "are you". Nothing is
+said twice.
+
+The same channel fixed the identical silent repair on the article, which was
+not in the brief: "a" then "apple" was heard as "a", then "apple", while the
+bar read "an apple". It is the same defect and the same three lines, so it was
+fixed rather than logged.
+
+**No migration, deliberately.** Unlike the two strips, this default lives in
+the getter and reaches profiles that predate it. Nothing moves, no button
+changes size, and the first press produces the same word under either answer —
+the two differ only from the second press onwards, which under the other answer
+did nothing anyone would want. Schema stays at 5.
+
+**Not done:** §4.6a's "where are the people?" is untouched. The copula still
+settles against the word immediately after it, so a determiner in between
+blocks the agreement, and toggle mode does not help — the fix is plural
+detection, not a smarter repair.
+
+### 4.10-old The original brief
 
 The copula keys (`am/is/are`, `was/were`) hold one location each and produce a
 form that agrees with the subject. Two ways of choosing between the forms, as a
@@ -501,7 +546,7 @@ form, the corrected pair has to be spoken.
 That gap is the reason toggle is the default: it never says a word it then has
 to take back.
 
-### 4.11 Vocabulary level — recalibrated; setup question outstanding
+### 4.11 Vocabulary level — recalibrated, and asked at setup
 
 **Recalibrated.** Level 1 is 99 words drawing **at most 36 on any page at any
 geometry**, which is the density Project Core publishes for a beginner's
@@ -524,13 +569,46 @@ relearned.
 `will` moved to level 2 with them, so tense arrives as one set rather than
 leaving level 1 with a future and no past.
 
-**Still to build: the setup question.** Ask at profile creation alongside
-orientation and icon size, phrased as what a person is ready for rather than a
-level number, noting it is adjustable and that changing it moves nothing —
-words appear and disappear where they always were. Copy has three true things
-to say: level 1 *is* the Universal Core 36 at the published beginner density;
-**level 2 is where the grammar keys arrive**, which a caregiver who wants
-sentences needs to know; level 3 is everything.
+**Asked at setup.** "What are they ready for?" sits between the icon-size
+question and strong language, as three cards. No level number appears on the
+page. Under the heading: *"Changeable at any time, in settings. Changing it
+moves nothing — words appear and disappear where they have always been, so a
+movement learned once is learned for good."*
+
+| Answer | What it says |
+|---|---|
+| Learning single words | "The Universal Core 36, and never more than 36 on a page. No word endings and no am/is/are, so “are you ok?” and the past tense are out of reach until the next step." |
+| Putting words together | "Adds the word endings, a and the, and am/is/are — the keys a sentence needs — along with the words an ordinary day takes." |
+| Using the whole board | "Everything, including anything added later." |
+
+The birthday still proposes the answer — `AgeBand.startingLevel`, under 6 to
+level 1 and everything else to level 2 — and an explicit choice overrides it,
+on the same nullable-field pattern the profanity switch uses: null means
+"follow the band", and changing the birthday returns to the new band's
+proposal. `ProfileRepository.create` takes `vocabLevel` beside `profanity` and
+falls back to the band when it is null. Nothing else in the app writes a
+level at creation.
+
+The caregiver slider's three descriptions were still describing the old
+236 / 400 / 408 split and now carry the same three sentences, each opening with
+the same readiness phrase, so the setting found later is recognisably the
+question already answered.
+
+**No totals in the copy.** 99 / 241 / 372 counts the shipped vocabulary; the
+teen and adult presets add their own extras on top (108 / 262 / 399 and
+112 / 271 / 404), so a total printed on the setup page would be wrong for two
+of the four bands. The density — never more than 36 on a page — holds for every
+band at every geometry and is what the copy claims instead.
+
+**Not claimed: -er/-est.** The endings band is `+s`, `+ed`, `+ing`, `+'s`,
+`am/is/are`, `was/were`. `MorphemeKind` has `comparativeEr` and
+`superlativeEst` and the morphology engine applies them, but no seeded button
+carries either, so the level-2 copy does not offer them.
+
+Covered by `test/setup_vocab_level_test.dart`: the level given to `create()` is
+the level stored, a level given with a birthday outranks the band, no level
+given follows the band, and the question on the page reaches the created
+profile.
 
 Verified safe for existing boards: `vocab_level` is written only on insert, no
 `UPDATE` on `buttons` anywhere names it, and `topUpVocabulary` returns early
@@ -593,6 +671,31 @@ download that lands does not repaint the row that asked for it. Assigning a
 symbol rebuilds the sheet, which is why everything appears at once. `SymbolView`
 was given that subscription; the picker was not. Confirm before fixing — the
 symptom also fits a resolver that only queues on a *visible* row.
+
+**Delivered.** The suspicion was right, and the mechanism is one step more
+specific. Each result was a `StatelessWidget` whose `FutureBuilder` re-ran
+`resolver.resolve` on every build. The first pass returns nothing and queues the
+download; the arrival then reaches nobody, so the row keeps drawing its word
+until something else rebuilds the sheet. Choosing a symbol calls `setState` for
+the fetch spinner, which rebuilds every row against a fresh future — over files
+that have since landed. Hence all at once. The second reading was wrong:
+resolution is queued for every row `GridView.builder` builds, and building
+lazily is what stops one search pulling sixty images.
+
+The row now holds its own resolution and watches `SymbolResolver.ready` for its
+own symbol, matched on `SymbolRef.key` rather than on the word — a board can
+match on the word because an auto-attached symbol carries it, but a search
+deliberately lists several pictures of one word and only the arrival may redraw.
+The subscription is cancelled in `dispose()`; the resolver outlives the sheet.
+
+It also draws through the shared `SymbolPicture` instead of a private copy of
+the same switch, which brings with it the `errorBuilder` and `placeholderBuilder`
+the copy lacked: a file that arrives corrupt leaves the word doing the work
+rather than putting a broken-image glyph in front of a caregiver.
+
+Covered by `test/symbol_picker_repaint_test.dart`: a download that lands draws
+itself with no further interaction, an arrival redraws only the row that asked
+for it, and a closed sheet stops resolving.
 
 ### 4.13 Levels as words per page, and an evidenced first level
 

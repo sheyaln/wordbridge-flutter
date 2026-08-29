@@ -17,6 +17,7 @@ import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import '../usage/logger.dart';
+import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
 import 'voice_screen.dart';
@@ -259,6 +260,67 @@ class _SettingsSection extends StatelessWidget {
   );
 }
 
+/// Which of the two ways the "am/is/are" and "was/were" keys behave.
+///
+/// One key holds three words, so something has to pick between them. Both
+/// answers agree with a subject that is already there, and they part company
+/// only at the start of a question, where there is nothing to agree with yet.
+class _CopulaMode extends StatelessWidget {
+  const _CopulaMode({required this.settings, required this.onChanged});
+
+  final ProfileSettings settings;
+  final VoidCallback onChanged;
+
+  static const _descriptions = {
+    CopulaMode.toggle:
+        'The key gives "is", and pressing it again gives "are", then "am", '
+        'each one spoken as it arrives and each one replacing the last. To '
+        'ask "are you ok?", press it twice.',
+    CopulaMode.agree:
+        'The key gives "is" and corrects it once the subject arrives, so '
+        '"is" then "you" becomes "are you" and the pair is spoken again. '
+        'Fewer presses, but the word is heard before it is right.',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ListTile(
+          leading: Icon(Icons.change_history_outlined),
+          title: Text('Choosing between "am", "is" and "are"'),
+          subtitle: Text(
+            'Both agree with a subject already in the sentence — "I" gives '
+            '"am" either way. They differ when the question puts the verb '
+            'first.',
+          ),
+          isThreeLine: true,
+        ),
+        RadioGroup<CopulaMode>(
+          groupValue: settings.copulaMode,
+          onChanged: (chosen) async {
+            if (chosen == null) return;
+            await settings.set('copulaMode', chosen.name);
+            onChanged();
+          },
+          child: Column(
+            children: [
+              for (final mode in CopulaMode.values)
+                RadioListTile<CopulaMode>(
+                  value: mode,
+                  title: Text(mode.label),
+                  subtitle: Text(_descriptions[mode]!),
+                  isThreeLine: true,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _Settings extends StatelessWidget {
   const _Settings({
     required this.db,
@@ -423,6 +485,8 @@ class _Settings extends StatelessWidget {
             },
           ),
         if (settings != null)
+          _CopulaMode(settings: settings!, onChanged: onChanged),
+        if (settings != null)
           SwitchListTile(
             value: settings!.filterVerbs,
             title: const Text('Hide other verbs after a verb'),
@@ -524,9 +588,15 @@ class _VocabularyLevel extends StatelessWidget {
   final VoidCallback onChanged;
 
   static const _descriptions = {
-    1: 'Core words only. The rest of the board stays reserved.',
-    2: 'Core words and the starter fringe vocabulary.',
-    3: 'Everything, including anything added since.',
+    1:
+        'Learning single words. The Universal Core 36, and never more than 36 '
+        'on a page. No word endings and no am/is/are, so “are you ok?” and '
+        'the past tense are out of reach at this level.',
+    2:
+        'Putting words together. Adds the word endings, a and the, and '
+        'am/is/are — the keys a sentence needs — along with the words an '
+        'ordinary day takes.',
+    3: 'Using the whole board. Everything, including anything added since.',
   };
 
   @override
