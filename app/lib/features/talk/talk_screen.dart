@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../../db/database.dart';
 import '../../db/seed/band_layout.dart';
 import '../../db/tables.dart';
+import '../auth/caregiver_gesture.dart';
 import '../auth/corner_hold_target.dart';
 import '../auth/pin.dart';
 import '../auth/pin_gate.dart';
@@ -354,11 +355,25 @@ class TalkScreenState extends State<TalkScreen> {
       _bandMaps = {for (final b in boards) b.id: b.bandMap};
     });
 
+    await _readCaregiverEntry();
     await _refreshSuggestions();
   }
 
   /// Each board's regions, as recorded when it was built.
   Map<String, String?> _bandMaps = const {};
+
+  /// How caregiver mode is asked for on this device.
+  ///
+  /// Held rather than read on demand because it is consulted while the board
+  /// is being built, and starts at the standard gesture so the door exists
+  /// before the read comes back. The read only ever slows the one-point hold
+  /// down or arms a second gesture; it never removes the one already drawn.
+  CaregiverEntry _entry = const CaregiverEntry.standard();
+
+  Future<void> _readCaregiverEntry() async {
+    final entry = await CaregiverEntryStore(widget.db).read();
+    if (mounted && entry != _entry) setState(() => _entry = entry);
+  }
 
   bool get _showRegions => widget.settings?.regionLabels ?? false;
 
@@ -767,6 +782,11 @@ class TalkScreenState extends State<TalkScreen> {
         ),
       ),
     );
+
+    // The gesture is changeable from in there, and the change has to be live
+    // on the way out: a caregiver who switches it and then cannot get back in
+    // has no way to discover they are locked out except by being locked out.
+    await _readCaregiverEntry();
   }
 
   @override
@@ -831,6 +851,8 @@ class TalkScreenState extends State<TalkScreen> {
                                 isAvailable: _isAvailable,
                                 colourScheme: vocab.colourScheme,
                                 onSelect: _onSelect,
+                                pairHold: _entry.pairHold,
+                                onPairHold: _openCaregiver,
                               ),
                             );
 
@@ -889,7 +911,10 @@ class TalkScreenState extends State<TalkScreen> {
             ),
             Positioned.fromRect(
               rect: caregiverGestureRect,
-              child: CornerHoldTarget(onTriggered: _openCaregiver),
+              child: CornerHoldTarget(
+                holdDuration: _entry.cornerHold,
+                onTriggered: _openCaregiver,
+              ),
             ),
           ],
         ),

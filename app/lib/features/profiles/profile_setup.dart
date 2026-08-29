@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../../db/seed/age_presets.dart';
+import '../auth/caregiver_gesture.dart';
 import 'grid_choice.dart';
 import 'profile_repository.dart';
 
@@ -75,6 +76,14 @@ class _ProfileSetupState extends State<ProfileSetup> {
   int? _vocabLevel;
   bool _creating = false;
 
+  /// Asked on the first run and nowhere else.
+  ///
+  /// It belongs to the device, not to the person speaking on it, so a
+  /// caregiver setting up a fourth profile has already answered it. Asking
+  /// again would imply the answer could differ per person, which would mean
+  /// four gestures on one tablet and none of them reliable.
+  CaregiverGesture _gesture = CaregiverGesture.cornerHold;
+
   AgeBand get _band => AgeBand.forBirthDate(_birthDate);
 
   @override
@@ -119,6 +128,11 @@ class _ProfileSetupState extends State<ProfileSetup> {
     setState(() => _creating = true);
 
     try {
+      if (widget.isFirstRun) {
+        await CaregiverEntryStore(widget.db)
+            .write(const CaregiverEntry.standard().withGesture(_gesture));
+      }
+
       final profile = await ProfileRepository(widget.db).create(
         displayName: _name.text.trim().isEmpty
             ? 'wordbridge'
@@ -282,6 +296,38 @@ class _ProfileSetupState extends State<ProfileSetup> {
               ),
             ),
 
+          if (widget.isFirstRun)
+            _Section(
+              title: 'How do you get into settings?',
+              note:
+                  'Asked once, for the tablet rather than for one person. '
+                  'There is no settings button on the board — the person using '
+                  'it would find it, and everything behind it can undo months '
+                  'of learned positions. Changeable later in settings.',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final option in CaregiverGesture.values)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _OptionCard(
+                        title: option.label,
+                        subtitle: option.description,
+                        selected: _gesture == option,
+                        onTap: () => setState(() => _gesture = option),
+                      ),
+                    ),
+                  if (_gesture == CaregiverGesture.twoCorners)
+                    const _Note(
+                      'Holding one corner still works, at fifteen seconds '
+                      'instead of two. Two corners needs two hands, and '
+                      'whoever picks up this tablet next may not have them — '
+                      'so the slower way in stays, whatever you choose here.',
+                    ),
+                ],
+              ),
+            ),
+
           const SizedBox(height: 8),
           _GridSummary(choice: choice),
         ],
@@ -333,6 +379,28 @@ class _Section extends StatelessWidget {
           const SizedBox(height: 12),
           child,
         ],
+      ),
+    );
+  }
+}
+
+/// A consequence of the answer just given, shown under the answer.
+class _Note extends StatelessWidget {
+  const _Note(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 12, color: Colors.black54),
       ),
     );
   }

@@ -887,10 +887,11 @@ two immediately came apart. Page two is now rebuilt by looking each word up in
 the band's own declaration, so it reads the way page one does regardless of the
 order the shedding happened to take.
 
-### 4.27 Two corners held together opens caregiver mode — agreed, not built
+### 4.27 Two corners held together opens caregiver mode — delivered
 
-Replaces the sustained press on an invisible target in the corner of the
-utterance bar.
+Offered alongside the sustained press on an invisible target in the corner of
+the utterance bar. It does not replace it; see the lockout section below for
+why that turned out to be the whole design.
 
 **Hold the bottom-left and bottom-right locations of the grid at once**, for a
 configurable time, **default 5 seconds**. On the shipped frame those are `home`
@@ -939,6 +940,83 @@ To settle when building it:
 - **Configurable, with a floor.** Default 5 seconds. Long enough that it is
   never accidental; short enough that a caregiver does not think it failed. It
   should not be settable to zero.
+
+#### How the lockout is answered: the one-finger door never closes
+
+**Choosing the two-corner hold adds a second, faster door. It does not close
+the first one.** The corner hold stays on every board, at every grid size,
+whatever was chosen — but when the two-corner gesture is in use it is
+deliberately slowed to **fifteen seconds**, and shows nothing at all for the
+first quarter of that.
+
+The alternative designs both fail:
+
+- *Offer the corner hold only as an alternative at setup.* Then the caregiver
+  who picks two corners has no way in with one hand, and no way to get one
+  back, because changing the setting requires already being inside.
+- *Keep both doors at the same speed.* Then choosing the two-corner gesture
+  buys nothing. The whole complaint against the corner hold is that a two-second
+  press on one spot is a thing a user finds by accident.
+
+Fifteen seconds is the number because it separates the two cases the design
+actually has to tell apart. A user exploring a grid, or resting a hand on the
+device, does not hold one point unbroken for fifteen seconds; the ring stays
+invisible for the first four, so there is nothing inviting them to try. A
+caregiver who was told one sentence — *hold the top-left corner of the sentence
+bar for fifteen seconds* — always gets in, with one finger, a stylus, or a head
+pointer, on a device somebody else configured.
+
+It is worse than the two-corner hold on purpose. That is the trade: the fast
+door is the one you choose, the slow door is the one that cannot be taken away.
+
+**What this does not solve.** Switch access reaches buttons, not held
+locations, so neither door is usable by scanning alone. That is a real gap and
+it stays open — the answer is a scan-reachable route into caregiver mode, which
+is a separate piece of work and belongs with §4.6b rather than here.
+
+#### What shipped
+
+- `CaregiverGesture` and `CaregiverEntry` in
+  `app/lib/features/auth/caregiver_gesture.dart`. Stored in `app_state` beside
+  the PIN — two keys, the gesture and the hold in seconds — so it belongs to
+  the device. An unreadable value falls back to the standard gesture rather
+  than throwing: this sits on the path to the only door into settings, and a
+  device that cannot open its own settings cannot be fixed from inside them.
+- `CornerPairHold` in `app/lib/features/auth/corner_pair_hold.dart` takes two
+  rectangles, not two buttons. The locations are the gesture; what occupies
+  them differs by board and by page.
+- `GridSurface` gained `pairHold` and `onPairHold`, and with them a state
+  object, because it is what dispatches `onSelect` and therefore the only
+  place that can swallow the two keys. The anchors are laid over the grid from
+  the same `GridGeometry` the cells come from.
+- The choice is asked once, at the bottom of first-run setup, and changed
+  afterwards under **Getting in here** in caregiver settings, where the hold
+  itself is a 1–20 second slider.
+- Both holds now reveal their ring a quarter of the way in rather than at a
+  fixed 500ms, so a fifteen-second target does not spend fourteen seconds
+  advertising itself.
+
+**The suppression is the fiddly part, and it is worth knowing why.** Both keys
+act on *release*, and when the hold completes both fingers are still down — so
+the releases that end the gesture would send the user home and onto a second
+page on their way into settings. The flag that swallows them is therefore
+cleared by the *next contact*, not by that release: a release is dispatched to
+the anchor before it reaches the key underneath, so clearing it there would
+clear it a moment too early. Getting that backwards leaves home dead for the
+rest of the session on a board whose user cannot say so, which is why there is
+a test for each direction.
+
+Thirteen tests in `app/test/caregiver_two_corner_test.dart`, seven mutations
+run against them: suppression removed, the clearing callback emptied, the right
+anchor dropped, the one-handed fallback closed, the hold floor removed, the
+talk screen never arming the gesture, and an unreadable stored value throwing
+instead of falling back. Each was confirmed present in the file before the
+re-run, and each was caught.
+
+**Not built here:** the hold duration is not asked at first run, only the
+gesture. Five questions is already what setup asks; a sixth about seconds, from
+somebody who has not yet made the gesture once, is a number they cannot have an
+opinion about. It is a slider in settings instead.
 
 ### 4.28 Time, and words for not being sure — agreed, not built
 
@@ -1457,6 +1535,12 @@ Small, real, and none of them urgent:
   med.unc.edu half of the Universal Core licence discrepancy could not be
   reproduced, and the Fitzgerald Key's 1926 date, which the out-of-copyright
   claim in `core_vocabulary.dart` depends on, is unconfirmed.
+- **Neither way into caregiver mode is reachable by scanning.** Both are held
+  points — one corner, or two — and switch access reaches buttons, not held
+  locations. A caregiver who drives the tablet by switch cannot open the
+  settings on it at all. §4.27 makes the one-handed door impossible to close,
+  which is as far as a gesture can go; the answer past that is a scan-reachable
+  route, and it lands with the scanning work in Phase 8.
 - **The caregiver screen does not surface `addedBoards` or `refusedBoards`**
   from a top-up. A whole new board arriving, or being refused for want of a
   free system-row column, is worth a line of its own rather than being folded

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
+import '../auth/corner_pair_hold.dart';
 import '../symbols/symbol_resolver.dart';
 import 'grid_geometry.dart';
 import 'symbol_view.dart';
@@ -16,7 +17,7 @@ typedef PlacedCell = ({Cell cell, Button? button});
 /// same shape whether it holds 36 words or 84. Reserved locations render as
 /// quiet blanks rather than collapsing, which is the visible half of the
 /// promise that vocabulary grows into place instead of rearranging.
-class GridSurface extends StatelessWidget {
+class GridSurface extends StatefulWidget {
   const GridSurface({
     super.key,
     required this.rows,
@@ -29,6 +30,8 @@ class GridSurface extends StatelessWidget {
     this.resolver,
     this.symbolPackIds = const ['core'],
     this.isAvailable,
+    this.pairHold,
+    this.onPairHold,
   });
 
   final int rows;
@@ -63,19 +66,52 @@ class GridSurface extends StatelessWidget {
   /// unusable key never becomes a moved one.
   final bool Function(Button)? isAvailable;
 
+  /// How long the two bottom corners have to be held together to ask for
+  /// caregiver mode, or null where that gesture is not the device's.
+  final Duration? pairHold;
+
+  /// Both bottom corners held for [pairHold].
+  final VoidCallback? onPairHold;
+
+  @override
+  State<GridSurface> createState() => _GridSurfaceState();
+}
+
+class _GridSurfaceState extends State<GridSurface> {
+  /// Whether the last thing the two bottom corners did was open caregiver
+  /// mode.
+  ///
+  /// A key acts on release, and both are still held when the gesture
+  /// completes, so the releases that end it would otherwise send the user home
+  /// and onto a second page on their way into settings. Cleared by the next
+  /// contact rather than by that release: the release is dispatched to this
+  /// widget before it reaches the key underneath, so clearing there would
+  /// clear it a moment too early.
+  bool _pairFired = false;
+
+  bool _isPairAnchor(Cell cell) =>
+      cell.row == widget.rows - 1 &&
+      (cell.col == 0 || cell.col == widget.cols - 1);
+
+  void _select(PlacedCell placed) {
+    if (_pairFired && _isPairAnchor(placed.cell)) return;
+    widget.onSelect(placed);
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final geometry = GridGeometry(
-          rows: rows,
-          cols: cols,
+          rows: widget.rows,
+          cols: widget.cols,
           size: Size(constraints.maxWidth, constraints.maxHeight),
         );
+        final pairHold = widget.pairHold;
 
         return Stack(
           children: [
-            for (final placed in cells)
+            for (final placed in widget.cells)
               Positioned.fromRect(
                 rect: geometry.rectFor(
                   placed.cell.row,
@@ -89,14 +125,32 @@ class GridSurface extends StatelessWidget {
                   key: ValueKey('${placed.cell.row}:${placed.cell.col}'),
                   child: _Cell(
                     placed: placed,
-                    vocabLevel: vocabLevel,
-                    colourScheme: colourScheme,
-                    showHidden: showHidden,
-                    resolver: resolver,
-                    symbolPackIds: symbolPackIds,
-                    isAvailable: isAvailable,
-                    onSelect: onSelect,
+                    vocabLevel: widget.vocabLevel,
+                    colourScheme: widget.colourScheme,
+                    showHidden: widget.showHidden,
+                    resolver: widget.resolver,
+                    symbolPackIds: widget.symbolPackIds,
+                    isAvailable: widget.isAvailable,
+                    onSelect: _select,
                   ),
+                ),
+              ),
+
+            // Over the grid, and anchored to the two locations rather than to
+            // the keys that happen to occupy them — the bottom right is a
+            // reserved blank on a board with no second page, and the gesture
+            // has to mean the same thing there.
+            if (pairHold != null && widget.onPairHold != null)
+              Positioned.fill(
+                child: CornerPairHold(
+                  first: geometry.rectFor(widget.rows - 1, 0),
+                  second: geometry.rectFor(widget.rows - 1, widget.cols - 1),
+                  hold: pairHold,
+                  onTouched: () => _pairFired = false,
+                  onComplete: () {
+                    _pairFired = true;
+                    widget.onPairHold!();
+                  },
                 ),
               ),
           ],

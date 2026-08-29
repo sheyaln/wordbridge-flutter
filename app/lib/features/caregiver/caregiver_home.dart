@@ -7,6 +7,7 @@ import '../../db/tables.dart';
 import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
+import '../auth/caregiver_gesture.dart';
 import '../editor/board_delete.dart';
 import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
@@ -27,9 +28,8 @@ import 'voice_screen.dart';
 
 /// Everything behind the PIN.
 ///
-/// Reachable only through a sustained corner press plus a PIN, and never
-/// persisted — backgrounding the app or a cold start returns to the
-/// communication view.
+/// Reachable only through a held gesture plus a PIN, and never persisted —
+/// backgrounding the app or a cold start returns to the communication view.
 class CaregiverHome extends StatefulWidget {
   const CaregiverHome({
     super.key,
@@ -690,6 +690,8 @@ class _Settings extends StatelessWidget {
               onChanged();
             },
           ),
+        const _SettingsSection('Getting in here'),
+        _CaregiverEntryTile(db: db),
         const _SettingsSection('Recording'),
         SwitchListTile(
           value: logger.enabled,
@@ -717,6 +719,113 @@ class _Settings extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const SymbolCredits()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Which gesture opens this screen, and how long it is held.
+///
+/// Safe to change from in here precisely because you are already inside. It is
+/// the device's answer rather than the profile's: which hands hold the tablet
+/// is not a fact about the person speaking on it.
+class _CaregiverEntryTile extends StatefulWidget {
+  const _CaregiverEntryTile({required this.db});
+
+  final WordbridgeDatabase db;
+
+  @override
+  State<_CaregiverEntryTile> createState() => _CaregiverEntryTileState();
+}
+
+class _CaregiverEntryTileState extends State<_CaregiverEntryTile> {
+  late final _store = CaregiverEntryStore(widget.db);
+  CaregiverEntry? _entry;
+
+  /// A hold nobody wants to sit through, and one nobody triggers by resting a
+  /// hand. Both ends are the caregiver's call within that range.
+  static const _shortest = 1;
+  static const _longest = 20;
+
+  @override
+  void initState() {
+    super.initState();
+    _read();
+  }
+
+  Future<void> _read() async {
+    final entry = await _store.read();
+    if (mounted) setState(() => _entry = entry);
+  }
+
+  Future<void> _save(CaregiverEntry entry) async {
+    setState(() => _entry = entry);
+    await _store.write(entry);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = _entry;
+    if (entry == null) {
+      return const ListTile(title: Text('Reading how this device is set up…'));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RadioGroup<CaregiverGesture>(
+          groupValue: entry.gesture,
+          onChanged: (chosen) {
+            if (chosen != null) _save(entry.withGesture(chosen));
+          },
+          child: Column(
+            children: [
+              for (final option in CaregiverGesture.values)
+                RadioListTile<CaregiverGesture>(
+                  value: option,
+                  title: Text(option.label),
+                  subtitle: Text(option.description),
+                  isThreeLine: true,
+                ),
+            ],
+          ),
+        ),
+        ListTile(
+          title: Text('Held for ${entry.hold.inSeconds} seconds'),
+          subtitle: Slider(
+            value: entry.hold.inSeconds.toDouble().clamp(
+              _shortest.toDouble(),
+              _longest.toDouble(),
+            ),
+            min: _shortest.toDouble(),
+            max: _longest.toDouble(),
+            divisions: _longest - _shortest,
+            label: '${entry.hold.inSeconds}s',
+            onChanged: (value) =>
+                _save(entry.withHold(Duration(seconds: value.round()))),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            entry.gesture == CaregiverGesture.twoCorners
+                ? 'Holding the top-left corner of the sentence bar on its own '
+                      'also still works, at '
+                      '${CaregiverEntry.oneHandedFallback.inSeconds} seconds. '
+                      'That way in cannot be switched off: two corners needs '
+                      'two hands, and whoever picks this tablet up next may '
+                      'not have them — including you, on a day you are holding '
+                      'something else.'
+                : 'One finger, one corner. Slower than the two-corner hold and '
+                      'easier to stumble across, which is the trade: it is the '
+                      'one gesture anybody can make.',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black54,
+              height: 1.4,
+            ),
           ),
         ),
       ],

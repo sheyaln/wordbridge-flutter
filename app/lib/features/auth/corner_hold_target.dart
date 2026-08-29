@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-/// The way into caregiver mode.
+import 'caregiver_gesture.dart';
+import 'hold_ring.dart';
+
+/// The one-point way into caregiver mode, which is always available.
 ///
 /// A visible settings button on the talk screen is an anti-pattern: the AAC
 /// user will find it, and everything behind it can undo months of learned
@@ -16,12 +19,18 @@ import 'package:flutter/material.dart';
 ///
 /// Whatever it is placed over keeps working. The target adds a meaning to a
 /// location; it never takes one away.
+///
+/// It stays on every board whatever gesture the device is set to, because it
+/// is the only door reachable with one hand, a stylus or a head pointer. Where
+/// something faster has been chosen it slows down rather than disappearing —
+/// see [CaregiverEntry.oneHandedFallback] for why that trade is the right way
+/// round.
 class CornerHoldTarget extends StatefulWidget {
   const CornerHoldTarget({
     super.key,
     required this.onTriggered,
-    this.holdDuration = const Duration(seconds: 2),
-    this.revealAfter = const Duration(milliseconds: 500),
+    this.holdDuration = CaregiverEntry.defaultCornerHold,
+    this.revealAfter,
     this.size = defaultSize,
   });
 
@@ -35,7 +44,11 @@ class CornerHoldTarget extends StatefulWidget {
   final Duration holdDuration;
 
   /// How long before the user sees anything at all.
-  final Duration revealAfter;
+  ///
+  /// A quarter of the hold unless given, so a target set to fifteen seconds
+  /// stays as blank for as long into its hold as a two-second one does. Fixed,
+  /// it would spend the other fourteen seconds advertising itself.
+  final Duration? revealAfter;
 
   final double size;
 
@@ -58,7 +71,7 @@ class _CornerHoldTargetState extends State<CornerHoldTarget>
   bool _visible = false;
 
   void _start(_) {
-    _revealTimer = Timer(widget.revealAfter, () {
+    _revealTimer = Timer(widget.revealAfter ?? widget.holdDuration ~/ 4, () {
       if (mounted) setState(() => _visible = true);
     });
     _controller.forward(from: 0);
@@ -69,6 +82,14 @@ class _CornerHoldTargetState extends State<CornerHoldTarget>
     _controller.stop();
     _controller.value = 0;
     if (mounted && _visible) setState(() => _visible = false);
+  }
+
+  @override
+  void didUpdateWidget(CornerHoldTarget old) {
+    super.didUpdateWidget(old);
+    if (old.holdDuration != widget.holdDuration) {
+      _controller.duration = widget.holdDuration;
+    }
   }
 
   @override
@@ -95,17 +116,7 @@ class _CornerHoldTargetState extends State<CornerHoldTarget>
         child: _visible
             ? AnimatedBuilder(
                 animation: _controller,
-                builder: (context, _) => Center(
-                  child: SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(
-                      value: _controller.value,
-                      strokeWidth: 3,
-                      color: Colors.black26,
-                    ),
-                  ),
-                ),
+                builder: (context, _) => HoldRing(progress: _controller.value),
               )
             : null,
       ),
