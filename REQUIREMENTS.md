@@ -1567,10 +1567,33 @@ Small, real, and none of them urgent:
   correctly, but no scanning input path exists yet, so a switch user's
   selections are still recorded as touches. The reporting is correct ahead of
   the producer; the producer is Phase 8.
-- **The paging key is drawn whether or not the next page has anything on it at
-  the current level.** A level-2 profile at 7×12 pages forward from home onto a
-  board that draws nothing, because home page 2 holds only the eight level-3
-  verbs.
+- **The paging key was drawn whether or not the next page had anything on it at
+  the current level — fixed.** Measured before fixing, and it was wider than
+  this entry claimed: at 7×12 a **level-1** profile pages forward from home,
+  `food` and `body` onto boards that draw nothing at all, and `play` page two
+  draws nothing at level 1 *or* 2. The entry named level 2 and home only, which
+  the shedding rewrite in §4.21 had since moved.
+
+  The key is now not drawn when its page has no content the current level
+  draws — the same rule as `back` at the root board, and for the same reason:
+  its location stays reserved, so the key reappears in exactly the same place
+  the moment the page is worth going to. Hiding it is a rendering decision,
+  never a move.
+
+  Only the **content area** counts — the frame is on every board, so a page
+  carrying nothing but the system row and the pinned question column shows the
+  user the keys they just left. "Switched off by a caregiver" and "above the
+  level" are different states and both count as nothing to see.
+
+  A paging key is recognised off the system row rather than off its label: the
+  row carries home and back, which are their own actions, the category slots,
+  which the wheel owns, and the cycle key — so a system navigation key that is
+  not a category slot is a paging key, whatever anybody renames it to.
+
+  Five tests in `app/test/empty_page_test.dart`, four mutations, all caught.
+  One of the five exists only to assert the *premise*: that the shipped board
+  really does still produce a page above level 1. Without it a future seed
+  change could make the other four pass by describing nothing.
 - **`docs/starter-vocabulary.md` — delivered.** The distinction that mattered
   is §2.1 against §2.2 of it: the Universal Core 36 verified from its primary
   source and drawn at level 1, against Banajee (2003) and Marvin (1994) as real

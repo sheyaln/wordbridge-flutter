@@ -1,7 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show OrderingTerm, Value, leftOuterJoin;
+import 'package:drift/drift.dart'
+    show
+        BooleanExpressionOperators,
+        ComparableExpr,
+        OrderingTerm,
+        Value,
+        innerJoin,
+        leftOuterJoin;
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
@@ -347,16 +354,57 @@ class TalkScreenState extends State<TalkScreen> {
       widget.db.boards,
     )..where((b) => b.vocabularyId.equals(widget.vocabularyId))).get();
 
+    final lowest = await _lowestContentLevels(vocab);
+
     setState(() {
       _vocab = vocab;
       _rootBoardId = vocab.rootBoardId;
       _currentBoardId = vocab.rootBoardId;
       _wheel = _CategoryWheel.parse(vocab.systemCellMap);
       _bandMaps = {for (final b in boards) b.id: b.bandMap};
+      _lowestContentLevel = lowest;
     });
 
     await _readCaregiverEntry();
     await _refreshSuggestions();
+  }
+
+  /// The lowest level at which each board draws anything of its own.
+  ///
+  /// Only the content area counts. The frame — the system row along the bottom
+  /// and the pinned question column down the side — is identical on every
+  /// board, so it says nothing about whether going to one is worth a movement.
+  Future<Map<String, int>> _lowestContentLevels(Vocabulary vocab) async {
+    final rows =
+        await (widget.db.select(widget.db.buttons).join([
+              innerJoin(
+                widget.db.cells,
+                widget.db.cells.id.equalsExp(widget.db.buttons.cellId),
+              ),
+            ])..where(
+              widget.db.buttons.vocabularyId.equals(widget.vocabularyId) &
+                  widget.db.buttons.hidden.equals(false) &
+                  widget.db.cells.row.isSmallerThanValue(vocab.gridRows - 1) &
+                  widget.db.cells.col.isSmallerThanValue(vocab.gridCols - 1),
+            ))
+            .get();
+
+    final lowest = <String, int>{};
+    for (final row in rows) {
+      final boardId = row.readTable(widget.db.cells).boardId;
+      final level = row.readTable(widget.db.buttons).vocabLevel;
+      final held = lowest[boardId];
+      if (held == null || level < held) lowest[boardId] = level;
+    }
+    return lowest;
+  }
+
+  Map<String, int> _lowestContentLevel = const {};
+
+  /// Whether a board has anything to show the person using it right now.
+  bool _drawsContent(String? boardId) {
+    final lowest = boardId == null ? null : _lowestContentLevel[boardId];
+    return lowest != null && lowest <= widget.vocabLevel;
   }
 
   /// Each board's regions, as recorded when it was built.
@@ -447,7 +495,31 @@ class TalkScreenState extends State<TalkScreen> {
         button?.action == ButtonAction.back && cell.boardId == _rootBoardId;
     if (deadBack) return (cell: cell, button: null);
 
+    // Same rule for a page with nothing on it at this level. The frame is on
+    // every board, so pressing "more words" onto an empty page leaves the user
+    // looking at the keys they just left, with no word to show for the
+    // movement and no way to say the board has stopped answering.
+    if (_isPagingKey(cell, button) && !_drawsContent(button!.targetBoardId)) {
+      return (cell: cell, button: null);
+    }
+
     return (cell: cell, button: _throughWheel(cell, button));
+  }
+
+  /// Whether a location holds one of the two keys that turn a page.
+  ///
+  /// Read off the system row rather than off a label: the row carries home and
+  /// back, which are their own actions, the category slots, which the wheel
+  /// owns, and the cycle key. A system navigation key that is not a category
+  /// slot is a paging key, and that stays true whatever the key is called.
+  bool _isPagingKey(Cell cell, Button? button) {
+    final wheel = _wheel;
+    return wheel != null &&
+        button != null &&
+        button.isSystem &&
+        button.action == ButtonAction.navigate &&
+        cell.row == wheel.row &&
+        !wheel.cols.contains(cell.col);
   }
 
   /// Substitutes whichever category a slot is showing on this turn.
@@ -787,6 +859,13 @@ class TalkScreenState extends State<TalkScreen> {
     // on the way out: a caregiver who switches it and then cannot get back in
     // has no way to discover they are locked out except by being locked out.
     await _readCaregiverEntry();
+
+    // A top-up can put the first word on a page that had none, and the key
+    // that reaches it has to come back with it.
+    final vocab = _vocab;
+    if (vocab == null) return;
+    final lowest = await _lowestContentLevels(vocab);
+    if (mounted) setState(() => _lowestContentLevel = lowest);
   }
 
   @override
