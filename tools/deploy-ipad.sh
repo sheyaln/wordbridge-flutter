@@ -46,4 +46,8 @@ fi
 
 echo
 echo "Installed and launched. The board and every customisation on it are"
-echo "untouched — this upgrade adds columns and a table, and never moves a cell."
+echo "untouched: an upgrade never moves a cell."
+echo
+echo "Seed changes reach new profiles only. To see vocabulary this build adds,"
+echo "make a profile or use caregiver settings → Rebuild from the shipped"
+echo "vocabulary, which re-lays the board and discards words added by hand."
