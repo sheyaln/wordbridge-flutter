@@ -11,7 +11,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-concrete='arasaac_pack|bundled_pack|sclera_pack'
+concrete='arasaac_pack|bundled_pack|sclera_pack|system_emoji_pack'
 
 # main.dart is the composition root: something has to name the packs in order
 # to construct the registry, and that is the one place it belongs.

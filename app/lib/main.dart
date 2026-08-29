@@ -12,6 +12,7 @@ import 'features/symbols/bundled_pack.dart';
 import 'features/symbols/global_symbols_pack.dart';
 import 'features/symbols/symbol_registry.dart';
 import 'features/symbols/symbol_resolver.dart';
+import 'features/symbols/system_emoji_pack.dart';
 import 'features/talk/talk_screen.dart';
 import 'features/usage/logger.dart';
 
@@ -86,9 +87,14 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   // The bundled pack covers the shipped vocabulary. The fetching one covers
   // everything a caregiver adds afterwards, from the same four CC BY-SA sets,
   // so a word somebody types today can have a picture today.
+  //
+  // The device's own emoji sit between the two: thousands of pictures, offline
+  // and at no bundle cost, for the words nothing local covers. Ahead of the
+  // fetching pack because a picture already on the device beats one that needs
+  // a network to arrive.
   late final _globalSymbols = GlobalSymbolsPack();
   late final _symbols = SymbolRegistry(
-    packs: [...bundledSymbolPacks(), _globalSymbols],
+    packs: [...bundledSymbolPacks(), SystemEmojiPack(), _globalSymbols],
   );
   late final _resolver = appSymbolResolver(db: _db, registry: _symbols);
 

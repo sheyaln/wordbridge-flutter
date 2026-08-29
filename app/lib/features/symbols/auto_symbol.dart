@@ -81,11 +81,19 @@ class AutoSymbol {
   }
 
   /// The one symbol whose label *is* this word, bundled first.
+  ///
+  /// A [GlyphSymbolPack] is never asked, however exactly it answers. Its index
+  /// is emoji keywords, which are broad by design and describe a picture
+  /// rather than name a word: the emoji named "dog" is one particular cartoon
+  /// dog, and a board that decides unwatched that this is the dog meant has
+  /// put a word in somebody's mouth. Those matches belong in the picker, where
+  /// a person is looking and can say no.
   Future<SymbolRef?> _findExact(String label) async {
     final needle = _normalise(label);
     if (needle.isEmpty) return null;
 
-    for (final pack in registry.enabledPacks.where((p) => p.isBundled)) {
+    for (final pack in registry.enabledPacks) {
+      if (pack is GlyphSymbolPack || !pack.isBundled) continue;
       for (final ref in await pack.search(label, limit: 12)) {
         if (_normalise(ref.label) == needle) return ref;
       }

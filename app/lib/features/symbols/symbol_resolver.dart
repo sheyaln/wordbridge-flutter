@@ -6,10 +6,11 @@ import 'symbol_pack.dart';
 import 'symbol_registry.dart';
 
 /// Where a resolved image lives. Bundled packs answer with an asset key,
-/// runtime packs with a filesystem path; the pack's own [SymbolPack.isBundled]
-/// flag is the only thing that separates them, so the widget layer never has
-/// to guess from the shape of the string.
-enum SymbolImageKind { asset, file }
+/// runtime packs with a filesystem path, and a [GlyphSymbolPack] with the
+/// characters themselves — nowhere at all, because the platform's own font
+/// draws them. Which one it is comes from the pack, so the widget layer never
+/// has to guess from the shape of the string.
+enum SymbolImageKind { asset, file, glyph }
 
 typedef SymbolImage = ({SymbolImageKind kind, String uri});
 
@@ -219,16 +220,17 @@ class SymbolResolver {
       final uri = await registry.resolve(ref);
       if (uri == null || uri.isEmpty) return labelOnly(ref.label);
 
-      return (
-        label: ref.label,
-        image: (
-          kind: pack.isBundled ? SymbolImageKind.asset : SymbolImageKind.file,
-          uri: uri,
-        ),
-      );
+      return (label: ref.label, image: (kind: _kindOf(pack), uri: uri));
     } catch (_) {
       return labelOnly(ref.label);
     }
+  }
+
+  /// A glyph is checked for first because it is neither of the other two: its
+  /// `uri` is the character to draw, not a place to read bytes from.
+  static SymbolImageKind _kindOf(SymbolPack pack) {
+    if (pack is GlyphSymbolPack) return SymbolImageKind.glyph;
+    return pack.isBundled ? SymbolImageKind.asset : SymbolImageKind.file;
   }
 
   Future<ResolvedSymbol> _resolveChosen(String symbolId, String label) async {

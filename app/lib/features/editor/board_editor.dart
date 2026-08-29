@@ -568,7 +568,6 @@ class _BoardEditorState extends State<BoardEditor> {
 ///
 /// Must match what the talk screen renders through, or the caregiver audits
 /// pictures the user is not looking at.
-const _packIds = ['core'];
 
 /// A word whose picture has not resolved.
 const _noPicture = Color(0xFFEF6C00);
@@ -774,7 +773,7 @@ class _WordCellState extends State<_WordCell> {
     final resolved = await resolver.resolveButton(
       symbolId: widget.button.symbolId,
       label: widget.button.label,
-      packIds: _packIds,
+      packIds: boardSymbolPackIds,
     );
 
     if (!mounted || generation != _generation) return;

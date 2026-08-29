@@ -4,6 +4,7 @@ import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
 import '../auth/corner_pair_hold.dart';
+import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_resolver.dart';
 import 'grid_geometry.dart';
 import 'symbol_view.dart';
@@ -28,7 +29,7 @@ class GridSurface extends StatefulWidget {
     required this.onSelect,
     this.showHidden = false,
     this.resolver,
-    this.symbolPackIds = const ['core'],
+    this.symbolPackIds = boardSymbolPackIds,
     this.isAvailable,
     this.pairHold,
     this.onPairHold,

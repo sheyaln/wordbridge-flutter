@@ -14,7 +14,11 @@ import 'package:flutter/services.dart';
 /// because a pack assembled from several sources owes a different credit per
 /// symbol, and a list written by hand drifts from what the build shipped.
 class SymbolCredits extends StatefulWidget {
-  const SymbolCredits({super.key, this.packs = const ['core']});
+  /// `system-emoji` is here for its index rather than for its pictures: the
+  /// emoji are drawn by the device's own font and belong to whoever wrote it,
+  /// but the names and search words are Unicode CLDR data, whose licence asks
+  /// for the same credit as the symbol sets do.
+  const SymbolCredits({super.key, this.packs = const ['core', 'system-emoji']});
 
   final List<String> packs;
 

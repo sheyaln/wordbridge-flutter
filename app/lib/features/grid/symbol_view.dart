@@ -113,7 +113,7 @@ class _SymbolViewState extends State<SymbolView> {
   }
 }
 
-/// Draws one resolved picture: asset or file, vector or raster.
+/// Draws one resolved picture: asset, file or glyph — vector, raster or text.
 ///
 /// Shared by every board so that a caregiver auditing pictures and the person
 /// using the device are looking at the same thing, drawn the same way.
@@ -127,6 +127,23 @@ class SymbolPicture extends StatelessWidget {
     final isSvg = image.uri.toLowerCase().endsWith('.svg');
 
     return switch ((image.kind, isSvg)) {
+      // A glyph is text and is drawn as text, in whatever font the platform
+      // supplies. That is the whole of the arrangement and it must stay that
+      // way: the system emoji fonts are proprietary, so nothing here may ever
+      // rasterise one into an image — no capture, no cache, no file. The
+      // codepoint travels with the board; the picture never does.
+      //
+      // The size is only what the fit scales from, and `height: 1` drops the
+      // line spacing an emoji does not need, so the character fills its cell
+      // rather than floating in the middle of one.
+      (SymbolImageKind.glyph, _) => FittedBox(
+        fit: BoxFit.contain,
+        child: Text(
+          image.uri,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 48, height: 1),
+        ),
+      ),
       (SymbolImageKind.asset, true) => SvgPicture.asset(
         image.uri,
         fit: BoxFit.contain,

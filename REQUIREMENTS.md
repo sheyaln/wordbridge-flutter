@@ -1288,7 +1288,7 @@ Three mutations, and the third is the one that mattered: hiding the control
 until the lookup returns passed every test until a hanging pack was added to
 the file. A word with no picture anywhere is still not offered it.
 
-### 4.35 The device's own emoji as symbols — agreed, not built
+### 4.35 The device's own emoji as symbols — delivered
 
 Asked: are we allowed to use the emoji of the system the app runs on as icon
 options?
@@ -1333,6 +1333,40 @@ cost — which is a much bigger gap than "another pack" suggests.
   to somebody looking at it is a near miss they can reject, and a wrong symbol
   attached unattended is the board putting a word in somebody's mouth. Emoji
   keywords are broad, so this pack is for the picker only.
+
+#### What shipped
+
+1,505 emoji in a 211 KB index — names and search words from Unicode CLDR
+48.2.0, under the Unicode License v3, with the notice carried in `NOTICE.md`,
+in the index's own `attributions` field, and on the in-app symbol credits
+screen, because the licence requires the credit to travel with the data.
+Verified by reading the asset: it holds codepoints and words, and not one image
+byte.
+
+**The emoji set is pinned to 13.1 (2020), not the latest.** A codepoint the
+device's font does not have renders as a missing-glyph box — precisely the
+broken-image outcome §5 forbids — and the supported iOS and Android floors here
+predate the newer sets. It costs about 58 emoji.
+
+`SymbolImageKind.glyph` carries the character; `SymbolPicture` draws it scaled
+to its cell. A `GlyphSymbolPack` marker interface is what `auto_symbol.dart`
+excludes, rather than the `isBundled` flag — so flipping that flag later cannot
+quietly open the door. Three tests hold it, and the third is a control proving
+the other two fail for the right reason.
+
+#### The bug it surfaced, which was already logged
+
+§4.6b recorded that the board's pack list was written twice and would drift.
+It was three by the time this landed, and they disagreed: the board falls back
+to `['core']`, the editor kept its own copy of the same list, and the picker's
+"what is this button drawing" preview asked *every* registered pack. With
+thousands of emoji suddenly answering ordinary words, that preview started
+showing pictures the board would never draw — and offering to remove them.
+
+Now one `boardSymbolPackIds`, in the symbols layer, used by all three. The
+keyword fallback stays curated on purpose: it runs with nobody looking, so a
+broad match there is a wrong picture nobody chose on a screen whose user cannot
+report it. Broad packs belong in the picker, where a person is deciding.
 
 ### 4.36 Four bundled packs return nothing — found, not fixed
 
@@ -1858,9 +1892,8 @@ Small, real, and none of them urgent:
 - **`GridSurface` cannot render a cell differently**, so the editor carries its
   own board — roughly eighty parallel lines, and a new image kind has to be
   handled in two places. A `cellBuilder` hook would let both share one surface.
-- **The bundled pack list is written twice**, in `GridSurface.symbolPackIds`
-  and again in the editor. If they diverge a caregiver audits pictures the user
-  is not looking at.
+- **The bundled pack list was written twice — fixed**, and had become three by
+  the time the emoji pack landed. One `boardSymbolPackIds` now; see §4.35.
 - **Nothing writes `UsageSource.switchAccess`.** The reports count it
   correctly, but no scanning input path exists yet, so a switch user's
   selections are still recorded as touches. The reporting is correct ahead of

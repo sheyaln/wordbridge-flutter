@@ -686,6 +686,36 @@ void main() {
       await tester.pump(const Duration(seconds: 6));
     });
 
+    testWidgets('the preview is what the board draws, not what any pack has', (
+      tester,
+    ) async {
+      // The picker searches every pack, which is the point of it. What the
+      // button is *currently* drawing is a different question with a different
+      // answer: the board falls back to the curated pack alone, so a preview
+      // taken from all of them shows the caregiver a picture the user never
+      // sees — and offers to remove it.
+      final button = await place(0, 0, 'water');
+
+      await pumpPicker(
+        tester,
+        button: button,
+        pack: _FakePack(
+          words: {'water': 'cup.png'},
+          files: {'cup.png': '/tmp/cup.png'},
+          name: 'elsewhere',
+          id: 'elsewhere',
+        ),
+      );
+
+      expect(
+        find.text('Remove the picture'),
+        findsNothing,
+        reason:
+            'the button draws no picture on the board, so there is nothing '
+            'here to take off',
+      );
+    });
+
     testWidgets('a word with no picture anywhere is not offered it', (
       tester,
     ) async {
@@ -790,6 +820,7 @@ class _FakePack implements SymbolPack {
     this.files = const {},
     this.hangs = false,
     this.name = 'core',
+    this.id = 'core',
   });
 
   /// Word to the symbol illustrating it, as a search answers.
@@ -802,7 +833,7 @@ class _FakePack implements SymbolPack {
   final bool hangs;
 
   @override
-  String get id => 'core';
+  final String id;
 
   @override
   final String name;

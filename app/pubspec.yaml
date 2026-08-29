@@ -40,3 +40,6 @@ flutter:
 
   assets:
     - assets/symbols/core/
+    # Emoji names and search words only. The pictures come from the device's
+    # own font and are never bundled — see NOTICE.md.
+    - assets/symbols/system-emoji/

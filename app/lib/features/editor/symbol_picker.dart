@@ -121,7 +121,7 @@ class _SymbolPickerState extends State<SymbolPicker> {
     final resolved = await widget.resolver.resolveButton(
       symbolId: widget.button.symbolId,
       label: widget.button.label,
-      packIds: widget.registry.packs.map((p) => p.id).toList(),
+      packIds: boardSymbolPackIds,
     );
     if (mounted) {
       setState(() {

@@ -13,6 +13,7 @@ here.
 | OpenMoji | CC BY-SA 4.0 | bundled | yes |
 | Twemoji | CC BY 4.0 | bundled | yes |
 | Tawasol Symbols | CC BY-SA (version unconfirmed) | bundled | yes |
+| Emoji from this device | Unicode-3.0 (the index only) | index bundled, pictures drawn by the OS | yes |
 | ARASAAC | CC BY-NC-SA | opt-in download | **no** |
 | Sclera | CC BY-NC | not implemented | **no** |
 
@@ -33,9 +34,41 @@ not searched, not resolved, not drawn — until a person turns them on. Opting
 out again stops resolving images already on disk. The restriction then attaches
 to the user's choice rather than to this project's distribution.
 
-Assets are not in the repository yet. `BundledSymbolPack` degrades to an empty
-pack when its manifest is absent, so the app renders label-only buttons rather
-than failing.
+Only `assets/symbols/core/` is declared in `pubspec.yaml`. The four sets it was
+assembled from are declared as packs but ship no images, so they answer every
+query with nothing — see §4.36 of REQUIREMENTS.md, which records that as a
+product decision still open. `BundledSymbolPack` degrades to an empty pack when
+its manifest is absent, so the app renders label-only buttons rather than
+failing.
+
+## The device's own emoji
+
+`SystemEmojiPack` implements `GlyphSymbolPack`: `resolve` answers with the
+characters to draw rather than with anywhere to read bytes from, and
+`SymbolPicture` draws them as text in the platform's own font.
+
+> **Store the codepoint, never the picture.** Apple Color Emoji and Segoe UI
+> Emoji are proprietary. Their glyphs may not be extracted, rasterised to
+> files, bundled or shipped, and no step of this feature may write an image
+> derived from a system font. Drawing the character is displaying text and
+> redistributes nothing; capturing what it drew does not.
+
+What is bundled is the search index, because the OS exposes no searchable list
+of what it can draw. `tools/fetch_emoji_index.dart` builds it from Unicode CLDR
+annotations and `emoji-test.txt`, both under the Unicode licence, and writes
+`app/assets/symbols/system-emoji/manifest.json` — names and keywords, ~1,500
+emoji, no images. The generator pins both the CLDR release and the emoji
+version; the emoji version is deliberately conservative, because a codepoint
+the device's font lacks draws as a missing-glyph box.
+
+**Not a source for auto-attach.** `AutoSymbol` skips every `GlyphSymbolPack`
+outright. Emoji keywords are broad, and a match nobody is looking at is a
+picture the board chose for somebody who cannot contradict it. The picker is
+where these belong.
+
+The same trade applies to anything built on it: the drawing differs on another
+device and after an OS update, so a board exported to OBF renders differently
+elsewhere. Per-device convenience, not a portable symbol set.
 
 ## Adding a bundled pack
 

@@ -11,6 +11,17 @@ extension SymbolRefKey on SymbolRef {
   String get key => '$packId/$externalId';
 }
 
+/// The packs a board consults for a word it has no chosen picture for.
+///
+/// Deliberately only the curated one. That fallback runs with nobody looking —
+/// it is the board drawing itself — and a broad match there is a wrong picture
+/// nobody chose, on a screen whose user cannot report it. Broad packs belong in
+/// the picker, where a person is deciding.
+///
+/// One list, in one place. Three that agree today drift, and the drift reads as
+/// a caregiver auditing a picture the user is not looking at.
+const boardSymbolPackIds = ['core'];
+
 /// A source of symbols.
 ///
 /// Application code depends on this interface and never on a concrete pack.
@@ -53,6 +64,22 @@ abstract interface class SymbolPack {
   /// called while a grid is being built.
   Future<String?> resolve(SymbolRef ref);
 }
+
+/// A pack whose pictures the device draws for itself.
+///
+/// [SymbolPack.resolve] answers with the characters to draw rather than with
+/// anywhere they are stored, because they are not stored: the platform's own
+/// font renders them, exactly as it renders any other text. The system emoji
+/// fonts are proprietary, so **only the codepoint may ever be kept** —
+/// extracting, rasterising or bundling one of their glyphs would put somebody
+/// else's artwork in this repository.
+///
+/// Split out because two callers have to be able to tell such a pack apart:
+/// the resolver, since a glyph is neither an asset nor a file, and the
+/// auto-attacher, which must not attach one unattended. A glyph pack is
+/// indexed on broad keywords, so its matches belong in a picker somebody is
+/// watching.
+abstract interface class GlyphSymbolPack implements SymbolPack {}
 
 /// A pack that fetches its images at runtime.
 ///
