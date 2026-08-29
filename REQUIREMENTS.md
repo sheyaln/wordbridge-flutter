@@ -1038,7 +1038,8 @@ and the wheel is append-only, so the slot goes on the end and every learned key
 keeps what it opens.
 
 **Words for not being sure** — `maybe`, `perhaps`, `unsure`, `possibly`,
-`probably`. Worth naming separately from the rest of the fringe because of what
+`probably`. `unlikely` was asked for later and is not built; it belongs on the
+same row and is a one-word addition to it. Worth naming separately from the rest of the fringe because of what
 they do: without them, every answer a person gives is a commitment. A board
 that can say `yes` and `no` and not `maybe` puts somebody in the position of
 overstating what they mean, every time, and the people around them have no way
@@ -1527,6 +1528,55 @@ Two consequences worth stating:
 - **The band map becomes a property of the group, not of the board.** Region
   labels then read the same on every page, which is the same fix seen from the
   caregiver's side.
+
+### 4.39 Numbers — agreed, not built
+
+Nothing on any board is a number. A person cannot ask for two, say how old
+they are, pick option three, or count anything.
+
+Reported alongside time and the uncertainty words as "missing". Two of those
+three were already built and one was not, which is worth separating:
+
+- **`probably`, `possibly`, `perhaps`, `unsure` ship** on the feelings board's
+  `not sure` row (§4.28). They are a seed change, so they appear on a new
+  profile or after a rebuild, not on a board already in use — which is why they
+  read as missing.
+- **`unlikely` does not ship.** It belongs with that row and is a one-word
+  addition to it.
+- **Time does not ship.** Still §4.28's outstanding half.
+- **Numbers do not ship at all**, and are not logged anywhere until now.
+
+#### What makes numbers awkward
+
+They are the first vocabulary here that is a *sequence* rather than a set of
+choices, and that breaks two of this board's assumptions:
+
+- **They grow linearly and eat locations.** Ten numbers is a whole row on most
+  category boards; twenty is two. Every other cluster earns its row by being a
+  group somebody names out loud, and `1 2 3 4 5 6 7 8 9 10` is a group nobody
+  reads in one sweep — they scan it, which is slower than the layout is built
+  for.
+- **A digit is not a word.** `3` is read faster and spoken as "three", so the
+  label and the spoken text come apart in a way only the grammar keys do
+  today. That is already supported — `message` is separate from `label` — but
+  it is the first ordinary vocabulary to use it.
+
+#### Open, and worth deciding before building
+
+- **How many.** 0–10 is one row on an eleven-wide board and covers age for a
+  child, quantity, and choosing between options. 0–20 doubles the cost for
+  cases a person can reach by other means. There is no evidence base here to
+  lean on; it is a judgement about what a starter board owes.
+- **Where.** A `time` category is coming (§4.28) and numbers are not time. A
+  numbers row on a `things` category, a row of its own on the root board, or a
+  category of its own — a category costs a slot on the wheel, which is
+  append-only, so it is cheap in learned keys and expensive in a movement.
+- **Whether "more" and "all" already cover the common case.** Both ship at
+  level 1 and both do quantity work. If most of what a beginner needs is "more"
+  rather than "four", numbers belong at level 3 and out of the way.
+
+Not started. It wants the same treatment §4.28 got: decide placement, then
+measure what it costs at every grid before committing.
 
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
