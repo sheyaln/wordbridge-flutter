@@ -49,6 +49,10 @@ enum AgeBand {
   /// Appended, never inserted: the shipped words keep their order, so two
   /// profiles on the same grid put "happy" in the same place whatever their
   /// ages.
+  ///
+  /// These carry levels on the same rule as the shipped bands, so a teenager
+  /// or an adult whose board has been simplified back to level 1 keeps the
+  /// words their age needs most rather than losing the lot.
   List<Band<SeedWord>> extrasFor(String category) => [
     ...?_extras[this]?[category],
   ];
@@ -77,6 +81,11 @@ enum AgeBand {
 /// unit. Seeded for the presets that receive it whether or not it is switched
 /// on, because hiding holds the locations and switching it on later must not
 /// move anything else.
+///
+/// Level 2, matching the level every preset that receives this band starts on,
+/// so the profanity toggle is the only gate anybody meets. Level 1 would put it
+/// ahead of the whole level-2 fringe on a small grid, and a board that pages
+/// "right" and "wrong" off to keep "bloody" is not the trade anyone asked for.
 final swearingBand = Band<SeedWord>(
   name: 'strong words',
   shedRank: 8,
@@ -100,15 +109,12 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'screen',
         shedRank: 2,
         startsLine: false,
-        items: nouns([
-          'phone',
-          'headphones',
-          'games',
-          'online',
-          'video call',
-          'playlist',
-          'text',
-        ], level: 1),
+        items: [
+          ...nouns(['phone', 'headphones'], level: 1),
+          ...nouns(['games', 'online', 'video call'], level: 2),
+          ...nouns(['playlist'], level: 3),
+          ...nouns(['text'], level: 2),
+        ],
       ),
     ],
     'feelings': [
@@ -119,25 +125,27 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'teen saying',
         shedRank: 1,
         startsLine: false,
-        items: phrases([
-          'whatever',
-          'leave it',
-          'not now',
-          'private',
-          'I decide',
-          'ask me',
-        ], level: 1),
+        items: [
+          // Tone rather than need, and the one here a level-1 board can do
+          // without.
+          ...phrases(['whatever'], level: 2),
+          ...phrases([
+            'leave it',
+            'not now',
+            'private',
+            'I decide',
+            'ask me',
+          ], level: 1),
+        ],
       ),
       Band(
         name: 'teenage',
         shedRank: 1,
         startsLine: false,
-        items: adjectives([
-          'annoyed',
-          'stressed',
-          'embarrassed',
-          'awkward',
-        ], level: 1),
+        items: [
+          ...adjectives(['annoyed', 'stressed', 'embarrassed'], level: 2),
+          ...adjectives(['awkward'], level: 3),
+        ],
       ),
     ],
     'places': [
@@ -148,14 +156,13 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'teen out',
         shedRank: 3,
         startsLine: false,
-        items: nouns([
-          'college',
-          'town',
-          'party',
-          'gig',
-          'bus stop',
-          'money',
-        ], level: 1),
+        items: [
+          ...nouns(['college', 'town'], level: 2),
+          ...nouns(['party', 'gig'], level: 3),
+          ...nouns(['bus stop'], level: 2),
+          // Being unable to say "money" is being unable to buy anything alone.
+          ...nouns(['money'], level: 1),
+        ],
       ),
     ],
     'people': [
@@ -163,7 +170,11 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'teen mine',
         shedRank: 3,
         startsLine: false,
-        items: nouns(['mate', 'group', 'crush', 'support worker'], level: 1),
+        items: [
+          ...nouns(['mate'], level: 2),
+          ...nouns(['group', 'crush'], level: 3),
+          ...nouns(['support worker'], level: 1),
+        ],
       ),
     ],
   },
@@ -176,16 +187,12 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'business',
         shedRank: 2,
         startsLine: false,
-        items: nouns([
-          'appointment',
-          'bank',
-          'pharmacy',
-          'taxi',
-          'meeting',
-          'money',
-          'how much',
-          'pay',
-        ], level: 1),
+        items: [
+          ...nouns(['appointment', 'bank', 'pharmacy', 'taxi'], level: 2),
+          ...nouns(['meeting'], level: 3),
+          ...nouns(['money', 'how much'], level: 1),
+          ...nouns(['pay'], level: 2),
+        ],
       ),
     ],
     'body': [
@@ -195,16 +202,17 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'self care',
         shedRank: 0,
         startsLine: false,
-        items: nouns([
-          'pain',
-          'medication',
-          'shower',
-          'period',
-          'dentist',
-          'wheelchair',
-          'glasses',
-          'charger',
-        ], level: 1),
+        items: [
+          ...nouns(['pain', 'medication'], level: 1),
+          ...nouns([
+            'shower',
+            'period',
+            'dentist',
+            'wheelchair',
+            'glasses',
+            'charger',
+          ], level: 2),
+        ],
       ),
     ],
     'people': [
@@ -212,13 +220,14 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'adult mine',
         shedRank: 2,
         startsLine: false,
-        items: nouns([
-          'partner',
-          'colleague',
-          'support worker',
-          'landlord',
-          'boss',
-        ], level: 1),
+        items: [
+          ...nouns(['partner', 'colleague'], level: 2),
+          // The person an adult most often needs to name, and the one most
+          // often talked to instead of them.
+          ...nouns(['support worker'], level: 1),
+          ...nouns(['landlord'], level: 3),
+          ...nouns(['boss'], level: 2),
+        ],
       ),
     ],
     'feelings': [
@@ -242,13 +251,11 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         name: 'adult',
         shedRank: 1,
         startsLine: false,
-        items: adjectives([
-          'frustrated',
-          'patronised',
-          'exhausted',
-          'fine',
-          'maybe',
-        ], level: 1),
+        items: [
+          ...adjectives(['frustrated', 'patronised', 'exhausted'], level: 2),
+          // Answers to a direct question, alongside yes and no.
+          ...adjectives(['fine', 'maybe'], level: 1),
+        ],
       ),
     ],
   },

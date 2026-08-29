@@ -16,6 +16,50 @@
 /// use is unaffected — it lives in the database, and only an explicit,
 /// measured rebuild recomputes it — but a change here is a different board for
 /// everyone set up after it.
+///
+/// Three levels, and each has to be a different board.
+///
+/// The unit is **words drawn on one page**, not words in the vocabulary. What
+/// a person faces is a board, and the same total spread over seven boards is
+/// not the same thing twice.
+///
+/// **Level 1 draws exactly the Universal Core 36 on the root board.** Thirty
+/// one of those words sit in the content area and five are question words in
+/// the pinned column; five more content locations go to `yes`, `no`, `don't`,
+/// `wait` and `me`, which is what the Universal Core has no answer for — it
+/// carries `not`, which negates inside a sentence but cannot answer one or
+/// make an imperative, and its possessive key fires after `I` to give "I's".
+/// Thirty six content locations is Project Core's own density for a beginning
+/// communicator's whole-day board (CLDS, UNC-Chapel Hill), and it is the
+/// ceiling for any page at level 1. The category boards are far below it.
+///
+/// **Level 2** adds the grammar engine — endings, articles, the copula, `will`
+/// — and the fringe of an ordinary day. It lands near 240 words, which is
+/// where roughly 80% of everyday speech is covered (Hattingh & Tönsing 2020,
+/// reporting the English and European figure of 200-250). **Level 3** is
+/// everything.
+///
+/// What earns a word an earlier level is how often it is needed and what it
+/// costs to be without it, never how simple it looks: `toilet` and `emergency`
+/// are level 1 and `biscuit` is not. Level 1 is deliberately heavier on
+/// concrete nouns and social words than a core list alone would make it —
+/// published core lists under-emphasise the word types that dominate early
+/// expressive vocabulary (Laubscher & Light 2020).
+///
+/// Level 1 is one vocabulary, not one board: a grid too small to draw all
+/// thirty six at once pages the rest rather than dropping them, which is the
+/// same trade Project Core makes when it publishes the same 36 words four,
+/// six and nine to a page.
+///
+/// `vocab_level_calibration_test.dart` holds the three apart, because a level
+/// assigned word by word as vocabulary accumulates converges on one board
+/// wearing three names.
+///
+/// Level is also what a grid too small to hold everything sheds first, so
+/// raising a word here can move it to a later page. Nothing on the root board
+/// may sit above level 2 except the tail of the verb band, which is the run
+/// that pages off a 7x12 grid; a higher level anywhere else sheds ahead of it
+/// and takes a learned location with it.
 library;
 
 import '../tables.dart';
@@ -102,12 +146,13 @@ final homeBands = <Band<SeedWord>>[
       w('she', PartOfSpeech.pronoun),
       w('it', PartOfSpeech.pronoun),
       w('that', PartOfSpeech.pronoun),
-      w('we', PartOfSpeech.pronoun),
-      w('they', PartOfSpeech.pronoun),
-      // "my" and "me" are toddler core and neither has a substitute here:
-      // "+'s" fires after "I" and produces "I's", and the object pronoun on
-      // the people board is two movements away from "help me".
-      w('my', PartOfSpeech.pronoun),
+      w('we', PartOfSpeech.pronoun, level: 2),
+      w('they', PartOfSpeech.pronoun, level: 2),
+      // Neither has a substitute here: "+'s" fires after "I" and produces
+      // "I's", and the object pronoun on the people board is two movements
+      // away from "help me". "me" is the one level 1 keeps, because it is the
+      // one that follows a verb.
+      w('my', PartOfSpeech.pronoun, level: 2),
       w('me', PartOfSpeech.pronoun),
     ],
   ),
@@ -118,10 +163,12 @@ final homeBands = <Band<SeedWord>>[
     items: [
       w('all', PartOfSpeech.determiner),
       w('some', PartOfSpeech.determiner),
-      w('same', PartOfSpeech.determiner, level: 2),
-      w('different', PartOfSpeech.determiner, level: 2),
+      w('same', PartOfSpeech.determiner),
+      w('different', PartOfSpeech.determiner),
       w('more', PartOfSpeech.determiner, essential: true),
-      w('this', PartOfSpeech.determiner),
+      // "that" is the Universal Core demonstrative and points at the same
+      // things, so level 1 carries one of the pair rather than both.
+      w('this', PartOfSpeech.determiner, level: 2),
     ],
   ),
 
@@ -139,22 +186,24 @@ final homeBands = <Band<SeedWord>>[
     fill: BandFill.acrossBand,
     items: [
       w('want', PartOfSpeech.verb, essential: true),
-      w('need', PartOfSpeech.verb),
+      w('need', PartOfSpeech.verb, level: 2),
       w('like', PartOfSpeech.verb),
       w('go', PartOfSpeech.verb),
       w('stop', PartOfSpeech.verb, essential: true),
-      w('can', PartOfSpeech.verb, level: 2),
+      w('can', PartOfSpeech.verb),
       w('get', PartOfSpeech.verb),
-      w('take', PartOfSpeech.verb),
+      w('take', PartOfSpeech.verb, level: 2),
       w('do', PartOfSpeech.verb),
-      w('make', PartOfSpeech.verb, level: 2),
-      w('put', PartOfSpeech.verb, level: 2),
-      w('will', PartOfSpeech.verb),
-      w('open', PartOfSpeech.verb, level: 2),
-      w('close', PartOfSpeech.verb),
+      w('make', PartOfSpeech.verb),
+      w('put', PartOfSpeech.verb),
+      // Tense arrives as a set: "will" waits for the endings and the past
+      // copula rather than leaving level 1 with a future and no past.
+      w('will', PartOfSpeech.verb, level: 2),
+      w('open', PartOfSpeech.verb),
+      w('close', PartOfSpeech.verb, level: 2),
       w('help', PartOfSpeech.verb, essential: true),
       w('look', PartOfSpeech.verb),
-      w('turn', PartOfSpeech.verb, level: 2),
+      w('turn', PartOfSpeech.verb),
       w('finished', PartOfSpeech.verb, essential: true),
       // Cognition and communication: top-20 verbs in every published adult
       // core list, and "tell" is the word a user needs to disclose something.
@@ -178,6 +227,13 @@ final homeBands = <Band<SeedWord>>[
   //
   // Immediately right of the verbs, because the movement reads left to right —
   // verb, then ending — matching the order the words come out in.
+  //
+  // The whole band is level 2, the copula included. It is the one call here
+  // that costs a sentence: without "am/is/are" a level-1 board cannot build
+  // "are you ok?" or "what is that?". The Universal Core 36 carries no copula
+  // at all, and that list is the evidence-based floor this vocabulary is built
+  // from, so level 1 follows it and the grammar engine arrives as one set at
+  // level 2 — in the locations it has held since day one.
   Band(
     name: 'endings',
     shedRank: 6,
@@ -232,13 +288,15 @@ final homeBands = <Band<SeedWord>>[
     shedRank: 4,
     items: [
       w('here', PartOfSpeech.preposition),
-      w('in', PartOfSpeech.preposition, level: 2),
-      w('on', PartOfSpeech.preposition, level: 2),
-      w('up', PartOfSpeech.preposition, level: 2),
+      w('in', PartOfSpeech.preposition),
+      w('on', PartOfSpeech.preposition),
+      w('up', PartOfSpeech.preposition),
       // "to" is what lets a second verb follow a first — "I want to go" — and
       // what re-enables the other verbs when the optional verb filter is on.
+      // A level-1 board with that filter switched on cannot chain verbs; the
+      // filter is off unless somebody asks for it.
       w('to', PartOfSpeech.preposition, level: 2),
-      w('out', PartOfSpeech.preposition),
+      w('out', PartOfSpeech.preposition, level: 2),
     ],
   ),
 
@@ -277,9 +335,9 @@ final homeBands = <Band<SeedWord>>[
 final pinnedQuestions = <BandItem<SeedWord>>[
   w('what', PartOfSpeech.question, essential: true),
   w('where', PartOfSpeech.question, essential: true),
-  w('who', PartOfSpeech.question, level: 2),
-  w('when', PartOfSpeech.question, level: 2),
-  w('why', PartOfSpeech.question, level: 2),
+  w('who', PartOfSpeech.question),
+  w('when', PartOfSpeech.question),
+  w('why', PartOfSpeech.question),
   // Appended rather than slotted in beside the question words, because every
   // one of those already has a location somebody has learned.
   _punctuation('?'),
@@ -369,18 +427,16 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: phrases(['hello', 'bye', 'please', 'thank you'], level: 1),
     ),
 
+    // Only the two a shipped board can assume. Whether there is a sibling or a
+    // living grandparent is exactly the kind of thing it cannot know, so the
+    // rest of the strip waits for somebody who does.
     Band(
       name: 'family',
       shedRank: 1,
-      items: nouns([
-        'mum',
-        'dad',
-        'baby',
-        'brother',
-        'sister',
-        'grandma',
-        'grandpa',
-      ], level: 1),
+      items: [
+        ...nouns(['mum', 'dad'], level: 1),
+        ...nouns(['baby', 'brother', 'sister', 'grandma', 'grandpa'], level: 2),
+      ],
     ),
 
     // Held open, and empty on purpose: this is where a family's actual names
@@ -398,29 +454,20 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'community',
       shedRank: 2,
-      items: nouns([
-        'friend',
-        'teacher',
-        'helper',
-        'doctor',
-        'nurse',
-      ], level: 1),
+      items: [
+        ...nouns(['friend', 'teacher'], level: 2),
+        ...nouns(['helper'], level: 3),
+        ...nouns(['doctor', 'nurse'], level: 2),
+      ],
     ),
 
     Band(
       name: 'groups',
       shedRank: 4,
       items: [
-        ...nouns(['boy', 'girl', 'family'], level: 1),
-        ...nouns([
-          'man',
-          'woman',
-          'class',
-          'neighbour',
-          'driver',
-          'stranger',
-          'name',
-        ]),
+        ...nouns(['boy', 'girl', 'family', 'man', 'woman'], level: 2),
+        ...nouns(['class', 'neighbour', 'driver', 'stranger'], level: 3),
+        ...nouns(['name'], level: 2),
       ],
     ),
 
@@ -431,8 +478,8 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'referring',
       shedRank: 3,
       items: [
-        ...pronouns(['him', 'her'], level: 1),
-        ...pronouns(['us', 'them', 'everybody', 'somebody', 'nobody']),
+        ...pronouns(['him', 'her', 'us', 'them'], level: 2),
+        ...pronouns(['everybody', 'somebody', 'nobody'], level: 3),
       ],
     ),
   ],
@@ -458,11 +505,14 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'food',
       shedRank: 3,
+      // Three drinks at level 1, because asking for a drink is a daily need and
+      // two options is not a choice. Everything else here names a particular
+      // food, which "food" and a pointed finger already cover on day one.
       items: [
-        ...nouns(['water', 'milk', 'juice', 'squash'], level: 1),
-        ...nouns(['tea', 'coffee', 'fizzy']),
-        ...nouns(['straw'], level: 1),
-        ...nouns(['plate']),
+        ...nouns(['water', 'milk', 'juice'], level: 1),
+        ...nouns(['squash', 'tea', 'coffee', 'fizzy'], level: 3),
+        ...nouns(['straw'], level: 2),
+        ...nouns(['plate'], level: 3),
         ...nouns([
           'bread',
           'toast',
@@ -470,16 +520,15 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'rice',
           'pasta',
           'egg',
-        ], level: 1),
-        ...nouns(['cheese', 'butter']),
-        ...nouns(['pizza', 'chicken', 'soup'], level: 1),
-        ...nouns(['salad']),
-        ...nouns(['breakfast', 'lunch', 'dinner', 'snack'], level: 1),
-        ...nouns(['apple', 'banana', 'orange', 'grapes'], level: 1),
-        ...nouns(['berries', 'melon', 'lemon']),
-        ...nouns(['potato', 'carrot', 'peas', 'beans', 'tomato']),
-        ...nouns(['cake', 'biscuit', 'crisps'], level: 1),
-        ...nouns(['yoghurt', 'honey', 'jam']),
+        ], level: 2),
+        ...nouns(['cheese'], level: 2),
+        ...nouns(['butter', 'pizza', 'chicken', 'soup', 'salad'], level: 3),
+        ...nouns(['breakfast', 'lunch', 'dinner', 'snack'], level: 2),
+        ...nouns(['apple', 'banana'], level: 2),
+        ...nouns(['orange', 'grapes', 'berries', 'melon', 'lemon'], level: 3),
+        ...nouns(['potato', 'carrot', 'peas', 'beans', 'tomato'], level: 3),
+        ...nouns(['cake', 'biscuit'], level: 2),
+        ...nouns(['crisps', 'yoghurt', 'honey', 'jam'], level: 3),
       ],
     ),
 
@@ -490,7 +539,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 1,
       items: [
         ...adjectives(['hungry', 'thirsty', 'yummy', 'yucky'], level: 1),
-        ...adjectives(['hot', 'cold']),
+        ...adjectives(['hot', 'cold'], level: 2),
       ],
     ),
 
@@ -516,17 +565,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'doing',
       shedRank: 1,
       items: [
+        ...verbs(['play'], level: 1),
+        ...verbs(['read', 'draw', 'sing', 'dance', 'run', 'walk'], level: 2),
+        ...verbs(['jump'], level: 2),
         ...verbs([
-          'play',
-          'read',
-          'draw',
-          'sing',
-          'dance',
-          'run',
-          'walk',
-        ], level: 1),
-        ...verbs([
-          'jump',
           'climb',
           'swim',
           'ride',
@@ -535,10 +577,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'catch',
           'hide',
           'chase',
-          'push',
-          'pull',
-          'win',
-        ]),
+        ], level: 3),
+        ...verbs(['push', 'pull'], level: 2),
+        ...verbs(['win'], level: 3),
       ],
     ),
 
@@ -549,16 +590,13 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'things',
       shedRank: 1,
       items: [
-        ...nouns(['ball', 'book', 'toy', 'game', 'puzzle', 'blocks'], level: 1),
-        ...nouns([
-          'music',
-          'video',
-          'tablet',
-          'film',
-          'cartoon',
-          'song',
-          'story',
-        ], level: 1),
+        ...nouns(['ball', 'book', 'toy'], level: 1),
+        ...nouns(['game'], level: 2),
+        ...nouns(['puzzle', 'blocks'], level: 3),
+        ...nouns(['music'], level: 1),
+        ...nouns(['video', 'tablet'], level: 2),
+        ...nouns(['film', 'cartoon'], level: 3),
+        ...nouns(['song', 'story'], level: 2),
         ...nouns([
           'bubbles',
           'swing',
@@ -568,14 +606,20 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'trampoline',
           'sand',
           'paint',
-        ]),
+        ], level: 3),
       ],
     ),
 
+    // "outside" has a location on the places board too. Level 1 takes that one:
+    // a second copy buys no payload, and one word in one place is what a person
+    // learns.
     Band(
       name: 'again',
       shedRank: 3,
-      items: adverbs(['again', 'outside'], level: 1),
+      items: [
+        ...adverbs(['again'], level: 1),
+        ...adverbs(['outside'], level: 2),
+      ],
     ),
 
     Band(
@@ -597,52 +641,53 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'saying',
       shedRank: 0,
-      items: phrases([
-        'too loud',
-        'too bright',
-        'too fast',
-        'too slow',
-        'too much',
-        'leave me alone',
-        'I need a break',
-        "I don't know",
-        "I don't understand",
-      ], level: 1),
+      // The board that spends most of its level-1 budget, and the right one to
+      // spend it on: no combination of core words builds any of these, and the
+      // cost of not having them is a person enduring something instead of
+      // ending it.
+      items: [
+        ...phrases(['too loud'], level: 1),
+        ...phrases(['too bright', 'too fast', 'too slow'], level: 2),
+        ...phrases([
+          'too much',
+          'leave me alone',
+          'I need a break',
+          "I don't know",
+          "I don't understand",
+        ], level: 1),
+      ],
     ),
 
     Band(
       name: 'liking',
       shedRank: 2,
-      items: verbs(['love', 'like', 'hate', 'miss'], level: 1),
+      items: [
+        ...verbs(['love'], level: 1),
+        ...verbs(['like', 'hate'], level: 2),
+        ...verbs(['miss'], level: 3),
+      ],
     ),
 
     Band(
       name: 'feeling',
       shedRank: 1,
-      items: adjectives([
-        'happy',
-        'sad',
-        'angry',
-        'scared',
-        'tired',
-        'excited',
-        'hurt',
-        'sick',
-        'worried',
-        'lonely',
-        'bored',
-      ], level: 1),
+      items: [
+        ...adjectives(['happy', 'sad', 'angry', 'scared', 'tired'], level: 1),
+        ...adjectives(['excited'], level: 2),
+        ...adjectives(['hurt', 'sick'], level: 1),
+        ...adjectives(['worried', 'lonely', 'bored'], level: 2),
+      ],
     ),
 
     Band(
       name: 'shades',
       shedRank: 4,
       items: [
-        ...adjectives(['silly'], level: 1),
+        ...adjectives(['silly'], level: 3),
         // Correcting a listener who got it wrong. Without these the only way
         // to disagree is "no", which reads as refusal rather than correction.
-        ...adjectives(['right', 'wrong'], level: 1),
-        ...adjectives(['funny', 'kind', 'mean']),
+        ...adjectives(['right', 'wrong'], level: 2),
+        ...adjectives(['funny', 'kind', 'mean'], level: 3),
         ...adjectives([
           'calm',
           'proud',
@@ -650,16 +695,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'jealous',
           'confused',
           'surprised',
-        ]),
-        ...adjectives([
           'fair',
           'unfair',
-          'safe',
-          'better',
-          'worse',
-          'enough',
-          'ready',
-        ]),
+        ], level: 3),
+        ...adjectives(['safe', 'better'], level: 2),
+        ...adjectives(['worse'], level: 3),
+        ...adjectives(['enough', 'ready'], level: 2),
       ],
     ),
 
@@ -676,22 +717,43 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'everyday',
       shedRank: 0,
-      items: nouns(['home', 'school', 'shop', 'park', 'car', 'bus'], level: 1),
+      items: [
+        ...nouns(['home', 'school'], level: 1),
+        ...nouns(['shop'], level: 2),
+        ...nouns(['park', 'car'], level: 1),
+        ...nouns(['bus'], level: 2),
+      ],
     ),
 
+    // "toilet" on the body board is what level 1 uses for the need itself, so
+    // "bathroom" here is the place rather than the request and can wait.
     Band(
       name: 'places',
       shedRank: 3,
       items: [
-        ...nouns(['bathroom', 'bedroom', 'kitchen', 'garden'], level: 1),
-        ...nouns(['hospital', 'work', 'holiday'], level: 1),
-        ...nouns(['room', 'door', 'window', 'stairs']),
-        ...nouns(['street', 'beach', 'pool', 'library', 'church', 'cafe']),
-        ...nouns(['train', 'plane', 'bike']),
+        ...nouns(['bathroom', 'bedroom', 'kitchen'], level: 2),
+        ...nouns(['garden'], level: 3),
+        ...nouns(['hospital', 'work'], level: 2),
+        ...nouns(['holiday', 'room'], level: 3),
+        ...nouns(['door'], level: 2),
+        ...nouns(['window', 'stairs'], level: 3),
+        ...nouns([
+          'street',
+          'beach',
+          'pool',
+          'library',
+          'church',
+          'cafe',
+        ], level: 3),
+        ...nouns(['train', 'plane', 'bike'], level: 3),
       ],
     ),
 
-    Band(name: 'far', shedRank: 4, items: adjectives(['far', 'near'])),
+    Band(
+      name: 'far',
+      shedRank: 4,
+      items: adjectives(['far', 'near'], level: 3),
+    ),
 
     // Adverbs, not nouns: "upstairs's" and "away is" are what coding them as
     // nouns produced. Adverb also keeps them clear of the preposition colour,
@@ -700,8 +762,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'where',
       shedRank: 2,
       items: [
-        ...adverbs(['outside', 'inside', 'away'], level: 1),
-        ...adverbs(['upstairs', 'downstairs']),
+        ...adverbs(['outside'], level: 1),
+        ...adverbs(['inside', 'away'], level: 2),
+        ...adverbs(['upstairs', 'downstairs'], level: 3),
       ],
     ),
 
@@ -735,13 +798,18 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'body',
       shedRank: 2,
+      // Two at level 1, because "it hurts" needs somewhere to point and these
+      // are the two places it usually is. The rest name a location precisely
+      // enough for a doctor, which is a level-2 conversation.
       items: [
-        ...nouns(['head', 'face', 'eyes', 'ears', 'nose', 'mouth'], level: 1),
-        ...nouns(['hand', 'arm', 'leg', 'foot', 'tummy', 'back'], level: 1),
+        ...nouns(['head'], level: 1),
+        ...nouns(['face', 'eyes', 'ears', 'nose', 'mouth'], level: 2),
+        ...nouns(['hand', 'arm', 'leg', 'foot'], level: 2),
+        ...nouns(['tummy'], level: 1),
+        ...nouns(['back'], level: 2),
+        ...nouns(['hair'], level: 3),
+        ...nouns(['teeth', 'throat'], level: 2),
         ...nouns([
-          'hair',
-          'teeth',
-          'throat',
           'skin',
           'finger',
           'thumb',
@@ -754,26 +822,33 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'toes',
           'nails',
           'lips',
-        ]),
+        ], level: 3),
       ],
     ),
 
+    // "emergency" is the one word here nothing else replaces: it summons
+    // somebody in one tap and no run of core words does. "allergic" only means
+    // anything inside a sentence naming what, which is not a sentence a
+    // level-1 board builds.
     Band(
       name: 'care',
       shedRank: 3,
-      items: nouns([
-        'medicine',
-        'plaster',
-        'bandage',
-        'cough',
-        'temperature',
-        'doctor',
-        'nurse',
-        // No workaround exists for these two. Someone who cannot say they are
-        // allergic depends on another person's record being right.
-        'allergic',
-        'emergency',
-      ], level: 1),
+      // The rest of the strip is level 2 entire: a cough, a temperature and a
+      // plaster are ordinary-day vocabulary, and reporting one is how a person
+      // gets seen about it.
+      items: [
+        ...nouns([
+          'medicine',
+          'plaster',
+          'bandage',
+          'cough',
+          'temperature',
+          'doctor',
+          'nurse',
+          'allergic',
+        ], level: 2),
+        ...nouns(['emergency'], level: 1),
+      ],
     ),
 
     // Being able to name a symptom is the difference between a visit that
@@ -782,14 +857,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'hurting',
       shedRank: 1,
-      items: adjectives([
-        'itchy',
-        'sore',
-        'dizzy',
-        'thirsty',
-        'sleepy',
-        'poorly',
-      ], level: 1),
+      items: [
+        ...adjectives(['itchy'], level: 3),
+        ...adjectives(['sore'], level: 2),
+        ...adjectives(['dizzy', 'thirsty'], level: 3),
+        ...adjectives(['sleepy', 'poorly'], level: 2),
+      ],
     ),
 
     Band(
@@ -820,12 +893,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'caring',
       shedRank: 0,
       items: [
-        ...verbs(['wash', 'brush', 'dress'], level: 1),
-        ...verbs(['wear']),
+        ...verbs(['wash', 'brush', 'dress'], level: 2),
+        ...verbs(['wear'], level: 3),
         ...verbs(['sleep'], level: 1),
-        ...verbs(['wake']),
-        ...verbs(['rest'], level: 1),
-        ...verbs(['breathe']),
+        ...verbs(['wake'], level: 3),
+        ...verbs(['rest'], level: 2),
+        ...verbs(['breathe'], level: 3),
       ],
     ),
 
@@ -836,8 +909,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'moving',
       shedRank: 1,
       items: [
-        ...verbs(['sit', 'stand', 'move', 'stay', 'leave'], level: 1),
-        ...verbs(['follow', 'carry', 'fall']),
+        ...verbs(['sit', 'stand'], level: 1),
+        ...verbs(['move', 'stay', 'leave'], level: 2),
+        ...verbs(['follow', 'carry', 'fall'], level: 3),
       ],
     ),
 
@@ -848,10 +922,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'telling',
       shedRank: 2,
       items: [
-        ...verbs(['ask', 'answer', 'talk', 'listen'], level: 1),
-        ...verbs(['call']),
+        ...verbs(['ask', 'answer', 'talk'], level: 2),
+        ...verbs(['listen'], level: 1),
+        ...verbs(['call'], level: 3),
         ...verbs(['show'], level: 1),
-        ...verbs(['spell', 'shout']),
+        ...verbs(['spell', 'shout'], level: 3),
       ],
     ),
 
@@ -859,10 +934,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'thinking',
       shedRank: 3,
       items: [
-        ...verbs(['remember', 'forget', 'learn'], level: 1),
-        ...verbs(['understand']),
-        ...verbs(['try', 'choose'], level: 1),
-        ...verbs(['decide', 'wonder']),
+        ...verbs(['remember', 'forget'], level: 2),
+        ...verbs(['learn', 'understand'], level: 3),
+        ...verbs(['try', 'choose'], level: 2),
+        ...verbs(['decide', 'wonder'], level: 3),
       ],
     ),
 
@@ -870,8 +945,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'handling',
       shedRank: 4,
       items: [
-        ...verbs(['hold', 'drop', 'find', 'lose'], level: 1),
-        ...verbs(['fix', 'clean', 'cut', 'cook']),
+        ...verbs(['hold'], level: 2),
+        ...verbs(['drop'], level: 3),
+        ...verbs(['find'], level: 2),
+        ...verbs(['lose', 'fix', 'clean', 'cut', 'cook'], level: 3),
       ],
     ),
 
@@ -879,13 +956,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'sharing',
       shedRank: 5,
       items: [
-        ...verbs(['share'], level: 1),
-        ...verbs(['swap']),
-        ...verbs(['meet'], level: 1),
-        ...verbs(['visit']),
+        ...verbs(['share'], level: 2),
+        ...verbs(['swap', 'meet', 'visit'], level: 3),
         ...verbs(['hug'], level: 1),
-        ...verbs(['kiss']),
-        ...verbs(['laugh', 'cry'], level: 1),
+        ...verbs(['kiss', 'laugh', 'cry'], level: 2),
       ],
     ),
 

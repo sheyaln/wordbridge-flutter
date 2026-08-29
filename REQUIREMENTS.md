@@ -501,7 +501,44 @@ form, the corrected pair has to be spoken.
 That gap is the reason toggle is the default: it never says a word it then has
 to take back.
 
-### 4.11 Vocabulary level — recalibrate, and ask at setup
+### 4.11 Vocabulary level — recalibrated; setup question outstanding
+
+**Recalibrated.** Level 1 is 99 words drawing **at most 36 on any page at any
+geometry**, which is the density Project Core publishes for a beginner's
+whole-day board. Level 2 is 241 — the 200-250 that Hattingh & Tönsing put at
+~80% of spoken communication. Level 3 is everything. Step sizes went from
+145 / **8** to 142 / **131**.
+
+The level-1 home board is the Universal Core 36's home portion plus five the
+Universal Core has no answer for: `yes`, `no`, `don't`, `wait`, `me`. It carries
+`not`, which negates inside a sentence but can neither answer a question nor
+make an imperative, and its possessive key fires after `I` to give "I's".
+
+**No copula, no endings, no articles at level 1** — decided deliberately, and
+confirmed. The Universal Core 36 carries no copula, and a first board is
+telegraphic: "what that?" is understood. The price, stated plainly: a level-1
+board cannot build "are you ok?" or any past tense. They arrive together at
+level 2, in the locations they have held since day one, so nothing is
+relearned.
+
+`will` moved to level 2 with them, so tense arrives as one set rather than
+leaving level 1 with a future and no past.
+
+**Still to build: the setup question.** Ask at profile creation alongside
+orientation and icon size, phrased as what a person is ready for rather than a
+level number, noting it is adjustable and that changing it moves nothing —
+words appear and disappear where they always were. Copy has three true things
+to say: level 1 *is* the Universal Core 36 at the published beginner density;
+**level 2 is where the grammar keys arrive**, which a caregiver who wants
+sentences needs to know; level 3 is everything.
+
+Verified safe for existing boards: `vocab_level` is written only on insert, no
+`UPDATE` on `buttons` anywhere names it, and `topUpVocabulary` returns early
+rather than rewriting a word already placed. New profiles at 7×12 get a
+byte-identical home board; teen and adult category pages change, in the
+direction of keeping higher-payload words on page 1.
+
+### 4.11-old Vocabulary level — the original brief
 
 **The levels do not currently mean anything.** Measured on the shipped
 vocabulary:
@@ -571,15 +608,41 @@ vocabulary:
   published work on what a starting AAC vocabulary should contain, and it
   should decide this rather than a judgement call:
   - **Project Core Universal Core 36** (CLDS, UNC-Chapel Hill) — the
-    evidence-based floor already cited in §7.
-  - **Banajee, DiCarlo & Buras-Stricklin (2003)** — toddler core, covers 96.3%
-    of toddler word use from a very short list.
-  - **Marvin, Beukelman & Bilyeu (1994)** — preschool core.
-  - **Boenisch & Soto (2015)**, *AAC* 31(1) — the core vocabulary of school-age
-    children who use AAC, which is the population, not a proxy for it.
-  - **Thistle & Wilkinson (2013)** on how many symbols a display should carry
-    before search cost outweighs vocabulary gained — the direct evidence for a
-    per-page ceiling.
+    evidence-based floor already cited in §7. Verified from the primary source.
+  - **Project Core's own published densities** — the *same* 36 words are
+    published at 4, 6, 9 and 36 per page, the vocabulary held constant while
+    pagination follows access method. A published ladder, and the direct
+    evidence for a per-page ceiling.
+  - **Laubscher & Light (2020)**, *AAC* 36(1):43-53 — core word lists
+    "may under-emphasize many of the types of words that predominate in early
+    expressive vocabulary". A first board should therefore be more noun- and
+    social-heavy than a core list alone would make it.
+  - **Hattingh & Tönsing (2020)**, PMC7433287 — 200-250 spoken words account
+    for roughly 80% of spoken communication. Sets the level 2 band.
+  - **Light et al. (2019)**, PMC6436972 — array size costs accuracy and
+    latency, and so does navigating more levels. Names the tradeoff, gives no
+    threshold.
+
+  > ⚠️ **Two citations in an earlier draft of this section were wrong, and the
+  > corrections matter more than the originals did.**
+  >
+  > **Thistle & Wilkinson (2013)** is *"Working memory demands of aided
+  > augmentative and alternative communication"*, *AAC* 29(3):235-245 — a
+  > theoretical review of memory load. It names the tradeoff but **contains no
+  > number** for how many symbols a display should carry. A per-page ceiling
+  > was attributed to it that it does not have.
+  >
+  > **Boenisch & Soto (2015)**, *AAC* 31(1):77-84, is the oral core vocabulary
+  > of ***typically developing*** school-aged children — a proxy population,
+  > and the earlier draft described it as the opposite and said to prefer it on
+  > that basis.
+  >
+  > **Banajee, DiCarlo & Buras-Stricklin (2003)** and **Marvin, Beukelman &
+  > Bilyeu (1994)** are real papers (DOIs confirmed via Crossref) whose word
+  > lists sit behind a paywall and could not be obtained. **Nothing is placed on
+  > the strength of them**, and no list was reconstructed from memory. A
+  > plausible word list attributed to a study nobody checked is exactly what
+  > this project must not ship.
 
   Where the sources disagree, say so and pick with the reason stated.
 
@@ -590,7 +653,19 @@ Carried forward, in the order they matter:
 - **Volume above the device's own maximum** (§4.4) is the one part of the
   original scope that platform speech cannot deliver. It needs §4.5.
 - **Level does double duty** — it decides both what is drawn on day one and
-  what a small grid sheds first. Those are different questions.
+  what a small grid sheds first. `_shedLeastImportant` sorts by
+  `[level, shedRank, index]`, so level dominates what pages off.
+
+  Its concrete shape: the eight verbs at the end of the home verb band
+  (`know think say tell see come give feel`) sit at level 3 for a **layout**
+  reason — they are the run a 7×12 grid pages off, and level is the only lever
+  that picks it. Consequently **nothing else on the root board may go above
+  level 2**, or it sheds ahead of them and relocates everything around it.
+  Pinned by a test that fires before the golden, with a message saying why.
+
+  The fix is a `pageRank` in `band_layout.dart` separate from `level`, which
+  would let those eight be level 2 — drawn, on page 2 — while still being the
+  run that pages off.
 - **Word endings and articles shed first on a small grid**, because they are
   all level 2 with the highest shed ranks. So the users least able to afford
   an extra movement are the ones who lose the grammar engine. Worth a
@@ -652,6 +727,14 @@ Small, real, and none of them urgent:
   blanks all three panels.
 - **`logger.enabled` is a plain mutable bool** with no notification, so the
   usage screen only notices a change when something else rebuilds it.
+- **The paging key is drawn whether or not the next page has anything on it at
+  the current level.** A level-2 profile at 7×12 pages forward from home onto a
+  board that draws nothing, because home page 2 holds only the eight level-3
+  verbs.
+- **`docs/starter-vocabulary.md` is now more worth writing, not less.**
+  Universal Core 36 is verifiable from its primary source; the Banajee and
+  Marvin lists are paywalled and were not used. That distinction is the
+  clean-room evidence and should live in the repo, not in a chat log.
 - **The caregiver screen does not surface `addedBoards` or `refusedBoards`**
   from a top-up. A whole new board arriving, or being refused for want of a
   free system-row column, is worth a line of its own rather than being folded
