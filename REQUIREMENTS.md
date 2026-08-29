@@ -1446,11 +1446,35 @@ next to `stop`, `get` to `take`, `open` to `close`. That is a documented
 property with its own tests, and neighbouring locations are learned as a pair
 while two far apart are learned twice.
 
-**Not built pending a decision.** Holding the pairing needs a cap on how wide a
-band may grow — a `maxLines` the layout engine does not have — and that is a
-change to the motor-planning core worth making deliberately rather than as a
-side effect of relabelling a column. What is not in question is that joining
-words must stop being shed while an empty column survives.
+#### Decided: the reserve is guaranteed a column, but not on page one
+
+**`things` yields page one to real words, and is guaranteed a column on page
+two instead.** It must never outrank the word endings.
+
+That resolves the deadlock, because the four routes above all assumed the
+reserve had to be on page one or nowhere. It does not:
+
+- **Held-open space stops outranking words.** An empty line is given back
+  before any word is pushed to page two — the general fix, which repairs the
+  ordering rather than this one symptom. Joining words and word endings both
+  keep their places at every grid.
+- **The reserve is not lost, it moves.** A caregiver's own nouns still have a
+  column held for them; it costs one key press to reach. That is the right
+  price — the reserve is for words nobody has added yet, and a word already in
+  the vocabulary should not be a page press further away to protect it.
+- **The verb pairing survives**, because the column freed on page one is the
+  one `verbs` was already shedding into. Nothing grows to four lines, so `go`
+  stays beside `stop`.
+
+**This needs §4.38's machinery and should be built with it.** An empty band
+contributes no overflow today, so it simply disappears rather than reappearing
+on page two: paging carries *items* forward, and a band with none is not
+carried. Bands keeping their lines across pages is the same problem seen from
+the other end, and the two want one change, not two.
+
+Ordering, stated once so it is not re-derived: **words that exist beat space
+held for words that do not.** Within the words, `level` then `pageRank` decide,
+unchanged.
 
 ### 4.38 A band keeps its lines across every page of a group — agreed, not built
 
@@ -1571,12 +1595,21 @@ choices, and that breaks two of this board's assumptions:
   numbers row on a `things` category, a row of its own on the root board, or a
   category of its own — a category costs a slot on the wheel, which is
   append-only, so it is cheap in learned keys and expensive in a movement.
-- **Whether "more" and "all" already cover the common case.** Both ship at
-  level 1 and both do quantity work. If most of what a beginner needs is "more"
-  rather than "four", numbers belong at level 3 and out of the way.
+#### Decided: a category of its own, drawn from level 2
 
-Not started. It wants the same treatment §4.28 got: decide placement, then
-measure what it costs at every grid before committing.
+**Numbers are a category board, and nothing on it draws at level 1.**
+
+- **A category**, so they cost a slot on the wheel rather than a row on a board
+  that has none to give. The wheel is append-only, so the slot goes on the end
+  and every already-learned key keeps opening what it always opened.
+- **Level 2 and up**, which answers the question above: `more` and `all` ship at
+  level 1 and do the quantity work a beginner needs. A single-word board does
+  not need `seven`.
+
+Still to settle when building it: how far the sequence runs, and whether the
+board carries anything besides the numerals — `how many`, `first`/`last`,
+`none`. Measure what it costs at every grid before committing, the way §4.28
+was measured.
 
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
