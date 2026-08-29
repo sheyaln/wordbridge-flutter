@@ -379,7 +379,7 @@ Future<_NewCategories> _addMissingCategories(
           db,
           vocabularyId: vocab.id,
           cellId: cell.id,
-          label: key.cycles ? 'more categories' : category,
+          label: key.cycles ? cycleCategoriesLabel : category,
           message: '',
           action: key.cycles
               ? ButtonAction.cycleCategories

@@ -316,6 +316,110 @@ void main() {
       );
     });
 
+    testWidgets('spinning the wheel past a category costs it nothing', (
+      tester,
+    ) async {
+      // The defect this replaces: every press of the cycle key was a crumb, so
+      // cycling round the wheel and back recorded a route nobody would ever
+      // walk again. Which turn a category is on is a fact about the category.
+      final target = categories.first;
+      final cell = await place(target.boardId, 'quay');
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      final pages = tester
+          .state<TalkScreenState>(find.byType(TalkScreen))
+          .wheelPages;
+      expect(pages, greaterThan(1), reason: 'the wheel does not turn here');
+
+      // All the way round, and one turn further, so the wheel is back where it
+      // started and the category is on its first turn again.
+      for (var i = 0; i < pages; i++) {
+        await tapCell(tester, wheelRow, cycleCol);
+      }
+      await tapCell(tester, wheelRow, wheelCols.first);
+      await tapCell(tester, cell.row, cell.col);
+
+      expect(
+        trail(tester),
+        'home → ${target.name} → quay',
+        reason:
+            'the trail counted the presses that were made rather than the '
+            'ones that reach the word from home',
+      );
+    });
+
+    testWidgets('a category on the second turn costs one turn, not four', (
+      tester,
+    ) async {
+      final target = categories[wheelCols.length];
+      final cell = await place(target.boardId, 'quay');
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      final pages = tester
+          .state<TalkScreenState>(find.byType(TalkScreen))
+          .wheelPages;
+
+      // Round the wheel a whole time, then on to the second turn — so the
+      // board is showing exactly what one press would have shown.
+      for (var i = 0; i < pages + 1; i++) {
+        await tapCell(tester, wheelRow, cycleCol);
+      }
+      await tapCell(tester, wheelRow, wheelCols.first);
+      await tapCell(tester, cell.row, cell.col);
+
+      expect(trail(tester), 'home → more categories → ${target.name} → quay');
+    });
+
+    testWidgets('a category reached without the wheel still costs its turns', (
+      tester,
+    ) async {
+      // A caregiver's own key straight onto a category board. It is one press
+      // from here, but the trail is the route from home, and from home that
+      // category is behind however many turns of the wheel it sits on — the
+      // wheel is where it stands, not where it was left.
+      final target = categories[wheelCols.length];
+      final cell = await place(target.boardId, 'quay');
+
+      final shortcut =
+          await (db.select(db.cells)
+                ..where(
+                  (c) =>
+                      c.boardId.equals(vocab.rootBoardId!) &
+                      c.state.equalsValue(CellState.emptyReserved) &
+                      c.row.isSmallerThanValue(wheelRow),
+                )
+                ..limit(1))
+              .getSingle();
+
+      await placeButton(
+        db,
+        vocabularyId: vocabularyId,
+        cellId: shortcut.id,
+        label: 'straight there',
+        message: '',
+        action: ButtonAction.navigate,
+        targetBoardId: target.boardId,
+      );
+
+      await settings.set('breadcrumbs', true);
+      await pumpTalkScreen(tester);
+
+      await tapCell(tester, shortcut.row, shortcut.col);
+      await tapCell(tester, cell.row, cell.col);
+
+      expect(
+        trail(tester),
+        'home → more categories → ${target.name} → quay',
+        reason:
+            'the turns were counted from where the wheel happened to be '
+            'standing rather than from where the category lives',
+      );
+    });
+
     testWidgets('pressing one category three times is one crumb', (
       tester,
     ) async {

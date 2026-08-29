@@ -26,6 +26,14 @@ import '../../features/grid/region_labels.dart';
 const defaultGridRows = 7;
 const defaultGridCols = 12;
 
+/// What the key that turns the category wheel reads.
+///
+/// Shared, because the seed writes it, a top-up writes it again for a board
+/// that gains a wheel, and the trail names a turn of the wheel with it. Three
+/// copies of one string drift, and the drift reads as the board renaming a key
+/// nobody touched.
+const cycleCategoriesLabel = 'more categories';
+
 /// Creates a vocabulary and returns its id.
 Future<String> seedCoreBoardSet(
   WordbridgeDatabase db, {
@@ -471,7 +479,11 @@ Future<void> addFixedKeys(
   }
 
   if (frame.cycleCol != null) {
-    await key(frame.cycleCol!, 'more categories', ButtonAction.cycleCategories);
+    await key(
+      frame.cycleCol!,
+      cycleCategoriesLabel,
+      ButtonAction.cycleCategories,
+    );
   }
 
   // Paging keys are drawn only where there is a page to go to, and reappear in

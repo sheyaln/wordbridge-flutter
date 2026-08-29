@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../../db/seed/band_layout.dart';
+import '../../db/seed/core_board_set.dart';
 import '../../db/tables.dart';
 import '../auth/caregiver_gesture.dart';
 import '../auth/corner_hold_target.dart';
@@ -221,12 +222,11 @@ class TalkScreenState extends State<TalkScreen> {
     _reached = null;
     if (boardId == null) return;
 
-    if (_reachableFromAnywhere(boardId)) {
-      // The turns of the wheel stay: a category on the second turn costs both
-      // presses. Whatever else the route collected on the way does not.
+    final route = _routeToCategory(boardId);
+    if (route != null) {
       _route
-        ..removeWhere((crumb) => !crumb.turnsWheel)
-        ..add(Crumb(label: label, boardId: boardId));
+        ..clear()
+        ..addAll(route);
       return;
     }
 
@@ -239,26 +239,51 @@ class TalkScreenState extends State<TalkScreen> {
     _route.add(Crumb(label: label, boardId: boardId));
   }
 
-  /// Whether a category key opens [boardId] from whatever board is showing.
+  /// The whole way to a category from home, or null where [boardId] is not one.
+  ///
+  /// Every category key sits on the system row of every board, so a category
+  /// is one press from wherever the user happens to be — behind however many
+  /// turns of the wheel it sits on. Both halves are facts about the category
+  /// rather than about the visit: which turn it is on does not move, and the
+  /// key that opens it reads the category's name whatever key was pressed to
+  /// get here.
+  ///
+  /// So the route is rebuilt rather than appended to. Home puts the wheel back
+  /// on its first turn, and somebody who spun past their category and round
+  /// again walked a longer way than the one they need next time. The trail is
+  /// for next time.
   ///
   /// The wheel's own list, so a board a caregiver made and reaches through a
   /// button on another board is not one of these — that really is a step, and
   /// really does have to be repeated.
-  bool _reachableFromAnywhere(String boardId) =>
-      _wheel?.entries.any((e) => e.boardId == boardId) ?? false;
+  List<Crumb>? _routeToCategory(String boardId) {
+    final wheel = _wheel;
+    if (wheel == null || wheel.cols.isEmpty) return null;
 
-  /// Records a turn of the category wheel.
+    final at = wheel.entries.indexWhere((e) => e.boardId == boardId);
+    if (at < 0) return null;
+
+    return [
+      for (var turn = 0; turn < at ~/ wheel.cols.length; turn++)
+        Crumb(label: _cycleLabel, boardId: _rootBoardId ?? ''),
+      Crumb(label: wheel.entries[at].name, boardId: boardId),
+    ];
+  }
+
+  /// What the cycle key reads, so a synthesised turn is named the way the key
+  /// the caregiver is looking at is named.
+  String _cycleLabel = cycleCategoriesLabel;
+
+  /// Notes that the wheel moved.
   ///
-  /// Always a step. It leaves the board where it is, but every key on the
-  /// system row means a different board afterwards, so a turn is a press
-  /// somebody has to make again to reach the same word.
+  /// It leaves the board where it is and adds no step of its own — where a
+  /// category sits on the wheel is recorded when the category is chosen. What
+  /// it does end is the last completed route, which described a word the user
+  /// has now moved on from.
   void _turnedWheel(String label) {
     _restartTrailIfStale();
     _reached = null;
-    final boardId = _currentBoardId;
-    if (boardId != null) {
-      _route.add(Crumb(label: label, boardId: boardId, turnsWheel: true));
-    }
+    _cycleLabel = label;
   }
 
   /// Rewinds the route to the board `back` returns to.

@@ -2,19 +2,7 @@ import 'package:flutter/material.dart';
 
 /// One step of a route, and the board it landed on.
 class Crumb {
-  const Crumb({
-    required this.label,
-    required this.boardId,
-    this.turnsWheel = false,
-  });
-
-  /// Whether this step turned the category wheel rather than changing board.
-  ///
-  /// A turn survives being followed by a category, because reaching a category
-  /// on the second turn genuinely costs both presses. Everything else the
-  /// route collected before that category does not, since a category key is
-  /// on the system row of whatever board was showing.
-  final bool turnsWheel;
+  const Crumb({required this.label, required this.boardId});
 
   /// What the key read when it was pressed. A category key shows a different
   /// word on each turn of the wheel, and the crumb says the one the user saw.

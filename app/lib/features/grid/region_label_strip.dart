@@ -10,7 +10,18 @@ import 'region_labels.dart';
 /// Chrome, outside the grid. Nothing here may take a location: the reserved
 /// lines are exactly where a caregiver's own words are meant to land, and a
 /// label that consumed one would be teaching the layout by damaging it.
-const regionLabelExtent = 22.0;
+///
+/// Two lines deep, and fixed at two whether or not any label needs them. Most
+/// of these names are more than one word — `word endings`, `joining words`,
+/// `yes, no and how it is` — and a band is only ever as wide as the lines it
+/// owns, so on one column they do not fit across. Sizing the strip to whatever
+/// the longest label happens to need would make a caregiver renaming a row
+/// change the height of the grid, and with it the size of every cell on it.
+const regionLabelExtent = 32.0;
+
+/// How many lines a name may take before it is cut. Two, because these are
+/// two- and three-word names and the strip is sized for two.
+const _regionLabelLines = 2;
 
 /// Names each run of locations by what it is for.
 ///
@@ -131,11 +142,12 @@ class _Label extends StatelessWidget {
           child: Center(
             child: Text(
               text.toUpperCase(),
-              maxLines: 1,
+              maxLines: _regionLabelLines,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
+                height: 1.15,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.6,
                 color: colour,
