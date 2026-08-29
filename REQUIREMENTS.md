@@ -1469,6 +1469,50 @@ Open questions before it can be built:
 - **Unpinning must not strand the word.** It has to return somewhere, and the
   somewhere has to be decided before the pin is offered.
 
+#### The three answers, settled
+
+**A pin is a copy, not a move.** The word keeps the location it already has and
+*gains* a second, shorter route to itself. That single decision closes the
+stranding question outright: unpinning takes the pinned location back to
+reserved and the original path is untouched, because it was never disturbed.
+Nothing can be stranded because nothing moved.
+
+It looks wasteful — one word, two locations — and it is the right waste. The
+alternative is moving the word to the pinned column, which is a displacing edit
+that costs its learned position on the board it came from, to buy a shorter
+route to the same word. Pinning is supposed to make a frequent word cheaper,
+not to trade one motor path for another. Two paths to one word is also already
+how this board works: `where` is in the pinned column *and* reachable nowhere
+else, and a category key reaches a board that `back` also reaches.
+
+**What it costs is one cell on every board, and there is currently one to
+spend.** The pinned column is `rows - 1` deep and the shipped frame puts six
+questions in it, so at **7 rows it is exactly full and there are no spare
+pinned cells**. At 8 rows or more there is at least one.
+
+The one free location on the shipped 7×12 frame is the **gap at column 2 of the
+system row** — the deliberate empty cell between the home/back pair and the
+category keys, reserved on every board. Spending it on a pin costs the
+mis-reach guard it exists for: home and back undo what the user just did, the
+category keys go somewhere new, and shoulder to shoulder an imprecise reach for
+one lands on the other. That is a real trade and it is the caregiver's to make,
+stated in those words rather than as "one location is available".
+
+So the rule is: **pin into an `empty_reserved` location in the pinned column or
+on the system row, or refuse.** One pin at 7×12, more on a taller grid, none
+once they are spent.
+
+**What is not on offer:** widening the pinned column. Going from one pinned
+column to two takes a content column from *every* board — six locations a board
+at 7×12, across every board in the set — and re-lays everything left of it.
+That is a grid change, not a pin, and it belongs behind the §4.20 rebuild path
+with a full displaced-word report or nowhere.
+
+**And not this either:** freeing a pinned cell by hiding the question in it.
+Hiding never releases a location (§2), so a hidden `when` does not make its cell
+available to something else. That rule is what makes "grow over time" and
+"never relocate" both true, and pinning is not the thing to break it for.
+
 ### 4.6a Sentences the board still cannot build
 
 Each of these is a real utterance a person would want, named rather than
