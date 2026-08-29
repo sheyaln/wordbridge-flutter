@@ -539,6 +539,50 @@ void main() {
       expect(ids.toSet(), hasLength(ids.length));
     });
 
+    test('every bundled pack actually ships images', () async {
+      // A pack with no assets is not a pack. Four once sat in this list with
+      // no asset directory: every search against them returned nothing, and
+      // the credits screen implied the app carried symbol sets it did not.
+      for (final pack in bundledSymbolPacks()) {
+        final hits = <SymbolRef>[];
+        for (final word in ['water', 'happy', 'go', 'more', 'help']) {
+          hits.addAll(await pack.search(word));
+        }
+        expect(
+          hits,
+          isNotEmpty,
+          reason:
+              '${pack.id} is offered to caregivers and answers nothing, for '
+              'any word',
+        );
+      }
+    });
+
+    test('the sets core is assembled from are still credited', () async {
+      // Dropping those four as packs must not drop their credit: the licences
+      // require it wherever the work appears, and the work still appears.
+      final raw = await rootBundle.loadString(
+        'assets/symbols/core/manifest.json',
+      );
+      final attributions =
+          (json.decode(raw) as Map)['attributions'] as Map<String, dynamic>;
+
+      final used = {
+        for (final entry
+            in ((json.decode(raw) as Map)['symbols'] as Map).values)
+          (entry as Map)['set'] as String?,
+      }..remove(null);
+
+      expect(used, isNotEmpty);
+      for (final set in used) {
+        expect(
+          attributions[set],
+          isNotNull,
+          reason: 'core draws on "$set" and credits it nowhere',
+        );
+      }
+    });
+
     test('every bundled pack permits commercial use', () {
       for (final pack in bundledSymbolPacks()) {
         expect(

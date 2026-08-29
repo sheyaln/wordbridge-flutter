@@ -435,7 +435,7 @@ be testable.
 ### 4.8 Breadcrumbs — agreed, not built
 
 A strip at the bottom of the screen showing the path taken to reach a word:
-`home → body → more words → buttocks`. **Toggleable, default on.**
+`home → body → more words → face`. **Toggleable, default on.**
 
 The crumbs read what the keys read — the paging key says `more words` and the
 wheel key says `more categories` — because a crumb naming something the board
