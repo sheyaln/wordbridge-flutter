@@ -101,10 +101,34 @@ class _SymbolPickerState extends State<SymbolPicker> {
   String _searchedFor = '';
   bool _widened = false;
 
+  /// What the button is drawing right now, and whether that is known yet.
+  ///
+  /// Not the same question as whether a picture was *chosen*. A button with no
+  /// symbol of its own still draws whatever the packs hold for its word, which
+  /// is most of the shipped board — so asking about the choice hides the
+  /// control on exactly the buttons a caregiver is looking at a picture on.
+  SymbolImage? _drawn;
+  bool _resolvedDrawn = false;
+
   @override
   void initState() {
     super.initState();
     _search();
+    _resolveDrawn();
+  }
+
+  Future<void> _resolveDrawn() async {
+    final resolved = await widget.resolver.resolveButton(
+      symbolId: widget.button.symbolId,
+      label: widget.button.label,
+      packIds: widget.registry.packs.map((p) => p.id).toList(),
+    );
+    if (mounted) {
+      setState(() {
+        _drawn = resolved.image;
+        _resolvedDrawn = true;
+      });
+    }
   }
 
   @override
@@ -270,9 +294,13 @@ class _SymbolPickerState extends State<SymbolPicker> {
   }
 
   /// Whether there is a picture on the button for [_clear] to take off.
+  ///
+  /// Offered while the answer is still being looked up rather than after: a
+  /// control that appears once a slow pack replies is one a caregiver has
+  /// already decided is missing.
   bool get _hasPicture =>
-      widget.button.symbolId != null &&
-      widget.button.symbolId != removedPictureSymbolId;
+      widget.button.symbolId != removedPictureSymbolId &&
+      (!_resolvedDrawn || _drawn != null);
 
   @override
   Widget build(BuildContext context) {

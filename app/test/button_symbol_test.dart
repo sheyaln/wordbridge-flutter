@@ -634,6 +634,74 @@ void main() {
       );
     });
 
+    testWidgets('a picture nobody chose can still be taken off', (
+      tester,
+    ) async {
+      // Most of the shipped board is like this: no symbol of its own, drawing
+      // whatever the packs hold for the word. Asking whether a picture was
+      // *chosen* hides the control on exactly the buttons somebody is looking
+      // at a picture on.
+      final button = await place(0, 0, 'water');
+      expect(button.symbolId, isNull);
+
+      await pumpPicker(tester, button: button, pack: packServingWater());
+
+      expect(
+        find.text('Remove the picture'),
+        findsOneWidget,
+        reason:
+            'the button draws a pack picture and there is no way to take it '
+            'off',
+      );
+
+      await tester.tap(find.text('Remove the picture'));
+      await settle(tester, turns: 20);
+
+      expect((await reread(button.id)).symbolId, removedPictureSymbolId);
+    });
+
+    testWidgets('a slow pack does not make the control appear late', (
+      tester,
+    ) async {
+      // The other way to get this wrong: waiting for the answer before
+      // offering the control. A caregiver who opens the sheet, sees no way to
+      // take the picture off and closes it has been told something false by a
+      // pack that had not replied yet.
+      final button = await place(0, 0, 'water');
+
+      await pumpPicker(
+        tester,
+        button: button,
+        pack: _FakePack(hangs: true, name: 'slow'),
+      );
+
+      expect(
+        find.text('Remove the picture'),
+        findsOneWidget,
+        reason: 'the control waits for the lookup instead of leading it',
+      );
+
+      // Let the search and the resolver's own ceilings on a pack that never
+      // answers expire, so nothing is left pending at teardown.
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a word with no picture anywhere is not offered it', (
+      tester,
+    ) async {
+      final button = await place(0, 1, 'because');
+
+      await pumpPicker(tester, button: button, pack: packServingWater());
+
+      expect(
+        find.text('Remove the picture'),
+        findsNothing,
+        reason:
+            'a control offering to take off a picture that was never there '
+            'is reported as broken, because it is',
+      );
+    });
+
     testWidgets('a button already marked as having none is not offered it', (
       tester,
     ) async {

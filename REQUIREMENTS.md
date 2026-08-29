@@ -1261,6 +1261,33 @@ screen, which hid whichever action ended up last. It is a scrolling sheet now �
 how many actions it holds depends on the button and on whether pictures are
 available at all, so its height was never fixed to begin with.
 
+### 4.34 "Remove the picture" was missing on most buttons — delivered
+
+Reported: the control is not always there, and it was not clear why.
+
+It asked whether a picture had been **chosen** — `symbolId != null` — when the
+caregiver's question is whether there is a picture **on the button**. Most of
+the shipped board has no symbol of its own and draws whatever the packs hold
+for its word, so the control was hidden on exactly the buttons somebody was
+looking at a picture on. It appeared only for a photo or a symbol picked by
+hand.
+
+It now asks what the button is actually drawing, through the same
+`resolveButton` the board draws with. Removal writes the same marker it always
+did, which is what the marker is for: **"deliberately no picture" is a
+different state from "nothing chosen yet"**, and only the first survives a pack
+being switched on later.
+
+**Offered while the lookup is still in flight**, not after. A control that
+appears once a slow pack replies is one a caregiver has already decided is
+missing and closed the sheet on. The cost of being early is a press that pins
+"no picture" on a button that turned out to have none — which is a thing
+somebody might want anyway.
+
+Three mutations, and the third is the one that mattered: hiding the control
+until the lookup returns passed every test until a hanging pack was added to
+the file. A word with no picture anywhere is still not offered it.
+
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
 The proposal was a setting: instead of every cluster starting its own row
