@@ -49,14 +49,35 @@ enum BandFill {
 
 /// One word waiting for a location.
 class BandItem<T> {
-  const BandItem(this.value, {this.level = 1, this.essential = false});
+  const BandItem(
+    this.value, {
+    this.level = 1,
+    this.essential = false,
+    this.pageRankOverride,
+  });
 
   final T value;
 
-  /// Vocabulary level. When the chosen grid cannot hold everything, the
-  /// highest levels lose their place first, so a small board still keeps the
-  /// core words a user needs on day one.
+  /// Vocabulary level. Decides what is **drawn**, and nothing else: a word
+  /// above the profile's level holds its location without being rendered, and
+  /// raising the level reveals it exactly where it has always been.
   final int level;
+
+  /// Set only where [pageRank] must not follow [level].
+  final int? pageRankOverride;
+
+  /// What gives way first when the chosen grid cannot hold everything.
+  ///
+  /// Separate from [level] because the two questions are separate. "Show this
+  /// to a beginner" and "this is what a narrow grid can afford to put on a
+  /// second page" agree most of the time, which is why this follows level by
+  /// default — but where they disagree, tying them together forces a word to
+  /// be hidden from someone who could use it in order to keep it off a page,
+  /// or onto page one at the cost of something that earns the room.
+  ///
+  /// The default leaves gaps on purpose: level *n* ranks at *10n*, so a word
+  /// can be placed between two levels without renumbering anything.
+  int get pageRank => pageRankOverride ?? level * 10;
 
   /// Never moved to an overflow board, whatever the grid size.
   ///
@@ -341,9 +362,10 @@ BandLayout<T> layOutBands<T>({
 
 /// Moves the single least important remaining word to the overflow list.
 ///
-/// Importance is level first, then how readily the band gives way, then
-/// position within the band. Level dominating is what keeps "not" and "want"
-/// on a small board while "turn" and "different" move to the overflow page.
+/// Importance is [BandItem.pageRank] first, then how readily the band gives
+/// way, then position within the band. The rank dominating is what keeps "not"
+/// and "want" on a small board while "turn" and "different" move to the
+/// overflow page.
 ///
 /// Returns false when nothing is left to shed.
 bool _shedLeastImportant<T>(
@@ -360,7 +382,7 @@ bool _shedLeastImportant<T>(
     for (var i = 0; i < items.length; i++) {
       if (items[i].essential) continue;
 
-      final key = [items[i].level, band.shedRank, i];
+      final key = [items[i].pageRank, band.shedRank, i];
       if (worstIndex < 0 || _greater(key, worstKey)) {
         worstBand = band;
         worstIndex = i;
