@@ -7,8 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/ids.dart';
+import 'package:wordbridge/db/seed/age_presets.dart';
 import 'package:wordbridge/db/seed/band_layout.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/db/seed/core_vocabulary.dart';
 import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/grid/region_label_strip.dart';
@@ -174,9 +176,49 @@ void main() {
 
     test('a band already named after what it holds is left alone', () {
       // Inventing a second name for "family" or "eating" would be two things
-      // to keep in step for no gain.
+      // to keep in step for no gain. A cluster on a category board is named
+      // after the cluster, so most of them fall into this case.
       expect(regionLabel('family'), 'family');
       expect(regionLabel('eating'), 'eating');
+      expect(regionLabel('drinks'), 'drinks');
+      expect(regionLabel('meals'), 'meals');
+      expect(regionLabel('fruit'), 'fruit');
+      expect(regionLabel('vegetables'), 'vegetables');
+      expect(regionLabel('treats'), 'treats');
+      expect(regionLabel('arms and legs'), 'arms and legs');
+    });
+
+    test('a cluster whose short name misleads gets a plainer one', () {
+      // "staples" reads as stationery, "out" as a direction, and "people" is
+      // the name of the board that band sits on.
+      expect(regionLabel('staples'), 'everyday food');
+      expect(regionLabel('out'), 'places you go');
+      expect(regionLabel('people'), 'words for people');
+    });
+
+    test('no two clusters on one board read as the same thing', () {
+      // One label per row down the side of a category board. Two rows carrying
+      // the same word is a board that cannot be talked about — "the drinks
+      // row" has to name one row. The layout engine already refuses two bands
+      // with the same name; this is the same requirement one step later, after
+      // the plainer names have been substituted in.
+      for (final ageBand in AgeBand.values) {
+        for (final category in categoryNames) {
+          final labels = [
+            for (final band in categoryBandsFor(category, ageBand))
+              regionLabel(band.name),
+          ];
+
+          expect(
+            labels.toSet(),
+            hasLength(labels.length),
+            reason:
+                'two rows of the $category board read the same to a '
+                '${ageBand.name} profile: $labels',
+          );
+          expect(labels, everyElement(isNotEmpty));
+        }
+      }
     });
   });
 

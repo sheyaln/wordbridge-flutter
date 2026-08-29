@@ -165,10 +165,12 @@ meaning. Three reasons, in descending order of how well evidenced they are:
 > encoding, which is how §1 uses it, and says nothing about word-class
 > arrangement.
 
-Semantic clusters survive as the *ordering inside* a strip rather than as
-strips of their own, because children group vocabulary in small event-based
-groups rather than taxonomies (Fallon, Light & Achenbach 2003), and because a
-strip per cluster costs a row each — eight clusters do not fit in six rows.
+Within that class order, **a strip is one semantic cluster** — drinks, meals,
+fruit, treats — because children group vocabulary in small event-based groups
+rather than taxonomies (Fallon, Light & Achenbach 2003), and because a row is
+what a person reads in one sweep. A strip per cluster costs a row each and
+eight clusters do not fit in six rows, so the clusters a day needs least read
+on page two. See §4.24 for what that costs and why it is the right way round.
 
 ### 4.1 Grid geometry, chosen at setup
 
@@ -885,7 +887,146 @@ two immediately came apart. Page two is now rebuilt by looking each word up in
 the band's own declaration, so it reads the way page one does regardless of the
 order the shedding happened to take.
 
-### 4.23 Three bugs the macOS build surfaced — delivered
+### 4.27 Two corners held together opens caregiver mode — agreed, not built
+
+Replaces the sustained press on an invisible target in the corner of the
+utterance bar.
+
+**Hold the bottom-left and bottom-right locations of the grid at once**, for a
+configurable time, **default 5 seconds**. On the shipped frame those are `home`
+and the forward-paging key — the two ends of the system row, as far apart as
+the grid allows.
+
+Why it is better than what it replaces: an invisible target is a thing a user
+finds by accident and a caregiver cannot find on purpose. Two locations at
+opposite ends of the board, held together for five seconds, is a gesture a
+hand resting on the device cannot produce, and one that can be written down in
+a sentence and taught.
+
+To settle when building it:
+
+- **Neither key may fire.** `home` resets the board and the paging key changes
+  it. Both currently act on touch-down. They have to hold their action until
+  the gesture is resolved, and drop it if the hold completes — a caregiver
+  opening settings must not also send the user somewhere.
+- **The bottom-right is not always a key.** The forward-paging key is drawn
+  only where there is a page to go to, so on a single-page board that location
+  is an empty reserved cell. That is fine and possibly better — an empty cell
+  has nothing to suppress — but the gesture has to be anchored to the
+  *location*, not to whatever button happens to occupy it.
+- **⚠️ It is a two-point gesture, and that excludes people.** Anyone using one
+  hand, a head pointer, a stylus or switch access cannot make it. The corner
+  hold it replaces had the same problem less severely. So the old gesture, or
+  another single-point route, has to remain available for those cases — this
+  cannot be the only door.
+- **Chosen once, at first setup, and it belongs to the device.** Which gesture
+  opens caregiver mode is a fact about who is holding the tablet, not about the
+  person speaking on it, so it lives in `app_state` beside the PIN rather than
+  in a profile's settings. **Asked on the very first run only** — a caregiver
+  setting up a fourth profile has already answered it, and asking again would
+  imply the answer could differ per person, which would mean four gestures on
+  one device and none of them reliable.
+
+  Changeable afterwards from caregiver settings, which is safe precisely
+  because you are already inside when you change it.
+- **⚠️ Whatever is chosen must have a way back in.** A caregiver who picks the
+  two-point hold and later hands the device to somebody who cannot make it has
+  locked themselves out of their own settings — and PIN recovery is no help,
+  because it lives behind the gesture. The single-point route therefore cannot
+  be merely an alternative offered at setup; it has to keep working regardless
+  of what was chosen, or there has to be some other door that does. This is the
+  part to design first.
+- **Configurable, with a floor.** Default 5 seconds. Long enough that it is
+  never accidental; short enough that a caregiver does not think it failed. It
+  should not be settable to zero.
+
+### 4.28 Time, and words for not being sure — agreed, not built
+
+Two vocabulary additions, both for later.
+
+**A `time` category.** Nothing on the board says when. Today, tomorrow,
+yesterday, morning, afternoon, night, now, later, soon, before, after, and the
+days of the week. It is a new category board, which costs a slot on the wheel —
+and the wheel is append-only, so the slot goes on the end and every learned key
+keeps what it opens.
+
+**Words for not being sure** — `maybe`, `perhaps`, `unsure`, `possibly`,
+`probably`. Worth naming separately from the rest of the fringe because of what
+they do: without them, every answer a person gives is a commitment. A board
+that can say `yes` and `no` and not `maybe` puts somebody in the position of
+overstating what they mean, every time, and the people around them have no way
+to tell that it is the board talking rather than the person.
+
+Where they go is the open question. They are not nouns and do not belong on a
+category board of things; `maybe` in particular belongs near `yes` and `no`,
+which is the most contested part of the root board.
+
+### 4.26 A caregiver can name a row themselves — agreed, not built
+
+The labels in §4.19 come from the shipped layout, which means a board a
+caregiver made by hand has none, and a row whose contents they changed keeps
+the name the seed gave it. Both are cases where the person who knows the user
+should be able to say what a row is for.
+
+**Chosen from a list, not typed.** Every band the app ships already has a name
+written for a reader — `drinks`, `meals`, `fruit`, `doing`, `people you know`,
+`places you go` — and that list is long enough to cover most of what a new row
+would hold. Picking from it keeps the vocabulary of the board consistent
+between the shipped rows and the added ones, which is the whole point of
+labelling. **With free text as the last option**, because a caregiver building
+a row for one child's swimming club is not served by a list.
+
+Shape:
+
+- **Reached from the board editor**, on the row rather than on a button: tap
+  the row's label, get the list. A row with no label yet shows an empty slot
+  when the setting is on, so there is somewhere to tap.
+- **Stored per line, not per band.** A caregiver-made board has no bands at
+  all, so the override has to key off the line index. New nullable column on
+  `boards` — a JSON map of line index to name — kept separate from `band_map`
+  so that what the seed decided and what a person chose never get confused.
+- **An override wins over the band's own name**, and clearing it falls back.
+
+Two costs to state plainly when it is built:
+
+- **A rebuild (§4.20) or a grid change discards these.** Both re-lay the board,
+  so line 3 afterwards is not the line 3 that was named. Carrying a name onto a
+  different row would be worse than losing it. The confirmation for both has to
+  say so, and it is a reason to keep the list short and quick to re-apply
+  rather than to make naming feel expensive.
+- **It can contradict the board.** Nothing stops a row of fruit being named
+  `drinks`. That is the caregiver's call to make and their mistake to fix — the
+  alternative is refusing a name because the software disagrees, on a board
+  whose entire premise is that the people who know the user decide.
+
+### 4.25 Letting clusters share a row — measured, and not worth building
+
+The proposal was a setting: instead of every cluster starting its own row
+(§4.24), let a cluster fill the tail the one before it left, saving the wasted
+tails and the words they push to a second page.
+
+**Measured, it saves nothing.** `layOutBands` budgets a whole line per band in
+`totalWidth()` before it places anything, and does so whether or not the band
+sets `startsLine: false`. Eight bands run through the engine both ways placed
+44 and overflowed 10 either way — identical. Packing only slides the survivors
+up into fewer rows and leaves the trailing rows empty.
+
+**And it costs the labels outright.** A band with `startsLine: false` gets no
+`bandLines` entry at all, so §4.19 has nothing to name it with — not a shared
+label or a truncated one, no label, with `bandAt()` attributing its cells to
+the band above. In that same measurement three of six clusters went unnamed.
+
+So it is not a trade between tidiness and density. As the engine stands,
+own-row is strictly better on both counts, and the setting would only let a
+caregiver make the board worse in two ways at once.
+
+**What would have to change first:** the line budget would have to stop
+charging for a line a band does not use, and `bandLines` would have to be able
+to describe a region that is part of a row. Both are `band_layout.dart` changes
+of real size. Worth revisiting only if a board turns up where own-row pages off
+something a person needs daily — §4.24 looked and found none.
+
+### 4.23 Three bugs the macOS build surfaced — delivered### 4.23 Three bugs the macOS build surfaced — delivered
 
 Running the same code on a desktop window found three things the iPad had been
 hiding. Worth keeping the macOS target for that reason alone.
@@ -910,6 +1051,65 @@ Also: the label switch now says when there is nothing to label, rather than
 going on and changing nothing. A board built before §4.19 recorded its regions
 has none to read, and a switch that appears to do nothing reads as broken
 rather than as an older board.
+
+### 4.24 A category row is one cluster — delivered
+
+Reported against the food board: *"the columns and rows are not organized at
+all, so it becomes a MESS."* Drinks ran into bread and toast, `breakfast` sat
+at the end of a row next to `salad`, and `lunch dinner snack` opened the next
+row beside `apple banana`. Meal names, fruit and staples were interleaved.
+
+**The cause was one band holding all forty three nouns**, wrapping at the row
+edge wherever it happened to reach it. The clusters were contiguous in reading
+order and that is not the same as being on one row. §4.0 had traded tidy rows
+for page-one density and the trade was wrong: a row that runs two groups
+together is learned word by word, and a row that is only drinks is learned
+once.
+
+Now **one cluster to a band, one band to a row**, on every category board.
+
+| board | rows now | page two, before → after |
+|---|---|---|
+| people | greeting, family, names, community, words for people, who you mean | 0 → 0 |
+| food | eating, drinks, meals, everyday food, fruit, how it is | 0 → 10 |
+| play | saying, doing, games, toys, films and music, again | 0 → 8 |
+| feelings | saying, liking, feeling, more feelings, right and wrong, ours | 0 → 0 |
+| places | everyday, travel, at home, places you go, where, ours | 0 → 0 |
+| body | saying, toileting, head, arms and legs, body, care | 5 → 6 |
+| doing | unchanged — six clusters already | 0 → 0 |
+
+**Twenty four words on page two, up from five.** Nineteen of the twenty four
+are level 3 and are drawn by nobody below the top level, so what a level-2
+board actually loses from page one is five words: `cake`, `biscuit`, `sore`,
+`sleepy`, `poorly`. Four of the seven boards pay nothing at all. Page two is
+one press of a key that is in the same place on every board; a mixed row is
+permanent.
+
+The empty tails are not waste. A cluster of five on an eleven-wide grid leaves
+six reserved cells, and those are where a caregiver's own words *for that
+cluster* go — a child's brand of yoghurt lands beside the other treats instead
+of wherever there happened to be room.
+
+**Own row rather than shared row, and this is measured rather than assumed.**
+Letting a cluster fill the tail of the one above it (`startsLine: false`) saves
+nothing: `layOutBands` budgets a whole line per band before it places anything,
+so a packed band is still charged a row and the same words shed either way —
+44 placed and 10 overflowed with and without packing, on the same eight bands.
+What packing does change is that a band which does not start a line gets no
+entry in `bandLines`, so it has no region label at all. Three of six clusters
+went unnamed in the measurement. Packing is worth having only if the budget
+stops charging for a line it does not use.
+
+**Costs, stated plainly.** The body board has seven clusters and six rows, so
+the symptom adjectives — `itchy`, `sore`, `dizzy`, `thirsty`, `sleepy`,
+`poorly` — read on page two. They lose to the medicine cupboard on level, not
+on rank: `emergency` is level 1 and nothing in the symptoms is. It is still the
+right one to move, because every word in it needs a body part to attach to and
+the parts are three rows above it. The teenage preset's play board pays most:
+its `screen` strip is a ninth band, so `games` joins `outdoor` on page two —
+sixteen words against eight before.
+
+Nothing was re-levelled. Level totals are unchanged at 99 / 249 / 372.
 
 ### 4.21 A narrow grid scattered related words — delivered
 

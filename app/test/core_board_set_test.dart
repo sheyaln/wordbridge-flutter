@@ -4,9 +4,11 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
+import 'package:wordbridge/db/seed/band_layout.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/seed/core_vocabulary.dart';
 import 'package:wordbridge/db/tables.dart';
+import 'package:wordbridge/features/grid/region_labels.dart';
 
 /// Project Core's Universal Core 36 (UNC Center for Literacy and Disability
 /// Studies). The shipped vocabulary must contain all of them.
@@ -420,6 +422,143 @@ void main() {
         reason: 'a strip of the doing board was never placed',
       );
       expect(labels, hasLength(48));
+    });
+
+    test('the 7x12 food board is exactly where it ships', () async {
+      // The same standard as the home board: anyone using this has learned
+      // these positions. Read it as the board — each string is a row, "." is a
+      // location held open, column 11 is the pinned questions and row 6 the
+      // system keys.
+      //
+      // Every row is one cluster and nothing else, which is the whole point of
+      // it. A row that runs drinks into bread has to be learned word by word;
+      // a row that is only drinks is learned once. The empty tails are not
+      // waste — they are where a caregiver's own words for that cluster go.
+      const shipped = [
+        'eat drink food straw plate . . . . . .',
+        'water milk juice squash tea coffee fizzy . . . .',
+        'breakfast lunch dinner snack soup pizza chicken . . . .',
+        'bread toast cereal rice pasta egg cheese butter honey jam .',
+        'apple banana orange grapes berries melon lemon . . . .',
+        'hungry thirsty yummy yucky hot cold . . . . .',
+      ];
+
+      final food = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('food'))).getSingle();
+
+      final query = db.select(db.cells).join([
+        leftOuterJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id)),
+      ])..where(db.cells.boardId.equals(food.id));
+
+      final actual = <String, String>{
+        for (final r in await query.get())
+          '${r.readTable(db.cells).row},${r.readTable(db.cells).col}':
+              r.readTableOrNull(db.buttons)?.label ?? '.',
+      };
+
+      for (var row = 0; row < shipped.length; row++) {
+        final expected = shipped[row].split(' ');
+        for (var col = 0; col < expected.length; col++) {
+          expect(
+            actual['$row,$col'],
+            expected[col],
+            reason: 'location $row,$col changed on the food board',
+          );
+        }
+      }
+    });
+
+    test('the food clusters the grid cannot hold read on page two', () async {
+      // Eight clusters, six rows. The two that give way are the ones a day
+      // needs least, and they arrive on page two whole rather than as the tail
+      // of whatever ran out of room.
+      final second = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals('food 2'))).getSingle();
+
+      final query =
+          db.select(db.buttons).join([
+            innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+          ])..where(
+            db.cells.boardId.equals(second.id) &
+                db.buttons.isSystem.equals(false),
+          );
+
+      final byRow = <int, List<String>>{};
+      for (final r in await query.get()) {
+        final cell = r.readTable(db.cells);
+        if (cell.col == 11) continue;
+        (byRow[cell.row] ??= []).add(r.readTable(db.buttons).label);
+      }
+
+      expect(byRow[0], [
+        'potato',
+        'carrot',
+        'peas',
+        'beans',
+        'tomato',
+        'salad',
+      ]);
+      expect(byRow[1], ['cake', 'biscuit', 'crisps', 'yoghurt']);
+      expect(byRow.keys, hasLength(2));
+    });
+
+    test('every row of a category board is one cluster', () async {
+      // The rule the food board is only one instance of. A band owns whole
+      // rows, so two clusters can share one only if a band is declared not to
+      // start a line — and then the row has two meanings and the label down
+      // the side can name just one of them.
+      final categories =
+          (await (db.select(
+            db.boards,
+          )..where((b) => b.kind.equalsValue(BoardKind.category))).get()).where(
+            (b) => categoryNames.any(
+              (c) => b.name == c || b.name.startsWith('$c '),
+            ),
+          );
+
+      expect(categories, isNotEmpty);
+
+      for (final board in categories) {
+        final regions = BoardRegions.decode(board.bandMap)!;
+        expect(regions.axis, BandAxis.rows);
+
+        final owner = <int, String>{};
+        for (final band in regions.bands) {
+          for (var row = band.first; row <= band.last; row++) {
+            expect(
+              owner[row],
+              isNull,
+              reason:
+                  'row $row of "${board.name}" is claimed by both '
+                  '"${owner[row]}" and "${band.name}"',
+            );
+            owner[row] = band.name;
+          }
+        }
+
+        // And no word landed on a row no cluster owns, which is what a band
+        // filling another band's tail looks like from here.
+        final query =
+            db.select(db.buttons).join([
+              innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+            ])..where(
+              db.cells.boardId.equals(board.id) &
+                  db.buttons.isSystem.equals(false) &
+                  db.cells.col.isSmallerThanValue(11),
+            );
+
+        for (final r in await query.get()) {
+          expect(
+            owner[r.readTable(db.cells).row],
+            isNotNull,
+            reason:
+                '"${r.readTable(db.buttons).label}" sits on a row of '
+                '"${board.name}" that no cluster owns',
+          );
+        }
+      }
     });
 
     test('feelings can say the difficult things', () async {

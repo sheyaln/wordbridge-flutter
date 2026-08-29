@@ -76,6 +76,13 @@ const _spokenAs = <String, String>{
   'describing': 'yes, no and how it is',
   'questions': 'asking',
   'names': 'people you know',
+  // Category-board clusters whose one-word name is either jargon or ambiguous.
+  // "staples" reads as stationery, "out" as a direction, and "people" is the
+  // name of the board it sits on.
+  'staples': 'everyday food',
+  'out': 'places you go',
+  'people': 'words for people',
+  'referring': 'who you mean',
 };
 
 /// What to write over a band.
