@@ -33,6 +33,7 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
+import 'on_screen_keyboard.dart';
 import 'word_path.dart';
 
 /// Height of the utterance bar. Fixed chrome; the grid gets what is left.
@@ -702,6 +703,30 @@ class TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  /// Puts a typed word into the sentence.
+  ///
+  /// For the word that is not on the board and is not going to be — a place
+  /// name, a visitor, the title of something somebody watched once. Adding a
+  /// location for it would cost that location on every board in the set, and
+  /// most of these are said once.
+  ///
+  /// Not spoken again here. The keyboard says the finished word as it hands it
+  /// over, which is the feedback that the typing worked; saying it a second
+  /// time on arrival would make one word two.
+  ///
+  /// No part of speech, because nothing here knows one. The endings and the
+  /// copula read the word before them, and a typed word tells them nothing —
+  /// which is honest: guessing would offer "+ed" on a person's name.
+  Future<void> _typeWord() async {
+    final word = await OnScreenKeyboard.show(context, speech: widget.speech);
+    if (word == null || !mounted) return;
+
+    setState(() {
+      _utterance.add(word);
+      _reached = null;
+    });
+  }
+
   /// Ends the sentence with a mark, and says it.
   ///
   /// Speaks the whole sentence rather than the mark, because tone belongs to
@@ -927,6 +952,7 @@ class TalkScreenState extends State<TalkScreen> {
                   utterance: _utterance,
                   onSpeak: _speakSentence,
                   onPunctuate: _endSentence,
+                  onType: _typeWord,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
@@ -1046,6 +1072,7 @@ class _UtteranceBarView extends StatelessWidget {
     required this.utterance,
     required this.onSpeak,
     required this.onPunctuate,
+    required this.onType,
     required this.onBackspace,
     required this.onClear,
   });
@@ -1053,6 +1080,7 @@ class _UtteranceBarView extends StatelessWidget {
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
   final void Function(String mark) onPunctuate;
+  final VoidCallback onType;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
 
@@ -1127,6 +1155,27 @@ class _UtteranceBarView extends StatelessWidget {
                   ),
                 ],
                 onChosen: onPunctuate,
+              ),
+              const SizedBox(width: 4),
+              // The ways to a word that is not on the board in front of you.
+              // One control rather than a button each, because these are
+              // reached for rarely and deliberately, and the bar's room belongs
+              // to the two that are not — speaking, and clearing.
+              //
+              // Behind a list from the start, so the finder can join it without
+              // the control changing shape under somebody who has learned it.
+              _BarMenu<String>(
+                face: (colour) =>
+                    Icon(Icons.search_rounded, size: 30, color: colour),
+                tooltip: 'Another way to a word',
+                items: const [
+                  (
+                    mark: 'type',
+                    label: 'Type a word',
+                    icon: Icons.keyboard_alt_outlined,
+                  ),
+                ],
+                onChosen: (_) => onType(),
               ),
               const SizedBox(width: _separation),
 

@@ -11,6 +11,7 @@ import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
+import 'package:wordbridge/features/talk/on_screen_keyboard.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 
@@ -246,14 +247,53 @@ void main() {
     expect(speech.said, ['you', 'you!']);
   });
 
+  testWidgets('a typed word joins the sentence, and is not said twice', (
+    tester,
+  ) async {
+    // The keyboard says the finished word as it hands it over — that is the
+    // feedback that the typing worked. Saying it again on arrival would make
+    // one word two, and a person who typed once would be heard twice.
+    final you = await cellOf(label: 'you');
+
+    await pumpTalkScreen(tester);
+    await tap(tester, you);
+
+    await tester.tap(find.byTooltip('Another way to a word'));
+    await pumpFrames(tester);
+    await tester.tap(find.text('Type a word'));
+    await pumpFrames(tester);
+
+    for (final key in ['b', 'e', 'n']) {
+      await tester.tap(find.byKey(OnScreenKeyboard.keyFor(key)));
+      await tester.pump();
+    }
+    expect(speech.said, ['you'], reason: 'a letter was spoken as it was typed');
+
+    await tester.tap(
+      find.byKey(OnScreenKeyboard.keyFor(OnScreenKeyboard.send)),
+    );
+    await pumpFrames(tester);
+
+    expect(speech.said, [
+      'you',
+      'ben',
+    ], reason: 'the word arrived already spoken and was spoken again');
+
+    // And it is in the sentence, so the next thing said carries it.
+    await tester.tap(find.byTooltip('Speak'));
+    await pumpFrames(tester);
+    expect(speech.said.last, 'you ben');
+  });
+
   testWidgets('the control shows both marks it carries', (tester) async {
     // One of them on the face would read as a key that does that one thing,
     // and somebody who wanted the other would have no reason to press it.
     await pumpTalkScreen(tester);
 
+    // Scoped to this control: the bar now carries a second one beside it.
     final face = tester.widget<Text>(
       find.descendant(
-        of: find.byType(PopupMenuButton<String>),
+        of: find.byTooltip('End the sentence'),
         matching: find.byType(Text),
       ),
     );
@@ -268,7 +308,10 @@ void main() {
     await pumpTalkScreen(tester);
 
     final button = tester.widget<PopupMenuButton<String>>(
-      find.byType(PopupMenuButton<String>),
+      find.descendant(
+        of: find.byTooltip('End the sentence'),
+        matching: find.byType(PopupMenuButton<String>),
+      ),
     );
     expect(button.enabled, isFalse);
 
@@ -276,7 +319,7 @@ void main() {
     // exactly like one that works teaches that pressing things is a gamble.
     final face = tester.widget<Text>(
       find.descendant(
-        of: find.byType(PopupMenuButton<String>),
+        of: find.byTooltip('End the sentence'),
         matching: find.byType(Text),
       ),
     );
