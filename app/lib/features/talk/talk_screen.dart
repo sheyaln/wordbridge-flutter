@@ -720,13 +720,14 @@ class TalkScreenState extends State<TalkScreen> {
     }
   }
 
-  /// Ends the sentence as a question, and says it.
+  /// Ends the sentence with a mark, and says it.
   ///
   /// Speaks the whole sentence rather than the mark, because tone belongs to
   /// the sentence and hearing it is the only feedback that tells the user the
-  /// mark did anything.
-  Future<void> _askQuestion() async {
-    _utterance.punctuate('?');
+  /// mark did anything. That is the whole reason a mark is worth a control:
+  /// "you are ok" and "are you ok?" are the same words.
+  Future<void> _endSentence(String mark) async {
+    _utterance.punctuate(mark);
     if (!_utterance.isEmpty) await _speakSentence();
   }
 
@@ -943,7 +944,7 @@ class TalkScreenState extends State<TalkScreen> {
                 _UtteranceBarView(
                   utterance: _utterance,
                   onSpeak: _speakSentence,
-                  onQuestion: _askQuestion,
+                  onPunctuate: _endSentence,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
@@ -1062,14 +1063,14 @@ class _UtteranceBarView extends StatelessWidget {
   const _UtteranceBarView({
     required this.utterance,
     required this.onSpeak,
-    required this.onQuestion,
+    required this.onPunctuate,
     required this.onBackspace,
     required this.onClear,
   });
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
-  final VoidCallback onQuestion;
+  final void Function(String mark) onPunctuate;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
 
@@ -1110,10 +1111,29 @@ class _UtteranceBarView extends StatelessWidget {
               // where it would cost a location on every board. Beside speak
               // and well away from the destructive pair: it produces speech,
               // which is what those two are separated from.
-              _BarButton(
+              //
+              // Both marks behind one control, and it always opens. A button
+              // that applied the last mark on a plain press would be one press
+              // for a question and two for the other, decided by something the
+              // person cannot see — a key whose behaviour depends on history is
+              // the one thing this board never has.
+              _BarMenu(
                 icon: Icons.question_mark_rounded,
-                tooltip: 'Make it a question',
-                onPressed: empty ? null : onQuestion,
+                tooltip: 'End the sentence',
+                enabled: !empty,
+                items: [
+                  (
+                    mark: '?',
+                    label: 'Make it a question',
+                    icon: Icons.question_mark_rounded,
+                  ),
+                  (
+                    mark: '!',
+                    label: 'Say it like you mean it',
+                    icon: Icons.priority_high_rounded,
+                  ),
+                ],
+                onChosen: onPunctuate,
               ),
               const SizedBox(width: _separation),
 
@@ -1152,6 +1172,74 @@ class _UtteranceBarView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// A bar control that offers a short list rather than doing one thing.
+///
+/// For the things a person reaches for rarely and deliberately. The bar is the
+/// only place a control is free — a key on the grid costs a location on every
+/// board — but it is not unlimited, and a button per feature would crowd out
+/// the two that matter most, which are speak and clear.
+///
+/// Every entry is one press once the list is open, and the list always opens.
+/// Nothing here is faster for having been used before.
+class _BarMenu<T> extends StatelessWidget {
+  const _BarMenu({
+    required this.icon,
+    required this.tooltip,
+    required this.items,
+    required this.onChosen,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final List<({T mark, String label, IconData icon})> items;
+  final void Function(T) onChosen;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: PopupMenuButton<T>(
+        enabled: enabled,
+        tooltip: '',
+        onSelected: onChosen,
+        itemBuilder: (context) => [
+          for (final item in items)
+            PopupMenuItem<T>(
+              value: item.mark,
+              child: Row(
+                children: [
+                  Icon(item.icon, size: 20, color: Colors.black54),
+                  const SizedBox(width: 10),
+                  // Flexible rather than fixed: this list is opened from a
+                  // control near the left edge of a bar whose width is the
+                  // screen's, and a label that overflowed would be a choice
+                  // nobody can read.
+                  Flexible(
+                    child: Text(
+                      item.label,
+                      style: const TextStyle(fontSize: 16),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(
+            icon,
+            size: 30,
+            color: enabled ? Colors.black54 : Colors.black12,
+          ),
+        ),
+      ),
     );
   }
 }

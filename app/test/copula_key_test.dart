@@ -214,12 +214,47 @@ void main() {
 
     await pumpTalkScreen(tester);
     await tap(tester, you);
-    await tester.tap(find.byTooltip('Make it a question'));
+
+    // Both marks sit behind one control, which always opens. A button that
+    // applied the last one on a plain press would be one press sometimes and
+    // two others, decided by something the person cannot see.
+    await tester.tap(find.byTooltip('End the sentence'));
+    await pumpFrames(tester);
+    await tester.tap(find.text('Make it a question'));
     await pumpFrames(tester);
 
     // The whole sentence, because tone belongs to the sentence — hearing it is
     // the only thing that tells the user the mark did anything.
     expect(speech.said, ['you', 'you?']);
+  });
+
+  testWidgets('and the exclamation mark is beside it', (tester) async {
+    final onAnyBoard = await (db.select(
+      db.buttons,
+    )..where((b) => b.label.equals('!'))).get();
+    expect(onAnyBoard, isEmpty);
+
+    final you = await cellOf(label: 'you');
+
+    await pumpTalkScreen(tester);
+    await tap(tester, you);
+    await tester.tap(find.byTooltip('End the sentence'));
+    await pumpFrames(tester);
+    await tester.tap(find.text('Say it like you mean it'));
+    await pumpFrames(tester);
+
+    expect(speech.said, ['you', 'you!']);
+  });
+
+  testWidgets('the control does nothing on an empty sentence', (tester) async {
+    // A lone mark is not a sentence, and a control that opens onto choices
+    // that do nothing teaches that pressing things is pointless.
+    await pumpTalkScreen(tester);
+
+    final button = tester.widget<PopupMenuButton<String>>(
+      find.byType(PopupMenuButton<String>),
+    );
+    expect(button.enabled, isFalse);
   });
 
   testWidgets('every board carries "how" in the pinned column', (tester) async {
