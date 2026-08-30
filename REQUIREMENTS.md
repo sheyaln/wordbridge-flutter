@@ -1937,6 +1937,33 @@ different places in the caregiver screen and are described differently.
 
 **Import creates a new vocabulary and never overwrites the active one.**
 
+**Part 4 delivered, apart from the session snapshot.** Undo now walks backwards
+through every edit kind — moves, hide and unhide, deletes, pictures, and adding
+a word — rather than stopping at the most recent move. An undo is recorded as
+its own edit row carrying the id of the edit it reverses, so nothing is deleted
+from the trail, an edit cannot be taken back twice, and the history survives a
+restart because it *is* the database rather than a stack held in memory.
+
+Three things the work turned up, each a defect in a different file:
+
+- **A picture change recorded that it happened and not what it replaced.** The
+  reversal was built and tested and would have refused every real edit the app
+  writes. One line, read before the write.
+- **Adding a word recorded the location but not the word.** Undo would have had
+  to work out which word filled the cell, and working out where something goes
+  is the one move this board refuses. `recordCreate` now takes both, and the
+  editor writes through it.
+- **The undo button said "Nothing to undo" when it meant "that location is
+  taken now".** Two different things to be told, and the first sends a
+  caregiver looking for history that is still there. `undoLast` returns three
+  outcomes instead of a bool.
+
+Two guards in the create reversal — a word that has since moved, and a system
+key — are unreachable through `undoLast`, because undo walks newest-first and
+would reverse the move before reaching the create. They are kept anyway: what
+they protect against is freeing a cell that belongs to something else, and the
+cost of keeping them is two lines.
+
 **4. Getting the board back the way it was** — raised in §4.42 and folded in
 here, because it is the same machinery seen from the caregiver's side.
 
@@ -2044,8 +2071,16 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
   speaks on every selection). This is a gap against the original scope, not a
   new idea.
 - **An on-screen keyboard for one-off words**, silent until the word is
-  finished. New surface, and it needs a decision about whether a typed word can
-  be kept — a word typed twice is a word that wants a cell.
+  finished. **Built, and not yet reachable** — the widget exists and speaks the
+  finished word once, in QWERTY, with every key at the minimum touch target and
+  a layout that does not move as the word grows. Two things it needs before it
+  is wired: the profile's own voice passed in, or a typed word comes out in the
+  device voice; and a route into the utterance bar that does not speak it a
+  second time, because it arrives already spoken.
+
+  The open question is deliberately still open: it hands the word over and
+  forgets it. **A word typed twice is a word that wants a cell**, and offering
+  to keep it is a separate decision about when the board grows.
 - **An exclamation mark.** The utterance bar already accepts `!` and
   `ButtonAction.punctuate` exists; **nothing seeds a key for it**, and the only
   punctuation control in the UI is the question one. So this is a key and a
@@ -2151,6 +2186,26 @@ one thing to get right is that a caregiver who knows where a switch is should
 not have to hunt for it — so the sections keep their current names and order,
 and nothing moves between them in the same change that makes them pages.
 
+**Delivered.** Eight rows, each opening the tiles that sat under its header,
+same names and same order. Three carry a line of live state on the row itself —
+the voice and tone, the icon size and orientation, and whether anything is being
+recorded — because those are the facts worth having without a tap, and §5
+non-negotiable 7 makes the last one worth answering on sight.
+
+A section with nothing in it is not listed, rather than opening onto a blank
+page: several are conditional, and with no settings object three of the eight
+disappear entirely.
+
+**One behaviour had to change.** Three tiles used to close the caregiver screen
+outright, because the board underneath them was gone — switching profile,
+changing the grid, rebuilding from the shipped vocabulary. From inside a section
+page a plain close would have shut the page and left the caregiver screen
+standing over a board that no longer exists, so those three now report back and
+the settings list follows them out.
+
+Fourteen tests, ten mutations, all caught. The one that matters is a walk: open
+each section, assert the tiles it is named for are on it, back out.
+
 #### The utterance bar, and a way to find a word
 
 Asked for together, and they belong together — all four are controls on the bar
@@ -2208,6 +2263,18 @@ pages the way it always did.
 Five tests, five mutations. One of the five exists only to assert the premise —
 that this grid really does page three deep — because without it the other four
 would pass by describing nothing.
+
+**The finder's index is built and not yet wired.** `findWords` searches label,
+message and spoken text, ranks prefix matches above substring ones, skips
+anything the board will not draw, and returns the route to each hit — including
+through paging and through boards a caregiver made themselves. A word on a board
+no visible key reaches is left out entirely: the request was a path, and a
+result with no path is a dead end.
+
+**The route is now computed in two places** — the finder's and the breadcrumb
+strip's — and that is a drift waiting to happen. The finder's is the more
+complete one; pointing the trail at it is the next change, and this file has
+already been bitten once by two derivations of one fact.
 
 #### What to notice about this batch
 
