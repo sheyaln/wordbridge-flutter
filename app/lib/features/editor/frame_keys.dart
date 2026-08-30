@@ -13,6 +13,8 @@
 /// prevent.
 library;
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../db/ids.dart';
@@ -34,6 +36,11 @@ Future<void> setButtonSymbol(
   final siblings = await frameSiblings(db, button);
   final ids = [button.id, for (final b in siblings) b.id];
 
+  // Read before the write, because it is the thing the write destroys. An
+  // edit recorded without what it replaced is an edit nothing can take back:
+  // the trail says a picture changed and cannot say to what from.
+  final replaced = button.symbolId;
+
   await (db.update(db.buttons)..where((b) => b.id.isIn(ids))).write(
     ButtonsCompanion(symbolId: Value(symbolId), updatedAt: Value(nowMs())),
   );
@@ -47,6 +54,8 @@ Future<void> setButtonSymbol(
           cellId: Value(button.cellId),
           buttonId: Value(button.id),
           kind: EditKind.resymbol,
+          beforeJson: Value(jsonEncode({'symbolId': replaced})),
+          afterJson: Value(jsonEncode({'symbolId': symbolId})),
           changedAt: nowMs(),
         ),
       );

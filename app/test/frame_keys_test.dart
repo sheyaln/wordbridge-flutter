@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide Column, Table, isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -201,6 +203,22 @@ void main() {
       expect(events.single.kind, EditKind.resymbol);
       expect(events.single.buttonId, key.id);
     });
+
+    test(
+      'records what the picture replaced, so it can be taken back',
+      () async {
+        // An edit recorded without what it replaced is one nothing can reverse:
+        // the trail says a picture changed and cannot say to what from.
+        final key = await onBoard(moreWordsLabel, 'home');
+        final was = key.symbolId;
+
+        await setButtonSymbol(db, key, 'chosen-picture');
+
+        final event = await db.select(db.editEvents).getSingle();
+        expect(jsonDecode(event.beforeJson!), {'symbolId': was});
+        expect(jsonDecode(event.afterJson!), {'symbolId': 'chosen-picture'});
+      },
+    );
   });
 
   test(
