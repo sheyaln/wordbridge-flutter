@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../../db/board_builder.dart';
 import '../../db/database.dart';
-import '../../db/ids.dart';
 import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
 import '../grid/grid_geometry.dart';
@@ -206,17 +205,11 @@ class _BoardEditorState extends State<BoardEditor> {
       );
     }
 
-    await widget.db
-        .into(widget.db.editEvents)
-        .insert(
-          EditEventsCompanion.insert(
-            id: newId(),
-            vocabularyId: widget.vocabularyId,
-            cellId: Value(cell.id),
-            kind: EditKind.create,
-            changedAt: nowMs(),
-          ),
-        );
+    await _remap.recordCreate(
+      vocabularyId: widget.vocabularyId,
+      buttonId: buttonId,
+      cellId: cell.id,
+    );
   }
 
   Future<String?> _promptForWord() {
@@ -510,8 +503,17 @@ class _BoardEditorState extends State<BoardEditor> {
             icon: const Icon(Icons.undo),
             tooltip: 'Undo last change',
             onPressed: () async {
-              final undone = await _remap.undoLast(widget.vocabularyId);
-              _snack(undone ? 'Change undone' : 'Nothing to undo');
+              // Three answers, because two of them mean the button did
+              // nothing for different reasons. Told "nothing to undo" when the
+              // truth is "that location is taken now", a caregiver goes
+              // looking for history that is still there.
+              _snack(switch (await _remap.undoLast(widget.vocabularyId)) {
+                UndoOutcome.undone => 'Change undone',
+                UndoOutcome.nothing => 'Nothing to undo',
+                UndoOutcome.blocked =>
+                  'That change cannot be taken back now — something else has '
+                      'taken the location it needs.',
+              });
             },
           ),
         ],
