@@ -1,0 +1,446 @@
+{
+  "sentences": [
+    "I want to go outside please",
+    "stop it I do not like that",
+    "I need a break",
+    "that hurts",
+    "can I have more",
+    "I am finished",
+    "leave me alone",
+    "I do not know"
+  ],
+  "clips": [
+    {
+      "sentence": 0,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s0_neutral.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s0_calm_1.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s0_calm_2.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s0_angry_1.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s0_angry_2.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s0_sad_1.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s0_sad_2.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s0_happy_1.0.wav"
+    },
+    {
+      "sentence": 0,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s0_happy_2.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s1_neutral.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s1_calm_1.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s1_calm_2.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s1_angry_1.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s1_angry_2.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s1_sad_1.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s1_sad_2.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s1_happy_1.0.wav"
+    },
+    {
+      "sentence": 1,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s1_happy_2.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s2_neutral.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s2_calm_1.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s2_calm_2.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s2_angry_1.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s2_angry_2.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s2_sad_1.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s2_sad_2.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s2_happy_1.0.wav"
+    },
+    {
+      "sentence": 2,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s2_happy_2.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s3_neutral.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s3_calm_1.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s3_calm_2.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s3_angry_1.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s3_angry_2.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s3_sad_1.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s3_sad_2.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s3_happy_1.0.wav"
+    },
+    {
+      "sentence": 3,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s3_happy_2.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s4_neutral.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s4_calm_1.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s4_calm_2.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s4_angry_1.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s4_angry_2.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s4_sad_1.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s4_sad_2.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s4_happy_1.0.wav"
+    },
+    {
+      "sentence": 4,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s4_happy_2.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s5_neutral.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s5_calm_1.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s5_calm_2.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s5_angry_1.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s5_angry_2.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s5_sad_1.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s5_sad_2.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s5_happy_1.0.wav"
+    },
+    {
+      "sentence": 5,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s5_happy_2.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s6_neutral.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s6_calm_1.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s6_calm_2.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s6_angry_1.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s6_angry_2.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s6_sad_1.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s6_sad_2.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s6_happy_1.0.wav"
+    },
+    {
+      "sentence": 6,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s6_happy_2.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "neutral",
+      "k": 0.0,
+      "file": "s7_neutral.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "calm",
+      "k": 1.0,
+      "file": "s7_calm_1.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "calm",
+      "k": 2.0,
+      "file": "s7_calm_2.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "angry",
+      "k": 1.0,
+      "file": "s7_angry_1.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "angry",
+      "k": 2.0,
+      "file": "s7_angry_2.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "sad",
+      "k": 1.0,
+      "file": "s7_sad_1.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "sad",
+      "k": 2.0,
+      "file": "s7_sad_2.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "happy",
+      "k": 1.0,
+      "file": "s7_happy_1.0.wav"
+    },
+    {
+      "sentence": 7,
+      "tone": "happy",
+      "k": 2.0,
+      "file": "s7_happy_2.0.wav"
+    }
+  ]
+}

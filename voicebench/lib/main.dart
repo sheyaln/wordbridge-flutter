@@ -7,8 +7,9 @@
 // Kokoro-82M v0.19 through sherpa-onnx. A Kokoro voice is a 256-float style
 // vector; dims 0:128 carry timbre and 128:256 carry prosody, which is why
 // "borrow delivery from" below is a real control and not a relabelled slider.
-import 'dart:ffi';
+import 'dart:ffi' show Pointer;
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
@@ -16,6 +17,7 @@ import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -34,6 +36,25 @@ const voices = [
   'bm_george — British, male',
   'bm_lewis — British, male',
 ];
+
+/// Which engine is driving.
+///
+/// Kokoro synthesises live on the device. StyleTTS 2 does not: running it here
+/// would need an ONNX export, a second runtime and a phonemiser on device, and
+/// none of that is needed to judge whether a tone sounds right. So its clips
+/// are rendered on a desktop and played back, and the bench says so rather
+/// than letting the two look like the same thing.
+enum Engine { kokoro, styletts2 }
+
+/// The tones the direction method produced, named for what the measurements
+/// say they are rather than for what was asked for.
+const toneNames = {
+  'neutral': 'Neutral — the base voice',
+  'calm': 'Calm — slower, quieter, pitch unmoved',
+  'angry': 'Angry — the stern candidate',
+  'happy': 'Happy',
+  'sad': 'Sad — measured as broken, pitch rises',
+};
 
 const nVoices = 11;
 const nTokens = 511;
@@ -123,6 +144,11 @@ class _BenchState extends State<Bench> {
   // Shipped default sits at roughly twice the fit, so only a stall trips it.
   double _base = 2300;
   double _perWord = 400;
+  Engine _engine = Engine.kokoro;
+  Map<String, dynamic>? _bank;
+  int _bankSentence = 0;
+  String _bankTone = 'calm';
+  double _bankK = 1.0;
   int _preset = 0;
   double _speed = 1.0;
   double _gain = 1.0;
@@ -200,6 +226,13 @@ class _BenchState extends State<Bench> {
       // being rebuilt, and one of them is the shape that would not load.
       for (final f in Directory(docs.path).listSync()) {
         if (p.basename(f.path).startsWith('voices_')) f.deleteSync();
+      }
+      try {
+        _bank = jsonDecode(
+          await rootBundle.loadString('assets/tones/manifest.json'),
+        ) as Map<String, dynamic>;
+      } catch (_) {
+        _bank = null;
       }
       sherpa.initBindings();
       await _platform.setIosAudioCategory(
@@ -310,153 +343,279 @@ class _BenchState extends State<Bench> {
     setState(() => _status = 'sweep done — sweep.csv written');
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('voicebench · Kokoro-82M v0.19')),
-    body: ListView(
-      padding: const EdgeInsets.all(14),
+  /// Plays a rendered StyleTTS 2 clip, with the same gain stage the live path
+  /// uses so the two are comparable at the same loudness.
+  Future<void> _playBank() async {
+    final bank = _bank;
+    if (bank == null) return;
+    final clips = (bank['clips'] as List).cast<Map<String, dynamic>>();
+    final want = clips.where(
+      (c) =>
+          c['sentence'] == _bankSentence &&
+          c['tone'] == _bankTone &&
+          (_bankTone == 'neutral' || (c['k'] as num).toDouble() == _bankK),
+    );
+    if (want.isEmpty) {
+      setState(() => _status = 'no clip for that combination');
+      return;
+    }
+    final asset = 'tones/${want.first['file']}';
+    setState(() {
+      _status = 'playing (rendered, not synthesised)';
+      _last = 'StyleTTS 2 · ${want.first['file']}';
+    });
+    await _player.setVolume(_gain.clamp(0.0, 1.0));
+    await _player.play(AssetSource(asset));
+    await _player.onPlayerComplete.first;
+    if (mounted) setState(() => _status = 'ready');
+  }
+
+  Widget _kokoroControls() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TextField(
+        controller: _text,
+        maxLines: 3,
+        minLines: 1,
+        style: const TextStyle(fontSize: 18),
+        decoration: const InputDecoration(
+          labelText: 'Say this',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<int>(
+        initialValue: _voice,
+        decoration: const InputDecoration(
+          labelText: 'Voice (timbre — who it sounds like)',
+          border: OutlineInputBorder(),
+        ),
+        items: [
+          for (var i = 0; i < voices.length; i++)
+            DropdownMenuItem(value: i, child: Text(voices[i])),
+        ],
+        onChanged: (v) => setState(() => _voice = v ?? 0),
+      ),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<int>(
+        initialValue: _prosody,
+        decoration: const InputDecoration(
+          labelText: 'Borrow delivery from (prosody — how it is said)',
+          border: OutlineInputBorder(),
+          helperText:
+              'Style dims 128:256. Keeps the timbre above. Changing this '
+              'is free; changing the voice reloads the model.',
+        ),
+        items: [
+          const DropdownMenuItem(value: -1, child: Text('its own')),
+          for (var i = 0; i < voices.length; i++)
+            DropdownMenuItem(value: i, child: Text(voices[i])),
+        ],
+        onChanged: (v) => setState(() => _prosody = v ?? -1),
+      ),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<int>(
+        initialValue: _preset,
+        decoration: const InputDecoration(
+          labelText: 'Preset',
+          border: OutlineInputBorder(),
+        ),
+        items: [
+          for (var i = 0; i < presets.length; i++)
+            DropdownMenuItem(
+              value: i,
+              child: Text('${presets[i].name} — ${presets[i].note}'),
+            ),
+        ],
+        onChanged: (v) => setState(() {
+          _preset = v ?? 0;
+          _speed = presets[_preset].speed;
+          _gain = presets[_preset].gain;
+        }),
+      ),
+      const SizedBox(height: 8),
+      Text('Speed ${_speed.toStringAsFixed(2)}'),
+      Slider(
+        value: _speed,
+        min: 0.5,
+        max: 2.0,
+        divisions: 30,
+        onChanged: (v) => setState(() => _speed = v),
+      ),
+    ],
+  );
+
+  Widget _styleControls() {
+    final bank = _bank;
+    if (bank == null) {
+      return const Text('tone bank missing from assets');
+    }
+    final sentences = (bank['sentences'] as List).cast<String>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(_status, style: const TextStyle(color: Colors.greenAccent)),
-        if (_last.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              _last,
-              style: const TextStyle(color: Colors.amber, fontSize: 15),
+        DropdownButtonFormField<int>(
+          initialValue: _bankSentence,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Sentence',
+            border: OutlineInputBorder(),
+            helperText: 'Rendered ahead of time, so the list is fixed.',
+          ),
+          items: [
+            for (var i = 0; i < sentences.length; i++)
+              DropdownMenuItem(value: i, child: Text(sentences[i])),
+          ],
+          onChanged: (v) => setState(() => _bankSentence = v ?? 0),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          initialValue: _bankTone,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Tone',
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            for (final e in toneNames.entries)
+              DropdownMenuItem(value: e.key, child: Text(e.value)),
+          ],
+          onChanged: (v) => setState(() => _bankTone = v ?? 'calm'),
+        ),
+        const SizedBox(height: 8),
+        if (_bankTone != 'neutral') ...[
+          Text('Strength k=${_bankK.toStringAsFixed(1)}'),
+          Slider(
+            value: _bankK,
+            min: 1.0,
+            max: 2.0,
+            divisions: 1,
+            label: 'k=${_bankK.toStringAsFixed(1)}',
+            onChanged: (v) => setState(() => _bankK = v),
+          ),
+        ],
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kokoro = _engine == Engine.kokoro;
+    return Scaffold(
+      appBar: AppBar(title: const Text('voicebench')),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          Text(_status, style: const TextStyle(color: Colors.greenAccent)),
+          if (_last.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                _last,
+                style: const TextStyle(color: Colors.amber, fontSize: 15),
+              ),
+            ),
+          const SizedBox(height: 12),
+          SegmentedButton<Engine>(
+            segments: const [
+              ButtonSegment(value: Engine.kokoro, label: Text('Kokoro · live')),
+              ButtonSegment(
+                value: Engine.styletts2,
+                label: Text('StyleTTS 2 · rendered'),
+              ),
+            ],
+            selected: {_engine},
+            onSelectionChanged: (s) => setState(() {
+              _engine = s.first;
+              _last = '';
+              _status = _engine == Engine.kokoro
+                  ? 'ready — synthesises on this device'
+                  : 'ready — plays clips rendered on a desktop';
+            }),
+          ),
+          const SizedBox(height: 14),
+          kokoro ? _kokoroControls() : _styleControls(),
+          const SizedBox(height: 8),
+          Text('Gain ${_gain.toStringAsFixed(2)}  (1.0 = the iPad\'s maximum)'),
+          Slider(
+            value: _gain,
+            min: 0.1,
+            max: 4.0,
+            divisions: 39,
+            onChanged: (v) => setState(() => _gain = v),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: kokoro
+                ? (_tts == null ? null : _speak)
+                : (_bank == null ? null : _playBank),
+            icon: const Icon(Icons.volume_up),
+            label: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Text(
+                kokoro ? 'Speak — synthesised fresh' : 'Play — rendered clip',
+                style: const TextStyle(fontSize: 18),
+              ),
             ),
           ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _text,
-          maxLines: 3,
-          minLines: 1,
-          style: const TextStyle(fontSize: 18),
-          decoration: const InputDecoration(
-            labelText: 'Say this',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<int>(
-          initialValue: _voice,
-          decoration: const InputDecoration(
-            labelText: 'Voice (timbre — who it sounds like)',
-            border: OutlineInputBorder(),
-          ),
-          items: [
-            for (var i = 0; i < voices.length; i++)
-              DropdownMenuItem(value: i, child: Text(voices[i])),
-          ],
-          onChanged: (v) => setState(() => _voice = v ?? 0),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<int>(
-          initialValue: _prosody,
-          decoration: const InputDecoration(
-            labelText: 'Borrow delivery from (prosody — how it is said)',
-            border: OutlineInputBorder(),
-            helperText:
-                'Style dims 128:256. Keeps the timbre above. Changing this '
-                'is free; changing the voice reloads the model.',
-          ),
-          items: [
-            const DropdownMenuItem(value: -1, child: Text('its own')),
-            for (var i = 0; i < voices.length; i++)
-              DropdownMenuItem(value: i, child: Text(voices[i])),
-          ],
-          onChanged: (v) => setState(() => _prosody = v ?? -1),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<int>(
-          initialValue: _preset,
-          decoration: const InputDecoration(
-            labelText: 'Preset',
-            border: OutlineInputBorder(),
-          ),
-          items: [
-            for (var i = 0; i < presets.length; i++)
-              DropdownMenuItem(
-                value: i,
-                child: Text('${presets[i].name} — ${presets[i].note}'),
+          if (kokoro) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Timeout budget: ${_base.round()}ms + ${_perWord.round()}ms/word',
+            ),
+            Slider(
+              value: _base,
+              min: 300,
+              max: 6000,
+              divisions: 57,
+              label: '${_base.round()}ms base',
+              onChanged: (v) => setState(() => _base = v),
+            ),
+            Slider(
+              value: _perWord,
+              min: 0,
+              max: 1200,
+              divisions: 24,
+              label: '${_perWord.round()}ms/word',
+              onChanged: (v) => setState(() => _perWord = v),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: _tts == null ? null : _runSweep,
+              child: const Text('Measure latency vs sentence length'),
+            ),
+            if (_sweep.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _sweep,
+                  style: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: 12,
+                  ),
+                ),
               ),
           ],
-          onChanged: (v) => setState(() {
-            _preset = v ?? 0;
-            _speed = presets[_preset].speed;
-            _gain = presets[_preset].gain;
-          }),
-        ),
-        const SizedBox(height: 8),
-        Text('Speed ${_speed.toStringAsFixed(2)}'),
-        Slider(
-          value: _speed,
-          min: 0.5,
-          max: 2.0,
-          divisions: 30,
-          onChanged: (v) => setState(() => _speed = v),
-        ),
-        Text('Gain ${_gain.toStringAsFixed(2)}  (1.0 = the iPad\'s maximum)'),
-        Slider(
-          value: _gain,
-          min: 0.1,
-          max: 4.0,
-          divisions: 39,
-          onChanged: (v) => setState(() => _gain = v),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: _tts == null ? null : _speak,
-          icon: const Icon(Icons.volume_up),
-          label: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Text(
-              'Speak — synthesised fresh',
-              style: TextStyle(fontSize: 18),
-            ),
+          const SizedBox(height: 20),
+          Text(
+            kokoro
+                ? 'No emotion presets here on purpose. Measured: Kokoro\'s '
+                      'prosody space is one axis and that axis is pitch, so '
+                      '"sad" and "stern" would be the speed and pitch sliders '
+                      'wearing a name they do not earn. "Borrow delivery from" '
+                      'is the one genuinely new control — a real style '
+                      'transplant, worth listening to for what it can and '
+                      'cannot carry.'
+                : 'These are rendered, not synthesised — the sentence list is '
+                      'fixed and there is no latency to read here. Each tone is '
+                      'an emotion direction averaged over 24 speakers and added '
+                      'to one base voice. Calm and Angry survived measurement; '
+                      'Sad is included because the numbers say it is wrong, and '
+                      'it should be heard failing rather than described.',
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text('Timeout budget: ${_base.round()}ms + ${_perWord.round()}ms/word'),
-        Slider(
-          value: _base,
-          min: 300,
-          max: 6000,
-          divisions: 57,
-          label: '${_base.round()}ms base',
-          onChanged: (v) => setState(() => _base = v),
-        ),
-        Slider(
-          value: _perWord,
-          min: 0,
-          max: 1200,
-          divisions: 24,
-          label: '${_perWord.round()}ms/word',
-          onChanged: (v) => setState(() => _perWord = v),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: _tts == null ? null : _runSweep,
-          child: const Text('Measure latency vs sentence length'),
-        ),
-        if (_sweep.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              _sweep,
-              style: const TextStyle(color: Colors.cyanAccent, fontSize: 12),
-            ),
-          ),
-        const SizedBox(height: 20),
-        const Text(
-          'No emotion presets here on purpose. Measured: Kokoro\'s prosody '
-          'space is one axis and that axis is pitch, so "sad" and "stern" '
-          'would be the speed and pitch sliders wearing a name they do not '
-          'earn. "Borrow delivery from" is the one genuinely new control — it '
-          'is a real style transplant, and it is worth listening for what it '
-          'can and cannot carry.',
-          style: TextStyle(color: Colors.white38, fontSize: 12),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
