@@ -1042,6 +1042,9 @@ days of the week. It is a new category board, which costs a slot on the wheel �
 and the wheel is append-only, so the slot goes on the end and every learned key
 keeps what it opens.
 
+**Asked for again in §4.42**, which is the second time. It is the oldest
+unbuilt item she has raised twice.
+
 **Words for not being sure** — `maybe`, `perhaps`, `unsure`, `possibly`,
 `probably`. `unlikely` was asked for later and is not built; it belongs on the
 same row and is a one-word addition to it. Worth naming separately from the rest of the fringe because of what
@@ -1941,6 +1944,106 @@ different places in the caregiver screen and are described differently.
 - **Sync, or backup off the device.** A local snapshot answers the complaint
   that was actually made. Anything leaving the tablet is a transcript of a
   disabled person's private speech and needs the §7 consent argument first.
+
+### 4.42 Haley's second round — logged, triaged, mostly not built
+
+A batch from the TA test-driving this, taken verbatim and sorted here rather
+than worked through in the order it arrived. Some of it was already built and
+she had not seen it; some of it is one word; some of it is a mode.
+
+#### Already answered
+
+- **"'Things' is empty, and more frequently used cells like joining words is
+  all the way on the second page on 7x11"** — fixed in §4.37. All six joining
+  words are back on page one at 7x11 and `THINGS` moved to page two. It is on
+  her iPad and she has not seen it yet.
+- **"words for uncertainty beyond maybe"** — §4.28 shipped `perhaps`, `unsure`,
+  `possibly` and `probably` as a `not sure` row on `feelings`. `unlikely` is
+  still missing and is one word.
+- **"tone should be configurable on the fly"** — she flagged it as roadmap
+  herself. §4.5, needs the neural voice.
+
+#### One word each, no design needed
+
+`sorry`, `butt`, `your`/`yours`, `their`/`theirs`, `our`/`ours`, `unlikely`.
+None of them are in the vocabulary today. Checked rather than assumed.
+
+**Where they go is not free**, and each has to be measured the way §4.28's
+`maybe` was. The possessive set is the awkward one: the pronoun band on the
+root board is full and holds `my`, and `+'s` already builds a possessive from
+any noun. So `your`/`their`/`our` are either a row on the `people` board or a
+band that costs a root column, and that is a measurement, not a preference.
+
+#### `can't`, which is not a word but a rule
+
+Asked for as *"can't (maybe auto-abbreviate when 'can' is followed by 'not')"*.
+That is the same shape as the `a`→`an` repair that already ships: a contraction
+applied to the utterance when the pair appears, rather than a key. It belongs
+with the grammar engine, and the same question applies to `don't` — which *is*
+a key, because it is an imperative and `not` cannot make one (§4.0).
+
+Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
+
+#### Vocabulary that needs a home first
+
+- **An `objects` category.** The `THINGS` band is a reserve on the root board,
+  not a board. There is no category for objects at all.
+- **`sleep` and more verbs** — `sleep` exists on `doing` at level 1.
+- **Descriptors: `very`, `cute`, `sometimes`, `always`, `quietly`** — asked for
+  explicitly at level 3. None exist. Note these are three different word
+  classes: a degree word, an adjective, two frequency adverbs and a manner
+  adverb. They do not belong in one band.
+- **Adverbs**, as a class. Related to the above and worth designing once.
+
+#### Reorganisation, which is displacing and needs care
+
+- **Subcategories on `food`** — breakfast, lunch, dinner, snack, dessert,
+  candy — **and food-related verbs and objects.** This is the largest item in
+  the batch. Today `food` is one board of rows; this asks for a board of boards.
+  It changes what a learned key opens, so it is rebuild-class and needs the
+  §4.20 path.
+- **Move `cook` from `doing` to `food`.** It is on `doing` at level 3 today.
+  Displacing for anyone who has learned it, cheap for anyone who has not.
+- **Vulgar and genital vocabulary on page two of `body`, for the adult preset.**
+  Today `swearingBand` is on `feelings` and the anatomical words are on `body`.
+- **Optionally, every verb also appears on `doing`** wherever else it lives.
+  Deliberately a copy, which is the §4.16 pinning argument again: two routes to
+  one word, neither disturbing the other. Note it collides with the standing
+  rule that one word twice on **one** board is a defect — these would be on
+  different boards, which is already allowed.
+
+#### Modes and features, each its own piece of work
+
+- **"View all mode"** — show every cell, ignoring `hidden` and `vocab_level`.
+  A render filter override, and it must not write anything: the value of it is
+  that a caregiver can see the whole board and then leave it exactly as it was.
+  Careful against non-negotiable 8 — a location the user cannot see never
+  speaks — which this does not violate, because it makes them all visible.
+- **"Quiet until spoken mode"** — do not speak each word as it lands, only the
+  finished sentence. **The plan asked for both speak-on-tap and speak-on-send
+  as settings in Phase 2 and only speak-on-tap was built** (`talk_screen.dart`
+  speaks on every selection). This is a gap against the original scope, not a
+  new idea.
+- **An on-screen keyboard for one-off words**, silent until the word is
+  finished. New surface, and it needs a decision about whether a typed word can
+  be kept — a word typed twice is a word that wants a cell.
+- **An exclamation mark.** The utterance bar already accepts `!` and
+  `ButtonAction.punctuate` exists; **nothing seeds a key for it**, and the only
+  punctuation control in the UI is the question one. So this is a key and a
+  control, not an engine change.
+- **The user's own name as a cell, automatically, on page two of the root
+  board.** The profile already has `displayName`. Cheap, and it is the single
+  most personal word on any board.
+- **Phrases on the first page of a category, or deeper — a caregiver's
+  choice.** Pre-made phrases like "I don't know" or "ask me". Only meaningful
+  where the category has more than one page.
+
+#### What to notice about this batch
+
+Three of these — view-all, quiet-until-spoken, and the keyboard — are **modes
+rather than words**, and §4.7 says every feature is toggleable per profile.
+That is now a real body of settings and the caregiver screen will need
+organising rather than another switch appended to it.
 
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
