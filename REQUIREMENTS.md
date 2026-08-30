@@ -2342,6 +2342,50 @@ through paging and through boards a caregiver made themselves. A word on a board
 no visible key reaches is left out entirely: the request was a path, and a
 result with no path is a dead end.
 
+**The finder is now wired, and it walks.** *Find a word* is the first entry in
+the bar's "another way to a word" list, ahead of the keyboard, because "where is
+this word" is asked far more often than "this word is not on the board at all"
+— and it is the one that ends with the person having learned something.
+
+Each result reads as the movements rather than the destination —
+`home → more categories → food` — so a caregiver who never presses one has still
+been told where the word is. A word on the home board says so instead of showing
+an empty route.
+
+**Choosing one presses the keys.** `routeBeats` turns a route into the moments
+it passes through, and the board stops at each for 1.1 seconds with a ring round
+the key that is about to be pressed. Home first, always: routes are recorded
+from home because that is where the motor plan starts, and beginning wherever
+the person happened to be would press a sequence that only works from there.
+
+**The last beat presses nothing.** The walk stops on the board holding the word,
+with the ring round the word, and waits. Arriving is the finder's part and
+speaking is the user's — a word said by something they did not touch is a word
+they did not say, and the press is the movement the whole walk exists to teach.
+The ring never intercepts a touch, so the key under it is the one they press.
+
+Any press of the user's own ends the walk. A board that kept moving under
+somebody who had started using it is the failure `_settling` exists for,
+arriving by another route.
+
+Three things worth recording:
+
+- **The wheel turning is a beat, not a board change.** A route through
+  `more categories` has to turn the wheel the same number of times on the way,
+  or the sequence the finder presses reaches a different category from the one
+  it named. It is the case a hand-written route never covers, so the walk is
+  also checked against every route `findWords` can produce on a grid narrow
+  enough to make the wheel turn.
+- **A guard for a one-page wheel was written and then deleted.** Mutation
+  testing showed `(0 + 1) % 1` is already 0, so the special case was code that
+  could not be observed. The behaviour it described is still asserted.
+- **The finder's search is injectable, and only for one reason.** Typing is
+  faster than the database, and a slow answer to `fo` arriving after a fast one
+  to `food` would put the wrong list back — the word somebody is reaching for
+  moving under their finger. That race cannot be arranged against a database
+  that answers in a microsecond, and mutation testing showed the guard against
+  it was untested. A seam is what made it observable.
+
 **The route is now computed once, and the trail reads it.** `boardRoutes` is
 the single answer to "how is this board arrived at", and the strip that names
 the way to a word and the finder that walks it can no longer disagree. Two
