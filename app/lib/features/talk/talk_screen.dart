@@ -141,12 +141,28 @@ class TalkScreenState extends State<TalkScreen> {
   bool _settling = false;
   Timer? _settleTimer;
 
-  /// The speak key is waiting on a voice.
+  /// Something is waiting on a voice.
   ///
   /// Only ever true long enough to see under an engine that has to synthesise;
   /// the platform engine returns before a frame is drawn, so the ring never
   /// appears for it.
   bool _speaking = false;
+
+  /// Every route to speech goes through here, so the ring cannot appear for
+  /// one of them and not another.
+  ///
+  /// There are five: a tapped word, the bar's speak key, a suggestion, a word
+  /// ending, and the copula correcting the word before it. All five can now
+  /// wait on a synthesis, and a key that gives no sign it was pressed is a key
+  /// somebody presses twice.
+  Future<void> _saying(Future<void> Function() speak) async {
+    if (mounted) setState(() => _speaking = true);
+    try {
+      await speak();
+    } finally {
+      if (mounted) setState(() => _speaking = false);
+    }
+  }
 
   int get wheelPages => _wheel?.pages ?? 1;
 
@@ -707,7 +723,7 @@ class TalkScreenState extends State<TalkScreen> {
           pos: button.partOfSpeech,
         );
         _markReached(button.label);
-        await widget.speech.speak(_withRepair(repaired, button));
+        await _saying(() => widget.speech.speak(_withRepair(repaired, button)));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
             _currentBoardId = _rootBoardId;
@@ -800,12 +816,7 @@ class TalkScreenState extends State<TalkScreen> {
     // The ring goes up for the whole call rather than only for a synthesis,
     // because nothing here knows which it will be — and a key that looks
     // unpressed for a second is a key somebody presses again.
-    if (mounted) setState(() => _speaking = true);
-    try {
-      await widget.speech.speakUtterance(_utterance.text);
-    } finally {
-      if (mounted) setState(() => _speaking = false);
-    }
+    await _saying(() => widget.speech.speakUtterance(_utterance.text));
 
     if (_predicting && words.isNotEmpty) {
       unawaited(
@@ -892,7 +903,7 @@ class TalkScreenState extends State<TalkScreen> {
   /// suggestion — so speech starts here as fast as it does from the grid.
   Future<void> _onSuggestion(Button button) async {
     final repaired = _utterance.add(button.message, pos: button.partOfSpeech);
-    await widget.speech.speak(_withRepair(repaired, button));
+    await _saying(() => widget.speech.speak(_withRepair(repaired, button)));
 
     unawaited(_recordSuggestion(button));
   }
@@ -989,7 +1000,7 @@ class TalkScreenState extends State<TalkScreen> {
       // share a path that appends.
       if (button.message == 'article') {
         _utterance.add(button.label, pos: PartOfSpeech.determiner);
-        await widget.speech.speak(button.label);
+        await _saying(() => widget.speech.speak(button.label));
         return;
       }
 
@@ -1001,13 +1012,13 @@ class TalkScreenState extends State<TalkScreen> {
         past: button.message == 'past',
         mode: _copulaMode,
       );
-      await widget.speech.speak(form);
+      await _saying(() => widget.speech.speak(form));
       return;
     }
 
     final inflected = _utterance.replaceLast((w) => applyMorpheme(w, kind));
     if (inflected == null) return;
-    await widget.speech.speak(inflected);
+    await _saying(() => widget.speech.speak(inflected));
   }
 
   void _record(PlacedCell placed, Button button) {
