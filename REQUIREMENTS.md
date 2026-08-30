@@ -1937,6 +1937,25 @@ different places in the caregiver screen and are described differently.
 
 **Import creates a new vocabulary and never overwrites the active one.**
 
+**4. Getting the board back the way it was** — raised in §4.42 and folded in
+here, because it is the same machinery seen from the caregiver's side.
+
+Undo goes one step and, worse, only for moves: `undoLast` returns false unless
+the most recent edit is a `remap`, so a hide, a delete or a picture change
+cannot be undone at all, and a move made after one of those cannot be either.
+
+- **A snapshot when caregiver mode opens**, and a "put the board back the way I
+  found it" that restores it. This is what was asked for as a Save button, and
+  it is better on the case described — exploring, changing several things, and
+  wanting out of all of them — without re-introducing the uncommitted work that
+  §1's four parents lost.
+- **`undoLast` walks every edit kind**, not only `remap`. Separate, smaller,
+  and worth doing either way.
+
+A Save button is **not** what ships. Everything is written the moment it is
+done, on purpose; a screen where work exists but is not committed is the state
+those parents described losing.
+
 #### What this milestone does not include
 
 - **Volume above the device's maximum** (§5 non-negotiable 5, §4.4). It needs
@@ -2037,6 +2056,100 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
 - **Phrases on the first page of a category, or deeper — a caregiver's
   choice.** Pre-made phrases like "I don't know" or "ask me". Only meaningful
   where the category has more than one page.
+
+#### A key every board carries is one key — delivered
+
+Reported: *"changing pictures for system icons on one board doesn't apply to
+all the other boards. Feels like those should be consistent across all boards."*
+
+She is right, and the reason is worth writing down. Home, back, `more words`,
+`more categories`, the category slots and the pinned questions are stored as a
+row per board, because a location **is** a row and each board needs its own.
+That is a fact about storage, not about the board: to the person using it there
+is one `more words` key, at one place, doing one thing, wherever they are. A
+picture that changed from board to board would make one movement look like
+several different keys — the confusion the fixed frame exists to prevent.
+
+`frame_keys.dart` now holds both halves: `frameSiblings` finds every copy of a
+key, and `setButtonSymbol` is the one writer, so no path can put a picture on a
+single board by forgetting. Every route in the picker — a pack symbol, a
+downloaded one, a photo, and taking the picture off — already funnelled through
+one method, so all four are fixed by one change.
+
+**What counts as a copy is the location**, read from the frame the vocabulary
+recorded rather than recomputed, plus whether it is a system key. Not the
+action: a column of the frame carries the same key on every board it appears
+on, so matching the location has already matched the action. That comparison
+was written, mutation-tested, found redundant, and removed.
+
+Two things it deliberately does not do:
+
+- **An ordinary word on a frame location is nobody's copy.** The last page has
+  no forward key, so a caregiver may put a word there, and giving it the
+  paging key's picture would be wrong.
+- **A category slot only matters where the wheel does not turn.** Where it
+  does, the slot takes its picture from whichever category it is showing
+  (`_throughWheel` nulls the button's own), so a chosen one is ignored. The
+  propagation is correct in both cases and observable in one; the test uses
+  7x14, where every category has a permanent slot.
+
+Eleven tests, ten mutations. **One line is still uncovered** — the picker's
+call to `setButtonSymbol` — because it is inside a modal sheet. The same
+residue `openSession` and `awaiting` leave, and the third time this shape has
+come up.
+
+#### Contractions as a setting
+
+Added to the `can't` item above: *"'can not' → 'can't' and 'will not' → 'won't'
+should be a setting too."* Agreed, and it settles the question the item left
+open. Contraction is a house style rather than a correctness fix — some
+teams will want the board to say exactly what was pressed — so it belongs with
+the other grammar switches under §4.7 rather than being applied always.
+
+#### Undo goes one step, and only for moves
+
+Reported: *"'undo' seems to keep only one step back. If you make two changes,
+you can't go back. A 'Save' button and a 'you have unsaved changes' warning
+would be better, so a caregiver exploring what's possible doesn't end up
+ruining the board."*
+
+**The defect is worse than one step.** `RemapService.undoLast` takes the most
+recent edit event and then returns false unless its kind is `remap`. So hiding a
+word, deleting one, or changing a picture are not undoable at all, and a move
+made after any of those cannot be undone either, because the move is no longer
+the most recent event.
+
+**Her fix and the app's existing promise pull in opposite directions**, and this
+is worth deciding rather than splitting. Everything is written the moment it is
+done, deliberately: §1 records four parents who lost months of work, and the
+plan's answer was "autosave every edit, versioned". A Save button re-introduces
+exactly the state those parents lost — work that exists but is not committed.
+
+**Recommended instead, and it gets her what she asked for**: a snapshot taken
+when caregiver mode opens, and a "put the board back the way I found it" that
+restores it. That is the same machinery as §4.41's backup, so it is nearly free
+once that exists, and it beats a Save button on the case she actually described
+— exploring, changing several things, and wanting out of all of it. Undo depth
+is then a separate and smaller fix: make `undoLast` walk every edit kind rather
+than only `remap`.
+
+Both belong with §4.41. Noted there.
+
+#### The settings screen is overwhelming
+
+Reported: *"the settings, although it has sections, is still overwhelming. Each
+section we currently have should probably become a submenu."*
+
+Straightforwardly right, and §4.42's own three new modes — view-all, quiet-
+until-spoken, the keyboard — would each add another switch to a screen already
+too long. Worth doing **before** those land rather than after, or the same
+complaint arrives again with more in it.
+
+Nothing about it is subtle: the sections exist, so they become pages, and the
+top level becomes a list of section names with a line of description each. The
+one thing to get right is that a caregiver who knows where a switch is should
+not have to hunt for it — so the sections keep their current names and order,
+and nothing moves between them in the same change that makes them pages.
 
 #### What to notice about this batch
 

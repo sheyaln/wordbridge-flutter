@@ -10,6 +10,7 @@ import '../../db/tables.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../grid/symbol_view.dart';
+import 'frame_keys.dart';
 import '../symbols/custom_upload.dart';
 import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
@@ -190,25 +191,9 @@ class _SymbolPickerState extends State<SymbolPicker> {
   }
 
   Future<void> _assign(String symbolId) async {
-    await (widget.db.update(
-      widget.db.buttons,
-    )..where((b) => b.id.equals(widget.button.id))).write(
-      ButtonsCompanion(symbolId: Value(symbolId), updatedAt: Value(nowMs())),
-    );
-
-    await widget.db
-        .into(widget.db.editEvents)
-        .insert(
-          EditEventsCompanion.insert(
-            id: newId(),
-            vocabularyId: widget.button.vocabularyId,
-            cellId: Value(widget.button.cellId),
-            buttonId: Value(widget.button.id),
-            kind: EditKind.resymbol,
-            changedAt: nowMs(),
-          ),
-        );
-
+    // Through the one writer, which puts it on every copy of a key every board
+    // carries rather than only on the board that happened to be open.
+    await setButtonSymbol(widget.db, widget.button, symbolId);
     if (mounted) Navigator.of(context).pop(true);
   }
 
