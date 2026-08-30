@@ -1,0 +1,349 @@
+import 'dart:io';
+
+import 'package:drift/native.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+import '../../db/database.dart';
+import 'snapshot.dart';
+
+/// A snapshot that was taken, or the reason one was not.
+///
+/// Both fields can be set at once: a snapshot that was written while the old
+/// ones could not be cleared away is a real backup and a real problem, and a
+/// caregiver screen has to be able to say so.
+typedef SnapshotAttempt = ({Snapshot? snapshot, String? problem});
+
+/// Whether the board came back, and if not, what stopped it.
+///
+/// [problem] is written to be read to a parent rather than logged. When a
+/// restore is refused they are holding a device that is not working, and
+/// "something went wrong" leaves them with nowhere to go next.
+typedef RestoreAttempt = ({bool restored, String? problem});
+
+/// Lossless local copies of the board, and putting one back.
+///
+/// The failure this exists to prevent is a caregiver losing months of work —
+/// custom words, chosen pictures, the locations a person has learned — to an
+/// update or a device swap, and finding out that what they thought was a
+/// backup was not one.
+///
+/// So this copies the database, not the vocabulary. The OBF/OBZ export in
+/// `features/interop` is an interchange format for moving words between
+/// programs, and it does not carry reserved cells, vocabulary levels, hidden
+/// words, band maps, or usage history. Offering it as a backup would recreate
+/// the exact failure: a caregiver who believes they are safe and is not. A
+/// backup here is byte-for-byte the same database, or it is not a backup.
+///
+/// Nothing here touches a network and nothing here has anywhere to send a
+/// file. Snapshots include the usage log, which is a record of a disabled
+/// person's private speech, and they stay on the tablet it was said on.
+///
+/// Taking a snapshot never throws. It runs while somebody may be mid-sentence,
+/// and a backup that can interrupt speech is worse than no backup at all;
+/// every failure comes back as a [SnapshotAttempt.problem] a caregiver screen
+/// can show, and is also kept in [lastAttempt] for the ones nobody was
+/// watching.
+class BackupService {
+  BackupService(
+    this._db, {
+    Future<Directory> Function()? documentsDirectory,
+    DateTime Function()? clock,
+  }) : _documentsDirectory =
+           documentsDirectory ?? getApplicationDocumentsDirectory,
+       _clock = clock ?? DateTime.now;
+
+  final WordbridgeDatabase _db;
+  final Future<Directory> Function() _documentsDirectory;
+  final DateTime Function() _clock;
+
+  /// How many snapshots are kept.
+  ///
+  /// The damage this guards against is rarely noticed the day it happens — an
+  /// update flattens a board, or a well-meaning helper rearranges one, and it
+  /// is a week before anybody works out what changed. One snapshot is no use
+  /// then, because the damage is already inside it. Five gives a caregiver
+  /// several distinct points to step back to.
+  ///
+  /// Bounded because a full tablet is the same outage by a different route: a
+  /// communication device that will not launch has stopped being one, and
+  /// growing a backup folder without limit is a slow way to get there.
+  static const keep = 5;
+
+  /// Where snapshots live, under the application documents directory.
+  ///
+  /// Documents, never the cache. The OS empties caches when a device runs
+  /// short of space, and it does not ask first — a backup that the system is
+  /// free to delete is not a backup.
+  static const folder = 'backups';
+
+  /// The most recent attempt, including one nobody was waiting on.
+  SnapshotAttempt? get lastAttempt => _lastAttempt;
+  SnapshotAttempt? _lastAttempt;
+
+  Future<Directory> _directory() async {
+    final directory = Directory(
+      p.join((await _documentsDirectory()).path, folder),
+    );
+    await directory.create(recursive: true);
+    return directory;
+  }
+
+  /// Copies the database, then prunes back to [keep].
+  ///
+  /// SQLite writes the copy itself rather than anything here reading the file,
+  /// because the app holds the database open and the pages on disk at any
+  /// instant are not guaranteed to be a database anybody can open. `VACUUM
+  /// INTO` takes a read transaction and produces a consistent file, so a
+  /// snapshot taken mid-sentence is still a snapshot.
+  ///
+  /// The result is read back before it counts as written. An unreadable backup
+  /// is worse than none, because it is believed.
+  Future<SnapshotAttempt> takeSnapshot() async {
+    try {
+      final directory = await _directory();
+      final takenAt = _clock();
+      final file = File(p.join(directory.path, snapshotFileName(takenAt)));
+
+      if (await file.exists()) {
+        return _record((
+          snapshot: null,
+          problem:
+              'A backup from this moment already exists. Nothing was '
+              'changed — try again in a second.',
+        ));
+      }
+
+      await _db.customStatement('VACUUM INTO ?', [file.path]);
+
+      final version = await snapshotSchemaVersion(file);
+      if (version == null) {
+        // Written, but not a database anything can open, so it is deleted
+        // rather than left to be found and trusted later.
+        if (await file.exists()) await file.delete();
+        return _record((
+          snapshot: null,
+          problem:
+              'The backup could not be written completely and has been '
+              'discarded. Check there is free space on this device.',
+        ));
+      }
+
+      final snapshot = (
+        path: file.path,
+        takenAt: takenAt,
+        bytes: await file.length(),
+        schemaVersion: version,
+      );
+
+      // A prune that fails leaves a good backup behind, so it is reported
+      // alongside the snapshot rather than instead of it.
+      String? pruneProblem;
+      try {
+        await _prune();
+      } catch (_) {
+        pruneProblem =
+            'The backup was saved, but older ones could not be removed. '
+            'This device may be low on space.';
+      }
+
+      return _record((snapshot: snapshot, problem: pruneProblem));
+    } catch (e) {
+      return _record((
+        snapshot: null,
+        problem: 'The backup could not be saved. $e',
+      ));
+    }
+  }
+
+  /// What exists to restore from, newest first.
+  ///
+  /// Anything in the folder that is not a snapshot this wrote is left out,
+  /// rather than listed and refused later. A caregiver choosing a way back
+  /// should only be shown ways back that work.
+  Future<List<Snapshot>> snapshots() async {
+    final directory = await _directory();
+    final found = <Snapshot>[];
+
+    await for (final entry in directory.list()) {
+      if (entry is! File) continue;
+
+      final takenAt = snapshotTakenAt(entry.path);
+      if (takenAt == null) continue;
+
+      final version = await snapshotSchemaVersion(entry);
+      if (version == null) continue;
+
+      found.add((
+        path: entry.path,
+        takenAt: takenAt,
+        bytes: await entry.length(),
+        schemaVersion: version,
+      ));
+    }
+
+    found.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    return found;
+  }
+
+  /// Puts a snapshot back, all of it or none of it.
+  ///
+  /// The snapshot is attached to the connection the app is already using and
+  /// the tables are copied across inside one transaction. The rejected design
+  /// was to overwrite the database file and make the app relaunch: it is less
+  /// code, but it hands a caregiver a device that has to be restarted before
+  /// it will speak again, and it does that at the one moment they have already
+  /// established something is wrong. It also has no way back — once the file
+  /// is overwritten, a restore that turns out to have been the wrong choice
+  /// has nothing to undo it with. Copying inside a transaction keeps the app
+  /// running, and a failure anywhere in it rolls back to the board that was
+  /// there before.
+  ///
+  /// Foreign keys are deferred for the duration rather than the copy being
+  /// ordered around them. Every table is emptied before any is refilled, so
+  /// there is no order in which the intermediate states are all valid; what
+  /// has to be valid is the finished board, and SQLite checks exactly that at
+  /// the commit. It also means a table added in a later schema version is
+  /// carried across without anyone having to remember where in an order it
+  /// belongs.
+  ///
+  /// Returns a refusal rather than throwing, for the same reason a snapshot
+  /// does: this is reachable from a screen the caregiver opened while the
+  /// person is still using the board.
+  Future<RestoreAttempt> restore(Snapshot snapshot) async {
+    final source = File(snapshot.path);
+    File? upgraded;
+
+    try {
+      if (!await source.exists()) {
+        return (
+          restored: false,
+          problem: 'That backup is no longer on this device.',
+        );
+      }
+
+      final version = await snapshotSchemaVersion(source);
+      if (version == null) {
+        return (
+          restored: false,
+          problem: 'That file is not a wordbridge backup.',
+        );
+      }
+
+      if (version > _db.schemaVersion) {
+        return (
+          restored: false,
+          problem:
+              'That backup was made by a newer version of wordbridge '
+              '(backup $version, this app reads ${_db.schemaVersion}). '
+              'Update the app and try again. Nothing has been changed.',
+        );
+      }
+
+      var attach = source.path;
+
+      if (version < _db.schemaVersion) {
+        // The case this whole feature exists for: an update flattened a board
+        // and the way back is a snapshot from before it. That snapshot is at
+        // the older schema, so it is brought forward the same way a real
+        // device is — by opening it and letting the migration run.
+        //
+        // On a copy, so that a snapshot stays exactly what it was and can be
+        // restored again later.
+        upgraded = File('${source.path}.upgrading');
+        if (await upgraded.exists()) await upgraded.delete();
+        await source.copy(upgraded.path);
+
+        // `forTesting` is simply the constructor that takes an executor;
+        // nothing about this is a test.
+        final staged = WordbridgeDatabase.forTesting(NativeDatabase(upgraded));
+        try {
+          await staged.customSelect('SELECT 1').getSingle();
+        } finally {
+          await staged.close();
+        }
+
+        if (await snapshotSchemaVersion(upgraded) != _db.schemaVersion) {
+          return (
+            restored: false,
+            problem:
+                'That backup could not be brought up to date and has not '
+                'been used. Nothing has been changed.',
+          );
+        }
+        attach = upgraded.path;
+      }
+
+      return await _copyBack(attach);
+    } catch (e) {
+      return (
+        restored: false,
+        problem:
+            'The backup could not be restored. Nothing has been '
+            'changed. $e',
+      );
+    } finally {
+      if (upgraded != null && await upgraded.exists()) {
+        await upgraded.delete();
+      }
+    }
+  }
+
+  Future<RestoreAttempt> _copyBack(String path) async {
+    const alias = 'restore_source';
+    await _db.customStatement('ATTACH DATABASE ? AS $alias', [path]);
+
+    try {
+      // Checked before anything is deleted. A snapshot with a reference to a
+      // location that is not there would fail at the commit anyway, but a
+      // caregiver is better told the backup is damaged than handed whatever
+      // SQLite says about it.
+      final broken = await _db
+          .customSelect('PRAGMA $alias.foreign_key_check')
+          .get();
+      if (broken.isNotEmpty) {
+        return (
+          restored: false,
+          problem:
+              'That backup is damaged and has not been used. Nothing has '
+              'been changed.',
+        );
+      }
+
+      final tables = [for (final table in _db.allTables) table.actualTableName];
+
+      await _db.transaction(() async {
+        await _db.customStatement('PRAGMA defer_foreign_keys = ON');
+
+        for (final table in tables) {
+          await _db.customStatement('DELETE FROM main."$table"');
+        }
+        for (final table in tables) {
+          await _db.customStatement(
+            'INSERT INTO main."$table" SELECT * FROM $alias."$table"',
+          );
+        }
+      });
+
+      // Raw statements are invisible to the query streams the talk screen is
+      // built on, so without this the board on screen would still be the one
+      // that was just replaced.
+      _db.markTablesUpdated(_db.allTables);
+
+      return (restored: true, problem: null);
+    } finally {
+      await _db.customStatement('DETACH DATABASE $alias');
+    }
+  }
+
+  Future<void> _prune() async {
+    for (final old in (await snapshots()).skip(keep)) {
+      await File(old.path).delete();
+    }
+  }
+
+  SnapshotAttempt _record(SnapshotAttempt attempt) {
+    _lastAttempt = attempt;
+    return attempt;
+  }
+}
