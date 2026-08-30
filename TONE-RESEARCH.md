@@ -121,3 +121,35 @@ The one published cue is loudness, which we fully control.
    because the audio was given for this purpose. It is a much larger product
    (recording flows, consent, storage, per-voice tone sets) and it is the only
    route that solves all three tones cleanly.
+
+## The listening test: they failed it
+
+Calm, stern and sad were played to the person who commissioned them. The
+verdict was **"rough, uncanny and scary."**
+
+That settles it, and it outranks every measurement above. The numbers said calm
+moved correctly on every axis; a listener said it was frightening. **The
+measurements were answering a narrower question than the one that matters** —
+whether the acoustic correlates moved, not whether the result is a voice
+somebody would want to be heard in.
+
+It matters more here than it would elsewhere. §5 non-negotiable 9's argument is
+that a wrong output is not borne by the person who chose it: an AAC user is
+taken to mean whatever came out, in whatever voice it came out in. **A voice
+that unsettles the listener makes every sentence said in it a little wrong**,
+and the person it happens to is the one least able to say "that is not how I
+meant it."
+
+So this is parked as a roadmap item, not carried forward. What survives:
+
+- **The mechanism is real** and is written down above — the 128/128 split, the
+  direction method, `alpha=beta=0` for determinism. None of that has to be
+  rediscovered.
+- **The corpus is the known blocker.** Acted emotion collapses to one arousal
+  axis (cosines +0.83 to +0.94), and the uncanniness is consistent with pushing
+  a style vector outside the distribution the model was trained on.
+- **The likeliest route back** is same-speaker references from a voice donor,
+  which removes both the corpus problem and the disentanglement problem at
+  once — and is a much larger product.
+
+**Ship the voice. The tones are not close.**
