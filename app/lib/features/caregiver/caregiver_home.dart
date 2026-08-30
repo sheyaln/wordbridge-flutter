@@ -289,30 +289,70 @@ extension on _Boards {
   }
 }
 
-/// A heading in the settings list.
+/// One section of the settings, and the row that stands for it in the list.
 ///
-/// The list had grown to twenty-odd controls in one column, which is a wall
-/// rather than a page: a caregiver looking for the voice had to read every
-/// switch about grammar to be sure it was not there. Grouping does not remove
-/// anything, it just means a person can skip four-fifths of it.
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection(this.title);
+/// [description] is what makes the list worth reading: eight bare names say
+/// little more than nothing, and a caregiver who has to guess opens all eight.
+/// [state] carries the single fact a section is usually opened to check, where
+/// there is one short enough to sit on the row — knowing which voice is set
+/// should not cost a trip into a page and back.
+class _Section {
+  const _Section({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.tiles,
+    this.state,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String? state;
+
+  /// Built on demand rather than held, so a switch thrown on the page redraws
+  /// with the value it now has.
+  final List<Widget> Function(BuildContext context, VoidCallback onChanged)
+  tiles;
+}
+
+/// One section, on a page of its own.
+///
+/// It redraws itself as well as telling the screen underneath, because the
+/// list it was opened from is a route below and cannot redraw what sits on top
+/// of it — a switch would otherwise stay where it was until the page was left.
+///
+/// Pops `true` when what was done on it took the board with it, which the list
+/// follows out to the talk screen.
+class _SectionPage extends StatefulWidget {
+  const _SectionPage({
+    required this.title,
+    required this.tiles,
+    required this.onChanged,
+  });
 
   final String title;
+  final List<Widget> Function(BuildContext context, VoidCallback onChanged)
+  tiles;
+  final VoidCallback onChanged;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
-    child: Text(
-      title.toUpperCase(),
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    ),
-  );
+  State<_SectionPage> createState() => _SectionPageState();
+}
+
+class _SectionPageState extends State<_SectionPage> {
+  void _changed() {
+    widget.onChanged();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: ListView(children: widget.tiles(context, _changed)),
+    );
+  }
 }
 
 /// Which of the two ways the "am/is/are" and "was/were" keys behave.
@@ -444,6 +484,13 @@ class _CopulaMode extends StatelessWidget {
   }
 }
 
+/// The settings, one section to a page.
+///
+/// Each control in here explains itself in a sentence or three, which is right
+/// when you are reading one and hopeless when you are hunting for one. The
+/// sections are already the shape a caregiver thinks in, so each is a page and
+/// the top of the screen is eight lines that can be taken in at a glance —
+/// which is what keeps it readable as more switches arrive.
 class _Settings extends StatelessWidget {
   const _Settings({
     required this.db,
@@ -471,8 +518,56 @@ class _Settings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        if (onSwitchProfile != null)
-          const _SettingsSection('Who is using this'),
+        // A section with nothing on it is not named. Several depend on a
+        // profile, a speech engine, or more than one person existing, and a
+        // row that opens onto an empty page is worse than no row.
+        for (final section in _sections)
+          if (section.tiles(context, onChanged).isNotEmpty)
+            ListTile(
+              leading: Icon(section.icon),
+              title: Text(section.title),
+              subtitle: Text(
+                section.state == null
+                    ? section.description
+                    : '${section.description}\n${section.state}',
+              ),
+              isThreeLine: section.state != null,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _open(context, section),
+            ),
+      ],
+    );
+  }
+
+  /// Opens a section, and follows it out if what was done on it took the board
+  /// with it.
+  Future<void> _open(BuildContext context, _Section section) async {
+    final boardGone = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => _SectionPage(
+          title: section.title,
+          tiles: section.tiles,
+          onChanged: onChanged,
+        ),
+      ),
+    );
+
+    if (boardGone == true && context.mounted) Navigator.of(context).pop();
+  }
+
+  /// The sections, in the order a caregiver has already learned to look in.
+  ///
+  /// Nothing moves between them and nothing is renamed. Where a switch lives
+  /// is something people remember, and a rearrangement dressed up as a
+  /// tidy-up costs them that for nothing.
+  List<_Section> get _sections => [
+    _Section(
+      icon: Icons.people_outline,
+      title: 'Who is using this',
+      description:
+          'Which person the board belongs to, how much of the vocabulary is '
+          'drawn, and words that have shipped since it was built',
+      tiles: (context, onChanged) => [
         if (onSwitchProfile != null)
           ListTile(
             leading: const Icon(Icons.people_outline),
@@ -490,7 +585,8 @@ class _Settings extends StatelessWidget {
               if (chosen == null || !context.mounted) return;
 
               onSwitchProfile!(chosen);
-              Navigator.of(context).pop();
+              // The board underneath belongs to somebody else now.
+              Navigator.of(context).pop(true);
             },
           ),
         _VocabularyLevel(db: db, profileId: profileId, onChanged: onChanged),
@@ -508,7 +604,19 @@ class _Settings extends StatelessWidget {
             settings: settings!,
             onChanged: onChanged,
           ),
-        if (settings != null) const _SettingsSection('The board'),
+      ],
+    ),
+    _Section(
+      icon: Icons.grid_on_outlined,
+      title: 'The board',
+      description:
+          'How big the buttons are, which way round the grid sits, and '
+          'starting the whole board set again from the shipped words',
+      state: settings == null
+          ? null
+          : '${settings!.iconSize.label} icons, '
+                '${settings!.orientation.label.toLowerCase()}',
+      tiles: (context, onChanged) => [
         if (settings != null)
           ListTile(
             leading: const Icon(Icons.grid_on_outlined),
@@ -534,7 +642,7 @@ class _Settings extends StatelessWidget {
 
               // The board this screen was opened over no longer exists, so
               // back out to the talk screen and let it load the rebuilt one.
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(true);
             },
           ),
         ListTile(
@@ -558,11 +666,21 @@ class _Settings extends StatelessWidget {
             );
             if (rebuilt == null || !context.mounted) return;
 
-            Navigator.of(context).pop();
+            Navigator.of(context).pop(true);
           },
         ),
-        if (settings != null && speech != null)
-          const _SettingsSection('How it sounds'),
+      ],
+    ),
+    _Section(
+      icon: Icons.record_voice_over_outlined,
+      title: 'How it sounds',
+      description:
+          'The voice that speaks, and how fast, how high and how loud it is',
+      state: settings == null || speech == null
+          ? null
+          : '${settings!.voiceName ?? 'The device\'s own voice'} · '
+                '${settings!.tone.label}',
+      tiles: (context, onChanged) => [
         if (settings != null && speech != null)
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
@@ -578,7 +696,15 @@ class _Settings extends StatelessWidget {
               settings: settings!,
             ).then((_) => onChanged()),
           ),
-        if (settings != null) const _SettingsSection('How it behaves'),
+      ],
+    ),
+    _Section(
+      icon: Icons.touch_app_outlined,
+      title: 'How it behaves',
+      description:
+          'Going home after a word, the pause after the board changes, and '
+          'the strips that name where a word is and how it was reached',
+      tiles: (context, onChanged) => [
         if (settings != null)
           SwitchListTile(
             value: settings!.autoReturn,
@@ -622,7 +748,15 @@ class _Settings extends StatelessWidget {
             settings: settings!,
             onChanged: onChanged,
           ),
-        if (settings != null) const _SettingsSection('Words and grammar'),
+      ],
+    ),
+    _Section(
+      icon: Icons.spellcheck,
+      title: 'Words and grammar',
+      description:
+          'Word endings, the choice between am, is and are, and the strip '
+          'that suggests what comes next',
+      tiles: (context, onChanged) => [
         if (settings != null)
           SwitchListTile(
             value: settings!.contextualGrammar,
@@ -690,9 +824,23 @@ class _Settings extends StatelessWidget {
               onChanged();
             },
           ),
-        const _SettingsSection('Getting in here'),
-        _CaregiverEntryTile(db: db),
-        const _SettingsSection('Recording'),
+      ],
+    ),
+    _Section(
+      icon: Icons.lock_outline,
+      title: 'Getting in here',
+      description:
+          'The gesture that opens this screen, and how long it is held for',
+      tiles: (context, onChanged) => [_CaregiverEntryTile(db: db)],
+    ),
+    _Section(
+      icon: Icons.insights_outlined,
+      title: 'Recording',
+      description:
+          'Whether taps are counted, so the editor can say how much practice '
+          'a position has had',
+      state: logger.enabled ? 'On' : 'Off',
+      tiles: (context, onChanged) => [
         SwitchListTile(
           value: logger.enabled,
           title: const Text('Track word usage'),
@@ -711,7 +859,13 @@ class _Settings extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
           ),
         ),
-        const _SettingsSection('About'),
+      ],
+    ),
+    _Section(
+      icon: Icons.info_outline,
+      title: 'About',
+      description: 'Where the pictures came from, and what their licences ask',
+      tiles: (context, onChanged) => [
         ListTile(
           leading: const Icon(Icons.image_outlined),
           title: const Text('Symbol credits'),
@@ -722,8 +876,8 @@ class _Settings extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
+    ),
+  ];
 }
 
 /// Which gesture opens this screen, and how long it is held.

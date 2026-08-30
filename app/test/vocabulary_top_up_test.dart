@@ -990,6 +990,10 @@ void main() {
 
       await tester.tap(find.text('Settings'));
       await settle(tester);
+
+      // The vocabulary controls live on their own page now.
+      await tester.tap(find.text('Who is using this'));
+      await settle(tester);
     }
 
     /// Drops the widget before the database goes, so nothing is still reading
