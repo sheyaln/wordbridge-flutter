@@ -432,7 +432,7 @@ measurements are the useful part:
 and two different things under a test harness, and a gate on the tap path has to
 be testable.
 
-### 4.8 Breadcrumbs — agreed, not built
+### 4.8 Breadcrumbs — delivered
 
 A strip at the bottom of the screen showing the path taken to reach a word:
 `home → body → more words → face`. **Toggleable, default on.**
@@ -460,7 +460,7 @@ Constraints it inherits:
   be a second route to a board, and a word's motor path has to be one sequence,
   not two.
 
-### 4.9 Word prediction on by default — agreed, not built
+### 4.9 Word prediction on by default — delivered
 
 Prediction (§4.3) currently defaults off. It should default **on**.
 
@@ -474,6 +474,11 @@ So: on by default for profiles created from here, and a migration that writes
 the current effective value explicitly for profiles that already exist, leaving
 their boards untouched. Turning it on afterwards stays a caregiver's choice and
 stays instantly reversible.
+
+**Built that way.** `predictionForNewProfiles` is written into `settingsJson` by
+`ProfileRepository` at creation, so the getter's fallback is only ever reached
+by a profile made after the default existed. §4.8 ships on the same mechanism
+and the same reasoning.
 
 ### 4.10 Two ways to choose a form of "to be" — delivered
 
