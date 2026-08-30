@@ -3224,6 +3224,90 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.45 One screen for the voice — agreed, being built
+
+Reported: *"Voice selection should be a submenu on both 'Voice' and 'A voice of
+their own'. Like, I never realized we had pitch control on the device's own
+voice because there's so many voices to scroll through. Also, we should combine
+'Voice' and 'A voice of their own' into one menu. Toggle between Neural voice
+and TTS voice. With neural voice selected, fallback TTS voice can be
+configured."*
+
+Two separate complaints, and the second one is a bug report about the first.
+
+**A long list above a dial hides the dial.** "How it sounds" opened onto two
+rows; the first opened a screen whose top third was every offline voice the
+tablet has, and the speed, pitch and volume sliders sat below all of them. A
+caregiver who has used this app for weeks did not know pitch control existed.
+That is the same failure as §4.43a — a screen whose shape costs you a control —
+except here the control is not merely slow to reach, it is invisible.
+
+The neural screen already solved it and the fix is the one to copy: the voice
+list is a page of its own, reached from a single row that names the voice
+currently set. What is read once goes behind a row; what is read every visit
+stays on the screen.
+
+**Two screens for one question.** "Which voice speaks?" had two answers on two
+pages, and neither page said the other existed. The device voice is not an
+alternative to the neural voice — it is what the neural voice falls back to,
+for every word not yet made and every sentence that runs past the budget
+(§4.5). Configuring it is never irrelevant, so hiding it behind "off" was
+wrong.
+
+**Now one screen.** `How it sounds` opens straight onto it, no section page in
+between (§4.43a). On it:
+
+- **Which voice speaks** — two options, not a switch. A switch named "use the
+  neural voice" says what happens when it is on and leaves the off state
+  unnamed; a caregiver deciding between two voices should see both named.
+- **Neural voice** — the download, the voice picker behind a row, the words made
+  in advance, the fallback count, the synthesis budget. Unchanged, except that
+  the pre-alpha banner now heads the whole screen, above the choice, because it
+  is the thing to read *before* choosing.
+- **Device voice** — the picker behind a row, then tone, speed, pitch, volume.
+  Always configurable, and when the neural voice is on the header says why:
+  it is what speaks when the neural voice is not ready.
+
+**The neural option is refused, not hidden, before the model is downloaded.**
+Greyed with the reason on the row, and the Download button directly beneath it.
+A missing option explains nothing; §4.43's board-delete rule again.
+
+`caregiver_settings_test.dart` holds `_reachable`, the map of section → controls
+that must stay findable. It gains Tone, Speed, Pitch and Volume — the four that
+were nominally reachable and practically were not. That is the point of the
+change, so it belongs in the contract.
+
+### 4.44 Recording is asked at setup, and the answer is kept — delivered
+
+Requested: *"We should ask for whether to record usage during setup. Current
+profile/profile selection should show up at the top of the screen in the
+settings."*
+
+Two things, and the first one uncovered a bug.
+
+**Consent was never written down.** The switch in caregiver settings set
+`logger.enabled`, and nothing else. `UsageLogger` is constructed fresh at every
+launch with `enabled = false`, so a caregiver who turned recording on lost it
+overnight — and the tap counts the editor quotes before a move (§7) never
+accumulated past a single session. The one feature that makes recording worth
+its privacy cost was silently reset every morning.
+
+The answer now lives on the profile, because that is whose answer it is. It is
+written at setup — including when the answer is no, since "nobody was asked" and
+"somebody said no" are the same to a getter with a default and only one of them
+is consent — and `applyUsageConsent` hands it to the logger when a session
+opens. Switching profile hands over the new person's answer, in both directions:
+the logger outlives the session and the answer belongs to the person.
+
+Default stays **off**. Setup asks rather than assuming, and the wording says
+where it stays and what it buys.
+
+**Whose board this is, at the top of settings.** Every control on that screen
+applies to one person and nothing on it said which. A caregiver who changes a
+setting for the wrong child finds out by noticing. The card names them and taps
+through to the picker — the same route as the row inside "Who is using this",
+so the two cannot come to behave differently.
+
 ### 4.43a A settings section that was one screen cost two taps — delivered
 
 Reported: *"Settings → Backup → 'Backup and restoring' → actual settings.
