@@ -4,6 +4,7 @@ import '../../db/database.dart';
 import '../../db/seed/age_presets.dart';
 import '../auth/caregiver_gesture.dart';
 import 'grid_choice.dart';
+import 'profile_settings.dart';
 import 'profile_repository.dart';
 
 /// How much of the vocabulary starts out drawn, asked as what a person can do.
@@ -75,6 +76,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
   IconSize _iconSize = IconSize.medium;
   bool? _profanity;
   int? _vocabLevel;
+
+  /// Off until somebody says yes, which is what §7 means by opt-in.
+  bool _usageTracking = ProfileSettings.usageTrackingForNewProfiles;
   bool _creating = false;
 
   /// Asked on the first run and nowhere else.
@@ -142,6 +146,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
         birthDate: _birthDate,
         profanity: _profanity,
         vocabLevel: _vocabLevel,
+        usageTracking: _usageTracking,
       );
 
       if (mounted) Navigator.of(context).pop(profile);
@@ -328,6 +333,44 @@ class _ProfileSetupState extends State<ProfileSetup> {
                 ],
               ),
             ),
+
+          // Asked here rather than left to be found in settings. A usage log
+          // is a transcript of this person's private speech (§7), so it is
+          // consent, and consent that is opt-in by silence is not consent.
+          //
+          // It is also the setting most worth having on from day one: it is
+          // what lets the editor say "this location has 341 taps" before a
+          // caregiver moves a word, and switched on a year late it can only
+          // speak for the year it has seen.
+          _Section(
+            title: 'Record which words are used?',
+            note:
+                'Stays on this tablet. Nothing is sent anywhere, and you can '
+                'turn it off or delete it later.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _OptionCard(
+                  title: 'Yes, record it',
+                  subtitle:
+                      'wordbridge can then warn you how much practice a '
+                      'position has had before you move a word, and show what '
+                      'has been said.',
+                  selected: _usageTracking,
+                  onTap: () => setState(() => _usageTracking = true),
+                ),
+                const SizedBox(height: 8),
+                _OptionCard(
+                  title: 'No, do not record',
+                  subtitle:
+                      'The board works exactly the same. The editor cannot '
+                      'tell you what a move will cost.',
+                  selected: !_usageTracking,
+                  onTap: () => setState(() => _usageTracking = false),
+                ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 8),
           _GridSummary(choice: choice),

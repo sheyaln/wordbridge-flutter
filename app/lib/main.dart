@@ -172,15 +172,33 @@ Future<void> applyProfileOrientation(ProfileSettings settings) =>
 /// bug arrived at from the other direction.
 Future<VoidCallback> openSession(
   SpeechEngine speech,
-  ProfileSettings settings,
-) async {
+  ProfileSettings settings, {
+  UsageLogger? logger,
+}) async {
   await settings.load();
   await applyProfileVoice(speech, settings);
   await applyProfileOrientation(settings);
+  applyUsageConsent(logger, settings);
 
-  void relock() => applyProfileOrientation(settings);
-  settings.addListener(relock);
-  return () => settings.removeListener(relock);
+  void reapply() {
+    applyProfileOrientation(settings);
+    applyUsageConsent(logger, settings);
+  }
+
+  settings.addListener(reapply);
+  return () => settings.removeListener(reapply);
+}
+
+/// Puts the profile's recorded answer about usage onto the logger.
+///
+/// The logger holds consent in memory and starts every launch at off, so
+/// without this a caregiver who switched recording on lost it the next time
+/// the app opened — and the tap counts the editor warns with never accumulated
+/// past a single session. The answer belongs to the profile (§7): it is one
+/// person's speech, and switching profile switches it.
+void applyUsageConsent(UsageLogger? logger, ProfileSettings settings) {
+  if (logger == null) return;
+  logger.enabled = settings.usageTracking;
 }
 
 class WordbridgeApp extends StatefulWidget {
@@ -394,6 +412,7 @@ class _SessionState extends State<_Session> {
   late final Future<VoidCallback> _loaded = openSession(
     widget.speech,
     _settings,
+    logger: widget.logger,
   );
   late final Stream<int> _vocabLevel = watchVocabLevel(
     widget.db,

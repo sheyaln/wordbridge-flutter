@@ -242,7 +242,33 @@ void main() {
         reason: 'a control was left on the list a caregiver has to scan',
       );
       expect(find.byType(Slider), findsNothing);
-      expect(find.byType(ListTile), findsNWidgets(_reachable.length));
+      // The sections, plus the card at the top naming whose board this is.
+      expect(find.byType(ListTile), findsNWidgets(_reachable.length + 1));
+
+      await closeHome(tester);
+    });
+
+    testWidgets('says whose board it is, above everything else', (
+      tester,
+    ) async {
+      // Every control below applies to one person and nothing else on the
+      // screen says which. A caregiver changing a setting for the wrong child
+      // finds out by noticing.
+      await pumpSettings(tester, onSwitchProfile: (_) {});
+
+      final header = find.descendant(
+        of: find.byType(Card),
+        matching: find.byType(ListTile),
+      );
+      expect(header, findsOneWidget);
+      expect(
+        (tester.widget<ListTile>(header).title! as Text).data,
+        'Maya',
+      );
+
+      // First on the screen, not merely present.
+      final tiles = tester.widgetList<ListTile>(find.byType(ListTile));
+      expect((tiles.first.title! as Text).data, 'Maya');
 
       await closeHome(tester);
     });
@@ -252,10 +278,12 @@ void main() {
     ) async {
       await pumpSettings(tester, onSwitchProfile: (_) {});
 
+      // Past the card naming the person, which is a header rather than a
+      // section.
       final titles = [
         for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
           (tile.title! as Text).data,
-      ];
+      ].skip(1).toList();
       expect(titles, _reachable.keys.toList());
 
       await closeHome(tester);

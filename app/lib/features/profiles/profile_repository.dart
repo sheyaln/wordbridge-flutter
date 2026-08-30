@@ -71,6 +71,7 @@ class ProfileRepository {
     DateTime? birthDate,
     bool? profanity,
     int? vocabLevel,
+    bool usageTracking = ProfileSettings.usageTrackingForNewProfiles,
   }) async {
     if (!grid.isUsable) {
       throw ArgumentError(grid.refusal);
@@ -99,6 +100,10 @@ class ProfileRepository {
                 // two would shrink.
                 'prediction': ProfileSettings.predictionForNewProfiles,
                 'breadcrumbs': ProfileSettings.breadcrumbsForNewProfiles,
+                // Whatever setup was told. Written even when the answer is
+                // no, so the record says somebody was asked rather than
+                // leaving it to a getter's default.
+                'usageTracking': usageTracking,
               }),
             ),
             createdAt: ts,

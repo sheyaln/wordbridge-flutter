@@ -545,6 +545,36 @@ class _Settings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        // Whose board this is, above everything else and not inside a section.
+        //
+        // Every control below it applies to one person, and on a tablet with
+        // more than one profile there is nothing else on this screen that says
+        // which. A caregiver who changes a setting for the wrong child has to
+        // find that out by noticing it, so the answer goes where they cannot
+        // miss it rather than one tap inside "Who is using this".
+        if (userName != null || onSwitchProfile != null)
+          Card(
+            margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: ListTile(
+              leading: const Icon(Icons.account_circle_outlined, size: 36),
+              title: Text(
+                userName ?? 'This board',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                onSwitchProfile == null
+                    ? 'These settings apply to this person'
+                    : 'These settings apply to this person · tap to switch',
+              ),
+              trailing: onSwitchProfile == null
+                  ? null
+                  : const Icon(Icons.swap_horiz),
+              onTap: onSwitchProfile == null
+                  ? null
+                  : () => _switchProfile(context),
+            ),
+          ),
+
         // A section with nothing on it is not named. Several depend on a
         // profile, a speech engine, or more than one person existing, and a
         // row that opens onto an empty page is worse than no row.
@@ -565,6 +595,23 @@ class _Settings extends StatelessWidget {
             ),
       ],
     );
+  }
+
+  /// Hands the tablet to somebody else.
+  ///
+  /// One route, reached from the card at the top and from the row inside "Who
+  /// is using this", so the two cannot come to behave differently.
+  Future<void> _switchProfile(BuildContext context) async {
+    final chosen = await ProfilePicker.show(
+      context,
+      db: db,
+      currentId: profileId,
+    );
+    if (chosen == null || !context.mounted) return;
+
+    onSwitchProfile!(chosen);
+    // The board underneath belongs to somebody else now.
+    Navigator.of(context).pop(true);
   }
 
   /// Opens a section, and follows it out if what was done on it took the board
@@ -611,18 +658,7 @@ class _Settings extends StatelessWidget {
               'Switch to someone else, or set up a new person',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              final chosen = await ProfilePicker.show(
-                context,
-                db: db,
-                currentId: profileId,
-              );
-              if (chosen == null || !context.mounted) return;
-
-              onSwitchProfile!(chosen);
-              // The board underneath belongs to somebody else now.
-              Navigator.of(context).pop(true);
-            },
+            onTap: () => _switchProfile(context),
           ),
         _VocabularyLevel(db: db, profileId: profileId, onChanged: onChanged),
         _NewWords(
@@ -915,10 +951,16 @@ class _Settings extends StatelessWidget {
           value: logger.enabled,
           title: const Text('Track word usage'),
           subtitle: const Text('Stays on this device. Off by default.'),
-          onChanged: (v) {
-            logger.enabled = v;
-            onChanged();
-          },
+          onChanged: settings == null
+              ? null
+              : (v) async {
+                  // Written to the profile, not just to the logger. The
+                  // logger forgets on every launch; the profile is where the
+                  // answer has to live to still be true tomorrow.
+                  await settings!.set('usageTracking', v);
+                  logger.enabled = v;
+                  onChanged();
+                },
         ),
         const Padding(
           padding: EdgeInsets.all(16),

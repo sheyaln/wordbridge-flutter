@@ -219,6 +219,23 @@ class ProfileSettings extends ChangeNotifier {
   /// they were.
   bool get profanity => _values['profanity'] as bool? ?? false;
 
+  /// Whether this person's selections are recorded.
+  ///
+  /// Per profile rather than per device, because what it records is one
+  /// person's speech and consent to that is theirs. Switching profile switches
+  /// this with it.
+  ///
+  /// **Off unless somebody said yes** (§7). A usage log is a complete
+  /// transcript of a disabled person's private conversation, and it is not
+  /// something to arrive at by a default.
+  bool get usageTracking => _values['usageTracking'] as bool? ?? false;
+
+  /// What a profile created without an answer is given.
+  ///
+  /// Named so that setup and this getter cannot drift into disagreeing about
+  /// what "not asked" means.
+  static const usageTrackingForNewProfiles = false;
+
   T _enum<T extends Enum>(String key, List<T> values, T fallback) {
     final stored = _values[key];
     for (final value in values) {
