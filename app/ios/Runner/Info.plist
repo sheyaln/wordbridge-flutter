@@ -53,6 +53,16 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- On iPad, an app that can share the screen must accept every
+	     orientation: iOS ignores what the app asks for and rotates it anyway.
+	     Without this the orientation lock is inert on exactly the device it was
+	     written for, and there is no error to read.
+
+	     Which also refuses Split View and Slide Over, and that is the right
+	     answer here rather than the price of one. A board in half a screen has
+	     every cell somewhere new, which is the same harm as rotating it. -->
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

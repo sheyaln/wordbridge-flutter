@@ -1805,9 +1805,28 @@ band axis.
 #### What shipped
 
 `applyProfileOrientation` alongside `applyProfileVoice`, and both are now called
-by one `openSession`. Info.plist is unchanged and so is the Android manifest:
-`setPreferredOrientations` narrows what the plist permits, and a manifest lock
-would hold the device rather than the profile.
+by one `openSession`. The Android manifest is unchanged — `setPreferredOrientations`
+narrows what the platform permits, and a manifest lock would hold the device
+rather than the profile.
+
+**Info.plist did need a change, and the first build without it did nothing.**
+On iPad an app that can share the screen has to accept every orientation: iOS
+ignores `setPreferredOrientations` and rotates it anyway. `UIRequiresFullScreen`
+is what opts out, and without it the entire feature was inert on the one device
+it was written for, with nothing to read in any log. Every Dart-side test passed
+throughout. There is now a test that reads the plist, because this is a silent
+failure and the only observable difference is on hardware.
+
+Refusing Split View and Slide Over is the right answer here rather than the
+price of one: a board in half a screen has every cell somewhere new, which is
+the same harm as rotating it.
+
+**This will need revisiting for iPadOS 26.** `UIRequiresFullScreen` is
+deprecated there, and an app built against that SDK is expected to be resizable.
+Haley's iPad mini 5 is on iOS 18.7.8 and honours it. When it stops being
+honoured the answer is to draw the board in its own aspect whatever the window
+gives it — a rotation and a letterbox rather than a re-layout — which keeps the
+motor plan without asking the OS for anything.
 
 **The lock is re-applied on every settings change, not set once.** Changing the
 orientation goes through `grid_change_screen`, which rebuilds the board for the

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -154,6 +156,22 @@ void main() {
         reason: 'a closed session was still holding the device',
       );
     });
+  });
+
+  test('the iPad build is allowed to refuse a rotation', () {
+    // Everything above passes whether or not the device honours any of it. On
+    // iPad an app that can share the screen must accept every orientation —
+    // iOS ignores what it asks for and rotates it anyway — so without this key
+    // the whole lock is inert on the one device it was written for, silently.
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    final at = plist.indexOf('<key>UIRequiresFullScreen</key>');
+
+    expect(
+      at,
+      isNot(-1),
+      reason: 'the lock cannot work on an iPad without this',
+    );
+    expect(plist.substring(at).split('\n')[1].trim(), '<true/>');
   });
 
   test('a profile with nothing recorded is still locked', () async {
