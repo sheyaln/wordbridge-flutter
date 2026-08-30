@@ -402,7 +402,10 @@ void main() {
         'places',
         'body',
       ]);
-      expect(order.skip(6), ['doing', 'numbers']);
+      // The tail is where new boards land, and the only place they may. Each
+      // one appended here left every key already learned opening exactly what
+      // it always opened; inserting one anywhere above would not have.
+      expect(order.skip(6), ['doing', 'numbers', 'time']);
     });
 
     test('the doing board is reachable and carries its verbs', () async {

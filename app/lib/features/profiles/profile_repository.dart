@@ -114,6 +114,7 @@ class ProfileRepository {
       profileId: profileId,
       ageBand: band,
       profanity: profanity,
+      userName: displayName,
     );
 
     await remember(profileId);

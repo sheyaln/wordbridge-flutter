@@ -1748,6 +1748,35 @@ keeps what it opens.
 **Asked for again in §4.42**, which is the second time. It is the oldest
 unbuilt item she has raised twice.
 
+**Delivered.** Five rows as described below, and the two costs it turned up are
+recorded under §4.42's one-word batch, which shipped with it.
+
+Appended to `categoryNames`, after `numbers`, which is
+what makes it safe: the wheel is a window onto that list in order, so a name
+added at the end leaves every key already learned opening exactly what it
+always opened. It is the second category added this way and the mechanism is
+the one §4.39 proved.
+
+Its rows, in Fitzgerald order — whole utterances, then nouns, then adverbs:
+
+- **`when`** — `now`, `later`, `soon`, `wait`, `finished`. The answers to "when"
+  that a person needs before they can name a day, and the reason this board is
+  worth having at level 1 rather than 3.
+- **`today`** — `today`, `tomorrow`, `yesterday`. The three-word frame everything
+  else hangs off.
+- **`day`** — `morning`, `afternoon`, `evening`, `night`, `bedtime`.
+- **`week`** — the seven days, level 3. They are the part of this board a person
+  needs last and a caregiver models first.
+- **`how long`** — `minute`, `hour`, `day`, `week`, `time`, `early`, `late`.
+
+**`before` and `after` are deliberately not on it.** They are already on
+`numbers`, in the `in order` band, where they mean sequence. Placing them here
+too would put one word at two locations on two boards — which is allowed, and
+is the §4.16 pinning argument — but neither location would be the obvious one,
+and a word whose home is ambiguous is worse than a word one movement further
+away. If they move it should be a decision about sequence-versus-time, taken
+once, not a side effect of adding a board.
+
 **Words for not being sure** — `maybe`, `perhaps`, `unsure`, `possibly`,
 `probably`. `unlikely` was asked for later and is not built; it belongs on the
 same row and is a one-word addition to it. Worth naming separately from the rest of the fringe because of what
@@ -2794,6 +2823,75 @@ root board is full and holds `my`, and `+'s` already builds a possessive from
 any noun. So `your`/`their`/`our` are either a row on the `people` board or a
 band that costs a root column, and that is a measurement, not a preference.
 
+**The placements chosen, and why — delivered.** Each goes into a band
+that already exists and already means what the word means, so none of them
+opens a new row or widens one:
+
+- **`sorry` → `people` / `greeting`**, level 1, beside `hello`, `bye`,
+  `please`, `thank you`. It is the fifth thing in that set and the one a person
+  is asked for most often.
+- **`butt` → `body` / `body`**, level 2, with `back`, `chest`, `neck`. It is an
+  ordinary body part and belongs with the others, not behind the adult page
+  two — that page is for the genital and vulgar vocabulary §4.42 asks for
+  separately, and putting a word a child needs behind an adult gate would be
+  the wrong kind of caution.
+- **`unlikely` → `feelings` / `not sure`**, level 3, with `possibly` and
+  `perhaps`. §4.28 already named this row as its home.
+- **The possessives → a new `belonging` band on `people`.** Not the root board:
+  its pronoun band is full and holds the *subject* paradigm, and a possessive
+  is not a subject. `people` already carries the object pronouns in
+  `referring` for exactly that reason — subjects on the root board, everything
+  else one movement away — so this is the sibling row, not a new idea. Both
+  forms, because both were asked for and they are different words in a
+  sentence: `your` before a noun, `yours` standing alone.
+
+**The user's name goes in the root board's pronoun band, not on page two.**
+Asked for as page two, and page one is both cheaper and already paid for: the
+band is filled down its columns and its ten words leave a spare cell in the
+second column at every grid that gives it two, so the name lands beside `I` and
+`you` without widening anything or displacing a word. §4.6 already recorded
+those cells as name cells. Where the grid is too small for the band to have a
+spare cell the name is simply not placed — inventing a location for it would
+give one word a different motor path on every device, which is the thing this
+board does not do.
+
+It is a profile value rather than a seed constant, so `seedCoreBoardSet` has to
+be told it. A profile with no name set gets no cell, and the location stays
+reserved for the day it does.
+
+#### What this batch cost, measured
+
+Sixteen tests in `vocabulary_additions_test.dart`, two of which sweep every
+grid the app can build and compare every word's location with and without the
+name. Four things it turned up:
+
+- **`her` would have been on the `people` board twice** — it is already there
+  as an object pronoun and the possessive is spelled the same. One label twice
+  on one board is a person unable to tell two keys apart. `belonging` omits it;
+  the key that is there says "her", which is the word either way.
+- **`again`, `before` and `after` stayed where they were.** All three were
+  natural candidates for the new rows and all three already have a home —
+  `again` on `play`, the other two on `numbers` under `in order`. One word with
+  two homes and neither obvious is worse than one movement further away.
+- **Level 2 was at 264 of a 265 ceiling.** Not a budget, a wall: any word added
+  anywhere at level 2, by anyone, broke `vocab_level_calibration_test`. The
+  ceiling is now 290, raised deliberately with the reasoning written into the
+  test — the cited 200–250 figure counts *core* words covering running speech,
+  and this counts every shipped word drawn at level 2 across nine category
+  boards, which is a different population. What the ceiling is for is stopping
+  level 2 from quietly becoming level 3, and it still does that.
+- **The `time` board has no navigate button anywhere in the database.** As the
+  ninth category it sits past the last slot on every shipped grid, so its key
+  is a wheel slot re-pointed at render time. It is reachable — the finder
+  routes to it through a turn of the wheel, and there is a test that says so —
+  but nothing in the tables points at it, which is worth knowing before
+  somebody goes looking for the key that opens it.
+
+Five fixtures in `vocabulary_top_up_test.dart` broke on the category count.
+They were arithmetic, not behaviour: a premise like "the row has a slot spare"
+costs one more unshipped board every time a category is added, so `seedAt`
+now takes the list of boards to start short of rather than assuming one.
+
 #### `can't`, which is not a word but a rule
 
 Asked for as *"can't (maybe auto-abbreviate when 'can' is followed by 'not')"*.
@@ -2847,37 +2945,21 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
 - **A keyboard for one-off words** — delivered, silent until the word is
   finished.
 
-  **The device's own keyboard, not one drawn here.** A keyboard was built first,
-  in QWERTY, with its own touch targets and a layout that could not move as the
-  word grew — and then thrown away, which was the right call. The system one is
-  the keyboard this person has already learned, carrying whatever has been set
-  up on it: text replacements, a second language, a third-party layout. It
-  brings the platform's own accessibility rather than an imitation of it, and it
-  is full height, which a keyboard inside a sheet is not. Every argument this
-  project makes about not moving what somebody has learned applies to the
-  keyboard they already use.
+  The open question is deliberately still open: it hands the word over and
+  forgets it. **A word typed twice is a word that wants a cell**, and offering
+  to keep it is a separate decision about when the board grows.
+- **An exclamation mark — delivered.** Both marks sit behind one control on the
+  utterance bar, faced `?!` so it reads as doing both: *Make it a question* and
+  *Say it like you mean it*. It always opens the list rather than applying the
+  last mark on a plain press — a key that costs one press for a question and two
+  for the other, decided by something the person cannot see, is the one thing
+  this board never has.
 
-  Reached from a list on the utterance bar rather than a button of its own. The
-  list holds one entry today and the word finder is the second, so the control
-  does not change shape under somebody who has learned it once the finder lands.
-
-  **Nothing is spoken until the word is finished**, which is now true by
-  construction — there is no per-keystroke path at all. What still had to be
-  built by hand is the refusal: an empty field is refused from the button *and*
-  from the return key, because a keyboard set up for another language may not
-  put "done" where this one expects it.
-
-  A typed word carries **no part of speech**. The endings and the copula read
-  the word before them, and a typed word tells them nothing — which is honest,
-  where guessing would offer `+ed` on a person's name.
-
-  The open question is deliberately still open: the word is handed over and
-  forgotten. **A word typed twice is a word that wants a cell**, and offering to
-  keep it is a separate decision about when the board grows.
-- **An exclamation mark.** The utterance bar already accepts `!` and
-  `ButtonAction.punctuate` exists; **nothing seeds a key for it**, and the only
-  punctuation control in the UI is the question one. So this is a key and a
-  control, not an engine change.
+  **No punctuation key is seeded onto any board, and none should be.** Nothing
+  in the seed places a `ButtonAction.punctuate` button, so there is no `?` key
+  on the grid either. That is the arrangement, not an omission: a mark used at
+  the end of a sentence would cost a location on **every** board to save one
+  reach to the bar, and the bar is the one place a control is free.
 - **The user's own name as a cell, automatically, on page two of the root
   board.** The profile already has `displayName`. Cheap, and it is the single
   most personal word on any board.

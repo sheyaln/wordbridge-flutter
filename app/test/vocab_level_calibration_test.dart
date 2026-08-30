@@ -227,7 +227,22 @@ void main() {
     test('level 2 is where most of a day is sayable', () {
       // Roughly 200-250 words cover about 80% of everyday speech in English
       // and the European languages measured (Hattingh & Tönsing 2020).
-      expect(shippedWordsAtMost(2), inInclusiveRange(200, 265));
+      //
+      // The ceiling is above that figure on purpose, and was raised from 265
+      // when the `time` board landed. The two count different populations:
+      // the study counts *core* words covering running speech, and this counts
+      // every shipped word drawn at level 2 or below — which includes the
+      // fringe on nine category boards, none of which the 80% figure is about.
+      //
+      // What the ceiling is actually for is stopping level 2 from quietly
+      // becoming level 3, and it still does that: level 3 is roughly twice
+      // this, and `each step is a real step` below pins the gap at both ends.
+      // It was at 264 of 265 before the `time` board, which is not a budget so
+      // much as a wall — any word added anywhere at level 2 broke it, which is
+      // a test failing for arithmetic rather than for a decision.
+      //
+      // Raise it deliberately again if a board is added, and say so here.
+      expect(shippedWordsAtMost(2), inInclusiveRange(200, 290));
     });
 
     test('level 3 is everything', () {

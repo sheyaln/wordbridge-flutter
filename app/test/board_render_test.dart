@@ -217,4 +217,46 @@ void main() {
       matchesGoldenFile('goldens/food_labelled.png'),
     );
   });
+
+  testWidgets('the newest category board, with its rows named', (tester) async {
+    // The board added last, which is the one nobody has looked at yet. Its
+    // rows carry the widest labels in the set — "days of the week", "parts of
+    // the day" — and §4.29 is the standing reminder that a label nobody can
+    // read teaches nothing.
+    //
+    // Reached by turning the wheel rather than by `openBoard`, and that is the
+    // point worth recording: a category past the last slot has no navigate
+    // button of its own anywhere in the database. Its slot is re-pointed at
+    // render time, so the only way to it is the way a person takes.
+    await settings.set('regionLabels', true);
+    await pump(tester);
+
+    final vocab = await (db.select(
+      db.vocabularies,
+    )..where((v) => v.id.equals(vocabularyId))).getSingle();
+    final frame = SystemFrame.parse(vocab.systemCellMap)!;
+
+    final index = frame.categories.indexWhere((c) => c.name == 'time');
+    expect(index, isNonNegative, reason: 'the time board is not on the wheel');
+
+    final slots = frame.categoryCols.length;
+    for (var turn = 0; turn < index ~/ slots; turn++) {
+      await tester.tap(find.byKey(ValueKey('${frame.row}:${frame.cycleCol}')));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    await tester.tap(
+      find.byKey(ValueKey('${frame.row}:${frame.categoryCols[index % slots]}')),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/time_labelled.png'),
+    );
+  });
 }
