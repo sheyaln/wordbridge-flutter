@@ -1847,6 +1847,81 @@ test, and mutation-testing showed the voice one had never been covered either:
 the line that calls it broke nothing. Both now go through the function the app
 actually opens a session with, and deleting either call fails a test.
 
+### 4.41 Durability — agreed, being built
+
+The milestone after §4.40, chosen by going through this file and finding that
+two of the eleven non-negotiables in §5 have no implementation and the
+complaint parents raised most often has no answer.
+
+Its thesis, in one line: **nothing a person has learned can be lost, and no
+failure leaves them without a voice.**
+
+#### Three parts, in this order
+
+**1. A crash never leaves a user with nothing** — §5 non-negotiable 6, which
+says "error boundary degrading to a minimal always-working core board" and has
+nothing behind it. There is no `ErrorWidget.builder` and no
+`FlutterError.onError` anywhere in the app. A widget that throws on the talk
+screen gives a red box in debug and a grey one in release; a database that
+fails to open gives `Startup failed: …` as plain text. Either is a nonspeaking
+person holding a tablet that cannot say anything.
+
+The fallback board has to work when the thing that failed is the database, so
+it reads from a `const` list compiled into the app and touches nothing else —
+no drift, no symbols, no profile, no settings. The words it holds are the ones
+already declared `essential: true` in the seed, which is the same question
+asked once: `I`, `you`, `want`, `stop`, `wait`, `help`, `finished`, `not`,
+`yes`, `no`, `don't`, `more`.
+
+**Its positions will not match the board the person learned, and that cannot be
+fixed.** The layout lives in the database and the database is what failed. What
+the fallback offers is speech, not the motor plan — and it should say so on
+screen, because a caregiver seeing an unfamiliar board needs to know it is a
+failure state and not a board that rearranged itself.
+
+**2. Automatic local backup, and one-tap restore** — four independent parents
+reported catastrophic loss (§1), one concluding *"if your app doesn't seem to
+have problems or issues, don't update it."* A parent who will not patch their
+child's voice is a total product failure.
+
+- **A backup is a copy of the database, not an export.** Lossless, because a
+  board is cell state, vocabulary levels, hidden flags, band maps and usage
+  history as much as it is words — see part 3 for why the interchange format
+  cannot do this job.
+- **Into the documents directory, never the cache.** OS eviction of a cache
+  directory is a communication outage.
+- **Automatic and versioned**, keeping a bounded number of snapshots, written
+  after an edit and on backgrounding rather than on a timer.
+- **A visible "last backed up"**, because a backup nobody can see is one nobody
+  trusts.
+- **Restore names what it replaces and when the snapshot was taken**, in the
+  same voice as the remap warning: what this costs, in the user's own terms.
+
+**3. Import and export reach the caregiver** — §3 claims OBF/OBZ import and
+export as delivered. That is true of the engine and false of the product:
+`exportObf`, `exportObz`, `importObf` and `importObz` all exist and are tested,
+and **nothing in `lib/` calls any of them.** No screen anywhere reaches them, so
+a caregiver cannot get a board out of wordbridge or into it. Being able to leave
+is the argument for the format existing (§8 of the plan), and it currently
+cannot be exercised.
+
+**Export is not backup and must not be offered as one.** OBF carries buttons,
+labels, images and links; it does not carry which cells are reserved-empty,
+what level a word is drawn at, what is hidden, or which band owns which line.
+Round-tripping a board through it loses exactly the metadata that makes this
+app a motor-planning board rather than a grid of pictures. The two live in
+different places in the caregiver screen and are described differently.
+
+**Import creates a new vocabulary and never overwrites the active one.**
+
+#### What this milestone does not include
+
+- **Volume above the device's maximum** (§5 non-negotiable 5, §4.4). It needs
+  §4.5 neural voice and stays parked.
+- **Sync, or backup off the device.** A local snapshot answers the complaint
+  that was actually made. Anything leaving the tablet is a transcript of a
+  disabled person's private speech and needs the §7 consent argument first.
+
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
 The proposal was a setting: instead of every cluster starting its own row
