@@ -1750,7 +1750,7 @@ the paging key (§4.6b), and for the same reason. The seed-level test now
 requires only that a board hold something at *some* level; the drawing side
 holds the rest.
 
-### 4.40 Choosing an orientation does not lock it — agreed, not built
+### 4.40 Choosing an orientation does not lock it — delivered
 
 Reported: picking landscape at setup does not lock the app to landscape, and
 picking portrait does not lock it to portrait. It should.
@@ -1801,6 +1801,27 @@ band axis.
 - **Worth a test that fails on the promise, not the call.** Asserting the method
   was called proves nothing about the board; the honest check is that a profile
   set up for landscape reports landscape-only preferences after loading.
+
+#### What shipped
+
+`applyProfileOrientation` alongside `applyProfileVoice`, and both are now called
+by one `openSession`. Info.plist is unchanged and so is the Android manifest:
+`setPreferredOrientations` narrows what the plist permits, and a manifest lock
+would hold the device rather than the profile.
+
+**The lock is re-applied on every settings change, not set once.** Changing the
+orientation goes through `grid_change_screen`, which rebuilds the board for the
+other aspect and then pops back into the same session — so a lock set only at
+load would leave the device held to an aspect the board no longer has, which is
+the original bug arrived at from the other direction. `openSession` returns the
+function that takes the listener off again.
+
+**`openSession` exists because of what the wiring test found.** Calling the two
+apply functions from a private `State` left the call sites unreachable from a
+test, and mutation-testing showed the voice one had never been covered either:
+`session_voice_test.dart` exercised `applyProfileVoice` directly, so deleting
+the line that calls it broke nothing. Both now go through the function the app
+actually opens a session with, and deleting either call fails a test.
 
 ### 4.25 Letting clusters share a row — measured, and not worth building
 

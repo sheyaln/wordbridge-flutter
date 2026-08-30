@@ -36,6 +36,10 @@ class _RecordingSpeech implements SpeechEngine {
 /// the name alone leaves the engine to pick by quality — and the person speaks
 /// every day in a voice nobody chose for them.
 void main() {
+  // Opening a session also holds the device to the board's aspect, which is a
+  // platform channel call and needs a binding to go nowhere.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late WordbridgeDatabase db;
   late ProfileSettings settings;
 
@@ -66,7 +70,10 @@ void main() {
   test('opening a session carries the identifier, not just the name', () async {
     final speech = _RecordingSpeech();
 
-    await applyProfileVoice(speech, settings);
+    // Through the function the app actually opens a session with, not through
+    // the one it calls. A voice that is applied correctly by a step nobody
+    // takes is a device speaking in whatever the OS chose.
+    addTearDown(await openSession(speech, settings));
 
     expect(speech.voice?.name, 'Daniel');
     expect(

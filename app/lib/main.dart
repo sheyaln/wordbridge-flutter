@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'db/database.dart';
 import 'db/ids.dart';
 import 'features/auth/pin.dart';
+import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
 import 'features/profiles/profile_setup.dart';
@@ -67,6 +69,54 @@ Future<void> applyProfileVoice(SpeechEngine speech, ProfileSettings settings) =>
       volume: settings.speechVolume,
       tone: settings.tone,
     );
+
+/// Holds the device to the aspect the board was built for.
+///
+/// The grid is derived once, from the orientation chosen at setup, and every
+/// location is a permanent row from then on. Turning the tablet does not
+/// re-derive it — it draws the same grid into a box of the opposite aspect, so
+/// every cell changes width, height and position while keeping its row and its
+/// column. That is the motor plan broken in the only units a hand knows, and it
+/// arrives by the one route the invariant test cannot see, because not a word
+/// has moved in the database.
+///
+/// Both ways up on the chosen axis. A left-handed mount and a right-handed one
+/// are both landscape; it is the aspect that must not change, not which way up.
+Future<void> applyProfileOrientation(ProfileSettings settings) =>
+    SystemChrome.setPreferredOrientations(switch (settings.orientation) {
+      BoardOrientation.landscape => const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ],
+      BoardOrientation.portrait => const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ],
+    });
+
+/// Everything a session puts on the device, and keeps on it.
+///
+/// One function rather than three lines in a State, because these are the
+/// things that are inert if they are simply left out: the voice falls back to
+/// whatever the OS picked and the tablet stays free to rotate, neither of which
+/// reports a problem. Returns what undoes the part that outlives the call.
+///
+/// The lock is re-applied on every settings change, not set once. A caregiver
+/// who changes the orientation rebuilds the board for the other aspect without
+/// the session ending, and a device still held to the old one is the original
+/// bug arrived at from the other direction.
+Future<VoidCallback> openSession(
+  SpeechEngine speech,
+  ProfileSettings settings,
+) async {
+  await settings.load();
+  await applyProfileVoice(speech, settings);
+  await applyProfileOrientation(settings);
+
+  void relock() => applyProfileOrientation(settings);
+  settings.addListener(relock);
+  return () => settings.removeListener(relock);
+}
 
 class WordbridgeApp extends StatefulWidget {
   const WordbridgeApp({super.key});
@@ -266,21 +316,21 @@ class _Session extends StatefulWidget {
 
 class _SessionState extends State<_Session> {
   late final _settings = ProfileSettings(widget.db, widget.profile.id);
-  late final Future<void> _loaded = _open();
+  late final Future<VoidCallback> _loaded = openSession(
+    widget.speech,
+    _settings,
+  );
   late final Stream<int> _vocabLevel = watchVocabLevel(
     widget.db,
     widget.profile.id,
   );
 
-  /// Loads the settings and puts this profile's voice on the engine.
-  ///
-  /// Done here rather than at startup because the voice belongs to the person,
-  /// not the device: switching profile has to change who the tablet sounds
-  /// like, and a shared device that keeps the last user's voice is telling
-  /// this one they are somebody else.
-  Future<void> _open() async {
-    await _settings.load();
-    await applyProfileVoice(widget.speech, _settings);
+  @override
+  void dispose() {
+    // Already complete by the time a session ends. If it somehow is not, the
+    // listener comes off a settings object nobody is holding any more.
+    _loaded.then((close) => close());
+    super.dispose();
   }
 
   @override
@@ -293,7 +343,7 @@ class _SessionState extends State<_Session> {
       );
     }
 
-    return FutureBuilder<void>(
+    return FutureBuilder<VoidCallback>(
       future: _loaded,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
