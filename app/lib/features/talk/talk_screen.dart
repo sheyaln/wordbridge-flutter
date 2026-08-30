@@ -1183,7 +1183,18 @@ class _UtteranceBarView extends StatelessWidget {
               // person cannot see — a key whose behaviour depends on history is
               // the one thing this board never has.
               _BarMenu(
-                icon: Icons.question_mark_rounded,
+                // Both marks, because the control carries both. One of them
+                // would read as the key doing that one thing, and a person who
+                // wanted the other would have no reason to press it.
+                face: (colour) => Text(
+                  '?!',
+                  style: TextStyle(
+                    fontSize: 27,
+                    height: 1.1,
+                    fontWeight: FontWeight.w600,
+                    color: colour,
+                  ),
+                ),
                 tooltip: 'End the sentence',
                 enabled: !empty,
                 items: [
@@ -1252,14 +1263,17 @@ class _UtteranceBarView extends StatelessWidget {
 /// Nothing here is faster for having been used before.
 class _BarMenu<T> extends StatelessWidget {
   const _BarMenu({
-    required this.icon,
+    required this.face,
     required this.tooltip,
     required this.items,
     required this.onChosen,
     this.enabled = true,
   });
 
-  final IconData icon;
+  /// Drawn in the colour the control's state calls for, so a face made of
+  /// letters greys out with the rest of the bar rather than staying bright on a
+  /// control that does nothing.
+  final Widget Function(Color colour) face;
   final String tooltip;
   final List<({T mark, String label, IconData icon})> items;
   final void Function(T) onChosen;
@@ -1298,11 +1312,7 @@ class _BarMenu<T> extends StatelessWidget {
         ],
         child: Padding(
           padding: const EdgeInsets.all(10),
-          child: Icon(
-            icon,
-            size: 30,
-            color: enabled ? Colors.black54 : Colors.black12,
-          ),
+          child: face(enabled ? Colors.black54 : Colors.black12),
         ),
       ),
     );

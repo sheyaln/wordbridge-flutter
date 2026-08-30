@@ -246,6 +246,22 @@ void main() {
     expect(speech.said, ['you', 'you!']);
   });
 
+  testWidgets('the control shows both marks it carries', (tester) async {
+    // One of them on the face would read as a key that does that one thing,
+    // and somebody who wanted the other would have no reason to press it.
+    await pumpTalkScreen(tester);
+
+    final face = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(PopupMenuButton<String>),
+        matching: find.byType(Text),
+      ),
+    );
+
+    expect(face.data, contains('?'));
+    expect(face.data, contains('!'));
+  });
+
   testWidgets('the control does nothing on an empty sentence', (tester) async {
     // A lone mark is not a sentence, and a control that opens onto choices
     // that do nothing teaches that pressing things is pointless.
@@ -255,6 +271,16 @@ void main() {
       find.byType(PopupMenuButton<String>),
     );
     expect(button.enabled, isFalse);
+
+    // And it has to look it. A control that refuses a press while looking
+    // exactly like one that works teaches that pressing things is a gamble.
+    final face = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(PopupMenuButton<String>),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(face.style!.color, Colors.black12);
   });
 
   testWidgets('every board carries "how" in the pinned column', (tester) async {
