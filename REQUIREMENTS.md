@@ -2151,6 +2151,41 @@ one thing to get right is that a caregiver who knows where a switch is should
 not have to hunt for it — so the sections keep their current names and order,
 and nothing moves between them in the same change that makes them pages.
 
+#### The utterance bar, and a way to find a word
+
+Asked for together, and they belong together — all four are controls on the bar
+rather than locations on the board, which is what makes them affordable. A key
+on the grid costs a location on **every** board; a control on the bar costs
+none.
+
+- **One punctuation button with a dropdown**, carrying the question mark and
+  the exclamation mark. The bar has a `?` today and no `!` at all, though
+  `UtteranceBar` already accepts one and `ButtonAction.punctuate` exists.
+- **The X**, which is already there — `Icons.close_rounded`, "Clear".
+- **One dropdown carrying the keyboard and the word finder.** Two things a
+  person reaches for rarely and deliberately, behind one control, so the bar
+  does not grow a button per feature.
+
+**The word finder is the substantial one.** Search for a word, see the route to
+it, press it and be taken down that route.
+
+**It walks the route rather than jumping to the board.** That is the decision
+that makes this a teaching tool instead of a hole in the thesis. §4.8 refuses to
+let a breadcrumb be tapped, because a second route to a board means a word has
+two motor paths instead of one. A finder that teleported would be the same
+mistake, and worse: it would teach that the way to reach a word is to search for
+it, to somebody whose whole board is built on the way being a fixed sequence.
+Walking the route shows the sequence, which is the thing being learned.
+
+So the finder shows `home → food → more words` and then presses those keys. A
+caregiver watching learns the path; the person using it arrives having taken it.
+
+**Breadcrumbs show the path, not the detour** — asked for in the same breath,
+and the same idea one level down. §4.18 already rebuilds the trail rather than
+appending to it, and §4.40's session fixed a page turned and turned back. What
+remains is that the trail is built from where the person went, and the finder
+gives a canonical answer to where they *should* go. The two must agree.
+
 #### What to notice about this batch
 
 Three of these — view-all, quiet-until-spoken, and the keyboard — are **modes
