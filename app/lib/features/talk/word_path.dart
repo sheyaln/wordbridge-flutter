@@ -84,6 +84,33 @@ typedef WordPath = ({
 /// identical results and push the words off the end of the list.
 ///
 /// Deterministic: same database, same query, same list in the same order.
+/// The way to every board a fixed key reaches, from home.
+///
+/// The single answer to "how is this board arrived at", so that anything asking
+/// — the finder offering a word, the trail naming the way one was reached —
+/// gets the same one. Two derivations of the route drift, and a trail that
+/// disagreed with the finder would be teaching a movement the finder does not
+/// make.
+///
+/// A board no visible key reaches is absent rather than present with no route,
+/// because there is nothing to say about how to get there.
+Future<Map<String, List<PathStep>>> boardRoutes(
+  WordbridgeDatabase db, {
+  required String vocabularyId,
+}) async {
+  final vocabulary = await (db.select(
+    db.vocabularies,
+  )..where((v) => v.id.equals(vocabularyId))).getSingleOrNull();
+  if (vocabulary == null) return const {};
+
+  final placed = await _placedButtons(db, vocabularyId, null);
+  return _routes(
+    vocabulary,
+    SystemFrame.parse(vocabulary.systemCellMap),
+    placed,
+  );
+}
+
 Future<List<WordPath>> findWords(
   WordbridgeDatabase db, {
   required String vocabularyId,

@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../../db/seed/band_layout.dart';
-import '../../db/seed/core_board_set.dart';
 import '../../db/tables.dart';
 import '../auth/caregiver_gesture.dart';
 import '../auth/corner_hold_target.dart';
@@ -34,6 +33,7 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
+import 'word_path.dart';
 
 /// Height of the utterance bar. Fixed chrome; the grid gets what is left.
 ///
@@ -239,129 +239,43 @@ class TalkScreenState extends State<TalkScreen> {
     _route.add(Crumb(label: label, boardId: boardId));
   }
 
-  /// Which board each page follows, for every page after the first.
+  /// The way to every board a fixed key reaches, as the finder computes it.
   ///
-  /// Read once. A page's place in its group is fixed when the group is built,
-  /// so working it out again on every press would be a query for an answer that
-  /// cannot have moved.
-  Map<String, String> _pageBefore = const {};
-
-  Future<Map<String, String>> _pageOrder(Vocabulary vocab) async {
-    final frame = SystemFrame.parse(vocab.systemCellMap);
-    if (frame == null) return const {};
-
-    final rows =
-        await (widget.db.select(widget.db.buttons).join([
-              innerJoin(
-                widget.db.cells,
-                widget.db.cells.id.equalsExp(widget.db.buttons.cellId),
-              ),
-            ])..where(
-              widget.db.buttons.vocabularyId.equals(widget.vocabularyId) &
-                  widget.db.buttons.isSystem.equals(true) &
-                  widget.db.buttons.deletedAt.isNull() &
-                  widget.db.cells.row.equals(frame.row) &
-                  widget.db.cells.col.equals(frame.pageForwardCol),
-            ))
-            .get();
-
-    return {
-      for (final row in rows)
-        ?row.readTable(widget.db.buttons).targetBoardId: row
-            .readTable(widget.db.cells)
-            .boardId,
-    };
-  }
+  /// Read once. Which movements reach a board is decided when the board set is
+  /// built, so working it out again on every press would be a query for an
+  /// answer that cannot have moved.
+  Map<String, List<PathStep>> _routes = const {};
 
   /// The whole way to a board from home, or null for one no fixed key reaches.
   ///
-  /// Three kinds of board have an answer that does not depend on the visit: the
-  /// root, a category, and any page of either. Everything else is a board a
-  /// caregiver made and reaches through a button they placed, and getting there
-  /// really is a step that has to be repeated.
+  /// Read from the same table the word finder offers routes out of, so the way
+  /// the trail names and the way the finder walks cannot come apart. A board
+  /// arrived at by pressing something is described by the shortest way there
+  /// rather than by the way this visit took — somebody who spun past their
+  /// category and round again, or paged forward and back, went further than
+  /// they need to next time, and the trail is for next time.
   List<Crumb>? _routeTo(String boardId) {
-    if (boardId == _rootBoardId) return const [];
-    return _routeToCategory(boardId) ?? _routeToPage(boardId);
-  }
-
-  /// The way to a page of a group: the way to its first page, then forward.
-  ///
-  /// A page is only ever reached by paging forward, whichever key was pressed
-  /// to arrive on it. Somebody who paged past it and came back went a longer
-  /// way than the one they need next time, and recording the key they pressed
-  /// would put "back a page" in the trail as though it were the way to a word
-  /// that is reached by going forward.
-  List<Crumb>? _routeToPage(String boardId) {
-    final steps = <String>[];
-    var at = boardId;
-
-    // Bounded by the map's own size rather than trusted to terminate. A group
-    // is a chain and cannot loop, but this walks links a caregiver's own boards
-    // are in, and a trail is not worth hanging the board over.
-    for (var hop = 0; hop <= _pageBefore.length; hop++) {
-      final before = _pageBefore[at];
-      if (before == null) break;
-      steps.add(at);
-      at = before;
-    }
-
-    if (steps.isEmpty) return null;
-
-    final start = _routeTo(at);
-    if (start == null) return null;
+    final steps = _routes[boardId];
+    if (steps == null) return null;
 
     return [
-      ...start,
-      for (final page in steps.reversed)
-        Crumb(label: moreWordsLabel, boardId: page),
+      for (final step in steps)
+        // A turn of the wheel changes what the slots read without moving off
+        // the board, so it has no board of its own to name.
+        Crumb(label: step.label, boardId: step.boardId ?? _rootBoardId ?? ''),
     ];
   }
-
-  /// The whole way to a category from home, or null where [boardId] is not one.
-  ///
-  /// Every category key sits on the system row of every board, so a category
-  /// is one press from wherever the user happens to be — behind however many
-  /// turns of the wheel it sits on. Both halves are facts about the category
-  /// rather than about the visit: which turn it is on does not move, and the
-  /// key that opens it reads the category's name whatever key was pressed to
-  /// get here.
-  ///
-  /// So the route is rebuilt rather than appended to. Home puts the wheel back
-  /// on its first turn, and somebody who spun past their category and round
-  /// again walked a longer way than the one they need next time. The trail is
-  /// for next time.
-  ///
-  /// The wheel's own list, so a board a caregiver made and reaches through a
-  /// button on another board is not one of these — that really is a step, and
-  /// really does have to be repeated.
-  List<Crumb>? _routeToCategory(String boardId) {
-    final wheel = _wheel;
-    if (wheel == null || wheel.cols.isEmpty) return null;
-
-    final at = wheel.entries.indexWhere((e) => e.boardId == boardId);
-    if (at < 0) return null;
-
-    return [
-      for (var turn = 0; turn < at ~/ wheel.cols.length; turn++)
-        Crumb(label: _cycleLabel, boardId: _rootBoardId ?? ''),
-      Crumb(label: wheel.entries[at].name, boardId: boardId),
-    ];
-  }
-
-  /// What the cycle key reads, so a synthesised turn is named the way the key
-  /// the caregiver is looking at is named.
-  String _cycleLabel = cycleCategoriesLabel;
 
   /// Notes that the wheel moved.
   ///
   /// It leaves the board where it is and adds no step of its own — where a
-  /// category sits on the wheel is recorded when the category is chosen. What
-  /// it does end is the last completed route, which described a word the user
-  /// has now moved on from.
-  void _turnedWheel(String label) {
+  /// category sits on the wheel is recorded when the category is chosen, and
+  /// what the turning key is called is read off the board rather than off the
+  /// press. What it does end is the last completed route, which described a
+  /// word the user has now moved on from.
+  void _turnedWheel() {
     _restartTrailIfStale();
     _reached = null;
-    _cycleLabel = label;
   }
 
   /// Rewinds the route to the board `back` returns to.
@@ -458,7 +372,10 @@ class TalkScreenState extends State<TalkScreen> {
     )..where((b) => b.vocabularyId.equals(widget.vocabularyId))).get();
 
     final lowest = await _lowestContentLevels(vocab);
-    final pages = await _pageOrder(vocab);
+    final routes = await boardRoutes(
+      widget.db,
+      vocabularyId: widget.vocabularyId,
+    );
 
     setState(() {
       _vocab = vocab;
@@ -467,7 +384,7 @@ class TalkScreenState extends State<TalkScreen> {
       _wheel = _CategoryWheel.parse(vocab.systemCellMap);
       _bandMaps = {for (final b in boards) b.id: b.bandMap};
       _lowestContentLevel = lowest;
-      _pageBefore = pages;
+      _routes = routes;
     });
 
     await _readCaregiverEntry();
@@ -743,7 +660,7 @@ class TalkScreenState extends State<TalkScreen> {
 
       case ButtonAction.cycleCategories:
         setState(() {
-          _turnedWheel(button.label);
+          _turnedWheel();
           _categoryPage = (_categoryPage + 1) % wheelPages;
           _settle();
         });

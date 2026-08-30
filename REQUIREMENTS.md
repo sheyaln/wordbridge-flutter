@@ -2271,10 +2271,32 @@ through paging and through boards a caregiver made themselves. A word on a board
 no visible key reaches is left out entirely: the request was a path, and a
 result with no path is a dead end.
 
-**The route is now computed in two places** — the finder's and the breadcrumb
-strip's — and that is a drift waiting to happen. The finder's is the more
-complete one; pointing the trail at it is the next change, and this file has
-already been bitten once by two derivations of one fact.
+**The route is now computed once, and the trail reads it.** `boardRoutes` is
+the single answer to "how is this board arrived at", and the strip that names
+the way to a word and the finder that walks it can no longer disagree. Two
+derivations of one fact drift, and this file has been bitten by that before.
+
+What the trail gained by the swap, beyond not drifting:
+
+- **A board a caregiver made is now described by the shortest way to it**, not
+  by the way this visit took. It used to be the one case that appended the key
+  pressed, on the reasoning that reaching it "really is a step that has to be
+  repeated" — true, and the step to repeat is the short one, which is the same
+  argument that already rebuilt the route to a category.
+- **Paging falls out rather than being handled.** `more words` is an ordinary
+  navigate key, so page three of a category is the category's route plus two
+  presses, with no page-specific code left in the trail at all.
+- **The name of the key that turns the wheel is read off the board** rather than
+  remembered from the last press, so a synthesised turn is named correctly
+  before anybody has turned it.
+
+Four mutations against the wiring, three caught. The fourth — treating a board
+the table does not know as a route of no steps rather than as no route — is not
+observable, because every board that can be navigated to is in the table by
+construction: the walk follows the same visible keys a person presses. The
+branch stays, because what it guards is a table gone stale against a board set
+edited since it was read, and the failure it would cause is a trail that claims
+a word is on the home board.
 
 #### What to notice about this batch
 
