@@ -569,6 +569,89 @@ void main() {
         expect(File(snapshot.path).existsSync(), isTrue);
       }
     });
+
+    test('spares one snapshot when asked to', () async {
+      final taken = <Snapshot>[];
+      for (var i = 0; i < BackupService.keep; i++) {
+        taken.add(await take());
+      }
+      final oldest = taken.first;
+
+      final attempt = await backup.takeSnapshot(doNotPrune: oldest.path);
+      expect(attempt.problem, null);
+
+      expect(
+        File(oldest.path).existsSync(),
+        isTrue,
+        reason: 'the snapshot the caller asked to keep was pruned anyway',
+      );
+      expect(await backup.snapshots(), hasLength(BackupService.keep + 1));
+    });
+  });
+
+  group('restoring with a copy of what it replaces', () {
+    test('takes the copy before it replaces anything', () async {
+      await personalise();
+      final personalised = await everything();
+      final before = await take();
+      await wreck();
+
+      final result = await restoreKeepingACopy(backup, before);
+      expect(result.restored, isTrue);
+      expect(await everything(), personalised);
+
+      // Two: the one restored from, and the copy of the wrecked board.
+      final all = await backup.snapshots();
+      expect(all, hasLength(2));
+
+      // The newer of the two holds the board as it stood a moment before the
+      // restore — the wrecked one — rather than the board just put back. That
+      // is the whole point of taking it.
+      expect((await backup.restore(all.first)).restored, isTrue);
+      expect(await db.select(db.buttons).get(), isEmpty);
+
+      // And the one restored from is still there to go back to.
+      expect((await backup.restore(before)).restored, isTrue);
+      expect(await everything(), personalised);
+    });
+
+    test('spares the one being restored from', () async {
+      // At capacity, the copy would otherwise push the oldest out — and the
+      // oldest is exactly what a caregiver reaching that far back has chosen.
+      final taken = <Snapshot>[];
+      for (var i = 0; i < BackupService.keep; i++) {
+        taken.add(await take());
+      }
+      final oldest = taken.first;
+
+      final result = await restoreKeepingACopy(backup, oldest);
+
+      expect(result.restored, isTrue);
+      expect(File(oldest.path).existsSync(), isTrue);
+    });
+
+    test('a copy that fails does not refuse the restore', () async {
+      // A caregiver asking for their board back is not told no because a
+      // backup would not write. That is the failure this feature is against.
+      final before = await take();
+      await wreck();
+
+      final blocked = BackupService(
+        db,
+        documentsDirectory: () async =>
+            throw const FileSystemException('no room'),
+        clock: clock,
+      );
+
+      final result = await restoreKeepingACopy(blocked, before);
+
+      expect(result.restored, isTrue);
+      expect(
+        blocked.lastAttempt!.problem,
+        isNotNull,
+        reason: 'the copy failed silently and left no record of it',
+      );
+    });
   });
 
   group('snapshot names', () {

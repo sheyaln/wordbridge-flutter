@@ -8,6 +8,7 @@ import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
 import '../auth/caregiver_gesture.dart';
+import '../backup/backup_service.dart';
 import '../editor/board_delete.dart';
 import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
@@ -24,6 +25,7 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
+import 'backups_screen.dart';
 import 'voice_screen.dart';
 
 /// Everything behind the PIN.
@@ -44,6 +46,7 @@ class CaregiverHome extends StatefulWidget {
     this.resolver,
     this.userName,
     this.onSwitchProfile,
+    this.backup,
   });
 
   final WordbridgeDatabase db;
@@ -58,12 +61,18 @@ class CaregiverHome extends StatefulWidget {
   final String? userName;
   final void Function(Profile)? onSwitchProfile;
 
+  /// Where the backups are. Built from [db] when nothing supplies one, so the
+  /// screen is wired by existing rather than by being passed down four levels;
+  /// tests give it one pointed somewhere other than the documents directory.
+  final BackupService? backup;
+
   @override
   State<CaregiverHome> createState() => _CaregiverHomeState();
 }
 
 class _CaregiverHomeState extends State<CaregiverHome> {
   int _tab = 0;
+  late final _backup = widget.backup ?? BackupService(widget.db);
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +104,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           vocabularyId: widget.vocabularyId,
           profileId: widget.profileId,
           logger: widget.logger,
+          backup: _backup,
           speech: widget.speech,
           settings: widget.settings,
           onSwitchProfile: widget.onSwitchProfile,
@@ -497,6 +507,7 @@ class _Settings extends StatelessWidget {
     required this.vocabularyId,
     required this.profileId,
     required this.logger,
+    required this.backup,
     required this.settings,
     required this.onChanged,
     this.speech,
@@ -508,6 +519,7 @@ class _Settings extends StatelessWidget {
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
+  final BackupService backup;
   final SpeechEngine? speech;
   final String? userName;
   final ProfileSettings? settings;
@@ -667,6 +679,35 @@ class _Settings extends StatelessWidget {
             if (rebuilt == null || !context.mounted) return;
 
             Navigator.of(context).pop(true);
+          },
+        ),
+      ],
+    ),
+    _Section(
+      icon: Icons.history,
+      title: 'Backups',
+      description:
+          'Copies of the whole board kept on this device, and getting one '
+          'back. One is taken before every update.',
+      tiles: (context, onChanged) => [
+        ListTile(
+          leading: const Icon(Icons.history),
+          title: const Text('Backups and restoring'),
+          subtitle: const Text(
+            'Every word, picture and location as it stood, and what has been '
+            'used. Nothing leaves this device.',
+          ),
+          isThreeLine: true,
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BackupsScreen(db: db, backup: backup),
+              ),
+            );
+            // A restore replaces every row in the database, the board this
+            // screen was opened over included.
+            onChanged();
           },
         ),
       ],

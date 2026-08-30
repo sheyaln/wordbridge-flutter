@@ -23,6 +23,10 @@ dependencies:
   image_picker: ^1.2.3
   path: ^1.9.1
   path_provider: ^2.1.6
+  # Opens the database file directly, once, before drift is allowed to migrate
+  # it — see features/backup/pre_migration.dart. Already in the tree underneath
+  # drift; named here because lib/ imports it.
+  sqlite3: ^3.5.2
   uuid: ^4.6.0
 
 dev_dependencies:
@@ -31,9 +35,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.34.5
   build_runner: ^2.16.0
-  # Builds databases at earlier schema versions, so the upgrade path is tested
-  # against what a device actually has rather than against the current schema.
-  sqlite3: ^3.5.2
 
 flutter:
   uses-material-design: true

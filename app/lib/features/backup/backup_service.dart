@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart' as raw;
 
 import '../../db/database.dart';
 import 'snapshot.dart';
@@ -20,6 +22,32 @@ typedef SnapshotAttempt = ({Snapshot? snapshot, String? problem});
 /// restore is refused they are holding a device that is not working, and
 /// "something went wrong" leaves them with nowhere to go next.
 typedef RestoreAttempt = ({bool restored, String? problem});
+
+/// Puts a board back, keeping a copy of the one it replaces.
+///
+/// The way every restore should be reached. A caregiver choosing between five
+/// dates is choosing partly by guess — the damage they are undoing is usually
+/// several days old by the time anybody works out what changed — and a wrong
+/// guess would otherwise cost them everything done since. The copy is what
+/// makes trying one safe, and it is also the answer to "I restored the wrong
+/// one".
+///
+/// The snapshot being restored from is exempt from the prune. Without that, a
+/// device already holding [BackupService.keep] snapshots would push the oldest
+/// out to make room for the copy — and the oldest is exactly the one a
+/// caregiver reaching that far back has chosen.
+///
+/// A copy that fails does not stop the restore. The caregiver asked for their
+/// board back, and refusing to give it to them because a backup would not
+/// write is the failure this whole feature exists against; it is recorded in
+/// [BackupService.lastAttempt] either way.
+Future<RestoreAttempt> restoreKeepingACopy(
+  BackupService backup,
+  Snapshot snapshot,
+) async {
+  await backup.takeSnapshot(doNotPrune: snapshot.path);
+  return backup.restore(snapshot);
+}
 
 /// Lossless local copies of the board, and putting one back.
 ///
@@ -97,9 +125,48 @@ class BackupService {
   /// INTO` takes a read transaction and produces a consistent file, so a
   /// snapshot taken mid-sentence is still a snapshot.
   ///
+  /// [doNotPrune] names a snapshot the prune must leave alone. Only one caller
+  /// needs it — see [restoreKeepingACopy], where the snapshot about to be
+  /// restored from would otherwise be the one this pushes over the limit.
+  Future<SnapshotAttempt> takeSnapshot({String? doNotPrune}) => _write(
+    (destination) => _db.customStatement('VACUUM INTO ?', [destination]),
+    doNotPrune: doNotPrune,
+  );
+
+  /// Copies a database file that nothing has open yet.
+  ///
+  /// For the one moment the live database cannot be asked to copy itself: the
+  /// launch after an update, before drift has opened the file and migrated it.
+  /// The caller owns that guarantee — there is no way from here to tell whether
+  /// something else holds the file, and a snapshot taken against a connection
+  /// mid-write is not one.
+  ///
+  /// `VACUUM INTO` again rather than a plain copy, for the case that makes a
+  /// backup worth having. A run killed mid-write leaves a rollback journal
+  /// beside the database, and the database on its own is then a file that needs
+  /// a rollback nobody copied. Opening it is the recovery, so the copy is
+  /// written by a connection that has already performed it.
+  Future<SnapshotAttempt> snapshotFile(File source) => _write((destination) {
+    final handle = raw.sqlite3.open(source.path);
+    try {
+      handle.execute('VACUUM INTO ?', [destination]);
+    } finally {
+      handle.close();
+    }
+  });
+
+  /// Names a snapshot, has [copy] write it, reads it back, and prunes.
+  ///
+  /// Everything except the copy itself, so that the live database and a file
+  /// on disk cannot end up with two ideas of what a snapshot is called, how
+  /// many are kept, or what counts as one having been written.
+  ///
   /// The result is read back before it counts as written. An unreadable backup
   /// is worse than none, because it is believed.
-  Future<SnapshotAttempt> takeSnapshot() async {
+  Future<SnapshotAttempt> _write(
+    FutureOr<void> Function(String destination) copy, {
+    String? doNotPrune,
+  }) async {
     try {
       final directory = await _directory();
       final takenAt = _clock();
@@ -114,7 +181,7 @@ class BackupService {
         ));
       }
 
-      await _db.customStatement('VACUUM INTO ?', [file.path]);
+      await copy(file.path);
 
       final version = await snapshotSchemaVersion(file);
       if (version == null) {
@@ -140,7 +207,7 @@ class BackupService {
       // alongside the snapshot rather than instead of it.
       String? pruneProblem;
       try {
-        await _prune();
+        await _prune(doNotPrune: doNotPrune);
       } catch (_) {
         pruneProblem =
             'The backup was saved, but older ones could not be removed. '
@@ -336,8 +403,9 @@ class BackupService {
     }
   }
 
-  Future<void> _prune() async {
+  Future<void> _prune({String? doNotPrune}) async {
     for (final old in (await snapshots()).skip(keep)) {
+      if (old.path == doNotPrune) continue;
       await File(old.path).delete();
     }
   }

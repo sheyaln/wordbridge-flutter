@@ -1920,6 +1920,77 @@ child's voice is a total product failure.
 - **Restore names what it replaces and when the snapshot was taken**, in the
   same voice as the remap warning: what this costs, in the user's own terms.
 
+**Part 2's engine landed and nothing called it.** `BackupService` — take,
+list, restore, prune to five, byte-for-byte, all-or-nothing — was built and
+tested and reachable from nowhere in `lib/`. A backup feature nobody can trigger
+and nobody can see is the exact thing the four parents in §1 already had.
+
+Two wirings, and the order matters.
+
+**The one that answers the complaint is the snapshot taken before a migration.**
+*"Latest update reset everything on my sons ipad."* The moment that goes wrong is
+the first launch after an update, and the only copy worth having is the one from
+before the migration ran. Every other moment to back up — on an edit, on
+backgrounding — is a backup of a board that has already been flattened.
+
+That moment is *before* the database is open, which the existing `takeSnapshot`
+cannot reach: it runs `VACUUM INTO` on the live connection, and by the time
+there is a live connection drift has already migrated. Nor can it run inside
+`onUpgrade`, because `VACUUM` is not allowed inside a transaction. So the check
+reads the schema version out of the file's own header — `snapshotSchemaVersion`
+already does this, on a `RandomAccessFile`, without opening a connection — and
+if it is older than the app's, a snapshot is taken through a raw sqlite3 handle
+before drift is allowed to touch the file.
+
+A plain file copy was rejected. It looks safe here because drift's native
+backend leaves SQLite in its default rollback-journal mode and nothing has the
+file open — but a run that was killed mid-write leaves a `-journal` beside the
+database, and the main file alone is then a copy that needs a rollback nobody
+copied. That is the crash-last-launch case, which is exactly when the backup
+matters. Opening the file *is* the recovery, so `VACUUM INTO` through a real
+connection is what gets written. `sqlite3` moves from a dev dependency to a
+real one for this; it is already in the tree underneath drift.
+
+**The wiring is a named top-level function, not a line in a `State`** — §4.40's
+recurring lesson, four times over. `snapshotBeforeMigration` takes the file, the
+app's schema version and the service, and returns what happened; `_bootstrap`
+calls it. It never throws: a backup that can stop the app from starting is a
+worse failure than the one it guards against.
+
+**Part 2's other half is a screen**, because a backup nobody can see is one
+nobody trusts. Last backed up, the list, and restore.
+
+**Part 2 delivered.** The pre-migration snapshot is wired into `_bootstrap`
+ahead of `resume()`, which is the first query and therefore the thing that
+opens the database. The screen is a section of its own in the caregiver
+settings: *Never backed up* or the day and time of the last one, a **Back up
+now**, and the five dates.
+
+Three things the work turned up:
+
+- **A restore had no way back.** `restore` was built to be all-or-nothing so
+  that a failure leaves the board alone, and that is not the same as being
+  reversible — a caregiver who picks the wrong date loses everything done
+  since, and picking by date *is* partly a guess. Restoring now takes a copy of
+  the board it is about to replace, through `restoreKeepingACopy`, and the
+  warning says so. That is what makes trying one safe.
+- **The copy would have eaten the snapshot it was restoring from.** At the
+  five-snapshot limit, taking one prunes the oldest — which is exactly what a
+  caregiver reaching that far back has chosen. `takeSnapshot` grew a
+  `doNotPrune`, and the prune keeps six for that one moment.
+- **The screen could not be tested at all as first written.** A widget test
+  runs on a fake clock, and real file I/O started inside one never comes back —
+  the suite hangs at teardown waiting for it. `tester.runAsync` does not rescue
+  a future the widget started in `initState`. So the screen's own tests run
+  against an in-memory service and cover what a caregiver is shown and what
+  their answer sets off; the disk stays in `backup_test.dart`, against the real
+  thing. Splitting it that way is also what made "the copy is taken *before*
+  the restore" an observable claim rather than an ordering nobody checks.
+
+Fifty-five tests across the three files, sixteen mutations, all caught. What is
+still not wired: nothing takes a snapshot on an ordinary edit or on
+backgrounding. The one that answers the complaint is in; those two are part 4b.
+
 **3. Import and export reach the caregiver** — §3 claims OBF/OBZ import and
 export as delivered. That is true of the engine and false of the product:
 `exportObf`, `exportObz`, `importObf` and `importObz` all exist and are tested,

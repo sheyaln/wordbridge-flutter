@@ -1,11 +1,39 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'tables.dart';
 
 part 'database.g.dart';
+
+/// The name the board's database is stored under.
+///
+/// One constant because two things need it: drift, which opens it, and
+/// [boardDatabaseFile], which has to find the same file before drift does.
+const databaseName = 'wordbridge';
+
+/// Where the board actually sits on this device.
+///
+/// The file drift is about to open, worked out without opening it, so that
+/// something can be done about it first — see `snapshotBeforeMigration`, which
+/// is the whole reason this exists.
+///
+/// The path is `drift_flutter`'s own default written out: the application
+/// documents directory, and `$name.sqlite` inside it. Reproduced rather than
+/// asked for because there is nothing to ask — the executor is built lazily
+/// and does not say where it went. Pointing drift at a path of our own instead
+/// would move the database out from under every device already carrying one,
+/// which is the loss this file exists to prevent.
+Future<File> boardDatabaseFile() async => File(
+  p.join(
+    (await getApplicationDocumentsDirectory()).path,
+    '$databaseName.sqlite',
+  ),
+);
 
 @DriftDatabase(
   tables: [
@@ -24,7 +52,7 @@ part 'database.g.dart';
   ],
 )
 class WordbridgeDatabase extends _$WordbridgeDatabase {
-  WordbridgeDatabase() : super(driftDatabase(name: 'wordbridge'));
+  WordbridgeDatabase() : super(driftDatabase(name: databaseName));
 
   /// In-memory instance for tests.
   WordbridgeDatabase.forTesting(super.executor);
