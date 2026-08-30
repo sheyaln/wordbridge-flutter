@@ -2152,10 +2152,18 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
   The open question is deliberately still open: it hands the word over and
   forgets it. **A word typed twice is a word that wants a cell**, and offering
   to keep it is a separate decision about when the board grows.
-- **An exclamation mark.** The utterance bar already accepts `!` and
-  `ButtonAction.punctuate` exists; **nothing seeds a key for it**, and the only
-  punctuation control in the UI is the question one. So this is a key and a
-  control, not an engine change.
+- **An exclamation mark — delivered.** Both marks sit behind one control on the
+  utterance bar, faced `?!` so it reads as doing both: *Make it a question* and
+  *Say it like you mean it*. It always opens the list rather than applying the
+  last mark on a plain press — a key that costs one press for a question and two
+  for the other, decided by something the person cannot see, is the one thing
+  this board never has.
+
+  **No punctuation key is seeded onto any board, and none should be.** Nothing
+  in the seed places a `ButtonAction.punctuate` button, so there is no `?` key
+  on the grid either. That is the arrangement, not an omission: a mark used at
+  the end of a sentence would cost a location on **every** board to save one
+  reach to the bar, and the bar is the one place a control is free.
 - **The user's own name as a cell, automatically, on page two of the root
   board.** The profile already has `displayName`. Cheap, and it is the single
   most personal word on any board.
