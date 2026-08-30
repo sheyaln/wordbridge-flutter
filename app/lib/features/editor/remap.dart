@@ -7,6 +7,7 @@ import '../../db/ids.dart';
 import '../../db/tables.dart';
 import '../usage/usage_queries.dart';
 import 'frame_keys.dart';
+import 'placement_rules.dart';
 
 /// Names, in an `edit_events` row's `after_json`, the event that row reverses.
 ///
@@ -174,6 +175,22 @@ class RemapService {
         throw StateError(
           'Location ${target.row},${target.col} already holds a word. Move '
           'that one out first rather than overwriting it.',
+        );
+      }
+
+      // §4.43. The editor asks before it offers the move, so reaching here
+      // means a path that did not — and the row this protects is the one where
+      // a stray word costs the guard against a mis-reached "back".
+      final vocabulary = await (_db.select(
+        _db.vocabularies,
+      )..where((v) => v.id.equals(button.vocabularyId))).getSingleOrNull();
+
+      if (!button.isSystem &&
+          vocabulary != null &&
+          isSystemRow(vocabulary, target.row)) {
+        throw StateError(
+          'Row ${target.row} is the system row. A word cannot be moved onto '
+          'it — see refusalToPlaceAt.',
         );
       }
 

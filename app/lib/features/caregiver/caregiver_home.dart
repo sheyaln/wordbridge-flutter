@@ -311,9 +311,13 @@ class _Section {
     required this.icon,
     required this.title,
     required this.description,
-    required this.tiles,
+    this.tiles,
+    this.opens,
     this.state,
-  });
+  }) : assert(
+         tiles != null || opens != null,
+         'a section is either a page of controls or a screen of its own',
+       );
 
   final IconData icon;
   final String title;
@@ -322,8 +326,16 @@ class _Section {
 
   /// Built on demand rather than held, so a switch thrown on the page redraws
   /// with the value it now has.
-  final List<Widget> Function(BuildContext context, VoidCallback onChanged)
+  final List<Widget> Function(BuildContext context, VoidCallback onChanged)?
   tiles;
+
+  /// A section that is one screen rather than a list of controls.
+  ///
+  /// Without this, a section holding a single row costs two taps to reach one
+  /// screen — a page whose entire content is a link to the next page. The row
+  /// in the settings list is the affordance; a second identical row behind it
+  /// is a stop on the way to somewhere, not a place.
+  final Future<void> Function(BuildContext context)? opens;
 }
 
 /// One section, on a page of its own.
@@ -534,7 +546,8 @@ class _Settings extends StatelessWidget {
         // profile, a speech engine, or more than one person existing, and a
         // row that opens onto an empty page is worse than no row.
         for (final section in _sections)
-          if (section.tiles(context, onChanged).isNotEmpty)
+          if (section.opens != null ||
+              section.tiles!(context, onChanged).isNotEmpty)
             ListTile(
               leading: Icon(section.icon),
               title: Text(section.title),
@@ -554,11 +567,18 @@ class _Settings extends StatelessWidget {
   /// Opens a section, and follows it out if what was done on it took the board
   /// with it.
   Future<void> _open(BuildContext context, _Section section) async {
+    final opens = section.opens;
+    if (opens != null) {
+      await opens(context);
+      onChanged();
+      return;
+    }
+
     final boardGone = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => _SectionPage(
           title: section.title,
-          tiles: section.tiles,
+          tiles: section.tiles!,
           onChanged: onChanged,
         ),
       ),
@@ -683,34 +703,19 @@ class _Settings extends StatelessWidget {
         ),
       ],
     ),
+    // One screen, so the row on this list opens it. A section page in between
+    // would hold a single row saying the same thing again.
     _Section(
       icon: Icons.history,
       title: 'Backups',
       description:
           'Copies of the whole board kept on this device, and getting one '
           'back. One is taken before every update.',
-      tiles: (context, onChanged) => [
-        ListTile(
-          leading: const Icon(Icons.history),
-          title: const Text('Backups and restoring'),
-          subtitle: const Text(
-            'Every word, picture and location as it stood, and what has been '
-            'used. Nothing leaves this device.',
-          ),
-          isThreeLine: true,
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () async {
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BackupsScreen(db: db, backup: backup),
-              ),
-            );
-            // A restore replaces every row in the database, the board this
-            // screen was opened over included.
-            onChanged();
-          },
+      opens: (context) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BackupsScreen(db: db, backup: backup),
         ),
-      ],
+      ),
     ),
     _Section(
       icon: Icons.record_voice_over_outlined,

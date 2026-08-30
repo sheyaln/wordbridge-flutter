@@ -8,10 +8,25 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/ids.dart';
 import 'package:wordbridge/db/seed/age_presets.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/features/backup/backup_service.dart';
+import 'package:wordbridge/features/backup/snapshot.dart';
 import 'package:wordbridge/features/caregiver/caregiver_home.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/usage/logger.dart';
+
+/// Backups without a disk under them.
+///
+/// The backups row opens its screen directly now, so this test walks into it —
+/// and a widget test runs on a fake clock, where a real folder read started
+/// inside one never comes back. What is under test here is that the control is
+/// reachable, not what it does; `backups_screen_test.dart` owns that.
+class _NoBackups extends BackupService {
+  _NoBackups(super.db);
+
+  @override
+  Future<List<Snapshot>> snapshots() async => const [];
+}
 
 class _SilentSpeech implements SpeechEngine {
   @override
@@ -49,7 +64,9 @@ const _reachable = <String, List<String>>{
     'Button size and orientation',
     'Rebuild from the shipped vocabulary',
   ],
-  'Backups': ['Backups and restoring'],
+  // One screen rather than a page of controls, so the row on the list opens
+  // it directly. What has to stay reachable is the control, not the hop.
+  'Backups': ['Back up now'],
   'How it sounds': ['Voice'],
   'How it behaves': [
     'Go back to the home board after each word',
@@ -158,6 +175,7 @@ void main() {
           logger: logger,
           speech: withSpeech ? _SilentSpeech() : null,
           settings: withSettings ? settings : null,
+          backup: _NoBackups(db),
           userName: 'Maya',
           onSwitchProfile: onSwitchProfile,
         ),

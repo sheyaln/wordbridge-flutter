@@ -2526,6 +2526,76 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.43a A settings section that was one screen cost two taps — delivered
+
+Reported: *"Settings → Backup → 'Backup and restoring' → actual settings.
+There's an unnecessary hop."*
+
+Right. Every section in the caregiver settings was a page of controls, so
+Backups got a page too — and its page held a single row that said the same
+thing as the row that opened it. A page whose entire content is a link to the
+next page is a stop on the way to somewhere, not a place.
+
+A section is now **either** a list of controls **or** a screen of its own, and
+the row on the settings list opens the screen directly. The row is the
+affordance; a second identical row behind it was never doing anything.
+
+It is a shape the next few sections will want too: view-all and
+quiet-until-spoken are switches and belong on a page with others, but anything
+that is already a screen — import and export (§4.41 part 3), the usage report —
+should open straight into it.
+
+### 4.43 The system row is not for words — delivered
+
+Requested: a caregiver should not be able to put a word on the system row.
+
+Today they can. A free location on that row is an ordinary reserved cell, so
+the editor offers it like any other, and `frame_keys.dart` already has a comment
+describing the case as legitimate: *"the last page has no forward key, so its
+location is free for a caregiver to use."* It is legitimate in the sense that
+nothing breaks. It is wrong for three separate reasons, and they are worth
+writing down because each one survives on its own:
+
+- **It is the row that undoes things.** Home and back cancel what the user just
+  did; the category keys go somewhere new. The gap between the two pairs is a
+  deliberate blank whose whole job is that an imprecise reach for one does not
+  land on the other (§4.16). A word in that gap spends the guard, and the way it
+  fails is that somebody reaching for `back` says a word instead.
+- **A word there speaks in a row that navigates.** Every other key on that row
+  changes the board and says nothing. One that speaks and stays put is a
+  different kind of key at the same height, which is the confusion the fixed
+  frame exists to prevent.
+- **It blocks a category that has not arrived yet.** `topUpVocabulary` refuses a
+  new category board when the system row has no column to spare — the refusal is
+  correct and the caregiver is told, but the cost is a board the person never
+  gets, paid for by one word that could have gone anywhere else.
+
+**The rule: a caregiver's own word may not be placed on, or moved onto, the
+system row.** Both paths, because the editor has two — tapping a reserved cell
+to add, and completing a move onto one.
+
+**Words already there stay.** Removing them would be a displacing edit made
+without asking, on the one row where a movement is most likely to have been
+learned. The rule is about what can be added from now on; a board that already
+has a word there keeps it, and the caregiver can move it themselves.
+
+**The pinned question column is deliberately not covered.** It is the other part
+of the frame, and a spare cell in it is exactly what §4.16 wants to hand to a
+caregiver for pinning. Blocking it here would pre-empt a decision already taken
+the other way.
+
+**One rule, asked in two places.** `refusalToPlaceAt` returns the sentence a
+caregiver reads, and the editor asks it before the move sheet and before the
+word is typed — at the point they chose the location, rather than after they
+have done the work of naming something. `moveButton` asks the same predicate
+again and throws, because a rule enforced only by the screen that shows it is a
+rule with a way round it.
+
+**A board set with no frame recorded refuses nothing.** An imported one, or one
+a caregiver built by hand, has no system row to protect, and refusing on a guess
+would take locations away from a board that never had one. Eight tests, four
+mutations, all caught.
+
 ### 4.25 Letting clusters share a row — measured, and not worth building
 
 The proposal was a setting: instead of every cluster starting its own row

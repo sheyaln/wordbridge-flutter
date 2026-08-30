@@ -16,6 +16,7 @@ import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
+import 'placement_rules.dart';
 import 'remap.dart';
 import 'remap_confirm_sheet.dart';
 import 'symbol_picker.dart';
@@ -132,16 +133,38 @@ class _BoardEditorState extends State<BoardEditor> {
         _snack('That location already holds a word.');
         return;
       }
+      if (await _refused(placed.cell)) return;
       await _completeMove(moving, placed.cell);
       return;
     }
 
     if (placed.button == null) {
+      if (await _refused(placed.cell)) return;
       await _addWord(placed.cell);
       return;
     }
 
     await _showActions(placed.button!);
+  }
+
+  /// Says why a location will not take a word, and reports whether it refused.
+  ///
+  /// Asked before the move sheet and before the word is typed, so a caregiver
+  /// is told at the point they chose the location rather than after they have
+  /// done the work of naming a word.
+  Future<bool> _refused(Cell cell) async {
+    final why = await refusalToPlaceAt(
+      widget.db,
+      vocabularyId: widget.vocabularyId,
+      row: cell.row,
+    );
+    if (why == null) return false;
+
+    if (mounted) {
+      setState(() => _moving = null);
+      _snack(why);
+    }
+    return true;
   }
 
   Future<void> _completeMove(Button button, Cell target) async {
@@ -469,8 +492,14 @@ class _BoardEditorState extends State<BoardEditor> {
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        // A refusal explains a row, which takes longer to read than
+        // "Moved \"x\"" does.
+        duration: const Duration(seconds: 8),
+      ),
+    );
   }
 
   /// Puts the word back down where it was.
