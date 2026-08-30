@@ -33,7 +33,7 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
-import 'on_screen_keyboard.dart';
+import 'type_a_word.dart';
 import 'word_path.dart';
 
 /// Height of the utterance bar. Fixed chrome; the grid gets what is left.
@@ -710,15 +710,15 @@ class TalkScreenState extends State<TalkScreen> {
   /// location for it would cost that location on every board in the set, and
   /// most of these are said once.
   ///
-  /// Not spoken again here. The keyboard says the finished word as it hands it
-  /// over, which is the feedback that the typing worked; saying it a second
-  /// time on arrival would make one word two.
+  /// Not spoken again here. The typing screen says the finished word as it
+  /// hands it over, which is the feedback that the typing worked; saying it a
+  /// second time on arrival would make one word two.
   ///
   /// No part of speech, because nothing here knows one. The endings and the
   /// copula read the word before them, and a typed word tells them nothing —
   /// which is honest: guessing would offer "+ed" on a person's name.
   Future<void> _typeWord() async {
-    final word = await OnScreenKeyboard.show(context, speech: widget.speech);
+    final word = await TypeAWord.show(context, speech: widget.speech);
     if (word == null || !mounted) return;
 
     setState(() {

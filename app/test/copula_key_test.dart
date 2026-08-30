@@ -11,7 +11,6 @@ import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
-import 'package:wordbridge/features/talk/on_screen_keyboard.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 
@@ -250,9 +249,9 @@ void main() {
   testWidgets('a typed word joins the sentence, and is not said twice', (
     tester,
   ) async {
-    // The keyboard says the finished word as it hands it over — that is the
-    // feedback that the typing worked. Saying it again on arrival would make
-    // one word two, and a person who typed once would be heard twice.
+    // The typing screen says the finished word as it hands it over — that is
+    // the feedback that the typing worked. Saying it again on arrival would
+    // make one word two, and a person who typed once would be heard twice.
     final you = await cellOf(label: 'you');
 
     await pumpTalkScreen(tester);
@@ -263,15 +262,13 @@ void main() {
     await tester.tap(find.text('Type a word'));
     await pumpFrames(tester);
 
-    for (final key in ['b', 'e', 'n']) {
-      await tester.tap(find.byKey(OnScreenKeyboard.keyFor(key)));
-      await tester.pump();
-    }
-    expect(speech.said, ['you'], reason: 'a letter was spoken as it was typed');
+    await tester.enterText(find.byType(TextField), 'ben');
+    await pumpFrames(tester);
+    expect(speech.said, [
+      'you',
+    ], reason: 'something was spoken while the word was still being typed');
 
-    await tester.tap(
-      find.byKey(OnScreenKeyboard.keyFor(OnScreenKeyboard.send)),
-    );
+    await tester.tap(find.text('Say it and add it'));
     await pumpFrames(tester);
 
     expect(speech.said, [
@@ -283,6 +280,57 @@ void main() {
     await tester.tap(find.byTooltip('Speak'));
     await pumpFrames(tester);
     expect(speech.said.last, 'you ben');
+  });
+
+  testWidgets('backing out of typing leaves the sentence alone', (
+    tester,
+  ) async {
+    final you = await cellOf(label: 'you');
+
+    await pumpTalkScreen(tester);
+    await tap(tester, you);
+
+    await tester.tap(find.byTooltip('Another way to a word'));
+    await pumpFrames(tester);
+    await tester.tap(find.text('Type a word'));
+    await pumpFrames(tester);
+
+    await tester.enterText(find.byType(TextField), 'ben');
+    await tester.tap(find.byTooltip('Back to the board'));
+    await pumpFrames(tester);
+
+    await tester.tap(find.byTooltip('Speak'));
+    await pumpFrames(tester);
+
+    expect(speech.said, [
+      'you',
+      'you',
+    ], reason: 'a word nobody finished was put into the sentence anyway');
+  });
+
+  testWidgets('an empty field has nothing to say', (tester) async {
+    await pumpTalkScreen(tester);
+
+    await tester.tap(find.byTooltip('Another way to a word'));
+    await pumpFrames(tester);
+    await tester.tap(find.text('Type a word'));
+    await pumpFrames(tester);
+
+    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(button.onPressed, isNull);
+
+    // And the return key is the other way in. A keyboard set up for another
+    // language may not put "done" where this one expects it, so both routes
+    // have to refuse an empty field rather than only the one on screen.
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await pumpFrames(tester);
+
+    expect(
+      find.byType(TextField),
+      findsOneWidget,
+      reason: 'the return key closed the screen without a word to show for it',
+    );
+    expect(speech.said, isEmpty);
   });
 
   testWidgets('the control shows both marks it carries', (tester) async {
