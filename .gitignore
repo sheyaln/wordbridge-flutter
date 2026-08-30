@@ -1,24 +1,8 @@
-.DS_Store
-*.log
-
-# Flutter/Dart
-.dart_tool/
-.packages
-build/
-.flutter-plugins
-.flutter-plugins-dependencies
-
-# pubspec.lock IS committed. This is an app, not a library, and a device
-# someone relies on to speak should build from known-good dependency versions.
-
-# Generated — regenerate with `dart run build_runner build`
-*.g.dart
-*.freezed.dart
-
-# IDE
-.idea/
-.vscode/
-*.iml
-
-# Local tooling
-.claude/
+voicebench/build/
+voicebench/.dart_tool/
+voicebench/ios/Pods/
+voicebench/ios/.symlinks/
+voicebench/ios/Flutter/ephemeral/
+voicebench/.flutter-plugins-dependencies
+kokoro-en-v0_19/
+*.tar.bz2
