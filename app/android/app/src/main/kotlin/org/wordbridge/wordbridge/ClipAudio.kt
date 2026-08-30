@@ -8,8 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.concurrent.thread
 
 /**
@@ -37,13 +35,14 @@ class ClipAudio(messenger: io.flutter.plugin.common.BinaryMessenger) {
   private fun handle(call: MethodCall, result: MethodChannel.Result) {
     when (call.method) {
       "play" -> {
-        val wav = call.argument<ByteArray>("wav")
+        val pcm = call.argument<ByteArray>("pcm")
+        val sampleRate = call.argument<Int>("sampleRate") ?: 24000
         val volume = call.argument<Double>("volume") ?: 1.0
-        if (wav == null) {
-          result.error("arguments", "play needs wav bytes", null)
+        if (pcm == null) {
+          result.error("arguments", "play needs pcm bytes", null)
           return
         }
-        play(wav, volume.toFloat(), result)
+        play(pcm, sampleRate, volume.toFloat(), result)
       }
       "stop" -> {
         finish()
@@ -53,18 +52,18 @@ class ClipAudio(messenger: io.flutter.plugin.common.BinaryMessenger) {
     }
   }
 
-  private fun play(wav: ByteArray, volume: Float, result: MethodChannel.Result) {
+  private fun play(
+    pcm: ByteArray,
+    sampleRate: Int,
+    volume: Float,
+    result: MethodChannel.Result,
+  ) {
     finish()
 
-    // The Dart side sends a WAV so both platforms take the same bytes; the
-    // header is 44 bytes and AudioTrack wants the samples on their own.
-    val header = 44
-    if (wav.size <= header) {
+    if (pcm.isEmpty()) {
       result.success(null)
       return
     }
-    val sampleRate =
-      ByteBuffer.wrap(wav, 24, 4).order(ByteOrder.LITTLE_ENDIAN).int
 
     val attributes =
       AudioAttributes.Builder()
@@ -78,12 +77,11 @@ class ClipAudio(messenger: io.flutter.plugin.common.BinaryMessenger) {
         .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
         .build()
 
-    val samples = wav.size - header
     val playing =
       AudioTrack(
         attributes,
         format,
-        maxOf(samples, AudioTrack.getMinBufferSize(
+        maxOf(pcm.size, AudioTrack.getMinBufferSize(
           sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)),
         AudioTrack.MODE_STREAM,
         AudioManager.AUDIO_SESSION_ID_GENERATE,
@@ -95,7 +93,7 @@ class ClipAudio(messenger: io.flutter.plugin.common.BinaryMessenger) {
 
     thread(name = "wordbridge-clip") {
       try {
-        playing.write(wav, header, samples)
+        playing.write(pcm, 0, pcm.size)
         // Blocks until what was written has actually been heard, which is what
         // makes waiting on this the same promise as waiting on platform TTS.
         playing.write(ByteArray(0), 0, 0)

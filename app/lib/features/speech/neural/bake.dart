@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'audio_clip.dart';
 import 'clip_store.dart';
-import 'kokoro.dart';
 
 enum BakeState { idle, running, waiting, paused, done, failed }
 
@@ -24,16 +24,24 @@ enum BakeState { idle, running, waiting, paused, done, failed }
 /// Every clip is preceded by a check, and speech pushes the job out of the way
 /// for a few quiet seconds.
 class BakeJob extends ChangeNotifier {
-  BakeJob(this._synthesiser, this._store, {required this.sid, this.speed = 1.0});
+  BakeJob(
+    this._store, {
+    required this.synthesise,
+    required this.someoneIsWaiting,
+  });
 
-  final KokoroSynthesiser _synthesiser;
   final ClipStore _store;
 
-  /// Which of the model's voices is being baked. Changing it does not change
-  /// this job — it makes a different pack, and a different job.
-  final int sid;
+  /// Making one clip. Supplied rather than reached for, so this file knows
+  /// nothing about which model is behind it or which voice it is making.
+  final Future<AudioClip> Function(String word) synthesise;
 
-  final double speed;
+  /// Whether somebody is waiting on the engine right now.
+  ///
+  /// The model is one engine behind one pointer, so a word being baked is a
+  /// bar press waiting — and a press that waits on a background job is the
+  /// failure §5 non-negotiable 1 is about.
+  final bool Function() someoneIsWaiting;
 
   /// How long the board stays quiet after speech before baking resumes.
   ///
@@ -119,7 +127,7 @@ class BakeJob extends ChangeNotifier {
       while (_remaining.isNotEmpty && !_stop) {
         // The person outranks the job, every time. Waiting rather than
         // abandoning: this is a half-hour of work and it will get its turn.
-        if (_synthesiser.liveWaiting || DateTime.now().isBefore(_quietUntil)) {
+        if (someoneIsWaiting() || DateTime.now().isBefore(_quietUntil)) {
           if (_state != BakeState.waiting) {
             _state = BakeState.waiting;
             notifyListeners();
@@ -133,12 +141,7 @@ class BakeJob extends ChangeNotifier {
         }
 
         final word = _remaining.first;
-        final clip = await _synthesiser.generate(
-          text: word,
-          sid: sid,
-          speed: speed,
-        );
-        await _store.write(word, clip);
+        await makeOne(word);
 
         _remaining = _remaining.sublist(1);
         _done++;
@@ -157,6 +160,11 @@ class BakeJob extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Makes one clip and files it.
+  @protected
+  Future<void> makeOne(String word) async =>
+      _store.write(word, await synthesise(word));
 
   @override
   void dispose() {

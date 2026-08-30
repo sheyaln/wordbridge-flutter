@@ -116,16 +116,20 @@ class KokoroSynthesiser {
     double speed = 1.0,
     double gain = 1.0,
     bool live = false,
+    bool trim = true,
   }) {
     if (live) _liveWaiting++;
 
     final turn = _turn.then((_) async {
       final audio = await _generate(text: text, sid: sid, speed: speed);
+      // Untrimmed only to measure what the trimming is worth. Nothing that
+      // reaches a person skips it: the padding is 30% of the bytes and it is
+      // the pause a tap would otherwise start with.
+      final samples = trim
+          ? trimSilence(audio.samples, audio.sampleRate)
+          : audio.samples;
       return (
-        pcm16: toPcm16(
-          trimSilence(audio.samples, audio.sampleRate),
-          gain: gain,
-        ),
+        pcm16: toPcm16(samples, gain: gain),
         sampleRate: audio.sampleRate,
       );
     });

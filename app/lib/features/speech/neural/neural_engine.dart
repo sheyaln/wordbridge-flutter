@@ -45,10 +45,12 @@ class NeuralSpeechEngine implements SpeechEngine {
     VoiceModelStore? models,
     ClipPlayer? player,
     Future<Directory> Function()? documentsDirectory,
+    Future<AudioClip?> Function(String text)? synthesise,
   }) : models = models ?? VoiceModelStore(),
        _player = player ?? ClipPlayer(),
        _documentsDirectory =
-           documentsDirectory ?? getApplicationDocumentsDirectory;
+           documentsDirectory ?? getApplicationDocumentsDirectory,
+       _synthesiseOverride = synthesise;
 
   /// §4.4 as it already ships, and what rung 3 is.
   ///
@@ -61,6 +63,10 @@ class NeuralSpeechEngine implements SpeechEngine {
   final VoiceModelStore models;
   final ClipPlayer _player;
   final Future<Directory> Function() _documentsDirectory;
+
+  /// Stands in for the model, so the ladder and its timeout can be exercised
+  /// without 345 MB of weights and a device to run them on.
+  final Future<AudioClip?> Function(String text)? _synthesiseOverride;
 
   KokoroSynthesiser? _synthesiser;
   ClipStore? _clips;
@@ -218,10 +224,13 @@ class NeuralSpeechEngine implements SpeechEngine {
     if (clips == null || synthesiser == null) return null;
 
     return _bake = BakeJob(
-      synthesiser,
       clips,
-      sid: _voice.sid,
-      speed: _speed,
+      synthesise: (word) => synthesiser.generate(
+        text: word,
+        sid: _voice.sid,
+        speed: _speed,
+      ),
+      someoneIsWaiting: () => synthesiser.liveWaiting,
     );
   }
 
@@ -315,7 +324,76 @@ class NeuralSpeechEngine implements SpeechEngine {
     }
   }
 
+  /// Speaks [text] in [voice], whether or not it is the chosen one.
+  ///
+  /// Every control on the voice screen previews itself as a spoken sentence
+  /// (§4.4), and a voice is the control that most needs it: a caregiver is
+  /// choosing how somebody else will sound for the next several years, and the
+  /// person it is for may not be able to say it is wrong.
+  ///
+  /// Synthesised live, and slow — this is the private half of Pullin & Hennig's
+  /// split, where a wait costs nobody a conversation. Changing which voice is
+  /// previewed is free: the model takes the speaker as a generation parameter,
+  /// so nothing is reloaded between one voice and the next.
+  ///
+  /// False where there was no model to ask.
+  Future<bool> previewVoice(NeuralVoice voice, String text) async {
+    final synthesiser = await loadModel();
+    if (synthesiser == null) return false;
+
+    final mine = ++_generation;
+    final clip = await synthesiser.generate(
+      text: text,
+      sid: voice.sid,
+      speed: _speed,
+      live: true,
+    );
+    if (mine != _generation) return true;
+    await _play(clip);
+    return true;
+  }
+
+  /// Times two sentences and fits this tablet's own budget.
+  ///
+  /// Shipped as a constant it would be the floor device's number on every
+  /// device, and the floor device is three times slower than an A12X and far
+  /// more than that against a current iPad. Measuring is also the only honest
+  /// way for a setting screen to say what *this* tablet does rather than what
+  /// a file says.
+  ///
+  /// Two lengths, well separated, because what has to be resolved is the split
+  /// between the fixed overhead and the per-word term — and a caregiver is
+  /// waiting while it runs.
+  Future<SynthesisBudget?> measureBudget() async {
+    final synthesiser = await loadModel();
+    if (synthesiser == null) return null;
+
+    Future<Duration> time(String text) async {
+      final started = DateTime.now();
+      await synthesiser.generate(
+        text: text,
+        sid: _voice.sid,
+        speed: _speed,
+        live: true,
+      );
+      return DateTime.now().difference(started);
+    }
+
+    const short = 'yes';
+    const long = 'I would like to go outside and see the garden this afternoon';
+
+    return SynthesisBudget.fit(
+      shortWords: SynthesisBudget.wordsIn(short),
+      shortTook: await time(short),
+      longWords: SynthesisBudget.wordsIn(long),
+      longTook: await time(long),
+    );
+  }
+
   Future<AudioClip?> _synthesise(String text) async {
+    final override = _synthesiseOverride;
+    if (override != null) return override(text);
+
     final synthesiser = await loadModel();
     if (synthesiser == null) return null;
     return synthesiser.generate(

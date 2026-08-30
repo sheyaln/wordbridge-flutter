@@ -10,9 +10,9 @@ import 'audio_clip.dart';
 /// written between a tap and a word. §4.4 rejected that route for the loudness
 /// work, and the reason has not changed.
 ///
-/// A [wavOf] wrapper goes across rather than bare samples, so both platforms
-/// receive one self-describing thing and neither side has to be told the
-/// sample rate twice.
+/// The samples go across as they are stored, with their rate beside them.
+/// Wrapping them in a container first would be a header to write and parse on
+/// every tap for something both sides already know.
 class ClipPlayer {
   ClipPlayer({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel(_name);
@@ -39,7 +39,8 @@ class ClipPlayer {
   Future<void> play(AudioClip clip, {double volume = 1.0}) async {
     try {
       await _channel.invokeMethod<void>('play', {
-        'wav': wavOf(clip),
+        'pcm': clip.pcm16,
+        'sampleRate': clip.sampleRate,
         'volume': volume.clamp(0.0, 1.0),
       });
       _available = true;

@@ -79,38 +79,3 @@ Uint8List toPcm16(Float32List samples, {double gain = 1.0}) {
   }
   return out.buffer.asUint8List(out.offsetInBytes, out.lengthInBytes);
 }
-
-/// [clip] wrapped in a 44-byte WAV header.
-///
-/// For the platforms that will only take a container. The header is 44 bytes
-/// against ~27 KB of audio, which is the reason the cache is stored bare and
-/// wrapped at the point of use: an `.m4a` of the same half-second is 2.5× its
-/// own audio, and at 1231 clips the header would be most of the cache.
-Uint8List wavOf(AudioClip clip) {
-  final dataLength = clip.pcm16.lengthInBytes;
-  final out = Uint8List(44 + dataLength);
-  final header = ByteData.sublistView(out, 0, 44);
-
-  void ascii(int at, String s) {
-    for (var i = 0; i < s.length; i++) {
-      out[at + i] = s.codeUnitAt(i);
-    }
-  }
-
-  ascii(0, 'RIFF');
-  header.setUint32(4, 36 + dataLength, Endian.little);
-  ascii(8, 'WAVE');
-  ascii(12, 'fmt ');
-  header.setUint32(16, 16, Endian.little); // PCM header length
-  header.setUint16(20, 1, Endian.little); // uncompressed
-  header.setUint16(22, 1, Endian.little); // one channel
-  header.setUint32(24, clip.sampleRate, Endian.little);
-  header.setUint32(28, clip.sampleRate * 2, Endian.little); // bytes per second
-  header.setUint16(32, 2, Endian.little); // bytes per frame
-  header.setUint16(34, 16, Endian.little); // bits per sample
-  ascii(36, 'data');
-  header.setUint32(40, dataLength, Endian.little);
-
-  out.setRange(44, 44 + dataLength, clip.pcm16);
-  return out;
-}

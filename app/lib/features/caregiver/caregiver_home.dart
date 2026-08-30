@@ -15,6 +15,8 @@ import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
 import '../editor/rebuild_sheet.dart';
 import '../prediction/word_prediction.dart';
+import '../speech/neural/neural_engine.dart';
+import '../speech/neural/neural_voice.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_picker.dart';
 import '../profiles/profile_settings.dart';
@@ -26,6 +28,7 @@ import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
 import 'backups_screen.dart';
+import 'neural_voice_screen.dart';
 import 'voice_screen.dart';
 
 /// Everything behind the PIN.
@@ -735,6 +738,27 @@ class _Settings extends StatelessWidget {
               context,
               speech: speech!,
               settings: settings!,
+            ).then((_) => onChanged()),
+          ),
+        if (settings != null && speech is NeuralSpeechEngine)
+          ListTile(
+            leading: const Icon(Icons.graphic_eq_outlined),
+            title: const Text('A voice of their own'),
+            subtitle: Text(
+              settings!.neuralVoice
+                  ? '${neuralVoiceById(settings!.neuralVoiceId).name} · '
+                        'downloaded, and never leaves this tablet'
+                  : 'A downloadable voice that runs on this tablet and sounds '
+                        'less like a synthesiser. Off.',
+            ),
+            isThreeLine: true,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => NeuralVoiceScreen.show(
+              context,
+              speech: speech! as NeuralSpeechEngine,
+              settings: settings!,
+              db: db,
+              vocabularyId: vocabularyId,
             ).then((_) => onChanged()),
           ),
       ],
