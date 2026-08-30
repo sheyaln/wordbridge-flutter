@@ -8,7 +8,22 @@ import 'package:flutter_tts/flutter_tts.dart';
 /// refactor.
 abstract interface class SpeechEngine {
   Future<void> init();
+
+  /// Says [text] now.
+  ///
+  /// Every tap on the board arrives here, so nothing on this path is allowed
+  /// to wait for anything — §5 non-negotiable 1. An engine that cannot produce
+  /// [text] immediately says it in whatever voice it can produce immediately.
   Future<void> speak(String text);
+
+  /// Says a whole sentence assembled on the utterance bar.
+  ///
+  /// Separate from [speak] because it is the one place a wait was agreed to:
+  /// §4.5 records a named exception for a profile that has opted into a voice
+  /// which has to synthesise, and the exception covers the bar's speak key and
+  /// nothing else. An engine with no such cost implements this as [speak].
+  Future<void> speakUtterance(String text);
+
   Future<void> stop();
   Future<List<VoiceOption>> voices();
   Future<void> useVoice(VoiceOption voice);
@@ -96,6 +111,11 @@ class FlutterTtsEngine implements SpeechEngine {
     await _tts.stop();
     await _tts.speak(spoken);
   }
+
+  /// Nothing here costs anything a tap does not already cost, so the bar's
+  /// press is the same call. The distinction is the neural engine's.
+  @override
+  Future<void> speakUtterance(String text) => speak(text);
 
   @override
   Future<void> stop() => _tts.stop();

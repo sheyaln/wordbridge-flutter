@@ -1,0 +1,419 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+import '../speech_engine.dart';
+import 'audio_clip.dart';
+import 'bake.dart';
+import 'clip_player.dart';
+import 'clip_store.dart';
+import 'kokoro.dart';
+import 'neural_voice.dart';
+import 'synthesis_budget.dart';
+import 'voice_model.dart';
+
+/// One time the platform voice had to speak instead.
+typedef Fallback = ({DateTime at, String text, String reason});
+
+/// The board's voice, when a profile has switched the downloaded one on.
+///
+/// Everything here is a ladder, and which rung a piece of speech lands on is
+/// decided by which half of the board it came from:
+///
+/// 1. **Cached neural audio.** The ordinary case, and *faster* than the
+///    platform engine because there is nothing to synthesise — a buffer that
+///    already exists against a synthesiser that has to start.
+/// 2. **Live neural synthesis**, on the bar's speak key only, under
+///    [SynthesisBudget]. Correct voice, and 1.3 s for a single word on the
+///    floor device, which is why it is never on the tap path.
+/// 3. **The platform voice.** Instant, and *a different voice* — a real cost
+///    rather than a graceful degradation. A word that comes out in a
+///    stranger's voice is noticeable to everyone in the room except, possibly,
+///    the person it happened to. It is counted, and the caregiver screen shows
+///    how often it fired.
+///
+/// **Rung 3 never waits.** A word with no audio yet speaks in the platform
+/// voice *now*; it does not spin while the right voice is prepared. That is
+/// §5 non-negotiable 1 and it is not negotiable here either.
+class NeuralSpeechEngine implements SpeechEngine {
+  NeuralSpeechEngine(
+    this.platform, {
+    VoiceModelStore? models,
+    ClipPlayer? player,
+    Future<Directory> Function()? documentsDirectory,
+  }) : models = models ?? VoiceModelStore(),
+       _player = player ?? ClipPlayer(),
+       _documentsDirectory =
+           documentsDirectory ?? getApplicationDocumentsDirectory;
+
+  /// §4.4 as it already ships, and what rung 3 is.
+  ///
+  /// Not a degraded mode invented for this: the neural voice is the addition,
+  /// and what it falls back to is the product as it stands — the profile's
+  /// rate, pitch and volume, on the voice a caregiver chose. Which is the
+  /// strongest available answer to "what if it fails".
+  final SpeechEngine platform;
+
+  final VoiceModelStore models;
+  final ClipPlayer _player;
+  final Future<Directory> Function() _documentsDirectory;
+
+  KokoroSynthesiser? _synthesiser;
+  ClipStore? _clips;
+  BakeJob? _bake;
+
+  NeuralVoice _voice = neuralVoiceById(null);
+  double _speed = 1.0;
+  double _volume = 1.0;
+  bool _on = false;
+
+  SynthesisBudget budget = SynthesisBudget.shipped;
+
+  /// Which utterance is the current one.
+  ///
+  /// **A late result must never speak.** If the fallback has already spoken,
+  /// neural audio arriving afterwards would say the sentence a second time in
+  /// a different voice — and the user cannot easily take back either of them.
+  /// Every path checks this after every await and drops what it is holding if
+  /// it is no longer the newest. `FlutterTtsEngine.speak` carries the same
+  /// rule for the same reason.
+  int _generation = 0;
+
+  /// Whether this profile asked for the neural voice.
+  bool get isOn => _on;
+
+  /// Whether cached audio can actually be played back.
+  ///
+  /// Distinct from [isOn]: the cache can be full and the platform still have
+  /// no way to play a buffer, and a switch that silently does nothing is what
+  /// §5 non-negotiable 9 forbids.
+  bool get canPlay => _player.isAvailable;
+
+  NeuralVoice get voice => _voice;
+
+  ClipStore? get clips => _clips;
+
+  BakeJob? get bake => _bake;
+
+  /// Whether the model is in memory. False is the ordinary state: 833 MB
+  /// resident is most of what a 3 GB tablet has spare, and the cache — which
+  /// is the whole tap path — needs none of it.
+  bool get isModelLoaded => _synthesiser?.isLoaded ?? false;
+
+  /// Every time this session had to use the platform voice.
+  ///
+  /// Held for the life of the app rather than stored, and the screen says so.
+  /// The question a caregiver is answering is "is this happening often", and
+  /// a session is the window in which that is answerable.
+  List<Fallback> get fallbacks => List.unmodifiable(_fallbacks);
+  final _fallbacks = <Fallback>[];
+  static const _keepFallbacks = 20;
+
+  int get fallbackCount => _fallbackCount;
+  int _fallbackCount = 0;
+
+  /// Switches the voice on or off for a profile, and puts it on the right pack.
+  ///
+  /// Cheap either way. Turning it on opens an index file; it does **not** load
+  /// the model, which is deferred until something actually needs to synthesise.
+  /// Turning it off gives the memory back and leaves the platform engine
+  /// exactly as §4.4 configured it, which is what makes "turning it off
+  /// restores today's behaviour" true rather than approximately true.
+  Future<void> useNeuralVoice({
+    required bool enabled,
+    String? voiceId,
+    double speed = 1.0,
+  }) async {
+    _voice = neuralVoiceById(voiceId);
+    _speed = speed;
+
+    if (!enabled) {
+      _on = false;
+      await _release();
+      return;
+    }
+
+    final packId = ClipStore.idFor(_voice.id, _speed);
+    if (_clips?.packId != packId) {
+      await _clips?.close();
+      _clips = await ClipStore.open(root: await _clipRoot(), packId: packId);
+      // A pack belongs to one voice at one speed, so the job that fills it
+      // does too. Keeping the old one would report another pack's progress.
+      _bake?.dispose();
+      _bake = null;
+    }
+    _on = true;
+  }
+
+  Future<Directory> _clipRoot() async => ClipStore.directoryIn(
+    Directory(
+      p.join((await _documentsDirectory()).path, VoiceModelStore.folder),
+    ),
+  );
+
+  /// Throws away every pack but the one in use.
+  ///
+  /// A tablet that has tried four voices carries four packs, three of which
+  /// nothing will read again. Called from the caregiver screen, after a choice
+  /// is committed, rather than on every settings write.
+  Future<int> pruneOtherVoices() async {
+    final keep = _clips?.packId;
+    if (keep == null) return 0;
+    return ClipStore.pruneTo(await _clipRoot(), keep);
+  }
+
+  /// Loads the model, once, when something needs it.
+  ///
+  /// Deliberately not at session open. Most sessions never synthesise a thing
+  /// — the cache answers them — and a communication device should not be
+  /// carrying most of a gigabyte for a feature it is not using.
+  Future<KokoroSynthesiser?> loadModel() async {
+    if (!_on) return null;
+    final existing = _synthesiser;
+    if (existing != null && existing.isLoaded) return existing;
+
+    try {
+      final synthesiser = KokoroSynthesiser(await models.files());
+      await synthesiser.load();
+      return _synthesiser = synthesiser;
+    } catch (_) {
+      // No model, or one that will not load. Every rung below this still
+      // speaks, which is the point of having them.
+      return null;
+    }
+  }
+
+  /// Gives the model its memory back.
+  ///
+  /// Called when the bake finishes and when the app goes to the background.
+  /// The cache is untouched: the board still speaks in the chosen voice with
+  /// nothing loaded at all.
+  Future<void> releaseModel() async {
+    _synthesiser?.dispose();
+    _synthesiser = null;
+  }
+
+  Future<void> _release() async {
+    _bake?.dispose();
+    _bake = null;
+    await releaseModel();
+    await _clips?.close();
+    _clips = null;
+  }
+
+  /// The job that fills this profile's pack, made on demand.
+  ///
+  /// Null where the model will not load. A bake with nothing to bake with is
+  /// a progress bar that never moves, which says less than an honest absence.
+  Future<BakeJob?> bakeJob() async {
+    final existing = _bake;
+    if (existing != null) return existing;
+
+    final clips = _clips;
+    final synthesiser = await loadModel();
+    if (clips == null || synthesiser == null) return null;
+
+    return _bake = BakeJob(
+      synthesiser,
+      clips,
+      sid: _voice.sid,
+      speed: _speed,
+    );
+  }
+
+  @override
+  Future<void> init() => platform.init();
+
+  /// Says a word, now.
+  ///
+  /// Three ways it can be immediate and one way it cannot, and the one that
+  /// cannot is not on this path. The composed case in the middle is worth
+  /// naming: a copula key that corrects the word before it speaks the pair
+  /// ("are you"), which is not a string anything baked — but both halves are,
+  /// and this app owns the samples, so they are joined rather than handed to a
+  /// different voice mid-sentence.
+  @override
+  Future<void> speak(String text) async {
+    final spoken = normaliseForSpeech(text);
+    if (spoken.isEmpty) return;
+
+    final mine = ++_generation;
+    _bake?.standAside();
+
+    final clips = _on ? _clips : null;
+    if (clips != null) {
+      final cached = await clips.read(spoken);
+      if (mine != _generation) return;
+      if (cached != null) return _play(cached);
+
+      final composed = await _compose(spoken, clips);
+      if (mine != _generation) return;
+      if (composed != null) return _play(composed);
+
+      _recordFallback(spoken, 'not baked yet');
+    }
+
+    await platform.speak(spoken);
+  }
+
+  /// Says a whole sentence, and this is the one place a wait was agreed to.
+  ///
+  /// The exception in §4.5 is exact: one press, one wait, one sentence, for a
+  /// profile that switched a realistic voice on knowing what it costs. It is
+  /// bounded by [budget], because an opted-in wait is a trade somebody chose
+  /// and an *unbounded* wait is not a trade at all — nobody agrees to a number
+  /// they were never shown.
+  ///
+  /// Falling back here loses more than the voice. Tone lives in the contour
+  /// across a whole utterance and the platform engine has none, so the
+  /// sentence comes out meaning something slightly different — which is why
+  /// the count is kept and shown rather than inferred.
+  @override
+  Future<void> speakUtterance(String text) async {
+    final spoken = normaliseForSpeech(text);
+    if (spoken.isEmpty) return;
+
+    final mine = ++_generation;
+    _bake?.standAside();
+
+    final clips = _on ? _clips : null;
+    if (clips == null) return platform.speakUtterance(spoken);
+
+    final cached = await clips.read(spoken);
+    if (mine != _generation) return;
+    if (cached != null) return _play(cached);
+
+    final deadline = budget.forText(spoken);
+    try {
+      // The budget covers the wait for the engine as well as the synthesis.
+      // A model busy with the word before this one is a person waiting just
+      // the same, and the clock they are watching does not know the
+      // difference.
+      final clip = await _synthesise(spoken).timeout(deadline);
+      if (mine != _generation) return;
+      if (clip == null) {
+        _recordFallback(spoken, 'the voice could not be loaded');
+        await platform.speakUtterance(spoken);
+        return;
+      }
+      await clips.write(spoken, clip);
+      await _play(clip);
+    } on TimeoutException {
+      // The result may still arrive. It is dropped where it lands: the
+      // sentence is about to be spoken, and hearing it twice — the second
+      // time in another voice — is worse than not hearing it in this one.
+      if (mine != _generation) return;
+      _recordFallback(
+        spoken,
+        'took longer than ${deadline.inMilliseconds} ms',
+      );
+      await platform.speakUtterance(spoken);
+    }
+  }
+
+  Future<AudioClip?> _synthesise(String text) async {
+    final synthesiser = await loadModel();
+    if (synthesiser == null) return null;
+    return synthesiser.generate(
+      text: text,
+      sid: _voice.sid,
+      speed: _speed,
+      live: true,
+    );
+  }
+
+  /// Joins cached words into a phrase, or null if any of them is missing.
+  ///
+  /// Only for the tap path. The bar synthesises live precisely because a
+  /// sentence assembled from separately cached words has no contour across it
+  /// — every word arrives with the prosody it had standing alone. For a
+  /// two-word repair that is a fair trade against changing voice; for a
+  /// sentence somebody composed it is not, and it is not offered there.
+  Future<AudioClip?> _compose(String text, ClipStore clips) async {
+    final words = text.split(RegExp(r'\s+'));
+    if (words.length < 2 || words.length > 4) return null;
+    for (final word in words) {
+      if (!clips.contains(word)) return null;
+    }
+
+    final parts = <Uint8List>[];
+    for (final word in words) {
+      final clip = await clips.read(word);
+      if (clip == null) return null;
+      parts.add(clip.pcm16);
+    }
+
+    // A short gap, so the words do not run together into something that
+    // sounds like one longer word.
+    final gap = Uint8List((clips.sampleRate * 2 * 0.06).round() & ~1);
+    final total =
+        parts.fold<int>(0, (sum, part) => sum + part.lengthInBytes) +
+        gap.lengthInBytes * (parts.length - 1);
+
+    final joined = Uint8List(total);
+    var at = 0;
+    for (var i = 0; i < parts.length; i++) {
+      joined.setRange(at, at + parts[i].lengthInBytes, parts[i]);
+      at += parts[i].lengthInBytes;
+      if (i < parts.length - 1) {
+        at += gap.lengthInBytes;
+      }
+    }
+    return (pcm16: joined, sampleRate: clips.sampleRate);
+  }
+
+  Future<void> _play(AudioClip clip) => _player.play(clip, volume: _volume);
+
+  void _recordFallback(String text, String reason) {
+    _fallbackCount++;
+    _fallbacks.add((at: DateTime.now(), text: text, reason: reason));
+    if (_fallbacks.length > _keepFallbacks) _fallbacks.removeAt(0);
+  }
+
+  @override
+  Future<void> stop() async {
+    _generation++;
+    await _player.stop();
+    await platform.stop();
+  }
+
+  /// The platform's voices, unchanged.
+  ///
+  /// This is the fallback voice's list and it stays the caregiver's to choose
+  /// from — rung 3 is what somebody hears when the cache misses, so it matters
+  /// which voice it is. The neural voices are a separate list, on their own
+  /// screen, because they are a separate choice.
+  @override
+  Future<List<VoiceOption>> voices() => platform.voices();
+
+  @override
+  Future<void> useVoice(VoiceOption voice) => platform.useVoice(voice);
+
+  /// The speed both engines run at.
+  ///
+  /// Kokoro takes speed as a generation parameter, not a playback rate, so it
+  /// is baked into every clip — which is why the pack is keyed on it and why
+  /// changing it is a re-bake the caregiver has to be told about *before* it
+  /// happens. Handled on the voice screen; nothing is re-baked from here.
+  @override
+  Future<void> setRate(double rate) => platform.setRate(rate);
+
+  /// Platform only, and the voice screen says so.
+  ///
+  /// Kokoro has no pitch control: what it has is a 256-float style vector, and
+  /// gate 3 measured that its prosody half moves pitch and nothing else. A
+  /// pitch dial that silently did nothing under the neural voice would be a
+  /// control that does not do what its name says.
+  @override
+  Future<void> setPitch(double pitch) => platform.setPitch(pitch);
+
+  @override
+  Future<void> setVolume(double volume) async {
+    _volume = volume.clamp(0.0, 1.0);
+    await platform.setVolume(volume);
+  }
+}

@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../db/database.dart';
 import '../../db/ids.dart';
+import '../speech/neural/neural_voice.dart';
+import '../speech/neural/synthesis_budget.dart';
 import '../speech/tone.dart';
 import '../utterance/morphology.dart';
 import 'grid_choice.dart';
@@ -105,6 +107,54 @@ class ProfileSettings extends ChangeNotifier {
   double get speechVolume => _double('speechVolume', 1.0);
 
   Tone get tone => Tone.byName(_values['tone'] as String?);
+
+  /// Speak with the downloaded neural voice rather than the platform's.
+  ///
+  /// Off by default and off for every profile that predates it, because it is
+  /// an opt-in that costs 360 MB and half an hour before it sounds like
+  /// anything. Switching it off restores §4.4 exactly: the platform voice, the
+  /// same dials, the same four tones.
+  bool get neuralVoice => _values['neuralVoice'] as bool? ?? false;
+
+  /// Which of the model's voices, by the model's own name for it.
+  ///
+  /// A name rather than an index, for the reason [voiceName] is: a model
+  /// update that reorders the table would otherwise leave a person speaking as
+  /// somebody else without a thing having changed on screen.
+  String get neuralVoiceId =>
+      _values['neuralVoiceId'] as String? ?? defaultNeuralVoiceId;
+
+  /// How long the bar's speak key may wait before the platform voice takes
+  /// over, as `base + perWord × words`.
+  ///
+  /// Stored per profile because it is measured on the device this profile is
+  /// used on. The shipped default is the floor device's number doubled, and
+  /// every supported tablet is faster than the floor device — see
+  /// [SynthesisBudget].
+  SynthesisBudget get synthesisBudget {
+    final base = _values['synthesisBudgetBaseMs'];
+    final perWord = _values['synthesisBudgetPerWordMs'];
+    if (base is! num || perWord is! num) return SynthesisBudget.shipped;
+    return SynthesisBudget(
+      base: Duration(milliseconds: base.toInt()),
+      perWord: Duration(milliseconds: perWord.toInt()),
+    ).sane;
+  }
+
+  /// Whether the budget above was measured here or is still the default.
+  ///
+  /// The screen says which, because "about two seconds" is a claim about a
+  /// particular tablet and a fifteen-word sentence on the floor device is
+  /// nearer six.
+  bool get synthesisBudgetMeasured =>
+      _values['synthesisBudgetBaseMs'] is num &&
+      _values['synthesisBudgetPerWordMs'] is num;
+
+  /// Records a budget measured on this device.
+  Future<void> setSynthesisBudget(SynthesisBudget budget) async {
+    await set('synthesisBudgetBaseMs', budget.base.inMilliseconds);
+    await set('synthesisBudgetPerWordMs', budget.perWord.inMilliseconds);
+  }
 
   double _double(String key, double fallback) {
     final stored = _values[key];

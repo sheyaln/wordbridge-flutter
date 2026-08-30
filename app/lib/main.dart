@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -10,6 +12,7 @@ import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
 import 'features/profiles/profile_setup.dart';
+import 'features/speech/neural/neural_engine.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/speech/voice_setup.dart';
 import 'features/symbols/bundled_pack.dart';
@@ -98,16 +101,39 @@ Stream<int> watchVocabLevel(WordbridgeDatabase db, String profileId) =>
 /// the identifier is the only thing that tells them apart. Left out, the
 /// engine picks by quality order and the person is given a voice nobody
 /// listened to.
-Future<void> applyProfileVoice(SpeechEngine speech, ProfileSettings settings) =>
-    VoiceSetup(speech).apply(
-      voiceName: settings.voiceName,
-      voiceLocale: settings.voiceLocale,
-      voiceIdentifier: settings.voiceIdentifier,
-      rate: settings.speechRate,
-      pitch: settings.speechPitch,
-      volume: settings.speechVolume,
-      tone: settings.tone,
+Future<void> applyProfileVoice(
+  SpeechEngine speech,
+  ProfileSettings settings,
+) async {
+  await VoiceSetup(speech).apply(
+    voiceName: settings.voiceName,
+    voiceLocale: settings.voiceLocale,
+    voiceIdentifier: settings.voiceIdentifier,
+    rate: settings.speechRate,
+    pitch: settings.speechPitch,
+    volume: settings.speechVolume,
+    tone: settings.tone,
+  );
+
+  // The neural voice sits on top of all of that rather than replacing it: what
+  // it falls back to is the platform voice as configured above, so the two
+  // have to be applied together and in this order. Opening a pack reads an
+  // index file and loads no model, so a profile that has this on costs a
+  // session no more to start than one that does not.
+  if (speech is! NeuralSpeechEngine) return;
+  try {
+    await speech.useNeuralVoice(
+      enabled: settings.neuralVoice,
+      voiceId: settings.neuralVoiceId,
+      speed: settings.speechRate,
     );
+    speech.budget = settings.synthesisBudget;
+  } catch (_) {
+    // A cache that will not open is a board that speaks in the platform
+    // voice, which is §4.4 and is a product. A session that will not start is
+    // not.
+  }
+}
 
 /// Holds the device to the aspect the board was built for.
 ///
@@ -167,7 +193,10 @@ class WordbridgeApp extends StatefulWidget {
 class _WordbridgeAppState extends State<WordbridgeApp>
     with WidgetsBindingObserver {
   final _db = WordbridgeDatabase();
-  final _speech = FlutterTtsEngine();
+  // The platform engine is not replaced, it becomes the floor. Every profile
+  // holds one of these; whether it has a neural voice on top is a per-profile
+  // setting applied at session open.
+  final _speech = NeuralSpeechEngine(FlutterTtsEngine());
 
   late final _logger = UsageLogger(_db, deviceId: newId());
   late final _auth = PinAuth(_db);
@@ -228,6 +257,12 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _logger.flush();
+      // 833 MB resident, for a feature nothing in the background is using, on
+      // a tablet with 3 GB. Holding it is how a communication device becomes
+      // the app the OS kills to make room for something else. The cache does
+      // not need it, so the board still speaks in the chosen voice when it
+      // comes back.
+      unawaited(_speech.releaseModel());
     }
   }
 

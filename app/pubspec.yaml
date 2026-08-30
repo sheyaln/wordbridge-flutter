@@ -23,6 +23,10 @@ dependencies:
   image_picker: ^1.2.3
   path: ^1.9.1
   path_provider: ^2.1.6
+  # Runs the optional downloaded neural voice (REQUIREMENTS.md §4.5). Nothing
+  # outside features/speech/neural/ talks to it, and a device that never
+  # switches the voice on never loads a model.
+  sherpa_onnx: ^1.13.6
   # Opens the database file directly, once, before drift is allowed to migrate
   # it — see features/backup/pre_migration.dart. Already in the tree underneath
   # drift; named here because lib/ imports it.
