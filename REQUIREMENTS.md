@@ -392,18 +392,592 @@ called "Daniel" at different qualities.
 > §5. The honest fix is the neural voice in §4.5. The screen says so plainly
 > rather than pretending the slider goes further than it does.
 
-### 4.5 Neural voice — roadmap, not near-term
+### 4.5 Neural voice — researched, not built
 
-Real tone control and a convincing whisper need a bundled on-device neural
-voice (Piper/Kokoro class) rather than platform TTS. That unlocks genuine
-prosody, breathiness, and a voice that does not sound like every other AAC
-user's — which autistic adults name directly: *"having the voice that matches
-every other person who uses AAC is very disempowering."*
+Real tone control and a convincing whisper need an on-device neural voice
+rather than platform TTS. That unlocks genuine prosody, breathiness, gain that
+is ours to set, and a voice that does not sound like every other AAC user's —
+which autistic adults name directly: *"having the voice that matches every
+other person who uses AAC is very disempowering."*
 
-Substantial work: model size, licensing, per-locale coverage, and latency all
-need answering. Keep `SpeechEngine` engine-agnostic so this stays a swap rather
-than a rewrite. Until then, ship only the tones platform TTS can honestly
-produce.
+Asked for explicitly: **an optional download**, **local only**, giving tones
+the platform cannot — sarcastic, silly, stern, serious, sad, empathetic — and a
+way for the utterance bar to carry the choice. This section is the survey that
+answers whether that is buildable and on what. Nothing here is built.
+
+#### The constraint that decides it
+
+§5 non-negotiable 1 — *nothing stands between a user and speech* — is the
+whole filter. It is not a preference for fast synthesis; it rules out an
+architecture. A model that is fast on average and occasionally slow is worse
+here than a slower model that is always the same, because the variance lands
+as a stutter in somebody's conversation.
+
+That eliminates the whole autoregressive family on latency *shape* rather than
+on latency. An LLM-backbone TTS emits audio tokens one at a time, so its cost
+scales with what was said and its first-audio time depends on a sampler.
+**Non-autoregressive is a hard requirement, not a preference.**
+
+The second filter is arithmetic. Real-time factor is per second of audio
+produced, and this board speaks in fragments: one word on a tap, a sentence on
+the bar. An RTF of 0.4 on a 400 ms word is 160 ms of synthesis before any
+audio, on top of model and phonemiser overhead — against a platform engine that
+starts in low tens of milliseconds. **Live synthesis on the tap path is not
+affordable at any RTF a small model reaches on a tablet.**
+
+#### So the answer is to synthesise ahead of time
+
+A tap plays a buffer that already exists. That is not a compromise on the
+latency above — it is **faster than the platform engine**, which still has to
+start a synthesiser.
+
+It buys a second thing that matters more than the speed. A cached word is
+byte-identical every time it is spoken, so its prosody is something a listener
+can learn and a user can rely on. A word that came out slightly differently on
+every tap would be the audio version of a board that reshuffles, and this
+project has one argument about that.
+
+#### Gate 1, measured
+
+Not estimated. Kokoro v1.0 fp32 was run over the whole shipped vocabulary and
+the output encoded the way it would ship.
+
+**The set to cache is 1231 strings, not 377.** The locations are 377, but a
+location is not an utterance: 444 distinct bare words across the three age
+presets, plus **782 inflected forms**, plus 5 copula forms. The endings are the
+surprise and they are the majority — a morpheme key speaks the form it just
+produced (`wanted`, `eating`, `leg's`), so every one of those is a separate
+thing to have audio for.
+
+| | |
+|---|---|
+| Audio generated | 999 s over 1231 words (mean 811 ms) |
+| After trimming the padding | **701 s** (mean 569 ms) |
+| PCM16 24 kHz | 33.6 MB per tone |
+| AAC 24 kbps | **7 MB per tone** |
+| AAC 48 kbps | **9 MB per tone** |
+
+**Six tones is roughly 54 MB at 48 kbps**, against a model of 92–326 MB. The
+cache is the small half. Gate 1 passes, and it is not close.
+
+Two things fell out of measuring that would not have fallen out of estimating:
+
+- **Kokoro pads, and the padding is 30% of the bytes.** A single word comes back
+  with leading and trailing silence — `I` synthesises to 660 ms. Trimming is not
+  an optimisation here, it is also the difference between a tap that speaks and
+  a tap that pauses first.
+- **Per-file container overhead is about 2.5× the audio at this length.** 48 kbps
+  over 569 ms is ~3.4 KB and an `.m4a` of it is 8.2 KB. At half a second a
+  clip, the header is the file. Store the cache packed, or as blobs in the
+  database next to everything else, rather than as 1231 little files.
+
+**The real cost is time, not disk, and that inverts the design.** At the
+measured RTF of 0.54 the bake is ~9 minutes per tone on a desktop CPU, so six
+tones on a tablet is comfortably an hour. That is not a progress bar anybody
+sits through. It has to be **a background job that survives being interrupted
+and resumed**, and it should bake the profile's default tone first so the board
+is fully usable long before the rest arrives.
+
+#### The cache is a policy, not a bake
+
+The shipped vocabulary is closed. **The board is not** — a caregiver can add a
+word at any time, and that is the whole argument of this project. So there are
+three populations of words and they cannot have one rule:
+
+| | Known when | Synthesis |
+|---|---|---|
+| Shipped vocabulary | Profile creation | Baked, always |
+| A word a caregiver adds | When they add it | **Their choice, per word** |
+| A word typed on the keyboard (§4.42) | Never | Live, never cached |
+
+**The caregiver chooses, per word, and the choice is stated in costs rather
+than in jargon.** Baking spends a few seconds now and some megabytes for good;
+live spends a fraction of a second every single time the word is spoken. That
+is the same sentence as the remap warning — what this costs, in terms of what
+the person will experience — and it belongs in the same voice.
+
+**Baking is the default**, because the tap path is the one place this app has
+promised nothing will stand in. Live is the escape hatch for a word somebody
+is not sure they will keep, which is a real case: a word added for one holiday
+does not deserve permanent disk.
+
+**Some events re-bake in bulk, and each has to say so before it starts.**
+Importing an `.obz`, rebuilding from the seed (§4.20), a vocabulary top-up
+(§4.35), adding a tone, and — the expensive one — **changing the voice**, which
+invalidates every cached word for that profile at once. None of these may
+happen silently and none may happen on the talk screen.
+
+**Raising the vocabulary level costs nothing**, which is worth stating because
+it looks like it should. A level reveals words that were already placed, and
+placed words were baked when they were placed.
+
+#### What happens when the cache misses
+
+A cache is a thing that can be absent — a restore, an eviction, an interrupted
+bake, a word whose caregiver chose live. §5 non-negotiable 1 and 6 both apply,
+so there is a ladder and every rung speaks:
+
+1. **Cached neural audio.** The ordinary case, and faster than the platform
+   engine because there is nothing to synthesise.
+2. **Live neural synthesis**, on the bar press only, under a timeout of
+   `base + perWord × words` (see below). Correct voice, correct tone, **1.3 s
+   for a word on this tablet** — which is why it is never on the tap path.
+3. **Platform TTS.** Instant, and *a different voice* — which is a real cost,
+   not a graceful degradation. A word that comes out in a stranger's voice is
+   noticeable to everyone in the room except, possibly, the person it happened
+   to.
+
+Rung 3 is the honest floor and it must be visible to the caregiver rather than
+inferred: the screen says how much of this profile's vocabulary is baked, and
+a board running on the platform voice says so. **What it must never do is
+wait.** A word that has no audio yet speaks in the platform voice now; it does
+not spin while the right voice is prepared.
+
+#### The candidates
+
+| Model | Params | Licence | Tone control | Fits |
+|---|---|---|---|---|
+| **Kokoro-82M** | 82M | Apache-2.0 | 256-d style vector per voice | **yes** |
+| Kitten Nano | ~15M | Apache-2.0 | voice choice only | as a floor |
+| Matcha + Vocos | small | MIT | none | fastest, no tone |
+| Chatterbox-Nano | 110M | MIT | `exaggeration` + `[laugh]`/`[cough]` tags | needs a reference clip |
+| Zonos-v0.1 | 1.6B | Apache-2.0 | explicit 8-D emotion vector | too large |
+| Orpheus | 3B (150M announced) | Apache-2.0 | inline emotion tags | autoregressive |
+| IndexTTS-2 / CosyVoice / EmotiVoice | 0.3–1B+ | mixed | strongest control of the set | server models |
+
+**Kokoro-82M is the recommendation**, and the reason is the style vector
+rather than the size. A Kokoro voice *is* a 256-float vector, loaded from a
+`voices.bin` and swappable at run time; the architecture underneath is
+StyleTTS 2, where that vector conditions the duration and pitch predictors as
+well as the decoder. **A tone is therefore a vector, not a text tag and not a
+rate multiplier** — it changes the prosodic contour, which is precisely what
+ADR-0005 said platform TTS could not be made to do.
+
+That also makes a tone a small, inspectable, shippable artefact: a tone pack is
+a `voices.bin`, one vector per tone, a few kilobytes. It can be read, diffed,
+regenerated, and argued with — the same property §4.4's shipped prediction
+table was chosen for.
+
+Measured numbers, so the estimate above is anchored:
+
+- **4–4.5× real time on an A17 Pro** via the Core ML conversion, which splits
+  the model into five stages and routes them across ANE, GPU and CPU. The
+  iPhone-class ANE compiler rejects the all-ANE plan the M-series Macs take, so
+  a tablet gets the staged policy, not the 22–70× the Macs post.
+- **RTF 0.62, 833 MB resident**, for the plain ONNX build under `sherpa-onnx`
+  on an iPad Pro 3rd gen (A12X, 4 GB) — a 2018 device and the low bound. On the
+  same run Matcha+Vocos took RTF 0.084 at 211 MB and the int8 Kokoro builds were
+  *slower* than fp32, which is worth knowing before anyone quantises for speed.
+- **92–326 MB on disk** depending on quantisation.
+
+`sherpa_onnx` is a maintained Flutter package that runs Kokoro on iOS, which
+makes the first build a swap behind `SpeechEngine` rather than a plugin
+written from nothing.
+
+#### The tones, and which of them are honest
+
+ADR-0005's rule does not relax because the engine got better: **ship only what
+the engine can actually produce, and name it for what it does.** A neural voice
+moves the line; it does not remove it.
+
+- **Stern, serious, sad, calm, gentle** are ordinary emotional prosody, well
+  inside what a style vector carries. The emotional-speech corpora these are
+  derived from (ESD and its relatives) cover neutral, happy, angry, sad and
+  surprise directly.
+- **Whisper becomes real.** Breathiness is a vocal quality the vector reaches
+  and a rate/volume dial does not. This is the one item §4.4 named as
+  impossible that simply becomes possible.
+- **Empathetic and silly** are plausible and unverified. Both are as much
+  conversational stance as emotion, and neither has a corpus label to derive a
+  vector from directly.
+- **Sarcasm is still the hard one, and the evidence is now specific rather than
+  absent.** A 2026 prosody-controlled perception study finds synthetic speech
+  *can* read as sarcastic and that **loudness**, not rate, is the cue human
+  listeners weight most. A VITS-based sarcasm synthesis framework reaches an
+  **F1 of 62.5** for sarcasm recognition, and only by combining prosody with
+  semantic incongruity — **neither cue alone sufficed**.
+
+  That last finding is the problem, and it is this project's problem
+  specifically. The semantic half means the words have to be incongruous with
+  the situation, which the app cannot see. A tone key that produces sarcastic
+  contour over sincere words leaves an AAC user having said a sincere thing
+  they did not mean, to somebody with no reason to doubt it — the exact
+  asymmetry ADR-0005 was written about. **62.5 F1 is not good enough to ship
+  under a name that promises it.**
+
+  So sarcasm stays out of the shipped list until it can be demonstrated on this
+  engine, to listeners, on this app's own sentences. Not refused — unproven,
+  and named as unproven.
+
+#### How the utterance bar carries it
+
+The design question was asked as *where do tone indicators go*, and the AAC
+literature has already answered the shape of it. Pullin & Hennig (2015), *AAC*
+31(2):170-180 — the canonical tone-of-voice paper — reached three findings that
+map onto this app almost directly:
+
+1. **Two interfaces, not one.** One used in private to assemble tones, one used
+   live to deploy them. They rejected live prosodic manipulation outright,
+   because it slows a conversation rate that is already compromised. Here the
+   private half is the voice screen behind the PIN, which exists; the live half
+   is the bar.
+2. **Tone is not only emotion.** Emotional descriptors were under half of their
+   participants' responses. Conversational intent, social footing and vocal
+   quality carried the rest — which is the argument for `stern` and `serious`
+   being different entries rather than the same one at two intensities.
+3. **A tone applies to a whole utterance**, chosen before or during it, from a
+   prepared palette.
+
+What that means concretely, and every line of it is a rule this app already
+enforces somewhere else:
+
+- **The tone lives on the bar, never on the grid.** A cell is the scarcest
+  thing here (ADR-0005), and a tone key on the board would be a displacing
+  change for a fixed set of tones that will change. The bar is not
+  motor-planned space — it already carries clear, backspace, speak and the
+  punctuation control (§4.42).
+- **One tone at a time, and it applies to the whole sentence.** Per-word tone
+  is a second thing to build and a second thing to learn; the paper's finding
+  is that the utterance is the unit.
+- **The palette is fixed-slot and deterministic**, for the reasons ADR-0004
+  gives the prediction strip: a control that moves under a descending finger is
+  an unstable target by construction.
+- **The caregiver chooses which tones are on the bar**, from those the profile
+  has. This is Pullin & Hennig's private/live split, and it is also §4.7 —
+  everything is toggleable — and it keeps the live palette to what this person
+  actually uses.
+- **The tone shows on the bar while the sentence is being built**, because a
+  user who set it three words ago must be able to see what is about to come
+  out. §5 non-negotiable 8 is the same idea pointed at cells.
+- **It resets to the profile's default after speaking**, for the same reason
+  auto-return resets the board: a tone that persisted silently would make the
+  next sentence come out in a voice nobody chose for it.
+- **A tone the user cannot hear the difference in is a tone that should not be
+  on the bar.** Every control on the voice screen already previews itself as a
+  spoken sentence (§4.4), and a tone has to be chosen the same way.
+
+#### What this unlocks beyond tone
+
+**The loudness gap closes** (§5 non-negotiable 5, §4.4). Synthesis produces a
+buffer this app owns rather than a call into a platform engine, so gain above
+the device's own maximum is a multiply on samples. §4.4 rejected this route
+because it meant writing a file between a tap and a word — with words
+pre-synthesised there is no file and no write, and the most-repeated parent
+complaint in §1 gets an answer.
+
+#### Gate 2, measured on the tablet this is for
+
+Haley's iPad — **iPad mini 5, A12, 3 GB** — not a Mac and not the A12X the
+published benchmark used. Release build, `sherpa_onnx`, Kokoro v0.19 fp32,
+two threads, after a warm-up call.
+
+| | |
+|---|---|
+| One word | **1309 ms** mean (824–1780) |
+| One sentence | **1670–2493 ms** |
+| Real-time factor | **1.95** — about half real time |
+| Baking all 1231 words | **27 minutes** per tone |
+
+**Live synthesis is dead on this device, and not by a small margin.** A word
+takes 1.3 seconds and a sentence takes two and a half. §5 non-negotiable 1 does
+not need interpreting here: a person would tap and wait more than a second for
+one word. Nothing about that is shippable, at any quality.
+
+Three things follow, and one of them breaks an earlier assumption in this
+section.
+
+**Pre-synthesis is not the design's preference, it is the only design.** Gate 1
+established the cache was cheap; gate 2 establishes there is no alternative to
+it. Everything a board can say has to exist as audio before anybody taps it.
+
+**The bar's speak key costs 1.7-2.5 s on this device**, and whether that is
+payable is a product decision rather than a measurement. It has been taken —
+see the section below.
+
+**The published numbers were for other hardware, and the gap is 3×.** The
+A12X benchmark reports RTF 0.62 and the Core ML build reports 4–4.5× real time
+on an A17. This device gives 1.95. Fewer performance cores, less memory, and
+the ONNX runtime rather than the staged Core ML split. **Measure on the device
+somebody actually uses**; every number quoted into this section before today
+came from something faster.
+
+Whether the Core ML path closes a 3× gap on an A12 is unanswered and now worth
+answering, because it is the difference between a bar press that waits and one
+that does not.
+
+#### The decision: a live sentence is worth waiting for, if the wait was chosen
+
+Taken deliberately, and it is a **named exception to §5 non-negotiable 1**
+rather than a reinterpretation of it. Nothing may stand between a user and
+speech *by default*. A person who has switched on a realistic voice, knowing
+what it costs, has decided otherwise for themselves, and that is a different
+thing from the app deciding for them.
+
+Its scope is exact, and the two halves of the board are not the same case:
+
+- **A tap still speaks instantly.** Word feedback comes from the cache, always.
+  A 1.3 s wait on every selection while a sentence is being built is not a
+  considered trade, it is the board becoming unusable. Gate 1 pays for this and
+  it is not optional.
+- **The bar's speak key may synthesise live.** One press, one wait, one
+  sentence. This is where the exception lives and nowhere else.
+
+**This is what makes tone possible at all**, and it is worth being clear about
+why, because the earlier text in this section had it backwards. Tone is carried
+by the contour across a whole utterance. A sentence assembled from separately
+cached words has no contour to carry it — every word arrives with the prosody
+it had standing alone. So a cached-sentence design and a tone feature are
+mutually exclusive, and choosing to wait is choosing to have tone.
+
+**The wait is not a constant and the screen must not imply it is.** RTF 1.95 is
+per second of audio produced, so it scales with what was said: the measured
+1.7–2.5 s is a four-to-six word sentence, and a fifteen-word one is nearer six
+seconds on this device. Whatever the setting says, it cannot say "about two
+seconds".
+
+**It also gets better on its own.** An A12 iPad mini is the floor, not the
+target — the same model reports RTF 0.62 on an A12X and 4–4.5× real time
+through Core ML on an A17. A user on a current iPad is in a different regime
+entirely, and this is the rare feature where the oldest supported device sets
+the honest number and everyone else quietly does better. The setting should
+therefore be measured on the device rather than described from this file: bake
+one sentence at setup, time it, and tell the person what *their* tablet does.
+
+#### The timeout, and why it needs both of its terms
+
+A sentence that takes too long falls back to the platform voice. **Agreed, and
+it is what makes the exception above safe to offer**: an opted-in wait is a
+trade somebody chose, but an *unbounded* wait is not a trade at all, because
+nobody agrees to a number they were never shown.
+
+**The fallback is not a degraded mode invented for this.** It is §4.4 — the
+platform voice, with the profile's rate, pitch and volume, and its four tones.
+The neural voice is the addition; what it falls back to is the product as it
+already ships, which is the strongest possible answer to "what if it fails".
+
+##### Fixed or per-word: measured, and it is both
+
+The proposal was one or the other. The device says neither alone works. Fitting
+the gate 2 timings against utterance length:
+
+> **1149 ms fixed + 197 ms per word** (residuals within ±200 ms, five points)
+
+The cost is dominated by a **fixed per-call overhead**, not by length. So:
+
+- **A pure per-word budget cannot work.** One word would get ~200 ms, and the
+  fixed overhead alone is 1.1 s. Every short utterance would time out — and
+  short utterances are most of what an AAC board says.
+- **A pure fixed budget picks a length and fails the rest.** Generous enough
+  for twenty words (~5.1 s) and a two-word answer is allowed to hang for five
+  seconds. Tight enough for two words and long sentences never once arrive in
+  the chosen voice — the user's longest, most deliberate utterances are exactly
+  the ones that always come out wrong.
+
+So the budget is `base + perWord × words`, both configurable, and the default
+is fitted on the device rather than shipped as a constant. `voicebench` has a
+sweep for exactly this: 1 to 24 words, median of three, written to `sweep.csv`.
+
+Set the shipped default at roughly **twice the fitted line**, so an ordinary
+sentence never trips it and only a genuine stall does. A timeout that fires in
+normal use is not a safety net, it is a random voice generator.
+
+##### Two things it cannot be built without
+
+- **The synthesis has to run in an isolate.** `generate()` is a blocking FFI
+  call: on the main isolate there is no thread left to notice the deadline, so
+  the timeout cannot fire at all and the UI is frozen while it does not. This
+  is a structural requirement, not a refinement.
+- **A late result must never speak.** If the fallback has already spoken, the
+  neural audio arriving afterwards has to be dropped, or the sentence is said
+  twice — the second time in a different voice. `FlutterTtsEngine.speak` already
+  carries the pattern this needs: newest selection wins, everything older is
+  discarded.
+
+##### What it must not do quietly
+
+Falling back **loses the tone**, because tone lives in the neural contour and
+the platform engine has none. So a fallback is not only a change of voice, it
+is a change of what was meant — and §5 non-negotiable 9's argument applies:
+the person is taken to mean whatever came out, and they are the one who cannot
+easily correct it.
+
+That does not make the fallback wrong. It makes it something the caregiver has
+to be able to see: how often it fires, and on which sentences. If it is firing
+routinely, the answer is a shorter vocabulary of tones or a faster model, not a
+longer timeout.
+
+#### Gate 3, measured — the mechanism is real and the quality is not there yet
+
+Run on the models themselves, not read about.
+
+**Kokoro's style vector splits cleanly into timbre and prosody.** Dims `0:128`
+carry who is speaking; dims `128:256` carry how. Transplanting one voice's
+prosody half onto another's timbre half was tried on three pairs and behaved
+the same way every time — the output keeps the recipient's timbre and takes the
+donor's pitch:
+
+| donor prosody → recipient timbre | donor f0 | result f0 | MFCC distance to donor / recipient |
+|---|---|---|---|
+| af_heart → am_michael | 217.1 | **216.6** | 45.6 / **7.1** |
+| af_bella → am_fenrir | 208.4 | **202.5** | 108.2 / **12.1** |
+| bf_emma → am_adam | 187.9 | **188.4** | 51.1 / **14.5** |
+
+That is exactly the shape a tone needs, and it is the shape §4.4 already uses:
+**the tone supplies the prosody, the profile's chosen voice supplies the
+timbre.** It is not symmetric — the reverse direction produced a degenerate
+near-monotone in one case — so a tone cannot be assumed to sit on every voice
+without being checked on it.
+
+**But the shipped voices do not span emotion.** A PCA over all 54 voices'
+prosody halves puts only 20.6% of the variance on the first axis, and walking
+that axis moves pitch and nothing else: f0 165.6 → 269.8 with f0 spread stuck
+at 35–42 and duration unmoved. Axes 2 through 5 move nothing measurable at all
+— f0 stays inside 210–226, duration inside 1.56–1.75 s. Two steps out the
+synthesis collapses entirely.
+
+**So the pitch dial already does what the shipped voices offer.** That is the
+finding that matters, because it means a neural voice does not earn its place
+by being neural. §4.4's four tones are rate, pitch and volume, and one axis of
+pitch is not a reason to ship a 326 MB model.
+
+What *is* out of reach of the dials sits in the **timbre** half: its third axis
+swings spectral tilt from 0.917 to 0.554 and the centroid by ~370 Hz. That is
+breathiness and brightness — the whisper §4.4 could not build — and it is
+entangled with speaker identity, which is the wrong place for it.
+
+**Kokoro cannot be asked for more, because it ships no style encoder.** Its
+model card says *"decoder only: no diffusion, no encoder release"*. Reference
+audio cannot be turned into a style vector at all.
+
+#### So the same test was run on StyleTTS 2, which does ship the encoder
+
+Emotional reference clips through `compute_style`, then wordbridge's own
+sentence, two speakers, measured:
+
+| | dur | f0 | f0 sd | tilt | rms | MFCC drift from neutral |
+|---|---|---|---|---|---|---|
+| speaker A neutral | 1.85 | 225.6 | 28.3 | 0.527 | 0.004 | — |
+| A calm | 1.87 | 227.9 | 36.3 | 0.628 | 0.005 | 24.0 |
+| A happy | 1.87 | 243.7 | 35.1 | 0.603 | 0.011 | 99.8 |
+| A **sad** | 1.85 | **257.8** | 24.9 | 0.543 | 0.010 | 69.8 |
+| A angry | 2.10 | 219.0 | 33.8 | 0.713 | 0.010 | 98.9 |
+| speaker B neutral | 1.85 | 203.5 | 23.2 | 0.619 | 0.006 | — |
+| B calm | 1.82 | 212.4 | 24.3 | 0.618 | 0.005 | 21.5 |
+| B happy | 1.77 | 241.4 | 33.7 | 0.694 | 0.013 | 98.8 |
+| B **sad** | 1.82 | **244.7** | 24.5 | 0.661 | 0.007 | 29.3 |
+| B angry | 1.87 | 267.2 | 45.7 | 0.874 | 0.020 | 149.2 |
+
+**Arousal transfers. Valence does not.** Angry and happy raise energy, spectral
+tilt and pitch spread consistently across both speakers, and calm lands nearest
+neutral, which is what calm should do. **Sad comes out higher-pitched than
+neutral in both speakers** — the opposite of what sadness does — and its only
+correct feature is a narrow pitch spread.
+
+Two more defects, and both matter more than they look:
+
+- **Tempo does not transfer.** Duration sits between 1.77 and 2.10 s across
+  every emotion. Tempo is most of what makes calm and sad read as themselves,
+  and the model is not taking it from the reference.
+- **Speaker identity leaks.** MFCC drift reaches 149. A tone that changes who
+  the user sounds like is not a tone. For somebody whose synthetic voice is the
+  only voice they have, that is a worse failure than a flat one.
+
+#### Verdict
+
+**The mechanism is proven and no tone is shippable yet.** ADR-0005's rule is
+unchanged by better technology: a preset that does not do what its name says is
+worse than a missing one, and `Sad` that comes out *higher* than neutral fails
+that test outright. Shipping this set today would repeat exactly the mistake
+that section was written to prevent, with a bigger model.
+
+What the gate actually bought:
+
+- Kokoro is **not** the tone engine. It is a fine *voice* engine — a better
+  voice than the platform's, which is worth something on its own — but its
+  vector space has one prosodic dimension and it is pitch.
+- StyleTTS 2 is the candidate that can carry tone, and it needs work on
+  emotion–speaker disentanglement and on tempo before any tone gets a name.
+- **Ship the voice before the tones.** They are separable, the voice half is
+  ready to be measured (gate 2), and it does not have to wait for the half
+  that is not.
+
+#### The fork that has to be picked before anything else
+
+There are two ways to run Kokoro on an iPad and **they are not the same
+product**:
+
+| | `sherpa-onnx` | Core ML, five stages |
+|---|---|---|
+| Runtime | onnxruntime | Core ML, split across ANE / GPU / CPU |
+| Flutter | `sherpa_onnx`, maintained, iOS builds from source | none — Swift, so a platform channel |
+| Measured | RTF 0.62, 833 MB, A12X | 4–4.5× real time, A17 Pro |
+| Effort | days | weeks |
+
+**The published speed belongs to the second column and the published Flutter
+package belongs to the first.** Every latency number quoted for Kokoro on Apple
+silicon comes from the staged Core ML build; `sherpa_onnx` is the one that
+drops into this app in an afternoon. Choosing on the headline number and
+integrating the easy way would be measuring one thing and shipping another.
+
+Which is another reason pre-synthesis is the design and not an optimisation:
+**it makes the fork much less important.** A bake that runs once, in caregiver
+mode, behind a progress bar, does not care whether it goes at 0.6× or 4×. Start
+on `sherpa_onnx`, and let gate 2 say whether the Core ML work is ever needed.
+
+#### Gates, in order
+
+**Gate 1 — measure the cache. Done, and it passes.** Measured by walking the
+seed the way `vocab_level_calibration_test` does and adding the inflected
+forms, because a morpheme key speaks the form it produced rather than the bare
+word. That is an easy thing to leave out of an estimate and it is most of the
+total.
+
+**Gate 2 — measure on the tablet, not on a Mac and not on an A12X.** Wants a
+throwaway Flutter app: `sherpa_onnx`, the Kokoro q8 model, a list of words, and
+a timer that reports cold, warm, and while the app is holding what the board
+holds. Two numbers decide things: **time to bake a whole vocabulary**, which is
+a progress bar a caregiver has to sit through, and **live synthesis of one
+sentence**, which is the bar's press. Blocked on the device, and nothing else
+is blocked on it.
+
+**Gate 3 — derive one tone vector, and this is the gate that can kill it.**
+Kokoro's model card says **"decoder only: no diffusion, no encoder release"**.
+There is no style encoder in the release, so **reference audio cannot be turned
+into a style vector**. That removes the obvious method and leaves three:
+
+- **Search the 256-d space** against an emotion classifier. Demonstrated for
+  `amused`, `anger`, `disgust`, `neutral` and `sleepiness`; far too slow to run
+  live, which does not matter, because this is the private half of Pullin &
+  Hennig's split and runs once on a desktop.
+- **Arithmetic on the 54 shipped voices.** Cheap to try and probably wrong:
+  those vectors encode who is speaking, not how.
+- **Fine-tune on emotional speech.** Heaviest, likeliest to work, and it makes
+  the tone pack ours rather than found.
+
+One convincing `sad` proves the mechanism. Six that all sound alike kills it,
+and it is better to find that out before any of the UI exists.
+
+**Gate 4 — provenance, and it has already turned something up.** Kokoro's
+weights are Apache-2.0 and its training data is stated to include *"synthetic
+audio generated by closed TTS models from large providers"*. Large providers
+generally forbid training on their output. This project enforces a symbol
+licence boundary in CI and publishes what it could not verify; it does not get
+to hold a voice to a lower standard than a picture.
+
+**The alternative is the model Kokoro was derived from.** StyleTTS 2 itself
+publishes LJSpeech and LibriTTS checkpoints — LibriTTS being LibriVox public
+domain — **and it releases the style encoder Kokoro omits**, which is precisely
+what gate 3 is short of. It is bigger and slower and the licence needs reading
+properly rather than assuming.
+
+So gate 4 is not a formality at the end. **It and gate 3 are the same
+question**, and they should be answered together, on both models, before gate 2
+buys a number for a model that may not ship.
+
+**Then, and only then, the bar.**
+
+`SpeechEngine` stays engine-agnostic so this arrives as a swap. Until every one
+of these is answered, §4.4's four tones are what is true.
 
 ### 4.5a Futures and streams are held, not built in `build`
 
@@ -1920,6 +2494,46 @@ child's voice is a total product failure.
 - **Restore names what it replaces and when the snapshot was taken**, in the
   same voice as the remap warning: what this costs, in the user's own terms.
 
+**Part 2's engine landed and nothing called it.** `BackupService` — take,
+list, restore, prune to five, byte-for-byte, all-or-nothing — was built and
+tested and reachable from nowhere in `lib/`. A backup feature nobody can trigger
+and nobody can see is the exact thing the four parents in §1 already had.
+
+Two wirings, and the order matters.
+
+**The one that answers the complaint is the snapshot taken before a migration.**
+*"Latest update reset everything on my sons ipad."* The moment that goes wrong is
+the first launch after an update, and the only copy worth having is the one from
+before the migration ran. Every other moment to back up — on an edit, on
+backgrounding — is a backup of a board that has already been flattened.
+
+That moment is *before* the database is open, which the existing `takeSnapshot`
+cannot reach: it runs `VACUUM INTO` on the live connection, and by the time
+there is a live connection drift has already migrated. Nor can it run inside
+`onUpgrade`, because `VACUUM` is not allowed inside a transaction. So the check
+reads the schema version out of the file's own header — `snapshotSchemaVersion`
+already does this, on a `RandomAccessFile`, without opening a connection — and
+if it is older than the app's, a snapshot is taken through a raw sqlite3 handle
+before drift is allowed to touch the file.
+
+A plain file copy was rejected. It looks safe here because drift's native
+backend leaves SQLite in its default rollback-journal mode and nothing has the
+file open — but a run that was killed mid-write leaves a `-journal` beside the
+database, and the main file alone is then a copy that needs a rollback nobody
+copied. That is the crash-last-launch case, which is exactly when the backup
+matters. Opening the file *is* the recovery, so `VACUUM INTO` through a real
+connection is what gets written. `sqlite3` moves from a dev dependency to a
+real one for this; it is already in the tree underneath drift.
+
+**The wiring is a named top-level function, not a line in a `State`** — §4.40's
+recurring lesson, four times over. `snapshotBeforeMigration` takes the file, the
+app's schema version and the service, and returns what happened; `_bootstrap`
+calls it. It never throws: a backup that can stop the app from starting is a
+worse failure than the one it guards against.
+
+**Part 2's other half is a screen**, because a backup nobody can see is one
+nobody trusts. Last backed up, the list, and restore.
+
 **3. Import and export reach the caregiver** — §3 claims OBF/OBZ import and
 export as delivered. That is true of the engine and false of the product:
 `exportObf`, `exportObz`, `importObf` and `importObz` all exist and are tested,
@@ -2070,17 +2684,36 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
   as settings in Phase 2 and only speak-on-tap was built** (`talk_screen.dart`
   speaks on every selection). This is a gap against the original scope, not a
   new idea.
-- **An on-screen keyboard for one-off words**, silent until the word is
-  finished. **Built, and not yet reachable** — the widget exists and speaks the
-  finished word once, in QWERTY, with every key at the minimum touch target and
-  a layout that does not move as the word grows. Two things it needs before it
-  is wired: the profile's own voice passed in, or a typed word comes out in the
-  device voice; and a route into the utterance bar that does not speak it a
-  second time, because it arrives already spoken.
+- **A keyboard for one-off words** — delivered, silent until the word is
+  finished.
 
-  The open question is deliberately still open: it hands the word over and
-  forgets it. **A word typed twice is a word that wants a cell**, and offering
-  to keep it is a separate decision about when the board grows.
+  **The device's own keyboard, not one drawn here.** A keyboard was built first,
+  in QWERTY, with its own touch targets and a layout that could not move as the
+  word grew — and then thrown away, which was the right call. The system one is
+  the keyboard this person has already learned, carrying whatever has been set
+  up on it: text replacements, a second language, a third-party layout. It
+  brings the platform's own accessibility rather than an imitation of it, and it
+  is full height, which a keyboard inside a sheet is not. Every argument this
+  project makes about not moving what somebody has learned applies to the
+  keyboard they already use.
+
+  Reached from a list on the utterance bar rather than a button of its own. The
+  list holds one entry today and the word finder is the second, so the control
+  does not change shape under somebody who has learned it once the finder lands.
+
+  **Nothing is spoken until the word is finished**, which is now true by
+  construction — there is no per-keystroke path at all. What still had to be
+  built by hand is the refusal: an empty field is refused from the button *and*
+  from the return key, because a keyboard set up for another language may not
+  put "done" where this one expects it.
+
+  A typed word carries **no part of speech**. The endings and the copula read
+  the word before them, and a typed word tells them nothing — which is honest,
+  where guessing would offer `+ed` on a person's name.
+
+  The open question is deliberately still open: the word is handed over and
+  forgotten. **A word typed twice is a word that wants a cell**, and offering to
+  keep it is a separate decision about when the board grows.
 - **An exclamation mark.** The utterance bar already accepts `!` and
   `ButtonAction.punctuate` exists; **nothing seeds a key for it**, and the only
   punctuation control in the UI is the question one. So this is a key and a
