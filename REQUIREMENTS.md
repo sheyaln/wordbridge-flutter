@@ -2614,6 +2614,32 @@ Violating any of these is a bug regardless of what else it buys.
   cognition verbs (know, think, say, tell, see, come, give, feel) live here,
   because the 7x12 verb band is exactly full and every alternative meant
   dropping a Universal Core word or reversing an explicit layout request.
+- **Scanning and switch access are parked until somebody who uses them can be
+  consulted** — a scanning user, or a caregiver of one. Nobody among the
+  children currently being worked with uses either, so there is no one to check
+  a design against.
+
+  Parked rather than dropped, and the reason is the project's own argument. The
+  scanning literature is thin and the choices are numerous — row-column against
+  linear, accept-on-select against accept-on-release, step against auto, the
+  scan speed, the auditory voice — and building all of that from published
+  descriptions would be guessing at the interaction, on behalf of people who
+  cannot easily tell us we guessed wrong. That is the failure mode this project
+  exists to argue against.
+
+  **What stays true while it is parked.** Row-banded category boards are laid
+  out so a row-column scan's first press narrows to one word class (§4.0),
+  §4.38 holds a band's lines across pages for the same reason, and the reports
+  already distinguish `UsageSource.switchAccess`. None of that costs anything
+  now and all of it would be expensive to retrofit.
+
+  **What is knowingly broken for a switch user today**: neither door into
+  caregiver mode is reachable by scanning (§4.6b), because both are held points
+  and switch access reaches buttons. And **Phase 0 Gate A was never answered** —
+  whether Flutter's synthesised accessibility tree can drive iOS Switch Control
+  and Android Switch Access acceptably. It was written as a gate that could
+  invalidate the framework choice, and it is still open. It needs a physical
+  device and a switch, not a decision.
 
 ## 6. Open questions
 
