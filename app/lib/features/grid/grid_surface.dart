@@ -33,6 +33,7 @@ class GridSurface extends StatefulWidget {
     this.isAvailable,
     this.pairHold,
     this.onPairHold,
+    this.pointAt,
   });
 
   final int rows;
@@ -73,6 +74,15 @@ class GridSurface extends StatefulWidget {
 
   /// Both bottom corners held for [pairHold].
   final VoidCallback? onPairHold;
+
+  /// A location to point at — the next key on a route the finder is walking,
+  /// or the word it walked to.
+  ///
+  /// Drawn over the grid rather than into the key, and it never intercepts a
+  /// touch. A board somebody has learned has to look the same whether or not
+  /// something is pointing at it, and the key under the ring is the one they
+  /// are being shown how to press.
+  final ({int row, int col})? pointAt;
 
   @override
   State<GridSurface> createState() => _GridSurfaceState();
@@ -137,6 +147,12 @@ class _GridSurfaceState extends State<GridSurface> {
                 ),
               ),
 
+            if (widget.pointAt case final at?)
+              Positioned.fromRect(
+                rect: geometry.rectFor(at.row, at.col),
+                child: const IgnorePointer(child: _Pointer()),
+              ),
+
             // Over the grid, and anchored to the two locations rather than to
             // the keys that happen to occupy them — the bottom right is a
             // reserved blank on a board with no second page, and the gesture
@@ -157,6 +173,32 @@ class _GridSurfaceState extends State<GridSurface> {
           ],
         );
       },
+    );
+  }
+}
+
+/// The ring that says "this key, next".
+///
+/// Two rings rather than one. A key's colour is its part of speech, so a single
+/// ring in any one colour is the colour of some other part of speech and
+/// disappears against the keys of that kind — a dark ring inside a light one
+/// reads on all of them.
+class _Pointer extends StatelessWidget {
+  const _Pointer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white, width: 6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black87, width: 4),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
     );
   }
 }

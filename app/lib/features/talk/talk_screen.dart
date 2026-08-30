@@ -33,6 +33,8 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
+import 'find_a_word.dart';
+import 'route_walk.dart';
 import 'type_a_word.dart';
 import 'word_path.dart';
 
@@ -140,6 +142,91 @@ class TalkScreenState extends State<TalkScreen> {
   Timer? _settleTimer;
 
   int get wheelPages => _wheel?.pages ?? 1;
+
+  /// The route the finder is walking, and how far along it is.
+  ///
+  /// Empty except while a walk is running. The walk presses the keys rather
+  /// than arriving at the board (§4.42), so it is a sequence in time and has to
+  /// be held somewhere between beats.
+  List<RouteBeat> _walk = const [];
+  int _walkAt = 0;
+  Timer? _walkTimer;
+
+  /// How long each key is shown before the walk moves on.
+  ///
+  /// Long enough to see which key was pressed and where it sits, which is the
+  /// thing being taught. Faster than this and the board simply changes several
+  /// times, which teaches nothing and looks like a fault.
+  static const walkBeat = Duration(milliseconds: 1100);
+
+  /// The location the grid is pointing at: the next key, or the word arrived
+  /// at.
+  ({int row, int col})? _pointAt;
+
+  /// Walks the way to a word, one key at a time, and stops on the word.
+  ///
+  /// The word is not pressed. Arriving is the finder's part and speaking is the
+  /// user's — a word said by something they did not touch is a word they did
+  /// not say, and the press is the movement the whole walk exists to teach.
+  void walkTo(WordPath path) {
+    final root = _rootBoardId;
+    if (root == null) return;
+
+    _walkTimer?.cancel();
+    setState(() {
+      _walk = routeBeats(
+        steps: path.steps,
+        rootBoardId: root,
+        wheelPages: wheelPages,
+      );
+      _walkAt = 0;
+      // A walk starts from home whatever the trail said, so nothing the user
+      // did before it describes where they now are.
+      _route.clear();
+      _reached = null;
+      _showBeat(path);
+    });
+  }
+
+  /// Puts the board where the current beat says, and points at its key.
+  void _showBeat(WordPath path) {
+    final beat = _walk[_walkAt];
+    _currentBoardId = beat.boardId;
+    _categoryPage = beat.categoryPage;
+    _previousBoardId = null;
+
+    final press = beat.press;
+    if (press == null) {
+      // Arrived. The ring moves off the keys and onto the word.
+      _pointAt = (row: path.row, col: path.col);
+      _route
+        ..clear()
+        ..addAll(_routeTo(path.boardId) ?? const []);
+      _walk = const [];
+      return;
+    }
+
+    _pointAt = (row: press.row, col: press.col);
+    _walkTimer = Timer(walkBeat, () {
+      if (!mounted || _walk.isEmpty) return;
+      setState(() {
+        _walkAt++;
+        _showBeat(path);
+      });
+    });
+  }
+
+  /// Ends a walk, and takes the ring off the board.
+  ///
+  /// Any press of the user's own stops it. A walk that carried on changing the
+  /// board under somebody who had started using it would be moving the board
+  /// while they aimed at it, which is the failure `_settling` exists for.
+  void _stopWalk() {
+    _walkTimer?.cancel();
+    _walkTimer = null;
+    _walk = const [];
+    _pointAt = null;
+  }
 
   bool get _predicting => widget.settings?.prediction ?? false;
 
@@ -354,6 +441,7 @@ class TalkScreenState extends State<TalkScreen> {
   @override
   void dispose() {
     _settleTimer?.cancel();
+    _walkTimer?.cancel();
     _utterance.removeListener(_onUtteranceChanged);
     widget.settings?.removeListener(_onSettingsChanged);
     super.dispose();
@@ -595,6 +683,11 @@ class TalkScreenState extends State<TalkScreen> {
     // screen. Drop it rather than speak it.
     if (_settling) return;
 
+    // The user has taken over. Whatever the walk was going to press next, they
+    // are pressing something now, and a board that kept moving under them would
+    // be the failure `_settling` exists for arriving by another route.
+    if (_walk.isNotEmpty || _pointAt != null) setState(_stopWalk);
+
     // Order matters. Speech happens before anything is recorded, and the log
     // call cannot throw, so no amount of database trouble can cost the user a
     // word.
@@ -725,6 +818,23 @@ class TalkScreenState extends State<TalkScreen> {
       _utterance.add(word);
       _reached = null;
     });
+  }
+
+  /// Looks for a word, and walks the way to it.
+  ///
+  /// Nothing is added to the sentence here. What comes back is a place on the
+  /// board, and the point is to arrive at it by the movements that reach it —
+  /// see [walkTo].
+  Future<void> _findWord() async {
+    final path = await FindAWord.show(
+      context,
+      db: widget.db,
+      vocabularyId: widget.vocabularyId,
+      vocabLevel: widget.vocabLevel,
+    );
+    if (path == null || !mounted) return;
+
+    walkTo(path);
   }
 
   /// Ends the sentence with a mark, and says it.
@@ -953,6 +1063,7 @@ class TalkScreenState extends State<TalkScreen> {
                   onSpeak: _speakSentence,
                   onPunctuate: _endSentence,
                   onType: _typeWord,
+                  onFind: _findWord,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
@@ -997,6 +1108,7 @@ class TalkScreenState extends State<TalkScreen> {
                                 onSelect: _onSelect,
                                 pairHold: _entry.pairHold,
                                 onPairHold: _openCaregiver,
+                                pointAt: _pointAt,
                               ),
                             );
 
@@ -1073,6 +1185,7 @@ class _UtteranceBarView extends StatelessWidget {
     required this.onSpeak,
     required this.onPunctuate,
     required this.onType,
+    required this.onFind,
     required this.onBackspace,
     required this.onClear,
   });
@@ -1081,6 +1194,7 @@ class _UtteranceBarView extends StatelessWidget {
   final VoidCallback onSpeak;
   final void Function(String mark) onPunctuate;
   final VoidCallback onType;
+  final VoidCallback onFind;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
 
@@ -1162,20 +1276,30 @@ class _UtteranceBarView extends StatelessWidget {
               // reached for rarely and deliberately, and the bar's room belongs
               // to the two that are not — speaking, and clearing.
               //
-              // Behind a list from the start, so the finder can join it without
-              // the control changing shape under somebody who has learned it.
+              // Behind a list from the start, so the finder could join it
+              // without the control changing shape under somebody who had
+              // learned it. It has now joined it.
               _BarMenu<String>(
                 face: (colour) =>
                     Icon(Icons.search_rounded, size: 30, color: colour),
                 tooltip: 'Another way to a word',
                 items: const [
+                  // The finder first. It answers "where is the word", which is
+                  // the question asked far more often than "this word is not
+                  // on the board at all" — and it is the one that ends with the
+                  // person having learned something.
+                  (
+                    mark: 'find',
+                    label: 'Find a word',
+                    icon: Icons.travel_explore_outlined,
+                  ),
                   (
                     mark: 'type',
                     label: 'Type a word',
                     icon: Icons.keyboard_alt_outlined,
                   ),
                 ],
-                onChosen: (_) => onType(),
+                onChosen: (mark) => mark == 'find' ? onFind() : onType(),
               ),
               const SizedBox(width: _separation),
 

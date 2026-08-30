@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'db/database.dart';
 import 'db/ids.dart';
 import 'features/auth/pin.dart';
+import 'features/backup/backup_service.dart';
+import 'features/backup/pre_migration.dart';
 import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
@@ -170,6 +172,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   late final _logger = UsageLogger(_db, deviceId: newId());
   late final _auth = PinAuth(_db);
   late final _profiles = ProfileRepository(_db);
+  late final _backup = BackupService(_db);
 
   // The bundled pack covers the shipped vocabulary. The fetching one covers
   // everything a caregiver adds afterwards, from the same four CC BY-SA sets,
@@ -189,6 +192,16 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 
   Future<Profile?> _bootstrap() async {
     await _speech.init();
+
+    // Before `resume()`, which is the first query and therefore the thing that
+    // opens the database and runs any migration due. Nothing has touched the
+    // file yet, which is the condition `snapshotFile` cannot check for itself.
+    await snapshotBeforeMigration(
+      database: boardDatabaseFile,
+      appVersion: _db.schemaVersion,
+      backup: _backup,
+    );
+
     return _profiles.resume();
   }
 

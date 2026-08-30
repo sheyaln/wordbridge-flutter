@@ -2534,6 +2534,37 @@ worse failure than the one it guards against.
 **Part 2's other half is a screen**, because a backup nobody can see is one
 nobody trusts. Last backed up, the list, and restore.
 
+**Part 2 delivered.** The pre-migration snapshot is wired into `_bootstrap`
+ahead of `resume()`, which is the first query and therefore the thing that
+opens the database. The screen is a section of its own in the caregiver
+settings: *Never backed up* or the day and time of the last one, a **Back up
+now**, and the five dates.
+
+Three things the work turned up:
+
+- **A restore had no way back.** `restore` was built to be all-or-nothing so
+  that a failure leaves the board alone, and that is not the same as being
+  reversible — a caregiver who picks the wrong date loses everything done
+  since, and picking by date *is* partly a guess. Restoring now takes a copy of
+  the board it is about to replace, through `restoreKeepingACopy`, and the
+  warning says so. That is what makes trying one safe.
+- **The copy would have eaten the snapshot it was restoring from.** At the
+  five-snapshot limit, taking one prunes the oldest — which is exactly what a
+  caregiver reaching that far back has chosen. `takeSnapshot` grew a
+  `doNotPrune`, and the prune keeps six for that one moment.
+- **The screen could not be tested at all as first written.** A widget test
+  runs on a fake clock, and real file I/O started inside one never comes back —
+  the suite hangs at teardown waiting for it. `tester.runAsync` does not rescue
+  a future the widget started in `initState`. So the screen's own tests run
+  against an in-memory service and cover what a caregiver is shown and what
+  their answer sets off; the disk stays in `backup_test.dart`, against the real
+  thing. Splitting it that way is also what made "the copy is taken *before*
+  the restore" an observable claim rather than an ordering nobody checks.
+
+Fifty-five tests across the three files, sixteen mutations, all caught. What is
+still not wired: nothing takes a snapshot on an ordinary edit or on
+backgrounding. The one that answers the complaint is in; those two are part 4b.
+
 **3. Import and export reach the caregiver** — §3 claims OBF/OBZ import and
 export as delivered. That is true of the engine and false of the product:
 `exportObf`, `exportObz`, `importObf` and `importObz` all exist and are tested,
@@ -2903,6 +2934,50 @@ anything the board will not draw, and returns the route to each hit — includin
 through paging and through boards a caregiver made themselves. A word on a board
 no visible key reaches is left out entirely: the request was a path, and a
 result with no path is a dead end.
+
+**The finder is now wired, and it walks.** *Find a word* is the first entry in
+the bar's "another way to a word" list, ahead of the keyboard, because "where is
+this word" is asked far more often than "this word is not on the board at all"
+— and it is the one that ends with the person having learned something.
+
+Each result reads as the movements rather than the destination —
+`home → more categories → food` — so a caregiver who never presses one has still
+been told where the word is. A word on the home board says so instead of showing
+an empty route.
+
+**Choosing one presses the keys.** `routeBeats` turns a route into the moments
+it passes through, and the board stops at each for 1.1 seconds with a ring round
+the key that is about to be pressed. Home first, always: routes are recorded
+from home because that is where the motor plan starts, and beginning wherever
+the person happened to be would press a sequence that only works from there.
+
+**The last beat presses nothing.** The walk stops on the board holding the word,
+with the ring round the word, and waits. Arriving is the finder's part and
+speaking is the user's — a word said by something they did not touch is a word
+they did not say, and the press is the movement the whole walk exists to teach.
+The ring never intercepts a touch, so the key under it is the one they press.
+
+Any press of the user's own ends the walk. A board that kept moving under
+somebody who had started using it is the failure `_settling` exists for,
+arriving by another route.
+
+Three things worth recording:
+
+- **The wheel turning is a beat, not a board change.** A route through
+  `more categories` has to turn the wheel the same number of times on the way,
+  or the sequence the finder presses reaches a different category from the one
+  it named. It is the case a hand-written route never covers, so the walk is
+  also checked against every route `findWords` can produce on a grid narrow
+  enough to make the wheel turn.
+- **A guard for a one-page wheel was written and then deleted.** Mutation
+  testing showed `(0 + 1) % 1` is already 0, so the special case was code that
+  could not be observed. The behaviour it described is still asserted.
+- **The finder's search is injectable, and only for one reason.** Typing is
+  faster than the database, and a slow answer to `fo` arriving after a fast one
+  to `food` would put the wrong list back — the word somebody is reaching for
+  moving under their finger. That race cannot be arranged against a database
+  that answers in a microsecond, and mutation testing showed the guard against
+  it was untested. A seam is what made it observable.
 
 **The route is now computed once, and the trail reads it.** `boardRoutes` is
 the single answer to "how is this board arrived at", and the strip that names

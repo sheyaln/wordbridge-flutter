@@ -49,6 +49,7 @@ const _reachable = <String, List<String>>{
     'Button size and orientation',
     'Rebuild from the shipped vocabulary',
   ],
+  'Backups': ['Backups and restoring'],
   'How it sounds': ['Voice'],
   'How it behaves': [
     'Go back to the home board after each word',
@@ -273,6 +274,7 @@ void main() {
       // The rest still stand on their own.
       expect(find.text('Who is using this'), findsOneWidget);
       expect(find.text('The board'), findsOneWidget);
+      expect(find.text('Backups'), findsOneWidget);
       expect(find.text('Getting in here'), findsOneWidget);
       expect(find.text('Recording'), findsOneWidget);
       expect(find.text('About'), findsOneWidget);
