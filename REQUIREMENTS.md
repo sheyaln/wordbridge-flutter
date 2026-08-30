@@ -1879,6 +1879,26 @@ the fallback offers is speech, not the motor plan — and it should say so on
 screen, because a caregiver seeing an unfamiliar board needs to know it is a
 failure state and not a board that rearranged itself.
 
+**Part 1 delivered.** `FallbackBoard` is behind three routes: `ErrorWidget.builder`
+for anything that throws while building, and both of the app's waits — the
+database at startup and a profile's settings — which each used to print the
+reason and stop there.
+
+Those two waits are now one `awaiting` function rather than two hand-written
+`FutureBuilder`s, for the reason §4.40 found: a branch written inside a private
+`State` cannot be reached by a test, and mutation-testing showed the startup one
+could be turned back into an error message with nothing failing. It also gained
+an error branch it never had — the session wait had none at all, so a settings
+load that threw fell through into the board and drew it against half-applied
+state, which is a worse failure because it looks like it worked.
+
+`vocabularies.rootBoardId == null` used to render *"This profile has no board
+set."* and now renders the fallback too.
+
+Seven tests, ten mutations, all caught. There is a golden — `fallback_board.png`
+— because this is the screen a person is handed on the app's worst day and
+nothing else in the suite can say whether it is legible.
+
 **2. Automatic local backup, and one-tap restore** — four independent parents
 reported catastrophic loss (§1), one concluding *"if your app doesn't seem to
 have problems or issues, don't update it."* A parent who will not patch their

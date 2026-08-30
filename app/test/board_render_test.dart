@@ -13,6 +13,7 @@ import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
+import 'package:wordbridge/features/talk/fallback_board.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 
@@ -171,6 +172,25 @@ void main() {
     await expectLater(
       find.byType(TalkScreen),
       matchesGoldenFile('goldens/home_page_two_labelled.png'),
+    );
+  });
+
+  testWidgets('the board that speaks when everything else has failed', (
+    tester,
+  ) async {
+    // Look at this one. It is the screen a person is handed on the worst day
+    // the app has, and nothing else in the suite can tell whether it is legible.
+    tester.view.physicalSize = const Size(2048, 1536);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      const FallbackBoard(detail: 'Bad state: the database would not open'),
+    );
+
+    await expectLater(
+      find.byType(FallbackBoard),
+      matchesGoldenFile('goldens/fallback_board.png'),
     );
   });
 

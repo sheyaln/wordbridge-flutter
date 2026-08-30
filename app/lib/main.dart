@@ -15,6 +15,7 @@ import 'features/symbols/global_symbols_pack.dart';
 import 'features/symbols/symbol_registry.dart';
 import 'features/symbols/symbol_resolver.dart';
 import 'features/symbols/system_emoji_pack.dart';
+import 'features/talk/fallback_board.dart';
 import 'features/talk/talk_screen.dart';
 import 'features/usage/logger.dart';
 
@@ -29,8 +30,44 @@ SymbolResolver appSymbolResolver({
   required SymbolRegistry registry,
 }) => SymbolResolver(registry: registry, db: db);
 
+/// Puts the fallback board behind every route a failure can take.
+///
+/// §5 non-negotiable 6. Flutter's own answer to a widget that throws is a red
+/// box in debug and a grey one in release, which for a nonspeaking person is a
+/// tablet that has stopped talking. Installed before [runApp] so a throw while
+/// the first frame is being built is already covered.
+///
+/// The detail is passed through rather than swallowed: whoever is helping needs
+/// something to report, and it is never the only thing on the screen.
+void installFallbackBoard() {
+  ErrorWidget.builder = (details) =>
+      FallbackBoard(detail: details.exceptionAsString());
+}
+
+/// Waits for something the board cannot be drawn without, and ends at the
+/// fallback board if it never arrives.
+///
+/// The app has two such waits — the database at startup, and a profile's
+/// settings — and they fail the same way: a person holding a tablet that will
+/// not talk. Written once so that neither can be given an error message
+/// instead, which is what both of them used to do.
+Widget awaiting<T>({
+  required Future<T> future,
+  required Widget Function(T value) then,
+}) => FutureBuilder<T>(
+  future: future,
+  builder: (context, snapshot) {
+    if (snapshot.hasError) return FallbackBoard(detail: '${snapshot.error}');
+    if (snapshot.connectionState != ConnectionState.done) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return then(snapshot.data as T);
+  },
+);
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  installFallbackBoard();
   runApp(const WordbridgeApp());
 }
 
@@ -197,22 +234,12 @@ class _WordbridgeAppState extends State<WordbridgeApp>
       title: 'wordbridge',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
-      home: FutureBuilder<Profile?>(
+      // The database would not open, or the speech engine would not start.
+      // Printing the reason and stopping there hands somebody a tablet with an
+      // error message where their voice was.
+      home: awaiting<Profile?>(
         future: _ready,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Scaffold(
-              body: Center(child: Text('Startup failed: ${snapshot.error}')),
-            );
-          }
-
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          final profile = snapshot.data;
+        then: (profile) {
           if (profile == null) return _FirstRun(db: _db, onCreated: _use);
 
           // Keyed on the profile so switching rebuilds the whole screen rather
@@ -338,20 +365,15 @@ class _SessionState extends State<_Session> {
     final vocabularyId = widget.profile.activeVocabularyId;
 
     if (vocabularyId == null) {
-      return const Scaffold(
-        body: Center(child: Text('This profile has no board set.')),
-      );
+      return const FallbackBoard(detail: 'This profile has no board set.');
     }
 
-    return FutureBuilder<VoidCallback>(
+    // The settings would not load. Carrying on into the board from here draws
+    // it against half-applied state, which is a worse failure than this one
+    // because it looks like it worked.
+    return awaiting<VoidCallback>(
       future: _loaded,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
+      then: (_) {
         return StreamBuilder<int>(
           stream: _vocabLevel,
           initialData: widget.profile.vocabLevel,
