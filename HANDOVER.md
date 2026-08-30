@@ -66,11 +66,29 @@ Release build, `sherpa_onnx`, Kokoro v0.19 fp32, 2 threads, after warm-up:
 | RTF | **1.95** |
 | Baking all 1231 words | **27 min** per tone |
 
-Fitted against utterance length: **1149 ms fixed + 197 ms/word** (±200 ms,
-five points; `voicebench`'s Measure button gives eight).
+Fitted against utterance length over eight points, 1–24 words, median of three
+(`voicebench/sweep-ipadmini5-a12.csv`):
 
-The cost is dominated by **fixed per-call overhead**, not by length. That single
-fact drives the timeout design below.
+> **747 ms fixed + 262 ms/word**, R² = 0.990
+
+| words | 1 | 2 | 3 | 5 | 8 | 12 | 16 | 24 |
+|---|---|---|---|---|---|---|---|---|
+| ms | 598 | 1484 | 1810 | 2100 | 2729 | 3887 | 4939 | 7031 |
+
+Extrapolating: 30 words ≈ 8.6 s, 40 ≈ 11.2 s.
+
+Both terms are large, which is why **the timeout needs both** — see the design
+in §4.5. A per-word budget alone starves short utterances (the fixed 747 ms
+swamps one word's 262 ms) and a fixed budget alone either hangs on short ones
+or never lets a long one finish.
+
+> **Word count is a proxy, and it is loose at the bottom.** The one-word point
+> is 598 ms against a fitted 1009 ms — a −411 ms residual, far the worst of the
+> eight. Synthesis cost tracks phonemes, not words, and the sweep's one-word
+> case is `the`. Expect a long single word (`emergency`) to cost much more than
+> a short one; the gate 2 word set averaged 1309 ms for exactly that reason.
+> If the budget starts firing on short utterances, switch the predictor to
+> characters before widening the timeout.
 
 Reference points, so nobody quotes the wrong one: the same model reports RTF
 0.62 on an A12X and 4–4.5× real time through the **Core ML** five-stage build
