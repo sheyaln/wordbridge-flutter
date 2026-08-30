@@ -30,6 +30,9 @@ class _FakeSecretStore implements SecretStore {
 class _SilentSpeech implements SpeechEngine {
   @override
   Future<void> speak(String text) async {}
+
+  @override
+  Future<void> speakUtterance(String text) => speak(text);
   @override
   Future<void> init() async {}
   @override

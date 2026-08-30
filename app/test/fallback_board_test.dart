@@ -15,6 +15,9 @@ class _RecordingSpeech implements SpeechEngine {
   Future<void> init() async => started = true;
   @override
   Future<void> speak(String text) async => spoken.add(text);
+
+  @override
+  Future<void> speakUtterance(String text) => speak(text);
   @override
   Future<void> stop() async {}
   @override
@@ -175,4 +178,7 @@ void main() {
 class _ThrowingSpeech extends _RecordingSpeech {
   @override
   Future<void> speak(String text) async => throw StateError('no voice');
+
+  @override
+  Future<void> speakUtterance(String text) => speak(text);
 }

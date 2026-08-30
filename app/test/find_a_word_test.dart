@@ -35,6 +35,9 @@ class _Speech implements SpeechEngine {
   Future<void> speak(String text) async => said.add(text);
 
   @override
+  Future<void> speakUtterance(String text) => speak(text);
+
+  @override
   Future<void> init() async {}
   @override
   Future<void> stop() async {}

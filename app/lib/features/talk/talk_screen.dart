@@ -784,7 +784,12 @@ class TalkScreenState extends State<TalkScreen> {
   /// knowing ordinary English — see `starterPredictions`.
   Future<void> _speakSentence() async {
     final words = _utterance.words;
-    await widget.speech.speak(_utterance.text);
+    // The bar, not a tap — and the only call in the app that goes to
+    // `speakUtterance`. §4.5's named exception to §5 non-negotiable 1 lives
+    // here and nowhere else: one press, one wait, one sentence, for a profile
+    // that asked for a voice which has to be synthesised. Under an engine
+    // with no such cost this is the same call as any other.
+    await widget.speech.speakUtterance(_utterance.text);
 
     if (_predicting && words.isNotEmpty) {
       unawaited(

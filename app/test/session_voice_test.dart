@@ -15,6 +15,9 @@ class _RecordingSpeech implements SpeechEngine {
 
   @override
   Future<void> speak(String text) async {}
+
+  @override
+  Future<void> speakUtterance(String text) => speak(text);
   @override
   Future<void> init() async {}
   @override

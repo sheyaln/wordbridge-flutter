@@ -1,0 +1,23 @@
+name: neuralbench
+description: "Times wordbridge's neural voice on the tablet it is for."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # The app's own code, so what is timed is what ships rather than a copy of
+  # it that has drifted.
+  wordbridge:
+    path: ../../app
+  path: ^1.9.1
+  path_provider: ^2.1.6
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
