@@ -266,6 +266,7 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
       appBar: AppBar(title: const Text('A voice of their own')),
       body: ListView(
         children: [
+          const _PreAlpha(),
           const _Header('What this is'),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -292,6 +293,7 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
 
           const _Header('The download'),
           _ModelTile(
+            published: _speech.models.published,
             installed: _installed,
             onDisk: _onDisk,
             partial: _partial,
@@ -306,9 +308,10 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
               value: on,
               title: const Text('Speak with the downloaded voice'),
               subtitle: const Text(
-                'Off, the board speaks exactly as it does today. On, it uses '
-                'the voice chosen below for every word that has been made, and '
-                'the device\'s own voice for the rest.',
+                'Pre-alpha — it may not sound correct. Off, the board speaks '
+                'exactly as it does today. On, it uses the voice chosen below '
+                'for every word that has been made, and the device\'s own '
+                'voice for the rest.',
               ),
               isThreeLine: true,
               onChanged: _speech.canPlay ? _setEnabled : null,
@@ -344,9 +347,14 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
                 'Hearing one takes a couple of seconds — it is being made from '
                 'scratch. That is the wait the board exists to avoid, which is '
                 'why the words are made in advance instead.\n\n'
-                'This voice has no pitch control. The speed dial on the Voice '
-                'screen works; the pitch dial applies to the device\'s own '
-                'voice only.',
+                'Two controls do less in this voice than they do in the '
+                'device\'s own, and both are measured rather than assumed. '
+                'The pitch dial does nothing — this voice has no pitch '
+                'control at all, so it applies to the device\'s voice only. '
+                'And the "?" key does not make a sentence sound like a '
+                'question: it still changes what is written on the bar, and '
+                'the device\'s own voice still reads it as a question, but '
+                'this voice does not. The speed dial works in both.',
               ),
             ),
 
@@ -403,8 +411,62 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
   }
 }
 
+/// Says what this is before anything on the screen is touched.
+///
+/// Not a disclaimer in small print at the bottom. A caregiver is deciding how
+/// somebody else will sound, and the person it is for may not be able to say
+/// it came out wrong — so what is uncertain about it goes above the switch,
+/// not below it.
+class _PreAlpha extends StatelessWidget {
+  const _PreAlpha();
+
+  @override
+  Widget build(BuildContext context) {
+    final colours = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colours.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.science_outlined, color: colours.onTertiaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pre-alpha — it may not sound correct',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: colours.onTertiaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Words can come out mispronounced, and the "?" key does not '
+                  'make this voice sound like it is asking a question. Turning '
+                  'it off puts the device\'s own voice back exactly as it was, '
+                  'immediately, with nothing to undo.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colours.onTertiaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ModelTile extends StatelessWidget {
   const _ModelTile({
+    required this.published,
     required this.installed,
     required this.onDisk,
     required this.partial,
@@ -413,6 +475,7 @@ class _ModelTile extends StatelessWidget {
     required this.onDelete,
   });
 
+  final PublishedModel published;
   final bool installed;
   final int onDisk;
   final int partial;
@@ -472,8 +535,8 @@ class _ModelTile extends StatelessWidget {
       ),
       subtitle: Text(
         running?.detail ??
-            '${_megabytes(VoiceModelStore.downloadBytes)} to download, and '
-                '${_megabytes(VoiceModelStore.installedBytes)} on the tablet '
+            '${_megabytes(published.downloadBytes)} to download, and '
+                '${_megabytes(published.installedBytes)} on the tablet '
                 'once it is unpacked. It can be deleted again at any time. '
                 'Best done on wi-fi and while the tablet is not needed.',
       ),

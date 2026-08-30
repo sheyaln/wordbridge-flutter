@@ -326,6 +326,35 @@ void main() {
       expect(platform.utterances, isEmpty);
     });
 
+    test('a model released mid-press still speaks, in the platform voice',
+        () async {
+      // Backgrounding the app gives the model's 833 MB back, and a press can
+      // be in flight when it does. What must never happen is silence: nobody
+      // in the room can see a sentence that was not spoken by anything.
+      final engine = engineWith(
+        synthesise: (_) async =>
+            throw StateError('The neural voice model is not loaded.'),
+      );
+      await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
+
+      await engine.speakUtterance('I want to go outside');
+
+      expect(platform.utterances, ['I want to go outside']);
+      expect(engine.fallbacks.single.reason, contains('the voice failed'));
+    });
+
+    test('a string the model cannot make anything of still speaks', () async {
+      final engine = engineWith(
+        synthesise: (_) async => throw ArgumentError('no phonemes'),
+      );
+      await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
+
+      await engine.speakUtterance('\u{1F600}\u{1F600}\u{1F600}');
+
+      expect(platform.utterances, hasLength(1));
+      expect(engine.fallbackCount, 1);
+    });
+
     test('the budget grows with the sentence', () async {
       // A pure fixed budget picks one length and fails the rest: generous
       // enough for twenty words and a two-word answer hangs; tight enough for

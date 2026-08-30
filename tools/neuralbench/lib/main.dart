@@ -21,6 +21,19 @@ import 'package:wordbridge/features/speech/neural/synthesis_budget.dart';
 import 'package:wordbridge/features/speech/neural/voice_model.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 
+import 'pitch.dart';
+
+/// The stored samples back as floats, so the pitch estimate reads what the
+/// cache actually holds rather than a separate copy of it.
+Float32List _floatsOf(AudioClip clip) {
+  final view = ByteData.sublistView(clip.pcm16);
+  final out = Float32List(clip.pcm16.lengthInBytes ~/ 2);
+  for (var i = 0; i < out.length; i++) {
+    out[i] = view.getInt16(i * 2, Endian.little) / 32768.0;
+  }
+  return out;
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
@@ -57,6 +70,14 @@ class _BenchState extends State<Bench> {
       _done = false;
       _lines.clear();
     });
+
+    // The last run's results go before this one starts, so pulling the file
+    // can never hand back an answer to a question that was already changed.
+    final previous = File(
+      p.join((await getApplicationDocumentsDirectory()).path,
+          'neural-bench.txt'),
+    );
+    if (previous.existsSync()) previous.deleteSync();
     try {
       await _bench();
       _note('DONE');
@@ -74,8 +95,29 @@ class _BenchState extends State<Bench> {
     });
   }
 
+  /// Which sections to run this time.
+  ///
+  /// Read from `Documents/bench-sections.txt`, pushed beside the model. The
+  /// sweep alone is four minutes and the model load is three more, so a bench
+  /// that always starts from the top makes every fix to the last section cost
+  /// the whole run. Empty or missing means all of them.
+  Future<Set<String>> _sections(Directory documents) async {
+    final file = File(p.join(documents.path, 'bench-sections.txt'));
+    if (!file.existsSync()) return const {};
+    final asked = (await file.readAsString())
+        .split(RegExp(r'[,\s]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toSet();
+    return asked;
+  }
+
   Future<void> _bench() async {
     final documents = await getApplicationDocumentsDirectory();
+    final only = await _sections(documents);
+    bool wants(String section) => only.isEmpty || only.contains(section);
+    if (only.isNotEmpty) _note('running only: ${only.join(', ')}');
+
     final root = Directory(p.join(documents.path, VoiceModelStore.folder));
     final files = VoiceModelFiles(Directory(p.join(root.path, 'model')));
 
@@ -85,22 +127,30 @@ class _BenchState extends State<Bench> {
     }
     _note('model ${(files.model.lengthSync() / 1000000).round()} MB');
 
-    // Loading. A blocking FFI call over 330 MB of weights, so it runs off the
-    // main isolate — this is how long the board would otherwise have frozen.
+    final needsModel =
+        wants('sweep') || wants('question') || wants('tap');
+
     var started = DateTime.now();
     final synthesiser = KokoroSynthesiser(files);
-    await synthesiser.load();
-    _note(
-      'model load + warm-up: '
-      '${DateTime.now().difference(started).inMilliseconds} ms',
-    );
+    if (needsModel) {
+      // Loading. A blocking FFI call over 330 MB of weights, so it runs off
+      // the main isolate — this is how long the board would otherwise have
+      // frozen.
+      await synthesiser.load();
+      _note(
+        'model load + warm-up: '
+        '${DateTime.now().difference(started).inMilliseconds} ms',
+      );
+    }
+
+    if (wants('question')) await _questionMark(synthesiser);
 
     // Live synthesis by utterance length, median of three, so one scheduling
     // accident does not become the shipped budget.
     const unit = 'the cat sat on the mat and then it went outside again today';
     final words = unit.split(' ');
     final measured = <int, int>{};
-    for (final n in [1, 2, 3, 5, 8, 12, 16, 24]) {
+    for (final n in wants('sweep') ? [1, 2, 3, 5, 8, 12, 16, 24] : <int>[]) {
       final text = [for (var i = 0; i < n; i++) words[i % words.length]].join(' ');
       final runs = <int>[];
       for (var run = 0; run < 3; run++) {
@@ -113,118 +163,197 @@ class _BenchState extends State<Bench> {
       _note('synthesis $n words: ${runs[1]} ms  (${runs.join(' / ')})');
     }
 
-    final fitted = SynthesisBudget.fit(
-      shortWords: 2,
-      shortTook: Duration(milliseconds: measured[2]!),
-      longWords: 16,
-      longTook: Duration(milliseconds: measured[16]!),
-    );
-    _note('budget fitted here (doubled): $fitted');
-    _note('budget shipped as default:    ${SynthesisBudget.shipped}');
-
-    // Real-time factor, and what trimming the padding is worth.
-    started = DateTime.now();
-    final raw = await synthesiser.generate(
-      text: 'I want to go outside please',
-      sid: 1,
-      speed: 1.0,
-      trim: false,
-    );
-    final synthesised = DateTime.now().difference(started);
-    final clip = await synthesiser.generate(
-      text: 'I want to go outside please',
-      sid: 1,
-      speed: 1.0,
-    );
-    final audio = clipDuration(clip);
-    _note(
-      'sentence: ${synthesised.inMilliseconds} ms for '
-      '${audio.inMilliseconds} ms of audio — RTF '
-      '${(synthesised.inMilliseconds / audio.inMilliseconds).toStringAsFixed(2)}',
-    );
-    _note(
-      'padding trimmed: ${clipDuration(raw).inMilliseconds} ms -> '
-      '${audio.inMilliseconds} ms '
-      '(${(100 - clip.pcm16.lengthInBytes / raw.pcm16.lengthInBytes * 100).round()}% off)',
-    );
-
-    final short = await synthesiser.generate(text: 'I', sid: 1, trim: false);
-    _note('the word "I" synthesises to ${clipDuration(short).inMilliseconds} ms');
-
-    // The tap path, which is the one that must not have got slower.
-    final store = await ClipStore.open(
-      root: ClipStore.directoryIn(root),
-      packId: 'bench-r100',
-    );
-    await store.write('outside', clip);
-
-    started = DateTime.now();
-    for (var i = 0; i < 50; i++) {
-      await store.read('outside');
+    if (measured.isNotEmpty) {
+      final fitted = SynthesisBudget.fit(
+        shortWords: 2,
+        shortTook: Duration(milliseconds: measured[2]!),
+        longWords: 16,
+        longTook: Duration(milliseconds: measured[16]!),
+      );
+      _note('budget fitted here (doubled): $fitted');
+      _note('budget shipped as default:    ${SynthesisBudget.shipped}');
     }
-    _note(
-      'cache lookup: '
-      '${(DateTime.now().difference(started).inMicroseconds / 50).round()} us '
-      'per word (${(clip.pcm16.lengthInBytes / 1024).round()} KB each)',
-    );
 
-    // What playing a buffer costs before any sound comes out, measured against
-    // a clip of near-nothing so what is left is the channel, the wav wrapper
-    // and the player starting.
-    final player = ClipPlayer();
-    final tiny = (pcm16: Uint8List(480), sampleRate: 24000);
-    await player.play(tiny);
-    started = DateTime.now();
-    for (var i = 0; i < 20; i++) {
+    if (wants('tap')) {
+      // Real-time factor, and what trimming the padding is worth.
+      started = DateTime.now();
+      final raw = await synthesiser.generate(
+        text: 'I want to go outside please',
+        sid: 1,
+        speed: 1.0,
+        trim: false,
+      );
+      final synthesised = DateTime.now().difference(started);
+      final clip = await synthesiser.generate(
+        text: 'I want to go outside please',
+        sid: 1,
+        speed: 1.0,
+      );
+      final audio = clipDuration(clip);
+      _note(
+        'sentence: ${synthesised.inMilliseconds} ms for '
+        '${audio.inMilliseconds} ms of audio — RTF '
+        '${(synthesised.inMilliseconds / audio.inMilliseconds).toStringAsFixed(2)}',
+      );
+      _note(
+        'padding trimmed: ${clipDuration(raw).inMilliseconds} ms -> '
+        '${audio.inMilliseconds} ms '
+        '(${(100 - clip.pcm16.lengthInBytes / raw.pcm16.lengthInBytes * 100).round()}% off)',
+      );
+
+      final short = await synthesiser.generate(text: 'I', sid: 1, trim: false);
+      _note('the word "I" synthesises to ${clipDuration(short).inMilliseconds} ms');
+
+      // The tap path, which is the one that must not have got slower.
+      final store = await ClipStore.open(
+        root: ClipStore.directoryIn(root),
+        packId: 'bench-r100',
+      );
+      await store.write('outside', clip);
+
+      started = DateTime.now();
+      for (var i = 0; i < 50; i++) {
+        await store.read('outside');
+      }
+      _note(
+        'cache lookup: '
+        '${(DateTime.now().difference(started).inMicroseconds / 50).round()} us '
+        'per word (${(clip.pcm16.lengthInBytes / 1024).round()} KB each)',
+      );
+
+      // What playing a buffer costs before any sound comes out, measured against
+      // a clip of near-nothing so what is left is the channel, the wav wrapper
+      // and the player starting.
+      final player = ClipPlayer();
+      final tiny = (pcm16: Uint8List(480), sampleRate: 24000);
       await player.play(tiny);
-    }
-    final perPlay = DateTime.now().difference(started).inMicroseconds / 20;
-    _note(
-      'play a 10 ms clip, call to silence: '
-      '${(perPlay / 1000).toStringAsFixed(1)} ms — so about '
-      '${(perPlay / 1000 - 10).toStringAsFixed(1)} ms of it is not the audio',
-    );
-
-    // A whole tap, the way the board does it, against the same tap as it
-    // works today. The audio differs — different voices say a word over
-    // different lengths — so what is comparable is the gap between the call
-    // and the sound, which is the part a person feels as lag.
-    final word = await synthesiser.generate(text: 'outside', sid: 1);
-    await store.write('word', word);
-    final wordAudio = clipDuration(word).inMilliseconds;
-
-    final platform = FlutterTtsEngine();
-    await platform.init();
-    await platform.speak('outside');
-
-    var neural = 0;
-    var today = 0;
-    for (var i = 0; i < 5; i++) {
       started = DateTime.now();
+      for (var i = 0; i < 20; i++) {
+        await player.play(tiny);
+      }
+      final perPlay = DateTime.now().difference(started).inMicroseconds / 20;
+      _note(
+        'play a 10 ms clip, call to silence: '
+        '${(perPlay / 1000).toStringAsFixed(1)} ms — so about '
+        '${(perPlay / 1000 - 10).toStringAsFixed(1)} ms of it is not the audio',
+      );
+
+      // A whole tap, the way the board does it, against the same tap as it
+      // works today. The audio differs — different voices say a word over
+      // different lengths — so what is comparable is the gap between the call
+      // and the sound, which is the part a person feels as lag.
+      final word = await synthesiser.generate(text: 'outside', sid: 1);
+      await store.write('word', word);
+      final wordAudio = clipDuration(word).inMilliseconds;
+
+      final platform = FlutterTtsEngine();
+      await platform.init();
       await platform.speak('outside');
-      today += DateTime.now().difference(started).inMilliseconds;
 
-      started = DateTime.now();
-      final cached = await store.read('word');
-      await player.play(cached!);
-      neural += DateTime.now().difference(started).inMilliseconds;
+      var neural = 0;
+      var today = 0;
+      for (var i = 0; i < 5; i++) {
+        started = DateTime.now();
+        await platform.speak('outside');
+        today += DateTime.now().difference(started).inMilliseconds;
+
+        started = DateTime.now();
+        final cached = await store.read('word');
+        await player.play(cached!);
+        neural += DateTime.now().difference(started).inMilliseconds;
+      }
+      _note(
+        'one word "outside", call to silence, mean of 5 — '
+        'today ${(today / 5).round()} ms, '
+        'cached neural ${(neural / 5).round()} ms '
+        '($wordAudio ms of the neural one is the audio, so '
+        '${(neural / 5 - wordAudio).round()} ms is the app)',
+      );
+
+      _note('a whole 1231-word bake at these rates: '
+          '${(1231 * measured[1]! / 60000).round()} minutes');
+
+      await store.delete();
+      await store.close();
     }
-    _note(
-      'one word "outside", call to silence, mean of 5 — '
-      'today ${(today / 5).round()} ms, '
-      'cached neural ${(neural / 5).round()} ms '
-      '($wordAudio ms of the neural one is the audio, so '
-      '${(neural / 5 - wordAudio).round()} ms is the app)',
-    );
 
-    _note('a whole 1231-word bake at these rates: '
-        '${(1231 * measured[1]! / 60000).round()} minutes');
-
-    await store.delete();
-    await store.close();
     synthesiser.dispose();
 
-    await _install(root);
+    if (wants('install')) await _install(root);
+  }
+
+  /// Does the question mark do anything, or only claim to?
+  ///
+  /// §4.42 sells the punctuation key on the grounds that a mark "buys a
+  /// genuine rising intonation rather than an imitation of one", and that
+  /// claim was made about platform engines. The neural voice is a different
+  /// engine, and a control that does not do what its name says is exactly what
+  /// §5 non-negotiable 9 forbids — so it gets measured rather than inherited.
+  ///
+  /// The same words, on the same voice, with and without the mark. Systematic
+  /// error in the pitch estimate cancels; what is left is the difference.
+  Future<void> _questionMark(KokoroSynthesiser synthesiser) async {
+    _note('--- does the mark carry tone? (loaded: ${synthesiser.isLoaded}) ---');
+    _note('rise = mean f0 of the last 200 ms, minus the mean over the whole');
+
+    const pairs = [
+      'are you ok',
+      'you want more',
+      'it is my turn',
+      'that is mine',
+      'we are going home',
+      'you are cross with me',
+      'is it time',
+      'I can have one',
+    ];
+
+    var rose = 0;
+    var fell = 0;
+    for (final sentence in pairs) {
+      final flat = await synthesiser.generate(text: sentence, sid: 1);
+      final asked = await synthesiser.generate(text: '$sentence?', sid: 1);
+
+      final flatRise = _rise(flat);
+      final askedRise = _rise(asked);
+      if (flatRise == null || askedRise == null) {
+        _note('"$sentence": no pitch to measure');
+        continue;
+      }
+
+      final change = askedRise - flatRise;
+      if (change > 5) {
+        rose++;
+      } else if (change < -5) {
+        fell++;
+      }
+      _note(
+        '"$sentence"  rise ${flatRise.round()} Hz  ->  with "?" '
+        '${askedRise.round()} Hz   (${change >= 0 ? '+' : ''}${change.round()})',
+      );
+    }
+    _note(
+      'of ${pairs.length}: $rose rose by more than 5 Hz, $fell fell by more '
+      'than 5 Hz, ${pairs.length - rose - fell} did neither',
+    );
+  }
+
+  /// How much the end lifts above the utterance's own average.
+  ///
+  /// A question contour is a rise on the final syllable, so the last 200 ms is
+  /// what carries it and the whole-utterance mean is what it has to be judged
+  /// against — two voices at different pitches would otherwise not be
+  /// comparable at all.
+  double? _rise(AudioClip clip) {
+    final samples = _floatsOf(clip);
+    final whole = Pitch.meanF0(samples, clip.sampleRate);
+    final tailFrom = samples.length - (clip.sampleRate * 0.2).round();
+    if (whole == null || tailFrom <= 0) return null;
+    final tail = Pitch.meanF0(
+      Float32List.sublistView(samples, tailFrom),
+      clip.sampleRate,
+    );
+    if (tail == null) return null;
+    return tail - whole;
   }
 
   /// The other half of the feature: getting the model here in the first place.

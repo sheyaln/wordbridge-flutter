@@ -392,7 +392,7 @@ called "Daniel" at different qualities.
 > §5. The honest fix is the neural voice in §4.5. The screen says so plainly
 > rather than pretending the slider goes further than it does.
 
-### 4.5 Neural voice — researched, not built
+### 4.5 Neural voice — shipped pre-alpha, opt-in, and short of a tone
 
 Real tone control and a convincing whisper need an on-device neural voice
 rather than platform TTS. That unlocks genuine prosody, breathiness, gain that
@@ -978,6 +978,135 @@ buys a number for a model that may not ship.
 
 `SpeechEngine` stays engine-agnostic so this arrives as a swap. Until every one
 of these is answered, §4.4's four tones are what is true.
+
+#### Built — the voice, not the tones
+
+**Pre-alpha, and it says so on the screen that switches it on.** Words can come
+out mispronounced and the question mark does nothing audible (below), so the
+banner sits above the switch rather than under it: a caregiver is deciding how
+somebody else will sound, and the person it is for may not be able to say it
+came out wrong. It is shipped anyway because the alternative is a feature that
+is only ever tried by the people who wrote it, and because turning it off is
+instant and complete — the platform voice returns exactly as §4.4 left it, with
+nothing to undo and no data to lose.
+
+Shipped as an opt-in download, strictly local, replacing platform speech for a
+profile that switches it on. **No tone of any kind ships with it**: gate 3
+measured Kokoro's prosody space as one axis and that axis is pitch, so a `sad`
+or `stern` preset would be the speed and pitch dials wearing names they have
+not earned. Voice and tone are separable and only the voice half is good.
+
+`FlutterTtsEngine` is not replaced. It becomes the floor: `NeuralSpeechEngine`
+wraps it, and everything §4.4 configures — voice, rate, pitch, volume, the four
+tones — still reaches it, because that is what a cache miss speaks with.
+
+**The interface gained one method.** `speakUtterance` is the bar's speak key
+and the punctuation key, and it is the *only* place §4.5's named exception to
+§5 non-negotiable 1 applies. Every other call is `speak`, which may never wait
+for anything. Two methods rather than a flag, so the one place a wait is
+allowed is a thing you can grep for.
+
+##### Measured on the tablet it is for
+
+iPad mini 5, A12, 3 GB, iOS 18.7.8, release build, the shipping code, run from
+`tools/neuralbench` under its own bundle id. Median of three throughout.
+
+| | |
+|---|---|
+| Model load and warm-up | **2.4–3.0 s**, off the main isolate |
+| Live synthesis, 1 / 8 / 24 words | **583 / 2286 / 6770 ms** |
+| RTF, seven-word sentence | **1.56** |
+| Fitted budget here, doubled | **1489 ms + 478 ms/word** |
+| Shipped default | **1500 ms + 525 ms/word** |
+| Cache lookup | **212–275 µs** per word |
+| Install, end to end | **54 s** — 11 s download, 4 s verify, 38 s unpack |
+| Installed size | **369 MB** |
+
+**The tap path got faster, and that is the number that mattered.** The same
+word, call to silence, mean of five: **741 ms through platform speech, 533 ms
+from the cache** — of which 518 ms is the audio itself, so **15 ms is the app**.
+A buffer that already exists beats a synthesiser that has to start, which is
+what §4.5 predicted and had not measured.
+
+**The shipped budget is right and it was nearly wrong.** This device fits
+1489 + 478; the shipped default sits just above it at 1500 + 525. That is the
+floor device, and every other supported tablet is faster — but it is close
+enough that the setting screen measures the device rather than trusting the
+constant, and says which of the two it is showing.
+
+##### What the measuring changed
+
+- **`generate()` on the main isolate freezes the board and disables its own
+  timeout.** Known before the work started, and it decides the architecture:
+  the engine is shared into `Isolate.run` **by address**, because a second copy
+  of a 330 MB model does not fit beside the first on 3 GB.
+- **A closure captures the context it was made in, not the names it mentions.**
+  `Isolate.run` written beside a `ReceivePort` carries the port, which is
+  unsendable, and the isolate refuses to start — on the device, in the one step
+  that had never been run.
+- **`yield*` forwards a delegated stream's errors to the listener rather than
+  throwing them into the enclosing `try`.** The install's failure handling was
+  being stepped around entirely, so a bad HTTP status reached a caregiver as a
+  crash. `await for` where the errors have to be caught.
+- **A short download is not a wrong download.** Verifying a truncated file and
+  deleting it on the mismatch would throw away 300 MB somebody had already
+  waited for. The length is checked before the digest, and what arrived is kept.
+- **`storeData: false` writes files of zero bytes.** The unpack reported
+  success with four empty files and `arePresent` agreed, because it only asked
+  whether they existed. Both fixed: entries keep a lazy view onto the tar, and
+  "present" means non-empty.
+- **A press in flight when the app is backgrounded threw, and nothing spoke.**
+  `releaseModel` gives the model's 833 MB back on pause, and only
+  `TimeoutException` was being caught, so the sentence was spoken by nothing at
+  all. Every synthesis failure now falls to the platform voice: a sentence in
+  the wrong voice is a cost, silence is the failure this whole section exists
+  to prevent.
+
+##### The question mark does not survive the voice, and that is measured
+
+§4.42 sells the punctuation key on the grounds that a mark "buys a genuine
+rising intonation rather than an imitation of one". That is true of platform
+engines. **It is not true of this one.**
+
+Eight sentences, each synthesised with and without a final `?`, measuring the
+mean f0 of the last 200 ms against the utterance's own mean:
+
+| sentence | ends | with `?` | change |
+|---|---|---|---|
+| are you ok | −43 Hz | −56 Hz | −13 |
+| you want more | −56 | −57 | −1 |
+| it is my turn | −56 | −71 | −14 |
+| that is mine | −77 | −74 | +3 |
+| we are going home | −48 | −105 | −57 |
+| you are cross with me | −89 | −81 | +8 |
+| is it time | −59 | −44 | +15 |
+| I can have one | −34 | −43 | −9 |
+
+**Two rose, four fell, two did neither — and not one of the eight ends on a
+rise.** Every sentence falls at the end whether or not it is a question. The
+mark reaches the synthesiser intact: it is on the live path, not the cached
+one, so pre-synthesis is not what costs it. Kokoro simply does nothing useful
+with it.
+
+So the punctuate key keeps changing the bar and keeps working under the
+device's own voice, and **the neural voice screen says plainly that it does not
+change how this voice sounds** — along with the pitch dial, which this model
+has no equivalent of at all. §5 non-negotiable 9 does not relax because the
+engine got better; it is the same rule that keeps `sad` off the list.
+
+##### What is deliberately not built
+
+- **No tone control, and no tone pack.** Gate 3, unchanged.
+- **No live synthesis on the tap path**, at any latency.
+- **No gain above 1.0**, though the mechanism is now there — the samples are
+  ours and loudness is a multiply. §4.4's loudness gap can close; it is a
+  separate change with its own argument.
+- **Gate 4 is answered by writing it down, not by resolving it.** Kokoro's
+  weights are Apache-2.0 and its card states the training data includes
+  synthetic audio from closed providers who generally forbid it. NOTICE.md now
+  carries that, in the same terms as the symbol licences, and names StyleTTS 2
+  as the cleaner-provenance alternative. `PublishedModel` makes swapping the
+  release a value change.
 
 ### 4.5a Futures and streams are held, not built in `build`
 

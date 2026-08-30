@@ -746,10 +746,12 @@ class _Settings extends StatelessWidget {
             title: const Text('A voice of their own'),
             subtitle: Text(
               settings!.neuralVoice
-                  ? '${neuralVoiceById(settings!.neuralVoiceId).name} · '
+                  ? 'Pre-alpha, may not sound correct · '
+                        '${neuralVoiceById(settings!.neuralVoiceId).name} · '
                         'downloaded, and never leaves this tablet'
-                  : 'A downloadable voice that runs on this tablet and sounds '
-                        'less like a synthesiser. Off.',
+                  : 'Pre-alpha, may not sound correct · a downloadable voice '
+                        'that runs on this tablet and sounds less like a '
+                        'synthesiser. Off.',
             ),
             isThreeLine: true,
             trailing: const Icon(Icons.chevron_right),

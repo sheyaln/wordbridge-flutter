@@ -26,12 +26,63 @@ class VoiceModelFiles {
   Directory get espeakData => Directory(p.join(root.path, 'espeak-ng-data'));
   File get licence => File(p.join(root.path, 'LICENSE'));
 
+  /// Whether all four are here **and have something in them**.
+  ///
+  /// Existence is not enough. A tar entry read without its content writes a
+  /// file of zero bytes, and a tablet that filled up mid-write leaves one too:
+  /// both give a directory that passes a file-by-file check and a model that
+  /// will not load, reported as "the voice could not be loaded" three screens
+  /// away from the thing that actually went wrong.
   bool get arePresent =>
-      model.existsSync() &&
-      voices.existsSync() &&
-      tokens.existsSync() &&
-      espeakData.existsSync();
+      _hasBytes(model) &&
+      _hasBytes(voices) &&
+      _hasBytes(tokens) &&
+      espeakData.existsSync() &&
+      espeakData.listSync().isNotEmpty;
+
+  static bool _hasBytes(File file) => file.existsSync() && file.lengthSync() > 0;
 }
+
+/// A model release, named rather than assumed.
+///
+/// One record instead of five constants because these five facts only make
+/// sense together: a digest belongs to a URL, and a size belongs to both. A
+/// future release, or a different model altogether, is a value rather than an
+/// edit in four places.
+typedef PublishedModel = ({
+  String url,
+
+  /// Checked before a byte is unpacked. This is the voice a person will speak
+  /// in for years; a truncated download or a mirror serving something else has
+  /// to fail loudly rather than as a model that says something nobody chose.
+  String sha256,
+
+  /// What it costs somebody's data allowance, and what it costs their tablet
+  /// for good. Different questions, so both are shown. Peak use is briefly the
+  /// sum, while the archive and its contents are both on disk.
+  int downloadBytes,
+  int installedBytes,
+
+  /// The archive's own top-level directory, stripped on the way out so the
+  /// installed paths do not carry a version nothing else knows about.
+  String archiveRoot,
+});
+
+/// Kokoro-82M v0.19, as `sherpa-onnx` publishes it.
+///
+/// A release asset with a fixed URL rather than anything this project hosts:
+/// there is no server behind wordbridge and there should not be one, and a
+/// download that depends on infrastructure nobody is paying for is a feature
+/// with an expiry date on it.
+const kokoroV019 = (
+  url:
+      'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/'
+      'kokoro-en-v0_19.tar.bz2',
+  sha256: '912804855a04745fa77a30be545b3f9a5d15c4d66db00b88cbcd4921df605ac7',
+  downloadBytes: 319625534,
+  installedBytes: 378000000,
+  archiveRoot: 'kokoro-en-v0_19/',
+);
 
 /// What the install is doing, in the terms the screen says it in.
 enum ModelPhase {
@@ -69,11 +120,15 @@ typedef ModelProgress = ({
 /// reason and it is the same argument.
 class VoiceModelStore {
   VoiceModelStore({
+    this.published = kokoroV019,
     Future<Directory> Function()? documentsDirectory,
     http.Client Function()? client,
   }) : _documentsDirectory =
            documentsDirectory ?? getApplicationDocumentsDirectory,
        _client = client ?? http.Client.new;
+
+  /// Which release this store fetches and checks against.
+  final PublishedModel published;
 
   final Future<Directory> Function() _documentsDirectory;
   final http.Client Function() _client;
@@ -81,37 +136,6 @@ class VoiceModelStore {
   /// Everything to do with the voice lives under one directory, so switching
   /// the feature off and reclaiming the disk is one deletion.
   static const folder = 'neural-voice';
-
-  /// Kokoro-82M v0.19, as `sherpa-onnx` publishes it.
-  ///
-  /// A release asset with a fixed URL rather than anything this project hosts:
-  /// there is no server behind wordbridge and there should not be one, and a
-  /// download that depends on infrastructure nobody is paying for is a feature
-  /// with a expiry date on it.
-  static const downloadUrl =
-      'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/'
-      'kokoro-en-v0_19.tar.bz2';
-
-  /// What the screen says before anybody agrees to it.
-  ///
-  /// Both numbers, because they are different questions: [downloadBytes] is
-  /// what it costs somebody's data allowance and [installedBytes] is what it
-  /// costs their tablet for good. Peak use is briefly the sum, while the
-  /// archive and its contents are both on disk.
-  static const downloadBytes = 319625534;
-  static const installedBytes = 378000000;
-
-  /// The published archive, checked before a byte of it is unpacked.
-  ///
-  /// This is the voice a person will speak in for years. A truncated download
-  /// or a mirror serving something else has to fail here, loudly, rather than
-  /// as a model that loads and says something nobody chose.
-  static const sha256Digest =
-      '912804855a04745fa77a30be545b3f9a5d15c4d66db00b88cbcd4921df605ac7';
-
-  /// The archive's own top-level directory, stripped on the way out so the
-  /// paths do not carry a model version nothing else knows about.
-  static const _archiveRoot = 'kokoro-en-v0_19/';
 
   Future<Directory> _root() async => Directory(
     p.join((await _documentsDirectory()).path, folder),
@@ -178,23 +202,46 @@ class VoiceModelStore {
     final archive = File(p.join(root.path, 'model.tar.bz2.part'));
 
     try {
-      yield* _download(archive);
+      // `await for` rather than `yield*`. A delegated stream's errors are
+      // forwarded straight to whoever is listening, which would step around
+      // the failure handling below and leave a caregiver with a crash where a
+      // sentence explaining what to do next should be.
+      await for (final progress in _download(archive)) {
+        yield progress;
+      }
+
+      // Fewer bytes than were published means the connection ended early, not
+      // that the wrong thing was served. The difference matters: one is
+      // resumable and the other has to be thrown away, and treating the first
+      // as the second loses 300 MB somebody has already waited for.
+      final arrived = archive.existsSync() ? archive.lengthSync() : 0;
+      if (arrived < published.downloadBytes) {
+        yield (
+          phase: ModelPhase.failed,
+          bytes: arrived,
+          totalBytes: published.downloadBytes,
+          detail:
+              'The download stopped early. What has arrived is kept, so '
+              'carrying on will not start again from the beginning.',
+        );
+        return;
+      }
 
       yield (
         phase: ModelPhase.verifying,
-        bytes: downloadBytes,
-        totalBytes: downloadBytes,
+        bytes: published.downloadBytes,
+        totalBytes: published.downloadBytes,
         detail: null,
       );
       final digest = await _digestOf(archive);
-      if (digest != sha256Digest) {
+      if (digest != published.sha256) {
         // What arrived is not what was published. Keeping it would mean
         // resuming onto a file that can never verify, so this one goes.
         archive.deleteSync();
         yield (
           phase: ModelPhase.failed,
           bytes: 0,
-          totalBytes: downloadBytes,
+          totalBytes: published.downloadBytes,
           detail:
               'The download did not match what was published, so it has not '
               'been installed. Try again.',
@@ -202,20 +249,22 @@ class VoiceModelStore {
         return;
       }
 
-      yield* _unpack(archive, root);
+      await for (final progress in _unpack(archive, root)) {
+        yield progress;
+      }
 
       archive.deleteSync();
       yield (
         phase: ModelPhase.installed,
-        bytes: installedBytes,
-        totalBytes: installedBytes,
+        bytes: published.installedBytes,
+        totalBytes: published.installedBytes,
         detail: null,
       );
     } catch (e) {
       yield (
         phase: ModelPhase.failed,
         bytes: archive.existsSync() ? archive.lengthSync() : 0,
-        totalBytes: downloadBytes,
+        totalBytes: published.downloadBytes,
         detail: '$e',
       );
     }
@@ -224,11 +273,11 @@ class VoiceModelStore {
   /// Streams the archive to disk, continuing from whatever is already there.
   Stream<ModelProgress> _download(File archive) async* {
     var have = archive.existsSync() ? archive.lengthSync() : 0;
-    if (have >= downloadBytes) return;
+    if (have >= published.downloadBytes) return;
 
     final client = _client();
     try {
-      final request = http.Request('GET', Uri.parse(downloadUrl));
+      final request = http.Request('GET', Uri.parse(published.url));
       if (have > 0) request.headers['range'] = 'bytes=$have-';
 
       final response = await client.send(request);
@@ -243,7 +292,7 @@ class VoiceModelStore {
       if (response.statusCode != 200 && response.statusCode != 206) {
         throw HttpException(
           'The download server answered ${response.statusCode}.',
-          uri: Uri.parse(downloadUrl),
+          uri: Uri.parse(published.url),
         );
       }
 
@@ -255,7 +304,7 @@ class VoiceModelStore {
           yield (
             phase: ModelPhase.downloading,
             bytes: have,
-            totalBytes: downloadBytes,
+            totalBytes: published.downloadBytes,
             detail: null,
           );
         }
@@ -292,29 +341,78 @@ class VoiceModelStore {
     final archivePath = archive.path;
     final stagingPath = staging.path;
 
-    final done = Isolate.run(() {
-      _extract(archivePath, stagingPath, progress.sendPort);
-    });
-
-    var bytes = 0;
-    final updates = StreamController<ModelProgress>();
-    progress.listen((Object? message) {
-      bytes += message! as int;
-      updates.add((
-        phase: ModelPhase.unpacking,
-        bytes: bytes,
-        totalBytes: installedBytes,
-        detail: null,
-      ));
-    });
-    unawaited(
-      done.whenComplete(() {
-        progress.close();
-        updates.close();
-      }),
+    // Started from a scope that holds nothing else. A closure captures the
+    // context it was made in rather than only the names it mentions, so an
+    // `Isolate.run` written inline here would carry the ReceivePort sitting
+    // beside it — which is unsendable, and refuses to start the isolate.
+    final done = _extractOffThread(
+      archivePath,
+      stagingPath,
+      published.archiveRoot,
+      progress.sendPort,
     );
 
-    yield* updates.stream;
+    final updates = StreamController<ModelProgress>();
+    var written = 0;
+    var decompressed = 0;
+
+    void report() {
+      // The larger of the two, because they are two halves of one job and the
+      // second only starts as the first ends. A bar that went backwards
+      // between them would read as something having gone wrong.
+      final at = written > decompressed ? written : decompressed;
+      updates.add((
+        phase: ModelPhase.unpacking,
+        bytes: at > published.installedBytes ? published.installedBytes : at,
+        totalBytes: published.installedBytes,
+        detail: null,
+      ));
+    }
+
+    // Decompression is the slow half — minutes of solid bzip2 on an A12 — and
+    // it is one call that cannot report on itself. What it can do is grow a
+    // file, so that is what gets watched. Without this the bar stands still
+    // through the longest part of the install, which reads as a tablet that
+    // has stopped rather than one that is working.
+    final tar = File('$archivePath.tar');
+    final polling = Timer.periodic(const Duration(milliseconds: 400), (_) {
+      decompressed = tar.existsSync() ? tar.lengthSync() : 0;
+      report();
+    });
+
+    // The isolate sends a size per file and then null, in that order. Closing
+    // on the sentinel rather than on `done` is what guarantees every size
+    // arrived: a port closed the moment the isolate finished drops whatever
+    // had not been delivered yet, which is most of them.
+    progress.listen((Object? message) {
+      if (message == null) {
+        progress.close();
+        updates.close();
+        return;
+      }
+      written += message as int;
+      report();
+    });
+
+    unawaited(
+      done.then(
+        (_) {},
+        onError: (Object error, StackTrace stack) {
+          // No sentinel is coming.
+          progress.close();
+          updates.addError(error, stack);
+          updates.close();
+        },
+      ),
+    );
+
+    try {
+      await for (final progress in updates.stream) {
+        yield progress;
+      }
+    } finally {
+      polling.cancel();
+    }
     await done;
 
     final installed = Directory(p.join(root.path, 'model'));
@@ -328,12 +426,27 @@ class VoiceModelStore {
     }
   }
 
+  /// Starts [_extract] on its own isolate, holding only what can cross.
+  static Future<void> _extractOffThread(
+    String archivePath,
+    String toPath,
+    String archiveRoot,
+    SendPort progress,
+  ) => Isolate.run(
+    () => _extract(archivePath, toPath, archiveRoot, progress),
+  );
+
   /// Runs in its own isolate: bzip2 to a plain tar, then the tar to disk.
   ///
   /// Two passes over a temporary file rather than one pass in memory. The
   /// decompressed archive is 361 MB and this device has 3 GB in total, most of
   /// which the board and the OS already want.
-  static void _extract(String archivePath, String toPath, SendPort progress) {
+  static void _extract(
+    String archivePath,
+    String toPath,
+    String archiveRoot,
+    SendPort progress,
+  ) {
     final tarPath = '$archivePath.tar';
     final input = InputFileStream(archivePath);
     final output = OutputFileStream(tarPath);
@@ -346,12 +459,17 @@ class VoiceModelStore {
 
     final tar = InputFileStream(tarPath);
     try {
-      final entries = TarDecoder().decodeStream(tar, storeData: false);
+      // `storeData: false` gives entries with no content at all, and writing
+      // one produces a file of zero bytes — an install that looks complete and
+      // has four empty files in it. Left true, the entry's content is a lazy
+      // view onto the tar on disk rather than a copy in memory, which is what
+      // this device cannot spare.
+      final entries = TarDecoder().decodeStream(tar);
       for (final entry in entries) {
         if (!entry.isFile) continue;
         var name = entry.name;
-        if (name.startsWith(_archiveRoot)) {
-          name = name.substring(_archiveRoot.length);
+        if (name.startsWith(archiveRoot)) {
+          name = name.substring(archiveRoot.length);
         }
         if (name.isEmpty || name.startsWith('.')) continue;
 
@@ -367,8 +485,15 @@ class VoiceModelStore {
         } finally {
           sink.closeSync();
         }
-        progress.send(entry.size);
+        // What landed, rather than what the header claimed. Entries are read
+        // without their data held in memory, and the size a header reports is
+        // not something the progress bar should depend on.
+        progress.send(File(destination).lengthSync());
       }
+      // Last, and only once everything above has been sent. The other side
+      // closes on this rather than on the isolate ending, so nothing in
+      // flight is dropped.
+      progress.send(null);
     } finally {
       tar.closeSync();
       File(tarPath).deleteSync();

@@ -321,6 +321,19 @@ class NeuralSpeechEngine implements SpeechEngine {
         'took longer than ${deadline.inMilliseconds} ms',
       );
       await platform.speakUtterance(spoken);
+    } catch (e) {
+      // Anything else the model can do: a string it cannot phonemise, memory
+      // it cannot have, or — the one that will actually happen — an engine
+      // released out from under it, because backgrounding the app gives the
+      // model's 833 MB back and a press can be in flight when it does.
+      //
+      // Every one of those has to come out as the platform voice. A sentence
+      // in the wrong voice is a cost somebody can hear and work around; a
+      // sentence spoken by nothing at all is the failure this file exists to
+      // prevent, and it is the one nobody in the room can see happening.
+      if (mine != _generation) return;
+      _recordFallback(spoken, 'the voice failed: $e');
+      await platform.speakUtterance(spoken);
     }
   }
 
@@ -342,15 +355,21 @@ class NeuralSpeechEngine implements SpeechEngine {
     if (synthesiser == null) return false;
 
     final mine = ++_generation;
-    final clip = await synthesiser.generate(
-      text: text,
-      sid: voice.sid,
-      speed: _speed,
-      live: true,
-    );
-    if (mine != _generation) return true;
-    await _play(clip);
-    return true;
+    try {
+      final clip = await synthesiser.generate(
+        text: text,
+        sid: voice.sid,
+        speed: _speed,
+        live: true,
+      );
+      if (mine != _generation) return true;
+      await _play(clip);
+      return true;
+    } catch (_) {
+      // Nothing to hear, and the screen says so. A caregiver screen that
+      // throws is one somebody cannot get back out of.
+      return false;
+    }
   }
 
   /// Times two sentences and fits this tablet's own budget.
@@ -382,12 +401,18 @@ class NeuralSpeechEngine implements SpeechEngine {
     const short = 'yes';
     const long = 'I would like to go outside and see the garden this afternoon';
 
-    return SynthesisBudget.fit(
-      shortWords: SynthesisBudget.wordsIn(short),
-      shortTook: await time(short),
-      longWords: SynthesisBudget.wordsIn(long),
-      longTook: await time(long),
-    );
+    try {
+      return SynthesisBudget.fit(
+        shortWords: SynthesisBudget.wordsIn(short),
+        shortTook: await time(short),
+        longWords: SynthesisBudget.wordsIn(long),
+        longTook: await time(long),
+      );
+    } catch (_) {
+      // A measurement that could not be taken is not a measurement, and the
+      // shipped default already covers this device.
+      return null;
+    }
   }
 
   Future<AudioClip?> _synthesise(String text) async {
