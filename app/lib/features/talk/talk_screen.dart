@@ -141,6 +141,13 @@ class TalkScreenState extends State<TalkScreen> {
   bool _settling = false;
   Timer? _settleTimer;
 
+  /// The speak key is waiting on a voice.
+  ///
+  /// Only ever true long enough to see under an engine that has to synthesise;
+  /// the platform engine returns before a frame is drawn, so the ring never
+  /// appears for it.
+  bool _speaking = false;
+
   int get wheelPages => _wheel?.pages ?? 1;
 
   /// The route the finder is walking, and how far along it is.
@@ -789,7 +796,16 @@ class TalkScreenState extends State<TalkScreen> {
     // here and nowhere else: one press, one wait, one sentence, for a profile
     // that asked for a voice which has to be synthesised. Under an engine
     // with no such cost this is the same call as any other.
-    await widget.speech.speakUtterance(_utterance.text);
+    //
+    // The ring goes up for the whole call rather than only for a synthesis,
+    // because nothing here knows which it will be — and a key that looks
+    // unpressed for a second is a key somebody presses again.
+    if (mounted) setState(() => _speaking = true);
+    try {
+      await widget.speech.speakUtterance(_utterance.text);
+    } finally {
+      if (mounted) setState(() => _speaking = false);
+    }
 
     if (_predicting && words.isNotEmpty) {
       unawaited(
@@ -1066,6 +1082,7 @@ class TalkScreenState extends State<TalkScreen> {
                 _UtteranceBarView(
                   utterance: _utterance,
                   onSpeak: _speakSentence,
+                  speaking: _speaking,
                   onPunctuate: _endSentence,
                   onType: _typeWord,
                   onFind: _findWord,
@@ -1188,6 +1205,7 @@ class _UtteranceBarView extends StatelessWidget {
   const _UtteranceBarView({
     required this.utterance,
     required this.onSpeak,
+    required this.speaking,
     required this.onPunctuate,
     required this.onType,
     required this.onFind,
@@ -1197,6 +1215,9 @@ class _UtteranceBarView extends StatelessWidget {
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
+
+  /// A voice is being made right now, so the speak key shows a ring.
+  final bool speaking;
   final void Function(String mark) onPunctuate;
   final VoidCallback onType;
   final VoidCallback onFind;
@@ -1226,10 +1247,16 @@ class _UtteranceBarView extends StatelessWidget {
           child: Row(
             children: [
               // Deliberately the largest target on the bar.
+              //
+              // It turns into a ring while a voice is being made. Making one
+              // takes a second or so, and a key that looks exactly the same
+              // during it reads as a press that did not register — so the
+              // person presses again, and the board says it twice.
               _BarButton(
                 icon: Icons.volume_up_rounded,
-                tooltip: 'Speak',
+                tooltip: speaking ? 'Speaking…' : 'Speak',
                 onPressed: empty ? null : onSpeak,
+                busy: speaking,
                 size: 40,
                 colour: const Color(0xFF1B5E20),
                 background: const Color(0xFFDCEDC8),
@@ -1419,6 +1446,7 @@ class _BarButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.busy = false,
     this.size = 30,
     this.colour = Colors.black54,
     this.background,
@@ -1427,6 +1455,10 @@ class _BarButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+
+  /// Draws a ring where the icon is, without changing the size of the key or
+  /// where it sits. The target has to stay exactly where the finger left it.
+  final bool busy;
   final double size;
   final Color colour;
   final Color? background;
@@ -1447,11 +1479,20 @@ class _BarButton extends StatelessWidget {
           onTap: onPressed,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Icon(
-              icon,
-              size: size,
-              color: enabled ? colour : Colors.black12,
-            ),
+            child: busy
+                ? SizedBox(
+                    width: size,
+                    height: size,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: enabled ? colour : Colors.black12,
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    size: size,
+                    color: enabled ? colour : Colors.black12,
+                  ),
           ),
         ),
       ),

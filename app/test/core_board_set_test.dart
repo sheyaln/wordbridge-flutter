@@ -12,6 +12,12 @@ import 'package:wordbridge/features/grid/region_labels.dart';
 
 /// Project Core's Universal Core 36 (UNC Center for Literacy and Disability
 /// Studies). The shipped vocabulary must contain all of them.
+///
+/// Written as the source publishes it, including `finished`, because this list
+/// is the citation §7 and `docs/starter-vocabulary.md` rest on. Editing it to
+/// match what the board happens to ship would turn the evidence into a
+/// restatement of the code. See [coreShippedAsStem] for the one word the board
+/// deliberately carries in another form.
 const universalCore36 = {
   'all',
   'can',
@@ -51,6 +57,16 @@ const universalCore36 = {
   'you',
 };
 
+/// Core words the board carries as a stem plus an ending key, not as the form
+/// the source list publishes.
+///
+/// One entry, and it should stay a short list. Every one of these costs a
+/// second press to say a word the core list treats as basic, so each needs a
+/// reason better than tidiness.
+const coreShippedAsStem = <String, ({String stem, String ending})>{
+  'finished': (stem: 'finish', ending: '+ed'),
+};
+
 void main() {
   late WordbridgeDatabase db;
   late String vocabId;
@@ -81,7 +97,7 @@ void main() {
       'he   my   same      can  get   take     +ing      and     . on   yes',
       'she  me   different do   make  put      +\'s      but     . up   no',
       'it   .    more      open close help     am/is/are because . to   don\'t',
-      'that .    this      look turn  finished was/were  so      . out  maybe',
+      'that .    this      look turn  finish   was/were  so      . out  maybe',
     ];
 
     final home = await (db.select(
@@ -117,10 +133,40 @@ void main() {
         .toSet();
 
     expect(
-      universalCore36.difference(labels),
+      universalCore36
+          .difference(labels)
+          .difference(coreShippedAsStem.keys.toSet()),
       isEmpty,
       reason: 'a core word is missing from the shipped vocabulary',
     );
+  });
+
+  test('the core words carried as a stem are on the board as one', () async {
+    // The deliberate deviation, kept honest by being named. `finished` seeded
+    // as itself was a verb already carrying its ending, and nothing marked it
+    // as such — so the board offered `+ed` after it and said "finisheded".
+    // The stem takes the endings like every other verb, and the ending key it
+    // needs is on the same board, so the core word is still sayable in two
+    // presses rather than one.
+    final labels = (await buttons())
+        .where((b) => !b.isSystem)
+        .map((b) => b.label)
+        .toSet();
+
+    for (final entry in coreShippedAsStem.entries) {
+      expect(
+        labels,
+        contains(entry.value.stem),
+        reason: '"${entry.key}" is not on the board even as a stem',
+      );
+      expect(
+        labels,
+        contains(entry.value.ending),
+        reason:
+            'the "${entry.value.ending}" key is missing, so "${entry.key}" '
+            'cannot be built at all',
+      );
+    }
   });
 
   test('leaves room to grow', () async {
@@ -694,7 +740,7 @@ void main() {
         'help',
         'look',
         'turn',
-        'finished',
+        'finish',
       ];
 
       for (final verb in verbs) {

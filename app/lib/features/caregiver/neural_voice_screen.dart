@@ -87,7 +87,8 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     final installed = await _speech.models.isInstalled();
     final onDisk = await _speech.models.bytesOnDisk();
     final partial = await _speech.models.downloadedBytes();
-    final words = _words ?? await bakeVocabulary(widget.db, widget.vocabularyId);
+    final words =
+        _words ?? await bakeVocabulary(widget.db, widget.vocabularyId);
     if (!mounted) return;
     setState(() {
       _installed = installed;
@@ -122,9 +123,9 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     final agreed = await _confirm(
       title: 'Delete the downloaded voice?',
       body:
-          'This gives back ${_megabytes(_onDisk)} and the board goes back to '
-          'the device\'s own voice. The words already baked are kept, so '
-          'downloading it again does not mean baking them again.',
+          'This frees ${_megabytes(_onDisk)} and the board goes back to the '
+          'device voice. The words already made are kept, so downloading it '
+          'again will not mean making them again.',
       action: 'Delete',
     );
     if (!agreed) return;
@@ -158,12 +159,12 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     final baked = _speech.clips?.count ?? 0;
     if (baked > 0) {
       final agreed = await _confirm(
-        title: 'Change the voice to ${voice.name}?',
+        title: 'Change to ${voice.name}?',
         body:
-            'The $baked words already baked belong to the old voice, so they '
-            'have to be made again — about ${_bakeMinutes(_words?.length ?? 0)} '
-            'in the background. Until that finishes, words that have not been '
-            'made yet speak in the device\'s own voice.',
+            'The $baked words already made are in the old voice, so they have '
+            'to be made again — about ${_bakeMinutes(_words?.length ?? 0)} in '
+            'the background. Until then, words that are not ready speak in the '
+            'device voice.',
         action: 'Change',
       );
       if (!agreed) return;
@@ -180,6 +181,25 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     await _refresh();
   }
 
+  /// The voices, on a page of their own.
+  ///
+  /// A dozen radio rows above the sections that say how much is ready and how
+  /// long a sentence takes pushed both off the screen. The list is read once,
+  /// when a voice is chosen; the two below it are read every time somebody
+  /// comes back to check on it.
+  Future<void> _openVoicePicker() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _VoicePicker(
+          chosen: _settings.neuralVoiceId,
+          onChoose: _chooseVoice,
+          onPreview: _preview,
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _preview(NeuralVoice voice) async {
     setState(() => _busy = 'Making a sentence in ${voice.name}…');
     final spoke = await _speech.previewVoice(
@@ -188,7 +208,7 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     );
     if (!mounted) return;
     setState(() => _busy = null);
-    if (!spoke) _say('The voice could not be loaded, so there is nothing to hear.');
+    if (!spoke) _say('That voice could not be loaded.');
   }
 
   Future<void> _startBake() async {
@@ -199,7 +219,9 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     setState(() => _busy = null);
 
     if (job == null) {
-      _say('The voice could not be loaded, so there is nothing to bake with.');
+      _say(
+        'The voice could not be loaded, so there is nothing to make words with.',
+      );
       return;
     }
     _bake?.removeListener(_onBake);
@@ -209,7 +231,7 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
   }
 
   Future<void> _measure() async {
-    setState(() => _busy = 'Timing two sentences on this tablet…');
+    setState(() => _busy = 'Timing two sentences…');
     final budget = await _speech.measureBudget();
     if (!mounted) return;
     setState(() => _busy = null);
@@ -226,9 +248,8 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
 
   void _say(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<bool> _confirm({
@@ -263,35 +284,29 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     final baked = _speech.clips?.count ?? 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('A voice of their own')),
+      appBar: AppBar(title: const Text('Neural voice')),
       body: ListView(
         children: [
           const _PreAlpha(),
-          const _Header('What this is'),
           const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Text(
-              'A voice that runs on this tablet and never leaves it. It sounds '
-              'less like a synthesiser than the device\'s own voice, and it '
-              'does not sound like every other AAC user\'s — which is the '
-              'thing people who use these devices ask for by name.\n\n'
-              'It is one download and then nothing: no account, no connection, '
-              'nothing sent anywhere. The tablet works exactly the same in a '
-              'car, a playground, and a hospital corridor with no signal.',
+              'A neural voice runs on this tablet. It sounds more like a '
+              'person than the device voice does, and it does not sound like '
+              'every other AAC user.\n\n'
+              'One download, then nothing. No account, no connection, nothing '
+              'sent anywhere — so it works the same with no signal.',
             ),
           ),
 
           if (!_speech.canPlay)
             const ListTile(
               leading: Icon(Icons.error_outline),
-              title: Text('This device cannot play a made voice'),
-              subtitle: Text(
-                'The board keeps the device\'s own voice, which is what it '
-                'has always used.',
-              ),
+              title: Text('This tablet cannot play it'),
+              subtitle: Text('The board keeps using the device voice.'),
             ),
 
-          const _Header('The download'),
+          const _Header('Download'),
           _ModelTile(
             published: _speech.models.published,
             installed: _installed,
@@ -306,12 +321,11 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
             const Divider(height: 32),
             SwitchListTile(
               value: on,
-              title: const Text('Speak with the downloaded voice'),
+              title: const Text('Use the neural voice'),
               subtitle: const Text(
-                'Pre-alpha — it may not sound correct. Off, the board speaks '
-                'exactly as it does today. On, it uses the voice chosen below '
-                'for every word that has been made, and the device\'s own '
-                'voice for the rest.',
+                'Off, the board sounds exactly as it does now. On, everything '
+                'is spoken in this voice — words made in advance play '
+                'instantly, and anything else is synthesised on the spot.',
               ),
               isThreeLine: true,
               onChanged: _speech.canPlay ? _setEnabled : null,
@@ -319,46 +333,19 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
           ],
 
           if (_installed && on) ...[
-            const _Header('The voice'),
-            RadioGroup<String>(
-              groupValue: _settings.neuralVoiceId,
-              onChanged: (id) {
-                if (id != null) unawaited(_chooseVoice(neuralVoiceById(id)));
-              },
-              child: Column(
-                children: [
-                  for (final voice in kokoroVoices)
-                    RadioListTile<String>(
-                      value: voice.id,
-                      title: Text(voice.name),
-                      subtitle: Text(voice.accent),
-                      secondary: IconButton(
-                        icon: const Icon(Icons.volume_up_rounded),
-                        tooltip: 'Hear ${voice.name}',
-                        onPressed: _busy == null ? () => _preview(voice) : null,
-                      ),
-                    ),
-                ],
+            const _Header('Voice'),
+            ListTile(
+              leading: const Icon(Icons.record_voice_over_outlined),
+              title: Text(neuralVoiceById(_settings.neuralVoiceId).name),
+              subtitle: Text(
+                '${neuralVoiceById(_settings.neuralVoiceId).accent} · '
+                '${kokoroVoices.length} to choose from',
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Text(
-                'Hearing one takes a couple of seconds — it is being made from '
-                'scratch. That is the wait the board exists to avoid, which is '
-                'why the words are made in advance instead.\n\n'
-                'Two controls do less in this voice than they do in the '
-                'device\'s own, and both are measured rather than assumed. '
-                'The pitch dial does nothing — this voice has no pitch '
-                'control at all, so it applies to the device\'s voice only. '
-                'And the "?" key does not make a sentence sound like a '
-                'question: it still changes what is written on the bar, and '
-                'the device\'s own voice still reads it as a question, but '
-                'this voice does not. The speed dial works in both.',
-              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _openVoicePicker,
             ),
 
-            _Header('How much of the board is ready'),
+            _Header('Words made in advance'),
             _BakeTile(
               baked: baked,
               words: words,
@@ -368,24 +355,22 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
               onPause: () => _bake?.pause(),
             ),
 
-            const _Header('When the device\'s own voice steps in'),
+            const _Header('Times the device voice was used instead'),
             _FallbackTile(
               count: _speech.fallbackCount,
               recent: _speech.fallbacks,
             ),
 
-            const _Header('How long a sentence may take'),
+            const _Header('How long synthesis may take'),
             ListTile(
               title: Text('${_settings.synthesisBudget}'),
               subtitle: Text(
                 _settings.synthesisBudgetMeasured
-                    ? 'Measured on this tablet. Pressing speak on a sentence '
-                          'that is not yet made waits up to this long for the '
-                          'chosen voice, then uses the device\'s own.'
-                    : 'The default, which is set for the slowest tablet this '
-                          'app supports. Measuring gives this one its own '
-                          'number, which on a newer tablet is a good deal '
-                          'shorter.',
+                    ? 'Measured on this tablet. Anything not made in advance '
+                          'is synthesised, and falls back to the device voice '
+                          'only if it takes longer than this.'
+                    : 'A safe default for the slowest tablet. Measure to get '
+                          'this tablet\'s own number, which is usually lower.',
               ),
               isThreeLine: true,
               trailing: FilledButton.tonal(
@@ -405,6 +390,92 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
               title: Text(_busy!),
             ),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+/// Choosing which voice, and hearing one before choosing it.
+///
+/// Its own page so the sections that report on the voice already chosen are not
+/// pushed below a list nobody needs after the first visit.
+class _VoicePicker extends StatefulWidget {
+  const _VoicePicker({
+    required this.chosen,
+    required this.onChoose,
+    required this.onPreview,
+  });
+
+  final String chosen;
+  final Future<void> Function(NeuralVoice) onChoose;
+  final Future<void> Function(NeuralVoice) onPreview;
+
+  @override
+  State<_VoicePicker> createState() => _VoicePickerState();
+}
+
+class _VoicePickerState extends State<_VoicePicker> {
+  late String _chosen = widget.chosen;
+  NeuralVoice? _playing;
+
+  Future<void> _hear(NeuralVoice voice) async {
+    setState(() => _playing = voice);
+    await widget.onPreview(voice);
+    if (mounted) setState(() => _playing = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Voice')),
+      body: ListView(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Press the speaker to hear one. It takes a second or two — the '
+              'sentence is being made as you listen.',
+            ),
+          ),
+          RadioGroup<String>(
+            groupValue: _chosen,
+            onChanged: (id) async {
+              if (id == null) return;
+              setState(() => _chosen = id);
+              await widget.onChoose(neuralVoiceById(id));
+              if (mounted) setState(() {});
+            },
+            child: Column(
+              children: [
+                for (final voice in kokoroVoices)
+                  RadioListTile<String>(
+                    value: voice.id,
+                    title: Text(voice.name),
+                    subtitle: Text(voice.accent),
+                    secondary: IconButton(
+                      icon: _playing == voice
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.volume_up_rounded),
+                      tooltip: 'Hear ${voice.name}',
+                      onPressed: _playing == null ? () => _hear(voice) : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 32),
+            child: Text(
+              'The speed dial works with these voices. The pitch dial does '
+              'not — they have no pitch control, so it only affects the '
+              'device voice.',
+            ),
+          ),
         ],
       ),
     );
@@ -441,9 +512,8 @@ class _PreAlpha extends StatelessWidget {
               children: [
                 Text(
                   'Pre-alpha — it may not sound correct',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: colours.onTertiaryContainer,
-                  ),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(color: colours.onTertiaryContainer),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -451,9 +521,8 @@ class _PreAlpha extends StatelessWidget {
                   'make this voice sound like it is asking a question. Turning '
                   'it off puts the device\'s own voice back exactly as it was, '
                   'immediately, with nothing to undo.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colours.onTertiaryContainer,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: colours.onTertiaryContainer),
                 ),
               ],
             ),
@@ -491,7 +560,7 @@ class _ModelTile extends StatelessWidget {
       return ListTile(
         leading: const Icon(Icons.check_circle_outline),
         title: const Text('Downloaded'),
-        subtitle: Text('Using ${_megabytes(onDisk)} on this tablet.'),
+        subtitle: Text('${_megabytes(onDisk)} on this tablet.'),
         trailing: TextButton(onPressed: onDelete, child: const Text('Delete')),
       );
     }
@@ -505,7 +574,7 @@ class _ModelTile extends StatelessWidget {
       return ListTile(
         title: Text(switch (running.phase) {
           ModelPhase.downloading => 'Downloading',
-          ModelPhase.verifying => 'Checking what arrived',
+          ModelPhase.verifying => 'Verifying download',
           ModelPhase.unpacking => 'Unpacking',
           _ => 'Working',
         }),
@@ -518,7 +587,7 @@ class _ModelTile extends StatelessWidget {
             Text(
               '${_megabytes(running.bytes)} of '
               '${_megabytes(running.totalBytes)}'
-              '${running.phase == ModelPhase.downloading ? ' — closing the app does not lose this' : ''}',
+              '${running.phase == ModelPhase.downloading ? ' — safe to close the app' : ''}',
             ),
           ],
         ),
@@ -530,15 +599,14 @@ class _ModelTile extends StatelessWidget {
       leading: const Icon(Icons.download_outlined),
       title: Text(
         partial > 0
-            ? 'Resume the download — ${_megabytes(partial)} already here'
+            ? 'Resume — ${_megabytes(partial)} already here'
             : 'Download the voice',
       ),
       subtitle: Text(
         running?.detail ??
-            '${_megabytes(published.downloadBytes)} to download, and '
-                '${_megabytes(published.installedBytes)} on the tablet '
-                'once it is unpacked. It can be deleted again at any time. '
-                'Best done on wi-fi and while the tablet is not needed.',
+            '${_megabytes(published.downloadBytes)} to download, '
+                '${_megabytes(published.installedBytes)} once unpacked. Best '
+                'on wi-fi. You can delete it again at any time.',
       ),
       isThreeLine: true,
       trailing: FilledButton(
@@ -585,22 +653,22 @@ class _BakeTile extends StatelessWidget {
               LinearProgressIndicator(value: share),
               const SizedBox(height: 6),
               Text(switch (running?.state) {
-                BakeState.running => 'Making them now. The board works '
-                    'throughout — this stops whenever anybody speaks.',
+                BakeState.running =>
+                  'Synthesising now. The board still works — this pauses for '
+                      'each word spoken and resumes straight after.',
                 BakeState.waiting =>
-                  'Paused while the board is in use. It picks up again a few '
+                  'Paused while the board is in use. It carries on a few '
                       'seconds after the last word.',
-                BakeState.paused => 'Stopped. Nothing already made is lost.',
-                BakeState.done => 'Every word on this board is ready.',
+                BakeState.paused => 'Stopped. Nothing made so far is lost.',
+                BakeState.done => 'Every word is ready.',
                 BakeState.failed =>
                   running?.failure ??
-                      'Something went wrong. Nothing already made is lost.',
+                      'Something went wrong. Nothing made so far is lost.',
                 _ =>
                   done >= total
-                      ? 'Every word on this board is ready.'
-                      : 'About ${_bakeMinutes(total - done)} left. It can be '
-                            'stopped and picked up again at any time, and '
-                            'nothing already made is lost.',
+                      ? 'Every word is ready.'
+                      : 'About ${_bakeMinutes(total - done)} left. You can '
+                            'stop and carry on at any time.',
               }),
             ],
           ),
@@ -638,10 +706,8 @@ class _FallbackTile extends StatelessWidget {
   Widget build(BuildContext context) {
     if (count == 0) {
       return const ListTile(
-        title: Text('It has not had to, since the app started'),
-        subtitle: Text(
-          'Everything said so far came out in the chosen voice.',
-        ),
+        title: Text('None since the app started'),
+        subtitle: Text('Everything so far came out in the chosen voice.'),
       );
     }
 
@@ -649,11 +715,10 @@ class _FallbackTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListTile(
-          title: Text('$count times since the app started'),
+          title: Text('$count since the app started'),
           subtitle: const Text(
-            'Each of these came out in the device\'s own voice instead. If it '
-            'is happening often, the answer is to finish making the words — '
-            'not to allow a longer wait.',
+            'If this happens often, finish making the words rather than '
+            'allowing a longer wait.',
           ),
           isThreeLine: true,
         ),
@@ -679,9 +744,8 @@ class _Header extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
     child: Text(
       text,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        color: Theme.of(context).colorScheme.primary,
-      ),
+      style: Theme.of(context).textTheme.titleSmall
+          ?.copyWith(color: Theme.of(context).colorScheme.primary),
     ),
   );
 }

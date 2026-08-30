@@ -105,6 +105,27 @@ class KokoroSynthesiser {
     _config = null;
   }
 
+  /// What the model is actually handed.
+  ///
+  /// A bare word with nothing to end it comes back with a schwa stuck on the
+  /// end — `look` as "look-uh", `wait` as "wait-uh" — and `like` comes back as
+  /// two syllables. The phonemiser reads an unpunctuated string as a fragment
+  /// that carries on, and voices the end of it accordingly. A full stop is how
+  /// it is told the utterance is finished. Whole sentences already end in one,
+  /// which is why they always sounded right and single words did not.
+  ///
+  /// A trailing comma or colon is replaced rather than added to: `look,.` is
+  /// not a string to hand a phonemiser.
+  ///
+  /// Applied here rather than at either call site, because the bake and the
+  /// live path must give the model the same string — a cached word and a
+  /// freshly made one that did not match would be the same word in two voices.
+  static String textForModel(String text) {
+    final trimmed = text.trim().replaceFirst(RegExp(r'[,;:\s]+$'), '');
+    if (trimmed.isEmpty) return trimmed;
+    return RegExp(r'[.!?…]$').hasMatch(trimmed) ? trimmed : '$trimmed.';
+  }
+
   /// Synthesises [text], trimmed and ready to store or play.
   ///
   /// [live] marks a person waiting, which is what [liveWaiting] reports to the
@@ -121,7 +142,11 @@ class KokoroSynthesiser {
     if (live) _liveWaiting++;
 
     final turn = _turn.then((_) async {
-      final audio = await _generate(text: text, sid: sid, speed: speed);
+      final audio = await _generate(
+        text: textForModel(text),
+        sid: sid,
+        speed: speed,
+      );
       // Untrimmed only to measure what the trimming is worth. Nothing that
       // reaches a person skips it: the padding is 30% of the bytes and it is
       // the pause a tap would otherwise start with.

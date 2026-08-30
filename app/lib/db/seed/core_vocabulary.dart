@@ -246,7 +246,12 @@ final homeBands = <Band<SeedWord>>[
       w('help', PartOfSpeech.verb, essential: true),
       w('look', PartOfSpeech.verb),
       w('turn', PartOfSpeech.verb),
-      w('finished', PartOfSpeech.verb, essential: true),
+      // The stem, not the past form. Seeded as `finished` it was a verb
+      // already carrying its ending, and nothing marked it as such — so the
+      // board offered `+ed` after it and said "finisheded". `finish` takes the
+      // endings like every other verb, and the word a person actually wants
+      // most of the time is still one key plus `+ed`.
+      w('finish', PartOfSpeech.verb, essential: true),
       // Cognition and communication: top-20 verbs in every published adult
       // core list, and "tell" is the word a user needs to disclose something.
       //

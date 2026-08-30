@@ -77,7 +77,7 @@ const starterPredictions = <String, List<String>>{
   'hate': ['it', 'that', 'this', 'school', 'you'],
   'miss': ['you', 'mum', 'dad', 'home', 'him', 'her'],
   'wait': ['please', 'here', 'I', 'stop'],
-  'finished': ['I', 'yes', 'no', 'more'],
+  'finish': ['I', 'yes', 'no', 'more'],
 
   // Joining words hand back to a pronoun.
   'and': ['I', 'you', 'it', 'we', 'more'],
@@ -106,7 +106,7 @@ const starterPredictions = <String, List<String>>{
   "don't": ['want', 'like', 'know', 'go', 'stop'],
   'more': ['please', 'food', 'drink', 'water', 'snack', 'that'],
   'some': ['more', 'water', 'juice', 'milk', 'that', 'it'],
-  'all': ['finished', 'more', 'good'],
+  'all': ['finish', 'more', 'good'],
   'this': ['good', 'not', 'more', 'it', 'please'],
   'same': ['good', 'more', 'it', 'please'],
   'different': ['good', 'more', 'it', 'please'],
@@ -144,9 +144,9 @@ const starterPredictions = <String, List<String>>{
   'toast': ['butter', 'jam', 'honey', 'please', 'more'],
   'apple': ['please', 'more', 'I', 'yummy'],
   'snack': ['please', 'more', 'I', 'want'],
-  'breakfast': ['please', 'ready', 'I', 'more', 'finished'],
-  'lunch': ['please', 'ready', 'I', 'more', 'finished'],
-  'dinner': ['please', 'ready', 'I', 'more', 'finished'],
+  'breakfast': ['please', 'ready', 'I', 'more', 'finish'],
+  'lunch': ['please', 'ready', 'I', 'more', 'finish'],
+  'dinner': ['please', 'ready', 'I', 'more', 'finish'],
 
   // Feelings. "because" first, because a feeling nobody is given a reason for
   // gets managed rather than answered.
@@ -161,7 +161,7 @@ const starterPredictions = <String, List<String>>{
   'hurt': ['help', 'my', 'here', 'I', 'because'],
 
   // Places, which are mostly the object of "go" and the answer to "where".
-  'school': ['go', 'I', 'finished', 'teacher', 'not'],
+  'school': ['go', 'I', 'finish', 'teacher', 'not'],
   'park': ['go', 'play', 'I', 'outside', 'please'],
   'shop': ['go', 'I', 'want', 'please'],
   'car': ['go', 'in', 'out', 'I', 'please'],

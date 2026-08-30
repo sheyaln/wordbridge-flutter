@@ -6,7 +6,7 @@ import 'package:wordbridge/db/seed/age_presets.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/seed/core_vocabulary.dart';
 
-import 'core_board_set_test.dart' show universalCore36;
+import 'core_board_set_test.dart' show coreShippedAsStem, universalCore36;
 import 'grid_sizes_test.dart' show geometries;
 
 /// The three levels have to stay three different boards.
@@ -106,9 +106,16 @@ void main() {
           if (item.level == 1) item.value.label,
       };
 
+      // The stem stands in for the form the source publishes; see
+      // [coreShippedAsStem].
+      final expected = {
+        for (final word in universalCore36.union(rootBoardAdditions))
+          coreShippedAsStem[word]?.stem ?? word,
+      };
+
       expect(
         drawn,
-        universalCore36.union(rootBoardAdditions),
+        expected,
         reason:
             'the first board a person meets is no longer the evidence-based '
             'floor plus a named handful — either a core word has been held '
@@ -313,8 +320,13 @@ void main() {
         if (!b.isSystem && !b.hidden && b.vocabLevel <= 1) b.label,
     };
 
+    final missing = {
+      for (final word in universalCore36)
+        if (!drawnAtOne.contains(coreShippedAsStem[word]?.stem ?? word)) word,
+    };
+
     expect(
-      universalCore36.difference(drawnAtOne),
+      missing,
       isEmpty,
       reason:
           'a core word is seeded but held back, so a board set to the first '

@@ -69,7 +69,8 @@ class BakeJob extends ChangeNotifier {
   /// voice is about to appear (§4.5).
   double get progress => _total == 0 ? 1 : _done / _total;
 
-  bool get isRunning => _state == BakeState.running || _state == BakeState.waiting;
+  bool get isRunning =>
+      _state == BakeState.running || _state == BakeState.waiting;
 
   List<String> _remaining = const [];
   bool _stop = false;
@@ -92,7 +93,10 @@ class BakeJob extends ChangeNotifier {
   /// where it got to, because the pack already knows.
   Future<void> start(List<String> words) async {
     _total = words.length;
-    _remaining = [for (final word in words) if (!_store.contains(word)) word];
+    _remaining = [
+      for (final word in words)
+        if (!_store.contains(word)) word,
+    ];
     _done = _total - _remaining.length;
     _failure = null;
 

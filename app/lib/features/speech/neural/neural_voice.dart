@@ -36,20 +36,8 @@ typedef NeuralVoice = ({
 /// American female voice and is shown as "Bella". `af` has no name of its own
 /// in the release, so it is named for what it is.
 const kokoroVoices = <NeuralVoice>[
-  (
-    id: 'af',
-    name: 'Default',
-    accent: 'American',
-    sid: 0,
-    gender: 'female',
-  ),
-  (
-    id: 'af_bella',
-    name: 'Bella',
-    accent: 'American',
-    sid: 1,
-    gender: 'female',
-  ),
+  (id: 'af', name: 'Default', accent: 'American', sid: 0, gender: 'female'),
+  (id: 'af_bella', name: 'Bella', accent: 'American', sid: 1, gender: 'female'),
   (
     id: 'af_nicole',
     name: 'Nicole',
@@ -57,13 +45,7 @@ const kokoroVoices = <NeuralVoice>[
     sid: 2,
     gender: 'female',
   ),
-  (
-    id: 'af_sarah',
-    name: 'Sarah',
-    accent: 'American',
-    sid: 3,
-    gender: 'female',
-  ),
+  (id: 'af_sarah', name: 'Sarah', accent: 'American', sid: 3, gender: 'female'),
   (id: 'af_sky', name: 'Sky', accent: 'American', sid: 4, gender: 'female'),
   (id: 'am_adam', name: 'Adam', accent: 'American', sid: 5, gender: 'male'),
   (
@@ -81,13 +63,7 @@ const kokoroVoices = <NeuralVoice>[
     sid: 8,
     gender: 'female',
   ),
-  (
-    id: 'bm_george',
-    name: 'George',
-    accent: 'British',
-    sid: 9,
-    gender: 'male',
-  ),
+  (id: 'bm_george', name: 'George', accent: 'British', sid: 9, gender: 'male'),
   (id: 'bm_lewis', name: 'Lewis', accent: 'British', sid: 10, gender: 'male'),
 ];
 

@@ -34,10 +34,10 @@ void main() {
 
       final files = root.listSync().whereType<File>().toList();
       expect(files.length, 2);
-      expect(
-        files.map((f) => p.extension(f.path)).toSet(),
-        {'.pack', '.index'},
-      );
+      expect(files.map((f) => p.extension(f.path)).toSet(), {
+        '.pack',
+        '.index',
+      });
     });
 
     test('a clip comes back exactly as it went in', () async {
@@ -123,9 +123,8 @@ void main() {
       await store.close();
 
       // Audio written, then the process died before the index entry.
-      await File(
-        p.join(root.path, 'af_bella-r100.pack'),
-      ).writeAsBytes(Uint8List(64), mode: FileMode.append);
+      await File(p.join(root.path, 'af_bella-r100.pack'))
+          .writeAsBytes(Uint8List(64), mode: FileMode.append);
 
       final reopened = await open();
       await reopened.write('no', clipOf(140, fill: 3));
@@ -148,10 +147,19 @@ void main() {
       // Kokoro takes speed as a generation parameter, not a playback rate, so
       // it is baked into every clip. A slider reporting 0.8199999 must not be
       // a different cache from one reporting 0.82.
-      expect(ClipStore.idFor('af_bella', 0.82), 'af_bella-r82');
-      expect(ClipStore.idFor('af_bella', 0.8199999), 'af_bella-r82');
-      expect(ClipStore.idFor('af_bella', 1.0), 'af_bella-r100');
-      expect(ClipStore.idFor('bm_george', 1.25), 'bm_george-r125');
+      const v = ClipStore.recipe;
+      expect(ClipStore.idFor('af_bella', 0.82), 'af_bella-r82-v$v');
+      expect(ClipStore.idFor('af_bella', 0.8199999), 'af_bella-r82-v$v');
+      expect(ClipStore.idFor('af_bella', 1.0), 'af_bella-r100-v$v');
+      expect(ClipStore.idFor('bm_george', 1.25), 'bm_george-r125-v$v');
+    });
+
+    test('what the model was given is part of the name too', () {
+      // Clips made under an older recipe are playable and wrong — they came
+      // from a different string. Bumping the recipe is how they are retired
+      // rather than reused, so the number has to reach the pack's name.
+      expect(ClipStore.idFor('af_bella', 1.0), endsWith('-v${ClipStore.recipe}'));
+      expect(ClipStore.recipe, greaterThan(1));
     });
 
     test('two voices do not read each other clips', () async {

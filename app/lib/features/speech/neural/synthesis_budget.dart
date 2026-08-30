@@ -125,7 +125,9 @@ class SynthesisBudget {
 
   @override
   bool operator ==(Object other) =>
-      other is SynthesisBudget && other.base == base && other.perWord == perWord;
+      other is SynthesisBudget &&
+      other.base == base &&
+      other.perWord == perWord;
 
   @override
   int get hashCode => Object.hash(base, perWord);

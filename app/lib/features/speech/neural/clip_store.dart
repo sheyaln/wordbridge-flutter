@@ -25,7 +25,13 @@ import 'audio_clip.dart';
 /// either invalidates the lot, which is why both are in [packId] and why the
 /// caregiver screen has to say so before it happens.
 class ClipStore {
-  ClipStore._(this._pack, this._index, this.packId, this._entries, this._sampleRate);
+  ClipStore._(
+    this._pack,
+    this._index,
+    this.packId,
+    this._entries,
+    this._sampleRate,
+  );
 
   final File _pack;
   final File _index;
@@ -39,8 +45,17 @@ class ClipStore {
   ///
   /// Speed to the nearest hundredth, because a slider that reports 0.8199999
   /// must not be a different cache from one that reports 0.82.
+  /// Names the pack a clip belongs in.
+  ///
+  /// [recipe] is bumped whenever what the model is *given* changes, not just
+  /// when the voice or speed does. Clips made under an older recipe are still
+  /// playable and still wrong — they were made from a different string — so
+  /// they have to be retired rather than reused. Recipe 2 added the terminal
+  /// full stop that stops a single word ending in a schwa.
+  static const recipe = 2;
+
   static String idFor(String voiceId, double speed) =>
-      '$voiceId-r${(speed * 100).round()}';
+      '$voiceId-r${(speed * 100).round()}-v$recipe';
 
   static const _headerPrefix = '#wordbridge-clips 1 ';
 
@@ -158,11 +173,7 @@ class ClipStore {
     // have left bytes behind, and appending after them is free; appending over
     // them is not.
     final offset = _pack.existsSync() ? _pack.lengthSync() : 0;
-    await _pack.writeAsBytes(
-      clip.pcm16,
-      mode: FileMode.append,
-      flush: true,
-    );
+    await _pack.writeAsBytes(clip.pcm16, mode: FileMode.append, flush: true);
     await _index.writeAsString(
       '$offset,${clip.pcm16.lengthInBytes},'
       '${base64Encode(utf8.encode(text))}\n',

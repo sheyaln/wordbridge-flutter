@@ -58,8 +58,7 @@ Uint8List archiveOf(Directory scratch, {int modelBytes = 4096}) {
       .writeAsBytesSync(Uint8List(modelBytes)..fillRange(0, modelBytes, 3));
   File(p.join(source.path, 'voices.bin')).writeAsBytesSync(Uint8List(256));
   File(p.join(source.path, 'tokens.txt')).writeAsStringSync('a 1\n');
-  final espeak = Directory(p.join(source.path, 'espeak-ng-data'))
-    ..createSync();
+  final espeak = Directory(p.join(source.path, 'espeak-ng-data'))..createSync();
   File(p.join(espeak.path, 'en_dict')).writeAsBytesSync(Uint8List(64));
 
   final tar = TarEncoder().encode(
@@ -236,24 +235,26 @@ void main() {
     expect(await again.isInstalled(), isTrue);
   });
 
-  test('a server that ignores the range header does not corrupt the file',
-      () async {
-    // Answering 200 with the whole file is legal. Appending that onto a
-    // half-finished download splices the start of the archive onto its middle
-    // and fails verification 300 MB later.
-    final bytes = archiveOf(scratch);
-    final half = bytes.length ~/ 2;
+  test(
+    'a server that ignores the range header does not corrupt the file',
+    () async {
+      // Answering 200 with the whole file is legal. Appending that onto a
+      // half-finished download splices the start of the archive onto its middle
+      // and fails verification 300 MB later.
+      final bytes = archiveOf(scratch);
+      final half = bytes.length ~/ 2;
 
-    final cut = _Server(bytes, failAfter: half);
-    await storeServing(cut).install().drain<void>();
+      final cut = _Server(bytes, failAfter: half);
+      await storeServing(cut).install().drain<void>();
 
-    final whole = _Server(bytes, ignoreRange: true);
-    final store = storeServing(whole);
-    final finished = await store.install().last;
+      final whole = _Server(bytes, ignoreRange: true);
+      final store = storeServing(whole);
+      final finished = await store.install().last;
 
-    expect(finished.phase, ModelPhase.installed);
-    expect(await store.isInstalled(), isTrue);
-  });
+      expect(finished.phase, ModelPhase.installed);
+      expect(await store.isInstalled(), isTrue);
+    },
+  );
 
   test('deleting gives the disk back and leaves the cache alone', () async {
     final bytes = archiveOf(scratch);
@@ -265,47 +266,44 @@ void main() {
     final clips = Directory(
       p.join(documents.path, VoiceModelStore.folder, 'clips'),
     )..createSync(recursive: true);
-    File(p.join(clips.path, 'af_bella-r100.pack')).writeAsBytesSync(
-      Uint8List(1024),
-    );
+    File(p.join(clips.path, 'af_bella-r100.pack'))
+        .writeAsBytesSync(Uint8List(1024));
 
     await store.deleteModel();
 
     expect(await store.isInstalled(), isFalse);
-    expect(
-      File(p.join(clips.path, 'af_bella-r100.pack')).existsSync(),
-      isTrue,
-    );
+    expect(File(p.join(clips.path, 'af_bella-r100.pack')).existsSync(), isTrue);
   });
 
-  test('a tar naming a path outside the directory does not escape it',
-      () async {
-    final source = Directory(p.join(scratch.path, 'kokoro-en-v0_19'))
-      ..createSync(recursive: true);
-    File(p.join(source.path, 'model.onnx')).writeAsBytesSync(Uint8List(64));
-    File(p.join(source.path, 'voices.bin')).writeAsBytesSync(Uint8List(64));
-    File(p.join(source.path, 'tokens.txt')).writeAsStringSync('a 1\n');
-    Directory(p.join(source.path, 'espeak-ng-data')).createSync();
-    File(
-      p.join(source.path, 'espeak-ng-data', 'en_dict'),
-    ).writeAsBytesSync(Uint8List(8));
+  test(
+    'a tar naming a path outside the directory does not escape it',
+    () async {
+      final source = Directory(p.join(scratch.path, 'kokoro-en-v0_19'))
+        ..createSync(recursive: true);
+      File(p.join(source.path, 'model.onnx')).writeAsBytesSync(Uint8List(64));
+      File(p.join(source.path, 'voices.bin')).writeAsBytesSync(Uint8List(64));
+      File(p.join(source.path, 'tokens.txt')).writeAsStringSync('a 1\n');
+      Directory(p.join(source.path, 'espeak-ng-data')).createSync();
+      File(p.join(source.path, 'espeak-ng-data', 'en_dict'))
+          .writeAsBytesSync(Uint8List(8));
 
-    final archive = createArchiveFromDirectory(scratch, includeDirName: false)
-      ..addFile(
-        ArchiveFile.bytes('../escaped.txt', Uint8List.fromList([1, 2, 3])),
+      final archive = createArchiveFromDirectory(scratch, includeDirName: false)
+        ..addFile(
+          ArchiveFile.bytes('../escaped.txt', Uint8List.fromList([1, 2, 3])),
+        );
+      final bytes = Uint8List.fromList(
+        BZip2Encoder().encode(TarEncoder().encode(archive)),
       );
-    final bytes = Uint8List.fromList(
-      BZip2Encoder().encode(TarEncoder().encode(archive)),
-    );
 
-    final store = storeServing(_Server(bytes));
-    await store.install().drain<void>();
+      final store = storeServing(_Server(bytes));
+      await store.install().drain<void>();
 
-    expect(await store.isInstalled(), isTrue);
-    expect(
-      File(p.join(documents.path, VoiceModelStore.folder, 'escaped.txt'))
-          .existsSync(),
-      isFalse,
-    );
-  });
+      expect(await store.isInstalled(), isTrue);
+      expect(
+        File(p.join(documents.path, VoiceModelStore.folder, 'escaped.txt'))
+            .existsSync(),
+        isFalse,
+      );
+    },
+  );
 }

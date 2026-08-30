@@ -27,18 +27,26 @@ typedef Fallback = ({DateTime at, String text, String reason});
 /// 1. **Cached neural audio.** The ordinary case, and *faster* than the
 ///    platform engine because there is nothing to synthesise — a buffer that
 ///    already exists against a synthesiser that has to start.
-/// 2. **Live neural synthesis**, on the bar's speak key only, under
-///    [SynthesisBudget]. Correct voice, and 1.3 s for a single word on the
-///    floor device, which is why it is never on the tap path.
-/// 3. **The platform voice.** Instant, and *a different voice* — a real cost
-///    rather than a graceful degradation. A word that comes out in a
-///    stranger's voice is noticeable to everyone in the room except, possibly,
-///    the person it happened to. It is counted, and the caregiver screen shows
-///    how often it fired.
+/// 2. **Live neural synthesis**, under [SynthesisBudget], on both paths.
+/// 3. **The platform voice**, when the budget runs out. *A different voice* —
+///    a real cost rather than a graceful degradation. A word that comes out in
+///    a stranger's voice is noticeable to everyone in the room except,
+///    possibly, the person it happened to. It is counted, and the caregiver
+///    screen shows how often it fired.
 ///
-/// **Rung 3 never waits.** A word with no audio yet speaks in the platform
-/// voice *now*; it does not spin while the right voice is prepared. That is
-/// §5 non-negotiable 1 and it is not negotiable here either.
+/// **Rung 2 is on the tap path, and that is a deliberate reversal.** It used
+/// to be the bar's speak key only, on the §5 non-negotiable 1 reading that a
+/// tap must never wait — and the result was that the first thing anybody heard
+/// after switching the voice on was the device voice, because nothing is baked
+/// for half an hour. They conclude the feature does not work, and they are not
+/// wrong about what they heard.
+///
+/// What non-negotiable 1 forbids is a person left unable to speak. A wait
+/// bounded by a number shown on the screen, which then speaks either way, is
+/// not that. What it costs is real and worth naming: until the bake catches
+/// up, a tapped word can take up to the budget before it is heard. It is
+/// self-clearing — every synthesised clip is filed as it is made, so the same
+/// word is a cache read next time.
 class NeuralSpeechEngine implements SpeechEngine {
   NeuralSpeechEngine(
     this.platform, {
@@ -225,11 +233,8 @@ class NeuralSpeechEngine implements SpeechEngine {
 
     return _bake = BakeJob(
       clips,
-      synthesise: (word) => synthesiser.generate(
-        text: word,
-        sid: _voice.sid,
-        speed: _speed,
-      ),
+      synthesise: (word) =>
+          synthesiser.generate(text: word, sid: _voice.sid, speed: _speed),
       someoneIsWaiting: () => synthesiser.liveWaiting,
     );
   }
@@ -237,14 +242,26 @@ class NeuralSpeechEngine implements SpeechEngine {
   @override
   Future<void> init() => platform.init();
 
-  /// Says a word, now.
+  /// Says a word, now if it can and shortly if it cannot.
   ///
-  /// Three ways it can be immediate and one way it cannot, and the one that
-  /// cannot is not on this path. The composed case in the middle is worth
-  /// naming: a copula key that corrects the word before it speaks the pair
-  /// ("are you"), which is not a string anything baked — but both halves are,
-  /// and this app owns the samples, so they are joined rather than handed to a
-  /// different voice mid-sentence.
+  /// Cached first, then composed — a copula key that corrects the word before
+  /// it speaks the pair ("are you") is not a string anything baked, but both
+  /// halves are, and this app owns the samples, so they are joined rather than
+  /// handed to a different voice mid-sentence.
+  ///
+  /// **A word nothing has baked is made now, not handed to the platform.**
+  /// This used to fall back the instant the cache missed, which was faster and
+  /// was wrong in the case that actually happens: somebody switches the voice
+  /// on, waits out the download, presses a word to hear it — and hears the
+  /// device voice, because nothing is baked yet. They conclude it does not
+  /// work. The bake takes half an hour and nobody watches it before forming
+  /// that opinion.
+  ///
+  /// The wait is the same [budget] the utterance path uses and is shown on the
+  /// caregiver screen, so it is bounded and it is a number somebody was told.
+  /// It is also self-clearing: the clip is filed as it is made, so the second
+  /// press of that word is a cache read, and the bake is closing the gap
+  /// underneath.
   @override
   Future<void> speak(String text) async {
     final spoken = normaliseForSpeech(text);
@@ -254,19 +271,17 @@ class NeuralSpeechEngine implements SpeechEngine {
     _bake?.standAside();
 
     final clips = _on ? _clips : null;
-    if (clips != null) {
-      final cached = await clips.read(spoken);
-      if (mine != _generation) return;
-      if (cached != null) return _play(cached);
+    if (clips == null) return platform.speak(spoken);
 
-      final composed = await _compose(spoken, clips);
-      if (mine != _generation) return;
-      if (composed != null) return _play(composed);
+    final cached = await clips.read(spoken);
+    if (mine != _generation) return;
+    if (cached != null) return _play(cached);
 
-      _recordFallback(spoken, 'not baked yet');
-    }
+    final composed = await _compose(spoken, clips);
+    if (mine != _generation) return;
+    if (composed != null) return _play(composed);
 
-    await platform.speak(spoken);
+    await _makeItNow(spoken, mine, clips, platform.speak);
   }
 
   /// Says a whole sentence, and this is the one place a wait was agreed to.
@@ -296,6 +311,23 @@ class NeuralSpeechEngine implements SpeechEngine {
     if (mine != _generation) return;
     if (cached != null) return _play(cached);
 
+    await _makeItNow(spoken, mine, clips, platform.speakUtterance);
+  }
+
+  /// Makes the sound now, and hands over to the platform only when the wait
+  /// runs out.
+  ///
+  /// One ladder, used by both paths, so a word and a sentence cannot come to
+  /// disagree about how long is too long or about what counts as a failure.
+  /// [saySomehow] is the platform call that matches the path this was reached
+  /// from — the tap path may not be given the utterance call, which is allowed
+  /// to wait a second time.
+  Future<void> _makeItNow(
+    String spoken,
+    int mine,
+    ClipStore clips,
+    Future<void> Function(String) saySomehow,
+  ) async {
     final deadline = budget.forText(spoken);
     try {
       // The budget covers the wait for the engine as well as the synthesis.
@@ -306,34 +338,31 @@ class NeuralSpeechEngine implements SpeechEngine {
       if (mine != _generation) return;
       if (clip == null) {
         _recordFallback(spoken, 'the voice could not be loaded');
-        await platform.speakUtterance(spoken);
+        await saySomehow(spoken);
         return;
       }
       await clips.write(spoken, clip);
       await _play(clip);
     } on TimeoutException {
-      // The result may still arrive. It is dropped where it lands: the
-      // sentence is about to be spoken, and hearing it twice — the second
-      // time in another voice — is worse than not hearing it in this one.
+      // The result may still arrive. It is dropped where it lands: the words
+      // are about to be spoken, and hearing them twice — the second time in
+      // another voice — is worse than not hearing them in this one.
       if (mine != _generation) return;
-      _recordFallback(
-        spoken,
-        'took longer than ${deadline.inMilliseconds} ms',
-      );
-      await platform.speakUtterance(spoken);
+      _recordFallback(spoken, 'took longer than ${deadline.inMilliseconds} ms');
+      await saySomehow(spoken);
     } catch (e) {
       // Anything else the model can do: a string it cannot phonemise, memory
       // it cannot have, or — the one that will actually happen — an engine
       // released out from under it, because backgrounding the app gives the
       // model's 833 MB back and a press can be in flight when it does.
       //
-      // Every one of those has to come out as the platform voice. A sentence
-      // in the wrong voice is a cost somebody can hear and work around; a
-      // sentence spoken by nothing at all is the failure this file exists to
-      // prevent, and it is the one nobody in the room can see happening.
+      // Every one of those has to come out as the platform voice. Words in the
+      // wrong voice are a cost somebody can hear and work around; words spoken
+      // by nothing at all are the failure this file exists to prevent, and the
+      // one nobody in the room can see happening.
       if (mine != _generation) return;
       _recordFallback(spoken, 'the voice failed: $e');
-      await platform.speakUtterance(spoken);
+      await saySomehow(spoken);
     }
   }
 

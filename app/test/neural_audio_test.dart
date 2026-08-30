@@ -77,7 +77,6 @@ void main() {
       expect(value, greaterThan((0.8 * 32767).round()));
       expect(value, lessThanOrEqualTo(32767));
     });
-
   });
 
   group('the timeout budget', () {
@@ -109,7 +108,9 @@ void main() {
     test('the shipped default clears the floor device by a real margin', () {
       // A five-word sentence measured 2100 ms on the iPad mini 5. The budget
       // has to be comfortably past that or the fallback is the normal case.
-      final allowed = SynthesisBudget.shipped.forText('one two three four five');
+      final allowed = SynthesisBudget.shipped.forText(
+        'one two three four five',
+      );
       expect(allowed.inMilliseconds, greaterThan(2100));
     });
 

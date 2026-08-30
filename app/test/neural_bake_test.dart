@@ -55,9 +55,9 @@ void main() {
       final words = await bakeVocabulary(db, vocabularyId);
       expect(words.length, greaterThan(700));
 
-      final locations =
-          await (db.select(db.cells)..where((c) => c.boardId.isNotNull()))
-              .get();
+      final locations = await (db.select(
+        db.cells,
+      )..where((c) => c.boardId.isNotNull())).get();
       expect(words.length, greaterThan(locations.length));
     });
 
@@ -91,18 +91,24 @@ void main() {
       expect(words.toSet().length, words.length);
     });
 
-    test('it covers what the board says, including what it should not say',
-        () async {
-      // `finished` is seeded as a verb and nothing marks it as already
-      // carrying its ending, so the board offers `+ed` after it and speaks
-      // "finisheded". That is a gap in `grammarHelperApplies`, not in the
-      // bake: a cache that left the form out would be a key that speaks in a
-      // stranger's voice, which is worse than one that speaks a bad word in
-      // the right one. Baking what the board says is the rule, and this is
-      // what it costs until the key is fixed.
+    test('it covers what the board says', () async {
+      // This used to record a defect rather than a rule: `finished` was seeded
+      // as a verb already carrying its ending, nothing marked it as such, so
+      // the board offered `+ed` after it and said "finisheded" — and the bake
+      // had to cover that, because a cache that left the form out would be a
+      // key speaking in a stranger's voice.
+      //
+      // The seed now carries the stem, so the pair produces the word somebody
+      // actually wants. The rule it was testing is unchanged and still the
+      // point: the bake covers what the board says.
       final words = await bakeVocabulary(db, vocabularyId);
+      expect(words, contains('finish'));
       expect(words, contains('finished'));
-      expect(words, contains('finisheded'));
+      expect(
+        words,
+        isNot(contains('finisheded')),
+        reason: 'the board can still build the form that was the bug',
+      );
     });
 
     test('a form the board would never offer is not baked', () async {
@@ -144,9 +150,7 @@ void main() {
     test('a deleted word is not baked', () async {
       final words = await bakeVocabulary(db, vocabularyId);
       final first = words.first;
-      await (db.update(db.buttons)..where(
-            (b) => b.message.equals(first),
-          ))
+      await (db.update(db.buttons)..where((b) => b.message.equals(first)))
           .write(ButtonsCompanion(deletedAt: Value(nowMs())));
       expect(await bakeVocabulary(db, vocabularyId), isNot(contains(first)));
     });
@@ -205,16 +209,18 @@ void main() {
       expect(resumed.made, hasLength(3));
     });
 
-    test('a word that will not synthesise stops the job, not the app',
-        () async {
-      final bake = stubBake(store, failOn: 'c');
-      await bake.job.start(['a', 'b', 'c', 'd']);
-      await bake.job.settle();
+    test(
+      'a word that will not synthesise stops the job, not the app',
+      () async {
+        final bake = stubBake(store, failOn: 'c');
+        await bake.job.start(['a', 'b', 'c', 'd']);
+        await bake.job.settle();
 
-      expect(bake.job.state, BakeState.failed);
-      expect(bake.job.failure, isNotNull);
-      expect(store.count, 2, reason: 'what was made is kept');
-    });
+        expect(bake.job.state, BakeState.failed);
+        expect(bake.job.failure, isNotNull);
+        expect(store.count, 2, reason: 'what was made is kept');
+      },
+    );
 
     test('a person speaking pushes it out of the way', () async {
       final bake = stubBake(store);

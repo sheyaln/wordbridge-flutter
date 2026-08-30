@@ -14,8 +14,8 @@ typedef AudioClip = ({Uint8List pcm16, int sampleRate});
 
 /// How long [clip] lasts.
 Duration clipDuration(AudioClip clip) => Duration(
-  microseconds:
-      (clip.pcm16.lengthInBytes / 2 / clip.sampleRate * 1000000).round(),
+  microseconds: (clip.pcm16.lengthInBytes / 2 / clip.sampleRate * 1000000)
+      .round(),
 );
 
 /// Anything quieter than this counts as padding rather than speech.

@@ -29,7 +29,7 @@ const fallbackWords = <String>[
   'more',
   'I',
   'you',
-  'finished',
+  'finish',
   'what',
   'where',
 ];

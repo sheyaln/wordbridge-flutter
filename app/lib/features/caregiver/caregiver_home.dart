@@ -748,15 +748,13 @@ class _Settings extends StatelessWidget {
         if (settings != null && speech is NeuralSpeechEngine)
           ListTile(
             leading: const Icon(Icons.graphic_eq_outlined),
-            title: const Text('A voice of their own'),
+            title: const Text('Neural voice'),
             subtitle: Text(
               settings!.neuralVoice
-                  ? 'Pre-alpha, may not sound correct · '
-                        '${neuralVoiceById(settings!.neuralVoiceId).name} · '
-                        'downloaded, and never leaves this tablet'
-                  : 'Pre-alpha, may not sound correct · a downloadable voice '
-                        'that runs on this tablet and sounds less like a '
-                        'synthesiser. Off.',
+                  ? 'Pre-alpha · on · '
+                        '${neuralVoiceById(settings!.neuralVoiceId).name}'
+                  : 'Pre-alpha · off · a downloadable voice that runs on this '
+                        'tablet and sounds more like a person',
             ),
             isThreeLine: true,
             trailing: const Icon(Icons.chevron_right),

@@ -28,8 +28,7 @@ Future<List<String>> bakeVocabulary(
 ) async {
   final buttons =
       await (db.select(db.buttons)..where(
-            (b) =>
-                b.vocabularyId.equals(vocabularyId) & b.deletedAt.isNull(),
+            (b) => b.vocabularyId.equals(vocabularyId) & b.deletedAt.isNull(),
           ))
           .get();
 

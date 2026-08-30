@@ -40,7 +40,8 @@ class VoiceModelFiles {
       espeakData.existsSync() &&
       espeakData.listSync().isNotEmpty;
 
-  static bool _hasBytes(File file) => file.existsSync() && file.lengthSync() > 0;
+  static bool _hasBytes(File file) =>
+      file.existsSync() && file.lengthSync() > 0;
 }
 
 /// A model release, named rather than assumed.
@@ -137,9 +138,8 @@ class VoiceModelStore {
   /// the feature off and reclaiming the disk is one deletion.
   static const folder = 'neural-voice';
 
-  Future<Directory> _root() async => Directory(
-    p.join((await _documentsDirectory()).path, folder),
-  );
+  Future<Directory> _root() async =>
+      Directory(p.join((await _documentsDirectory()).path, folder));
 
   /// Where an installed model sits, whether or not one is there.
   Future<VoiceModelFiles> files() async =>
@@ -432,9 +432,7 @@ class VoiceModelStore {
     String toPath,
     String archiveRoot,
     SendPort progress,
-  ) => Isolate.run(
-    () => _extract(archivePath, toPath, archiveRoot, progress),
-  );
+  ) => Isolate.run(() => _extract(archivePath, toPath, archiveRoot, progress));
 
   /// Runs in its own isolate: bzip2 to a plain tar, then the tar to disk.
   ///

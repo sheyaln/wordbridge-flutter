@@ -37,8 +37,10 @@ class VoiceScreen extends StatefulWidget {
   /// What the preview says.
   ///
   /// A whole sentence rather than a word, because rate and tone are properties
-  /// of a sentence and cannot be heard in one syllable.
-  static const previewSentence = 'I want to go outside now';
+  /// of a sentence and cannot be heard in one syllable. A greeting rather than
+  /// a request: it is the sentence somebody hears first, and a caregiver
+  /// comparing voices is choosing how this person will say hello.
+  static const previewSentence = 'Hello, how are you?';
 
   /// The travel of each dial.
   ///

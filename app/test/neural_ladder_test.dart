@@ -124,8 +124,7 @@ void main() {
       expect(platform.spoken, isEmpty);
     });
 
-    test('a two-word repair is joined rather than handed to another voice',
-        () async {
+    test('a two-word repair is joined rather than handed to another voice', () async {
       // A copula key that corrects the word before it speaks the pair — "are
       // you" — which is not a string anything baked. Both halves are, and this
       // app owns the samples.
@@ -159,20 +158,22 @@ void main() {
   });
 
   group('rung 3 — the platform voice, and it is counted', () {
-    test('an unbaked word speaks in the platform voice without waiting',
-        () async {
-      final engine = engineWith(
-        synthesise: (_) async {
-          fail('the tap path must never synthesise');
-        },
-      );
-      await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
-      await engine.speak('emergency');
+    test(
+      'an unbaked word speaks in the platform voice without waiting',
+      () async {
+        final engine = engineWith(
+          synthesise: (_) async {
+            fail('the tap path must never synthesise');
+          },
+        );
+        await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
+        await engine.speak('emergency');
 
-      expect(platform.spoken, ['emergency']);
-      expect(engine.fallbackCount, 1);
-      expect(engine.fallbacks.single.text, 'emergency');
-    });
+        expect(platform.spoken, ['emergency']);
+        expect(engine.fallbackCount, 1);
+        expect(engine.fallbacks.single.text, 'emergency');
+      },
+    );
 
     test('switching the voice off restores the platform exactly', () async {
       final pack = await packFor('af_bella', 1.0);
@@ -224,26 +225,27 @@ void main() {
       expect(engine.fallbackCount, 0);
     });
 
-    test('what was synthesised is kept, so the next press is instant',
-        () async {
-      var calls = 0;
-      final engine = engineWith(
-        synthesise: (_) async {
-          calls++;
-          return clipOf(300);
-        },
-      );
-      await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
+    test(
+      'what was synthesised is kept, so the next press is instant',
+      () async {
+        var calls = 0;
+        final engine = engineWith(
+          synthesise: (_) async {
+            calls++;
+            return clipOf(300);
+          },
+        );
+        await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
 
-      await engine.speakUtterance('I want to go outside');
-      await engine.speakUtterance('I want to go outside');
+        await engine.speakUtterance('I want to go outside');
+        await engine.speakUtterance('I want to go outside');
 
-      expect(calls, 1);
-      expect(played, hasLength(2));
-    });
+        expect(calls, 1);
+        expect(played, hasLength(2));
+      },
+    );
 
-    test('a sentence past the budget falls back rather than hanging',
-        () async {
+    test('a sentence past the budget falls back rather than hanging', () async {
       final engine = engineWith(
         synthesise: (_) async {
           await Future<void>.delayed(const Duration(seconds: 5));
@@ -286,9 +288,8 @@ void main() {
     test('a newer press wins, and the older one goes quiet', () async {
       final first = Completer<AudioClip?>();
       final engine = engineWith(
-        synthesise: (text) async => text == 'the first sentence'
-            ? first.future
-            : clipOf(120),
+        synthesise: (text) async =>
+            text == 'the first sentence' ? first.future : clipOf(120),
       );
       await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
 
@@ -311,37 +312,41 @@ void main() {
       expect(played.single.lengthInBytes, 120);
     });
 
-    test('a press superseded before it synthesises says nothing at all',
-        () async {
-      // Two taps in the same event-loop turn. The older one is dropped where
-      // it stands rather than being allowed to speak over the newer.
-      final engine = engineWith(synthesise: (_) async => clipOf(120));
-      await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
+    test(
+      'a press superseded before it synthesises says nothing at all',
+      () async {
+        // Two taps in the same event-loop turn. The older one is dropped where
+        // it stands rather than being allowed to speak over the newer.
+        final engine = engineWith(synthesise: (_) async => clipOf(120));
+        await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
 
-      final first = engine.speakUtterance('the first sentence');
-      final second = engine.speakUtterance('the second sentence');
-      await Future.wait([first, second]);
+        final first = engine.speakUtterance('the first sentence');
+        final second = engine.speakUtterance('the second sentence');
+        await Future.wait([first, second]);
 
-      expect(played, hasLength(1));
-      expect(platform.utterances, isEmpty);
-    });
+        expect(played, hasLength(1));
+        expect(platform.utterances, isEmpty);
+      },
+    );
 
-    test('a model released mid-press still speaks, in the platform voice',
-        () async {
-      // Backgrounding the app gives the model's 833 MB back, and a press can
-      // be in flight when it does. What must never happen is silence: nobody
-      // in the room can see a sentence that was not spoken by anything.
-      final engine = engineWith(
-        synthesise: (_) async =>
-            throw StateError('The neural voice model is not loaded.'),
-      );
-      await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
+    test(
+      'a model released mid-press still speaks, in the platform voice',
+      () async {
+        // Backgrounding the app gives the model's 833 MB back, and a press can
+        // be in flight when it does. What must never happen is silence: nobody
+        // in the room can see a sentence that was not spoken by anything.
+        final engine = engineWith(
+          synthesise: (_) async =>
+              throw StateError('The neural voice model is not loaded.'),
+        );
+        await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
 
-      await engine.speakUtterance('I want to go outside');
+        await engine.speakUtterance('I want to go outside');
 
-      expect(platform.utterances, ['I want to go outside']);
-      expect(engine.fallbacks.single.reason, contains('the voice failed'));
-    });
+        expect(platform.utterances, ['I want to go outside']);
+        expect(engine.fallbacks.single.reason, contains('the voice failed'));
+      },
+    );
 
     test('a string the model cannot make anything of still speaks', () async {
       final engine = engineWith(
@@ -396,22 +401,24 @@ void main() {
       expect(platform.spoken, ['outside']);
     });
 
-    test('changing the speed is a different pack, because it is baked in',
-        () async {
-      final ordinary = await packFor('af_bella', 1.0);
-      await ordinary.write('outside', clipOf(240));
-      await ordinary.close();
+    test(
+      'changing the speed is a different pack, because it is baked in',
+      () async {
+        final ordinary = await packFor('af_bella', 1.0);
+        await ordinary.write('outside', clipOf(240));
+        await ordinary.close();
 
-      final engine = engineWith();
-      await engine.useNeuralVoice(
-        enabled: true,
-        voiceId: 'af_bella',
-        speed: 0.82,
-      );
-      await engine.speak('outside');
+        final engine = engineWith();
+        await engine.useNeuralVoice(
+          enabled: true,
+          voiceId: 'af_bella',
+          speed: 0.82,
+        );
+        await engine.speak('outside');
 
-      expect(platform.spoken, ['outside']);
-    });
+        expect(platform.spoken, ['outside']);
+      },
+    );
 
     test('pruning keeps the pack in use', () async {
       for (final id in ['af_bella', 'bm_george', 'af_sky']) {
