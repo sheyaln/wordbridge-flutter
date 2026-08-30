@@ -2180,11 +2180,34 @@ Walking the route shows the sequence, which is the thing being learned.
 So the finder shows `home → food → more words` and then presses those keys. A
 caregiver watching learns the path; the person using it arrives having taken it.
 
-**Breadcrumbs show the path, not the detour** — asked for in the same breath,
-and the same idea one level down. §4.18 already rebuilds the trail rather than
-appending to it, and §4.40's session fixed a page turned and turned back. What
-remains is that the trail is built from where the person went, and the finder
-gives a canonical answer to where they *should* go. The two must agree.
+**Breadcrumbs show the path, not the detour — the reported case is fixed.**
+
+Reported: *"go to 'more words' on the root → go to a category → press 'Back' →
+press 'back a page' → select a word, and the breadcrumbs show `Home → back a
+page → word`."*
+
+**It needs a root board of three or more pages**, which is why it did not
+reproduce at first. Two pages cannot show it: paging back from page two lands on
+the root board, and the route to the root is no steps at all — the fix made in
+§4.40's session. Every four- and five-row grid gives home three pages or more,
+which is extra-large icons on a small tablet. It reproduced on the first try
+once the grid was right.
+
+**The cause.** A step onto a board the trail did not already name recorded the
+*key that was pressed*. For a category that never mattered, because a category
+has a route of its own that gets rebuilt. A page had no such route, so paging
+backward onto one wrote `back a page` into the trail as the way to get there —
+and the way to page two is forward, whichever key landed you on it.
+
+`_routeToPage` now answers for a page the way `_routeToCategory` answers for a
+category: the route to the group's first page, then one `more words` for each
+page after it. The page order is read once when the vocabulary loads, from the
+forward keys themselves rather than from board names, so a renamed board still
+pages the way it always did.
+
+Five tests, five mutations. One of the five exists only to assert the premise —
+that this grid really does page three deep — because without it the other four
+would pass by describing nothing.
 
 #### What to notice about this batch
 

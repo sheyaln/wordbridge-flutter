@@ -239,20 +239,83 @@ class TalkScreenState extends State<TalkScreen> {
     _route.add(Crumb(label: label, boardId: boardId));
   }
 
+  /// Which board each page follows, for every page after the first.
+  ///
+  /// Read once. A page's place in its group is fixed when the group is built,
+  /// so working it out again on every press would be a query for an answer that
+  /// cannot have moved.
+  Map<String, String> _pageBefore = const {};
+
+  Future<Map<String, String>> _pageOrder(Vocabulary vocab) async {
+    final frame = SystemFrame.parse(vocab.systemCellMap);
+    if (frame == null) return const {};
+
+    final rows =
+        await (widget.db.select(widget.db.buttons).join([
+              innerJoin(
+                widget.db.cells,
+                widget.db.cells.id.equalsExp(widget.db.buttons.cellId),
+              ),
+            ])..where(
+              widget.db.buttons.vocabularyId.equals(widget.vocabularyId) &
+                  widget.db.buttons.isSystem.equals(true) &
+                  widget.db.buttons.deletedAt.isNull() &
+                  widget.db.cells.row.equals(frame.row) &
+                  widget.db.cells.col.equals(frame.pageForwardCol),
+            ))
+            .get();
+
+    return {
+      for (final row in rows)
+        ?row.readTable(widget.db.buttons).targetBoardId: row
+            .readTable(widget.db.cells)
+            .boardId,
+    };
+  }
+
   /// The whole way to a board from home, or null for one no fixed key reaches.
   ///
-  /// The root board is a route of no steps, which is the case that was wrong:
-  /// paging forward and back again returned to a board the trail had no crumb
-  /// for, so the way back was appended as though it were a way onward and
-  /// `home → more words → back a page → <word>` was recorded as the route to a
-  /// word on page one.
+  /// Three kinds of board have an answer that does not depend on the visit: the
+  /// root, a category, and any page of either. Everything else is a board a
+  /// caregiver made and reaches through a button they placed, and getting there
+  /// really is a step that has to be repeated.
+  List<Crumb>? _routeTo(String boardId) {
+    if (boardId == _rootBoardId) return const [];
+    return _routeToCategory(boardId) ?? _routeToPage(boardId);
+  }
+
+  /// The way to a page of a group: the way to its first page, then forward.
   ///
-  /// Paging deeper is left to the step path below, which rewinds to a board
-  /// the trail already names. That is enough because the forward key only ever
-  /// exists on the page before, so any way to page two passes through page one
-  /// and rebuilds there.
-  List<Crumb>? _routeTo(String boardId) =>
-      boardId == _rootBoardId ? const [] : _routeToCategory(boardId);
+  /// A page is only ever reached by paging forward, whichever key was pressed
+  /// to arrive on it. Somebody who paged past it and came back went a longer
+  /// way than the one they need next time, and recording the key they pressed
+  /// would put "back a page" in the trail as though it were the way to a word
+  /// that is reached by going forward.
+  List<Crumb>? _routeToPage(String boardId) {
+    final steps = <String>[];
+    var at = boardId;
+
+    // Bounded by the map's own size rather than trusted to terminate. A group
+    // is a chain and cannot loop, but this walks links a caregiver's own boards
+    // are in, and a trail is not worth hanging the board over.
+    for (var hop = 0; hop <= _pageBefore.length; hop++) {
+      final before = _pageBefore[at];
+      if (before == null) break;
+      steps.add(at);
+      at = before;
+    }
+
+    if (steps.isEmpty) return null;
+
+    final start = _routeTo(at);
+    if (start == null) return null;
+
+    return [
+      ...start,
+      for (final page in steps.reversed)
+        Crumb(label: moreWordsLabel, boardId: page),
+    ];
+  }
 
   /// The whole way to a category from home, or null where [boardId] is not one.
   ///
@@ -395,6 +458,7 @@ class TalkScreenState extends State<TalkScreen> {
     )..where((b) => b.vocabularyId.equals(widget.vocabularyId))).get();
 
     final lowest = await _lowestContentLevels(vocab);
+    final pages = await _pageOrder(vocab);
 
     setState(() {
       _vocab = vocab;
@@ -403,6 +467,7 @@ class TalkScreenState extends State<TalkScreen> {
       _wheel = _CategoryWheel.parse(vocab.systemCellMap);
       _bandMaps = {for (final b in boards) b.id: b.bandMap};
       _lowestContentLevel = lowest;
+      _pageBefore = pages;
     });
 
     await _readCaregiverEntry();
