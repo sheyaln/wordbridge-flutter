@@ -126,6 +126,7 @@ Future<String> rebuildFromSeed(
     profileId: profileId,
     ageBand: band,
     profanity: _profanityOf(profile),
+    userName: profile.displayName,
   );
 
   return rebuilt;

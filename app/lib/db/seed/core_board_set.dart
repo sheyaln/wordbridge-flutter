@@ -51,6 +51,7 @@ Future<String> seedCoreBoardSet(
   bool attachToProfile = true,
   AgeBand ageBand = AgeBand.child,
   bool? profanity,
+  String? userName,
 }) async {
   // Seeded whether or not it is switched on. Hiding holds the locations, so
   // switching strong language on a year from now reveals it where it has
@@ -180,7 +181,106 @@ Future<String> seedCoreBoardSet(
     }
   }
 
+  await placeUserName(
+    db,
+    vocabularyId: vocabId,
+    boardId: homePages.first,
+    name: userName,
+  );
+
   return vocabId;
+}
+
+/// Puts the person's own name beside the pronouns, if there is room for it.
+///
+/// The single most personal word on any board, and the one a shipped
+/// vocabulary can never guess. It goes in the pronoun band because that is
+/// what it is — the word for the person saying it — and beside `I` and `you`
+/// rather than on a page of its own.
+///
+/// **Placed afterwards rather than seeded as a band item, on purpose.** The
+/// bands are what setup measures a grid against (`boardSetRefusal`), and a name
+/// that varied the answer would let setup offer a grid the seed then refused —
+/// the §4.6b bug, arrived at from a new direction. So this takes a location the
+/// layout already left free and never asks for one.
+///
+/// **No free location means no cell**, rather than a location invented
+/// somewhere else. A name that lands beside the pronouns on one device and on
+/// page two of another is one word with a different motor path per device,
+/// which is the thing this board does not do.
+Future<String?> placeUserName(
+  WordbridgeDatabase db, {
+  required String vocabularyId,
+  required String boardId,
+  String? name,
+}) async {
+  final label = name?.trim();
+  if (label == null || label.isEmpty) return null;
+
+  final board = await (db.select(
+    db.boards,
+  )..where((b) => b.id.equals(boardId))).getSingleOrNull();
+  if (board == null) return null;
+
+  final regions = BoardRegions.decode(board.bandMap);
+  final pronouns = regions?.bands
+      .where((b) => b.name == 'pronouns')
+      .firstOrNull;
+  if (regions == null || pronouns == null) return null;
+
+  final free = await _freeCellInLines(
+    db,
+    boardId: boardId,
+    axis: regions.axis,
+    first: pronouns.first,
+    last: pronouns.last,
+  );
+  if (free == null) return null;
+
+  return placeButton(
+    db,
+    vocabularyId: vocabularyId,
+    cellId: free.id,
+    label: label,
+    message: label,
+    partOfSpeech: PartOfSpeech.pronoun,
+  );
+}
+
+/// The first reserved location inside a run of lines, reading the way the band
+/// was filled.
+///
+/// Ordered by line and then by position within it, so the name lands at the top
+/// of the first column with room rather than wherever the query happened to
+/// return — a location chosen by row order is one a person can find again.
+Future<Cell?> _freeCellInLines(
+  WordbridgeDatabase db, {
+  required String boardId,
+  required BandAxis axis,
+  required int first,
+  required int last,
+}) async {
+  final cells =
+      await (db.select(db.cells)..where(
+            (c) =>
+                c.boardId.equals(boardId) &
+                c.state.equalsValue(CellState.emptyReserved),
+          ))
+          .get();
+
+  int line(Cell c) => axis == BandAxis.columns ? c.col : c.row;
+  int within(Cell c) => axis == BandAxis.columns ? c.row : c.col;
+
+  final inBand =
+      [
+        for (final c in cells)
+          if (line(c) >= first && line(c) <= last) c,
+      ]..sort((a, b) {
+        final byLine = line(a).compareTo(line(b));
+        return byLine != 0 ? byLine : within(a).compareTo(within(b));
+      });
+
+  return inBand.firstOrNull;
 }
 
 /// What belongs on a category board for one age preset.

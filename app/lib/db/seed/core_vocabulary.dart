@@ -468,6 +468,7 @@ const categoryNames = [
   // list in order, so a name added at the end leaves every key already learned
   // opening exactly what it always opened.
   'numbers',
+  'time',
 ];
 
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
@@ -517,7 +518,17 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'greeting',
       shedRank: 0,
-      items: phrases(['hello', 'bye', 'please', 'thank you'], level: 1),
+      // "sorry" is the fifth of the set and the one a person is asked for
+      // most often. Level 1: a board that can greet and thank but not
+      // apologise leaves somebody without the word for the situation they are
+      // most likely to be put on the spot in.
+      items: phrases([
+        'hello',
+        'bye',
+        'please',
+        'thank you',
+        'sorry',
+      ], level: 1),
     ),
 
     // Only the two a shipped board can assume. Whether there is a sibling or a
@@ -587,6 +598,31 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...pronouns(['him', 'her', 'us', 'them'], level: 2),
         ...pronouns(['everybody', 'somebody', 'nobody'], level: 3),
+      ],
+    ),
+
+    // Whose something is. Here rather than on the root board because the root
+    // board's pronoun column is the subject paradigm, and a possessive is not
+    // a subject — the same reason the object pronouns are in the row above.
+    //
+    // Both forms, because they are different words in a sentence: "your turn"
+    // takes a noun after it, "it's yours" stands alone. The determiners come
+    // first and a level earlier, because they are the ones that appear inside
+    // a sentence somebody is building rather than as an answer on their own.
+    //
+    // "my" and "me" stay on the root board. They are the two a person reaches
+    // for constantly and they have already been paid for there.
+    // "her" is missing from this row on purpose: it is already in `referring`
+    // above, as the object pronoun, and the two are spelled the same. One
+    // label twice on one board is a defect — the person cannot tell the keys
+    // apart, and the second one teaches that a word can be in two places.
+    // The key that is there says "her", which is the word either way.
+    Band(
+      name: 'belonging',
+      shedRank: 6,
+      items: [
+        ...pronouns(['your', 'his', 'our', 'their'], level: 2),
+        ...pronouns(['mine', 'yours', 'hers', 'ours', 'theirs'], level: 3),
       ],
     ),
   ],
@@ -906,6 +942,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...adjectives(['unsure'], level: 2),
         ...adverbs(['probably'], level: 2),
         ...adverbs(['possibly', 'perhaps'], level: 3),
+        // The one answer this row could not give: that something is not
+        // likely. Without it "maybe" has to cover everything from probably to
+        // almost certainly not.
+        ...adjectives(['unlikely'], level: 3),
       ],
     ),
 
@@ -1065,7 +1105,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 3,
       items: [
         ...nouns(['tummy'], level: 1),
-        ...nouns(['back'], level: 2),
+        // "butt" sits with the other parts rather than behind the adult page
+        // two: it is an ordinary body part, and a word a child needs to name
+        // to whoever is helping them. Page two is for the genital and vulgar
+        // vocabulary, which is a different question.
+        ...nouns(['back', 'butt'], level: 2),
         ...nouns(['chest', 'neck', 'heart', 'skin'], level: 3),
       ],
     ),
@@ -1274,6 +1318,100 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...adjectives(['first', 'next', 'last'], level: 2),
         ...adjectives(['before', 'after'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // Nothing on the board said when. Asked for twice, which made it the oldest
+  // unbuilt item in the file.
+  //
+  // The rows run in Fitzgerald order like every other category — whole
+  // utterances, then nouns, then the words that modify them — so a class holds
+  // a contiguous block of rows and therefore of colour.
+  //
+  // "before" and "after" are deliberately absent: they are on `numbers`, in
+  // `in order`, where they mean sequence. Putting them here as well would give
+  // one word two homes and neither would be the obvious one.
+  'time': [
+    // The answers to "when" that come before anybody can name a day, and the
+    // reason this board earns level 1 rather than waiting for level 3. A
+    // person who can say "later" can decline something without refusing it.
+    Band(
+      name: 'when',
+      shedRank: 0,
+      items: [
+        ...adverbs(['now', 'later', 'soon'], level: 1),
+        // "again" is not here: it is on `play` at level 1, where repetition is
+        // what it is for. Two homes and neither obvious is worse than one
+        // movement further away.
+        ...adverbs(['never', 'always', 'sometimes'], level: 3),
+      ],
+    ),
+
+    // The three-word frame the rest of the board hangs off, and the one a
+    // school day is actually organised around.
+    Band(
+      name: 'today',
+      shedRank: 1,
+      items: [
+        ...nouns(['today'], level: 1),
+        ...nouns(['tomorrow', 'yesterday'], level: 2),
+      ],
+    ),
+
+    // The parts of a day, in the order they happen. "bedtime" closes the row
+    // because it is the event rather than the hour, and it is the one most
+    // often negotiated.
+    // Named for the strip that runs above it (§4.19), which is why it is not
+    // just "day": there is a `day` key two rows down, and a label that reads
+    // as one of the keys under it teaches the wrong thing.
+    Band(
+      name: 'parts of the day',
+      shedRank: 2,
+      items: [
+        ...nouns(['morning', 'afternoon', 'night'], level: 2),
+        // "evening" and "bedtime" name the same stretch as "night" for most
+        // households, so they are the two this row can afford to hold back.
+        ...nouns(['evening', 'bedtime'], level: 3),
+      ],
+    ),
+
+    // Level 3 entire. The days are what a person needs last and what a
+    // caregiver models first, and seven of them fill a row on their own.
+    Band(
+      name: 'days of the week',
+      shedRank: 4,
+      items: nouns([
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ], level: 3),
+    ),
+
+    // Duration rather than position: how long a thing takes, and whether it
+    // happened at the right moment. "time" is the word for the board itself
+    // as well as a word in its own right — "what time is it".
+    Band(
+      name: 'how long',
+      shedRank: 3,
+      items: [
+        ...nouns(['time'], level: 2),
+        ...adjectives(['early', 'late'], level: 2),
+        // Units. A person names the unit only once they are negotiating with
+        // it — "five more minutes" — which is a level-3 conversation.
+        ...nouns(['minute', 'hour', 'day', 'week'], level: 3),
       ],
     ),
 

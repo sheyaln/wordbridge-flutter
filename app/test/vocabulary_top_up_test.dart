@@ -614,7 +614,7 @@ void main() {
         );
       }
 
-      expect(after['doing'], (page: 0, slot: 7));
+      expect(after['doing'], (page: 0, slot: 8));
       expect(frame.categories.map((c) => c.name).toList(), [
         'people',
         'food',
@@ -625,6 +625,7 @@ void main() {
         // Appended in the order they were missing, so the one unshipped for
         // this test arrives last however many shipped after it.
         'numbers',
+        'time',
         'doing',
       ]);
 
@@ -719,7 +720,11 @@ void main() {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
       vocabId = await seedCoreBoardSet(db);
+      // Two, so that seven remain and the row is exactly full without a cycle
+      // key. A wheel that already turns always has room for one more turn, so
+      // there would be nothing to refuse.
       await unship(db, vocabId, 'doing');
+      await unship(db, vocabId, 'time');
 
       // Whichever column the row is not using — with eight categories that is
       // the gap, not the tail. Found rather than named, so this keeps testing
@@ -753,7 +758,8 @@ void main() {
       final before = await fingerprint(db);
       final result = await topUpVocabulary(db, vocabularyId: vocabId);
 
-      expect(result.refusedBoards, ['doing']);
+      // Both, because a row with nothing spare has nothing spare for either.
+      expect(result.refusedBoards, ['doing', 'time']);
       expect(result.addedBoards, isEmpty);
       expect(result.added, isEmpty);
       expect(
@@ -771,11 +777,22 @@ void main() {
     late WordbridgeDatabase narrow;
     late String narrowId;
 
-    Future<void> seedAt(int rows, int cols) async {
+    /// [without] is how many categories the fixture starts short of, which is
+    /// what decides whether the wheel is already turning. It is a list rather
+    /// than one name because the premise some of these need — a row whose
+    /// slots are not yet full — costs one more unshipped board every time a
+    /// category is added to the shipped set.
+    Future<void> seedAt(
+      int rows,
+      int cols, {
+      List<String> without = const ['doing'],
+    }) async {
       narrow = WordbridgeDatabase.forTesting(NativeDatabase.memory());
       addTearDown(narrow.close);
       narrowId = await seedCoreBoardSet(narrow, rows: rows, cols: cols);
-      await unship(narrow, narrowId, 'doing');
+      for (final category in without) {
+        await unship(narrow, narrowId, category);
+      }
     }
 
     test('a wheel that already turns just gains a turn', () async {
@@ -797,7 +814,7 @@ void main() {
       for (final entry in before.entries) {
         expect(after[entry.key], entry.value, reason: '"${entry.key}" moved');
       }
-      expect(after['doing'], (page: 2, slot: 1));
+      expect(after['doing'], (page: 2, slot: 2));
 
       for (final entry in fingerprintBefore.entries) {
         expect(
@@ -812,7 +829,11 @@ void main() {
       // 12 columns leaves room for exactly seven category keys. The eighth
       // cannot have one, so the wheel has to start turning — and the key that
       // turns it goes in the gap column, the only one the row is not using.
-      await seedAt(7, 12);
+      //
+      // Two boards short of the shipped set, so that seven remain and the
+      // wheel is still. The shipped set has nine categories and turns the
+      // wheel on this grid already, which is not the state under test.
+      await seedAt(7, 12, without: const ['doing', 'time']);
       final was = await frameOf(narrow, narrowId);
       expect(was.cycleCol, isNull, reason: 'the fixture already cycles');
       expect(was.categoryCols, [3, 4, 5, 6, 7, 8, 9]);
@@ -948,6 +969,7 @@ void main() {
         'body',
         'doing',
         'numbers',
+        'time',
         'feelings',
       ]);
     });

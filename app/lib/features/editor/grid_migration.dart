@@ -233,6 +233,12 @@ class GridMigration {
       db.vocabularies,
     )..where((v) => v.id.equals(vocabularyId))).getSingle();
 
+    // Read here rather than passed in, so a caller cannot rebuild a board and
+    // silently drop the one word on it that is the person's own name.
+    final profile = await (db.select(
+      db.profiles,
+    )..where((p) => p.id.equals(profileId))).getSingleOrNull();
+
     final impact = await preview(
       db,
       vocabularyId: vocabularyId,
@@ -251,6 +257,7 @@ class GridMigration {
       attachToProfile: false,
       ageBand: ageBand,
       profanity: profanity,
+      userName: profile?.displayName,
     );
 
     await _carryOver(db, from: vocabularyId, to: rebuilt, ageBand: ageBand);
