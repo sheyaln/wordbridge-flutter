@@ -271,7 +271,7 @@ void main() {
       'you',
     ], reason: 'something was spoken while the word was still being typed');
 
-    await tester.tap(find.text('Say it and add it'));
+    await tester.tap(find.text('Say it and add to sentence'));
     await pumpFrames(tester);
 
     expect(speech.said, [

@@ -2740,6 +2740,47 @@ different places in the caregiver screen and are described differently.
 
 **Import creates a new vocabulary and never overwrites the active one.**
 
+**Part 3 delivered.** An *Import and export* section in the caregiver settings,
+one screen, next to Backups and deliberately not inside them.
+
+- **Export writes one `.obz`** holding every board, its words, its pictures and
+  the links between them, into a `boards` folder beside `backups` under the
+  application documents directory. Named for the board set and the day, so a
+  folder holding four of them reads without opening any.
+- **Import arrives as a new person.** A file becomes a new vocabulary and a new
+  profile hung off it, so no location anybody has learned moves and the tablet
+  keeps speaking exactly as it did until a caregiver deliberately switches. It
+  is drawn at level 3 — an imported file carries no notion of how much of
+  itself to show, and every button from another program arrives at level 1, so
+  anything less would hide words the file plainly contains.
+- **A malformed file is a sentence, not a crash.** `importBoardFile` returns
+  the problem; the one screen that could explain what is wrong with a file must
+  not be the one that dies on it.
+- **What the format could not carry is shown, not logged.** An unresolvable
+  link or a board of a different size comes back as a note and is put in front
+  of the caregiver before they hand the tablet to anybody.
+- **The screen says "this is not a backup" above the export button**, in the
+  same block the pre-alpha banner occupies on the voice screen and for the same
+  reason. An export mistaken for a backup is §4.41's own failure with extra
+  steps: somebody believes they are safe and is not.
+
+**How a file gets on and off the tablet: through Files, not a picker.**
+`UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` are now set, so
+the folder is "On My iPad → wordbridge → boards" — a caregiver mails a board
+out of Files, or drops one in and it appears in the list. No new dependency, no
+share sheet, nothing that needs a network.
+
+**⚠️ Not delivered: the same route on Android.** An Android app's documents
+directory is private, so the folder exists and nothing outside the app can see
+it. Export and import both work; getting the file to or from another machine
+does not. Fixing it is a `FileProvider` and a share intent, or the
+`file_selector` plugin on both platforms — a deliberate dependency decision
+rather than an oversight, and it is written down here rather than discovered by
+an Android family.
+
+Eighteen tests, six mutations, plus the reachability walk. `interop_test.dart` still owns what
+an `.obz` contains; these cover the wiring that did not exist.
+
 **Part 4 delivered, apart from the session snapshot.** Undo now walks backwards
 through every edit kind — moves, hide and unhide, deletes, pictures, and adding
 a word — rather than stopping at the most recent move. An undo is recorded as

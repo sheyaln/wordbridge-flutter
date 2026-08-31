@@ -14,6 +14,7 @@ import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
 import '../editor/rebuild_sheet.dart';
+import '../interop/board_files.dart';
 import '../prediction/word_prediction.dart';
 import '../speech/neural/neural_voice.dart';
 import '../speech/speech_engine.dart';
@@ -28,6 +29,7 @@ import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
 import 'backups_screen.dart';
+import 'board_files_screen.dart';
 import 'voice_screen.dart';
 
 /// Everything behind the PIN.
@@ -49,6 +51,7 @@ class CaregiverHome extends StatefulWidget {
     this.userName,
     this.onSwitchProfile,
     this.backup,
+    this.boards,
   });
 
   final WordbridgeDatabase db;
@@ -68,6 +71,10 @@ class CaregiverHome extends StatefulWidget {
   /// tests give it one pointed somewhere other than the documents directory.
   final BackupService? backup;
 
+  /// Where exported and imported board files are. Same arrangement, and the
+  /// same reason: a widget test cannot be allowed to read the real folder.
+  final BoardFileStore? boards;
+
   @override
   State<CaregiverHome> createState() => _CaregiverHomeState();
 }
@@ -75,6 +82,7 @@ class CaregiverHome extends StatefulWidget {
 class _CaregiverHomeState extends State<CaregiverHome> {
   int _tab = 0;
   late final _backup = widget.backup ?? BackupService(widget.db);
+  late final _boards = widget.boards ?? BoardFileStore(widget.db);
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +115,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           profileId: widget.profileId,
           logger: widget.logger,
           backup: _backup,
+          boards: _boards,
           speech: widget.speech,
           settings: widget.settings,
           onSwitchProfile: widget.onSwitchProfile,
@@ -582,6 +591,7 @@ class _Settings extends StatelessWidget {
     required this.profileId,
     required this.logger,
     required this.backup,
+    required this.boards,
     required this.settings,
     required this.onChanged,
     this.speech,
@@ -594,6 +604,7 @@ class _Settings extends StatelessWidget {
   final String profileId;
   final UsageLogger logger;
   final BackupService backup;
+  final BoardFileStore boards;
   final SpeechEngine? speech;
   final String? userName;
   final ProfileSettings? settings;
@@ -812,6 +823,26 @@ class _Settings extends StatelessWidget {
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BackupsScreen(db: db, backup: backup),
+        ),
+      ),
+    ),
+    // Also one screen. Next to Backups because that is where somebody looks
+    // for it, and separate from Backups because it is not one: an exported
+    // file carries the words and not what makes them a motor plan.
+    _Section(
+      icon: Icons.swap_horiz,
+      title: 'Import and export',
+      description:
+          'Writing this board set out as a file another program can open, '
+          'and bringing one in. Not a backup.',
+      opens: (context) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BoardFilesScreen(
+            db: db,
+            vocabularyId: vocabularyId,
+            store: boards,
+            onImported: onChanged,
+          ),
         ),
       ),
     ),

@@ -11,6 +11,7 @@ import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/features/backup/backup_service.dart';
 import 'package:wordbridge/features/backup/snapshot.dart';
 import 'package:wordbridge/features/caregiver/caregiver_home.dart';
+import 'package:wordbridge/features/interop/board_files.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/usage/logger.dart';
@@ -26,6 +27,16 @@ class _NoBackups extends BackupService {
 
   @override
   Future<List<Snapshot>> snapshots() async => const [];
+}
+
+/// Board files without a folder under them, for the same reason as
+/// [_NoBackups]: this walks into the screen, and a real directory read started
+/// inside a widget test never comes back.
+class _NoBoardFiles extends BoardFileStore {
+  _NoBoardFiles(super.db);
+
+  @override
+  Future<List<BoardFile>> files() async => const [];
 }
 
 class _SilentSpeech implements SpeechEngine {
@@ -70,6 +81,8 @@ const _reachable = <String, List<String>>{
   // One screen rather than a page of controls, so the row on the list opens
   // it directly. What has to stay reachable is the control, not the hop.
   'Backups': ['Back up now'],
+  // §4.41 part 3. The readers and writers existed and nothing called them.
+  'Import and export': ['Write this board set out', 'Files on this tablet'],
   // Also one screen. The four below it were nominally reachable and
   // practically were not: they sat under every offline voice the tablet has,
   // and a caregiver who had used the app for weeks did not know pitch control
@@ -186,6 +199,7 @@ void main() {
           speech: withSpeech ? _SilentSpeech() : null,
           settings: withSettings ? settings : null,
           backup: _NoBackups(db),
+          boards: _NoBoardFiles(db),
           userName: 'Maya',
           onSwitchProfile: onSwitchProfile,
         ),
@@ -328,6 +342,7 @@ void main() {
       expect(find.text('Who is using this'), findsOneWidget);
       expect(find.text('The board'), findsOneWidget);
       expect(find.text('Backups'), findsOneWidget);
+      expect(find.text('Import and export'), findsOneWidget);
       expect(find.text('Getting in here'), findsOneWidget);
       expect(find.text('Recording'), findsOneWidget);
       expect(find.text('About'), findsOneWidget);

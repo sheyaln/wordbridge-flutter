@@ -76,5 +76,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- The documents folder is the app's half of import and export (§4.41
+	     part 3). Without these two, an exported .obz is written somewhere no
+	     human being can reach and the feature is a button that does nothing
+	     anybody can see; with them, Files shows "On My iPad → wordbridge" and
+	     a caregiver can mail a board out or drop one in.
+
+	     It also exposes the backups folder, which is a fair trade rather than
+	     an accident: a backup a family can copy off the tablet before a repair
+	     is worth more than one only this app can see. Nothing in there is
+	     reachable from outside the device — no network, no sharing service —
+	     and a usage log is only ever readable by somebody already holding the
+	     unlocked tablet. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>
