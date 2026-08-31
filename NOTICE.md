@@ -29,14 +29,32 @@ wordbridge never links a symbol pack directly; packs are loaded behind a
 
 ### Bundled — commercial use permitted
 
-| Pack | Licence | Notes |
-|---|---|---|
-| Mulberry Symbols | CC BY-SA | © Garry Paxton 2008–2017, Steve Lee 2018–. Upstream marks the set unmaintained. |
-| OpenMoji | CC BY-SA 4.0 | <https://openmoji.org> |
-| Twemoji | CC BY 4.0 | © Twitter, Inc. and contributors |
-| Tawasol Symbols | CC BY-SA | Arabic-focused; Mada Center, Qatar |
+**One pack ships: `core`.** It is a single set of 274 pictures assembled from
+the sources below via Global Symbols, and its manifest carries the credit for
+each picture individually. The sources are **not** shipped as packs of their
+own — this app does not carry Mulberry, or OpenMoji, or any of them, in full.
 
-Attribution for these must remain reachable from inside the app.
+| Source of a `core` picture | Licence | Notes |
+|---|---|---|
+| Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008–2017, Steve Lee 2018–. Upstream marks the set unmaintained. |
+| Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee |
+| OpenMoji | CC BY-SA 4.0 | <https://openmoji.org> |
+| Tawasol Symbols | CC BY-SA 4.0 | Arabic-focused; Mada Center, Qatar |
+
+Attribution for these must remain reachable from inside the app, and is: the
+Symbol credits screen reads the same manifest.
+
+> This table used to list four sets as bundled packs, and the app declared
+> them as such. None of them shipped any assets, so every search against them
+> returned nothing while the credits screen implied the app carried four symbol
+> libraries it did not (§4.36). The declarations are gone and this table now
+> says what the bundle actually contains. **A pack with no assets is not a
+> pack**; adding one back means shipping its images and declaring the asset
+> directory in `pubspec.yaml`.
+
+> **Twemoji is no longer here.** It was listed as bundled and never was, and
+> nothing in `core` is drawn from it. Emoji come from the device's own font —
+> see below, where no glyph is redistributed at all.
 
 ### The device's own emoji — **codepoints only, never glyphs**
 

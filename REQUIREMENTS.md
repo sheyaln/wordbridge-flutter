@@ -2109,7 +2109,7 @@ keyword fallback stays curated on purpose: it runs with nobody looking, so a
 broad match there is a wrong picture nobody chose on a screen whose user cannot
 report it. Broad packs belong in the picker, where a person is deciding.
 
-### 4.36 Four bundled packs return nothing — found, not fixed
+### 4.36 Four bundled packs return nothing — delivered
 
 `mulberry`, `openmoji`, `twemoji` and `tawasol` are constructed by
 `bundledSymbolPacks()`, listed to the registry, and credited on the symbol
@@ -2127,11 +2127,24 @@ Two separate problems, and they want different answers:
   per-symbol credits — but listing them as packs in their own right implies the
   app carries sets it does not.
 
-Not fixed here because the right answer is a product decision: bundle the sets
-for real (bundle size), or stop declaring the ones that are not bundled and let
-`core` carry their credits alone. Whoever picks should read `NOTICE.md` first,
-since the licences require the credit to be reachable from inside the app and
-that must stay true either way.
+The decision, taken: **stop declaring the ones that are not bundled, and let
+`core` carry their credits alone.** The alternative was to bundle four full
+sets for real, and it fails on its own terms — Mulberry alone is some three
+thousand pictures against `core`'s 274, on a communication device that has to
+install and launch on cheap hardware, to answer searches the fetching pack
+already answers online for the words a caregiver adds.
+
+So `bundledSymbolPacks()` returns one pack. Its manifest carries a credit for
+every picture, naming Mulberry, Stellar Symbols, Tawasol or OpenMoji per
+symbol, and the Symbol credits screen reads that manifest — which is where the
+licences are satisfied and where they stay satisfied.
+
+`NOTICE.md` said the same untrue thing and now does not. Its table listed four
+bundled packs; it names the four **sources of a `core` picture** instead, adds
+Stellar Symbols, which was in the manifest and not in the notice, and drops
+**Twemoji**, which was listed as bundled, never was, and contributes nothing to
+`core` — the device's own emoji cover that ground without redistributing a
+glyph (§4.35).
 
 ### 4.37 Joining words take the root board's spare column — delivered
 
