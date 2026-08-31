@@ -175,6 +175,12 @@ class TalkScreenState extends State<TalkScreen> {
   int _walkAt = 0;
   Timer? _walkTimer;
 
+  /// The word being walked to, held because the last beat needs its location.
+  WordPath? _walking;
+
+  /// Who presses the keys on the way (§4.47).
+  WalkMode get _walkMode => widget.settings?.walkMode ?? WalkMode.presses;
+
   /// How long each key is shown before the walk moves on.
   ///
   /// Long enough to see which key was pressed and where it sits, which is the
@@ -191,12 +197,16 @@ class TalkScreenState extends State<TalkScreen> {
   /// The word is not pressed. Arriving is the finder's part and speaking is the
   /// user's — a word said by something they did not touch is a word they did
   /// not say, and the press is the movement the whole walk exists to teach.
+  ///
+  /// Under [WalkMode.waits] every key before the word is that same movement, so
+  /// the ring stops over each one and the person makes it themselves.
   void walkTo(WordPath path) {
     final root = _rootBoardId;
     if (root == null) return;
 
     _walkTimer?.cancel();
     setState(() {
+      _walking = path;
       _walk = routeBeats(
         steps: path.steps,
         rootBoardId: root,
@@ -207,12 +217,15 @@ class TalkScreenState extends State<TalkScreen> {
       // did before it describes where they now are.
       _route.clear();
       _reached = null;
-      _showBeat(path);
+      _showBeat();
     });
   }
 
   /// Puts the board where the current beat says, and points at its key.
-  void _showBeat(WordPath path) {
+  void _showBeat() {
+    final path = _walking;
+    if (path == null) return;
+
     final beat = _walk[_walkAt];
     _currentBoardId = beat.boardId;
     _categoryPage = beat.categoryPage;
@@ -230,24 +243,40 @@ class TalkScreenState extends State<TalkScreen> {
     }
 
     _pointAt = (row: press.row, col: press.col);
-    _walkTimer = Timer(walkBeat, () {
-      if (!mounted || _walk.isEmpty) return;
-      setState(() {
-        _walkAt++;
-        _showBeat(path);
-      });
+    if (_walkMode == WalkMode.waits) return;
+
+    _walkTimer = Timer(walkBeat, _nextBeat);
+  }
+
+  /// Moves the walk on by one, however the beat was earned.
+  void _nextBeat() {
+    if (!mounted || _walk.isEmpty) return;
+    setState(() {
+      _walkAt++;
+      _showBeat();
     });
   }
 
+  /// Whether a press is the one the ring is waiting for.
+  ///
+  /// Only under [WalkMode.waits]: while the board is pressing for itself, a
+  /// press on the same key is still the user taking over.
+  bool _isGuidedPress(PlacedCell placed) =>
+      _walkMode == WalkMode.waits &&
+      _walk.isNotEmpty &&
+      _pointAt == (row: placed.cell.row, col: placed.cell.col);
+
   /// Ends a walk, and takes the ring off the board.
   ///
-  /// Any press of the user's own stops it. A walk that carried on changing the
-  /// board under somebody who had started using it would be moving the board
-  /// while they aimed at it, which is the failure `_settling` exists for.
+  /// Any press that is not the one being waited for stops it. A walk that
+  /// carried on changing the board under somebody who had started using it
+  /// would be moving the board while they aimed at it, which is the failure
+  /// `_settling` exists for.
   void _stopWalk() {
     _walkTimer?.cancel();
     _walkTimer = null;
     _walk = const [];
+    _walking = null;
     _pointAt = null;
   }
 
@@ -705,6 +734,20 @@ class TalkScreenState extends State<TalkScreen> {
     // The board has only just changed, so this tap was aimed at the previous
     // screen. Drop it rather than speak it.
     if (_settling) return;
+
+    // The key the ring is waiting for. The press earns the next beat and the
+    // beat moves the board, rather than this press navigating on its own: two
+    // routes to one board are two chances to disagree, and a walk must never
+    // arrive somewhere the finder did not name.
+    //
+    // It is still recorded. A guided press is real practice at that location,
+    // and the tap counts the editor quotes before a move (§7) are the reason
+    // that matters.
+    if (_isGuidedPress(placed)) {
+      _record(placed, button);
+      _nextBeat();
+      return;
+    }
 
     // The user has taken over. Whatever the walk was going to press next, they
     // are pressing something now, and a board that kept moving under them would

@@ -15,6 +15,25 @@ library;
 import '../../db/tables.dart';
 import 'word_path.dart';
 
+/// Who presses the keys on the way to a found word (§4.47).
+///
+/// Watching a route is not learning it. A motor plan is built by making the
+/// movement — which is what this whole app is for — so pressing the keys and
+/// being shown them pressed are two different things, and which one a profile
+/// wants depends on whether the person at the tablet is looking a word up or
+/// learning where it lives.
+enum WalkMode {
+  /// The board goes through the route itself, a beat on each key.
+  presses('The board presses the keys'),
+
+  /// The ring waits over each key until that key is pressed.
+  waits('The ring waits to be pressed');
+
+  const WalkMode(this.label);
+
+  final String label;
+}
+
 /// One moment of a walk: the board in view, and the key to press from here.
 ///
 /// [press] is null on the last beat only, which is the board holding the word.

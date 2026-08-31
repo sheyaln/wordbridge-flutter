@@ -8,6 +8,7 @@ import '../../db/ids.dart';
 import '../speech/neural/neural_voice.dart';
 import '../speech/neural/synthesis_budget.dart';
 import '../speech/tone.dart';
+import '../talk/route_walk.dart';
 import '../utterance/morphology.dart';
 import 'grid_choice.dart';
 
@@ -202,6 +203,15 @@ class ProfileSettings extends ChangeNotifier {
   /// did nothing a person would want.
   CopulaMode get copulaMode =>
       _enum('copulaMode', CopulaMode.values, CopulaMode.toggle);
+
+  /// Who presses the keys on the way to a word the finder found (§4.47).
+  ///
+  /// The board does, by default — which is what shipped, and the mode a
+  /// caregiver looking a word up wants. The other one has the better argument
+  /// from the thesis and no evidence behind it yet, and a default changed
+  /// under somebody who has learned this one is the displacement this app
+  /// exists to refuse.
+  WalkMode get walkMode => _enum('walkMode', WalkMode.values, WalkMode.presses);
 
   /// Name each run of locations by what it is for.
   ///

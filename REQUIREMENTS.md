@@ -3224,6 +3224,60 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.47 The walk can wait to be pressed — delivered
+
+Requested: *"In the 'Find a word', it should be an option for whether the guide
+auto-taps the steps for you, or if you should manually tap where the guides
+indicate to help build muscle memory."*
+
+Right, and it is the argument §4.42 already made carried one step further. The
+walk stops on the word and does not press it, because *"the press is the
+movement the whole walk exists to teach"*. Every key before the word is the
+same movement, and the walk presses all of them.
+
+Watching a route is not learning it. A motor plan is built by making the
+movement, which is the whole thesis (Thistle et al. 2018 measures the movement,
+not the looking), so a mode where the ring waits over each key until it is
+pressed is closer to what this app is for than the one that ships.
+
+**Two modes, per profile, under "How it behaves".**
+
+- **The board presses the keys** — what ships today. A second on each key, then
+  it stops on the word. The fastest way to be *shown* where something is, which
+  is what a caregiver looking something up wants.
+- **The ring waits to be pressed** — the ring sits over the next key and moves
+  on when that key is pressed. Slower, and it is the movement being made rather
+  than watched.
+
+**A guided press is a real press.** It is logged against the location like any
+other, because it is practice at that location and §7's tap counts are what the
+editor quotes before a move. A walk that pressed for you logs nothing, which is
+correct for the same reason.
+
+**The walk still drives the board, even in the waiting mode.** The press
+advances the beat and the beat sets the board, rather than the press navigating
+on its own. Two routes to the same board would be two chances to disagree, and
+the one thing this walk must never do is arrive somewhere the finder did not
+name.
+
+**Pressing anything else ends the walk**, in both modes, exactly as now. In the
+waiting mode every press is the user's, so "any press of their own stops it"
+would stop it immediately; the rule becomes *the key it is pointing at
+continues, anything else ends it*. Which is the same rule — the guide follows
+you, and if you go elsewhere it stops guiding.
+
+**The default stays as it is.** The waiting mode has the better argument from
+the thesis and no evidence behind it yet, and a default changed under somebody
+who has learned the other one is exactly the kind of displacement this file
+refuses. Worth revisiting once Haley has used it.
+
+Five tests, four mutations. The fourth survived and was worth the trip: with
+the mode check dropped from `_isGuidedPress`, a press on the key the ring was
+*about to press itself* advanced the beat instead of stopping the walk — the
+timer still pending underneath, the board about to move under a hand already
+using it. Nothing asserted the rule that walk mode was supposed to keep. It
+does now.
+
 ### 4.46 A word the finder cannot find is still a word — delivered
 
 Reported: *"If a word is not available in 'Find a word', the same button to

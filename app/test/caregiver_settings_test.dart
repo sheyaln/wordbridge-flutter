@@ -81,6 +81,7 @@ const _reachable = <String, List<String>>{
     'Pause after the board changes',
     'Show how a word was reached',
     'Label what each part of the board is for',
+    'After choosing a word in "Find a word"',
   ],
   'Words and grammar': [
     'Show word endings only when they fit',

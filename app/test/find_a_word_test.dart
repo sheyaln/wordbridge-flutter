@@ -14,6 +14,7 @@ import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/talk/breadcrumb_strip.dart';
 import 'package:wordbridge/features/talk/find_a_word.dart';
+import 'package:wordbridge/features/talk/route_walk.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
 import 'package:wordbridge/features/talk/word_path.dart';
 import 'package:wordbridge/features/usage/logger.dart';
@@ -578,6 +579,114 @@ void main() {
         labelAt(tester, path.steps.first.row, path.steps.first.col),
         board,
       );
+    });
+
+    testWidgets('pressing the key it is about to press still ends it', (
+      tester,
+    ) async {
+      // While the board is pressing for itself, a press on the key under the
+      // ring is still the user taking over — the walk stops rather than
+      // counting it as the beat it was going to make. Only the waiting mode
+      // treats that press as the movement it is asking for.
+      await pumpTalkScreen(tester);
+      final path = await somewhereElse();
+
+      tester.state<TalkScreenState>(find.byType(TalkScreen)).walkTo(path);
+      await tester.pump();
+
+      final first = path.steps.first;
+      await tester.tap(find.byKey(ValueKey('${first.row}:${first.col}')));
+      await pumpFrames(tester);
+
+      expect(pointer(tester), isNull);
+    });
+
+    /// §4.47. Watching a route is not learning it, so the ring can wait.
+    group('when the ring waits to be pressed', () {
+      setUp(() async => settings.set('walkMode', WalkMode.waits.name));
+
+      testWidgets('the board does not move on its own', (tester) async {
+        await pumpTalkScreen(tester);
+        final path = await somewhereElse();
+
+        tester.state<TalkScreenState>(find.byType(TalkScreen)).walkTo(path);
+        await tester.pump();
+
+        final first = (row: path.steps.first.row, col: path.steps.first.col);
+        expect(pointer(tester), first, reason: 'the premise');
+
+        // Several beats' worth of time, with nobody pressing anything.
+        for (var i = 0; i <= path.steps.length; i++) {
+          await tester.pump(TalkScreenState.walkBeat);
+          await pumpFrames(tester);
+        }
+
+        expect(
+          pointer(tester),
+          first,
+          reason: 'the ring moved on without anybody making the movement',
+        );
+      });
+
+      testWidgets('the pressed key moves it on, one at a time', (tester) async {
+        await pumpTalkScreen(tester);
+        final path = await somewhereElse();
+
+        tester.state<TalkScreenState>(find.byType(TalkScreen)).walkTo(path);
+        await tester.pump();
+
+        final pointed = <({int row, int col})?>[pointer(tester)];
+        for (final step in path.steps) {
+          await tester.tap(find.byKey(ValueKey('${step.row}:${step.col}')));
+          await pumpFrames(tester);
+          pointed.add(pointer(tester));
+        }
+
+        expect(pointed, [
+          for (final step in path.steps) (row: step.row, col: step.col),
+          (row: path.row, col: path.col),
+        ], reason: 'pressing the pointed keys did not walk the same route');
+      });
+
+      testWidgets('and it arrives without saying the word', (tester) async {
+        await pumpTalkScreen(tester);
+        final path = await somewhereElse();
+
+        tester.state<TalkScreenState>(find.byType(TalkScreen)).walkTo(path);
+        await tester.pump();
+
+        for (final step in path.steps) {
+          await tester.tap(find.byKey(ValueKey('${step.row}:${step.col}')));
+          await pumpFrames(tester);
+        }
+
+        expect(labelAt(tester, path.row, path.col), path.label);
+        expect(speech.said, isEmpty);
+
+        // And the last press is still theirs to make.
+        await tester.tap(find.byKey(ValueKey('${path.row}:${path.col}')));
+        await pumpFrames(tester);
+        expect(speech.said, isNotEmpty);
+      });
+
+      testWidgets('a press somewhere else ends it', (tester) async {
+        await pumpTalkScreen(tester);
+        final path = await somewhereElse();
+
+        final state = tester.state<TalkScreenState>(find.byType(TalkScreen));
+        state.walkTo(path);
+        await tester.pump();
+
+        final wanted = (row: path.steps.first.row, col: path.steps.first.col);
+        final elsewhere = wanted == (row: 0, col: 0)
+            ? const ValueKey('0:1')
+            : const ValueKey('0:0');
+
+        await tester.tap(find.byKey(elsewhere));
+        await pumpFrames(tester);
+
+        expect(pointer(tester), isNull);
+      });
     });
 
     testWidgets('the ring does not swallow the press it points at', (

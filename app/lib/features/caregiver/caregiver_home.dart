@@ -22,6 +22,7 @@ import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
+import '../talk/route_walk.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
@@ -451,6 +452,66 @@ class _RegionLabels extends StatelessWidget {
   }
 }
 
+/// Who presses the keys on the way to a word the finder found (§4.47).
+///
+/// Two answers to one question, so a pair of options rather than a switch: a
+/// switch would name one of them and leave the other one unnamed, and both are
+/// things somebody deliberately wants.
+class _WalkMode extends StatelessWidget {
+  const _WalkMode({required this.settings, required this.onChanged});
+
+  final ProfileSettings settings;
+  final VoidCallback onChanged;
+
+  static const _descriptions = {
+    WalkMode.presses:
+        'The board goes through the route on its own, about a second on each '
+        'key, and stops on the word without saying it. The quickest way to be '
+        'shown where something is.',
+    WalkMode.waits:
+        'The ring stays over each key until that key is pressed, then moves to '
+        'the next one. Slower, and it is the movement being made rather than '
+        'watched — which is the one that is learned.',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ListTile(
+          leading: Icon(Icons.travel_explore_outlined),
+          title: Text('After choosing a word in "Find a word"'),
+          subtitle: Text(
+            'Either way the board takes the same route and stops on the word '
+            'without speaking it. The press that says it is always theirs.',
+          ),
+          isThreeLine: true,
+        ),
+        RadioGroup<WalkMode>(
+          groupValue: settings.walkMode,
+          onChanged: (chosen) async {
+            if (chosen == null) return;
+            await settings.set('walkMode', chosen.name);
+            onChanged();
+          },
+          child: Column(
+            children: [
+              for (final mode in WalkMode.values)
+                RadioListTile<WalkMode>(
+                  value: mode,
+                  title: Text(mode.label),
+                  subtitle: Text(_descriptions[mode]!),
+                  isThreeLine: true,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CopulaMode extends StatelessWidget {
   const _CopulaMode({required this.settings, required this.onChanged});
 
@@ -831,6 +892,8 @@ class _Settings extends StatelessWidget {
             settings: settings!,
             onChanged: onChanged,
           ),
+        if (settings != null)
+          _WalkMode(settings: settings!, onChanged: onChanged),
       ],
     ),
     _Section(
