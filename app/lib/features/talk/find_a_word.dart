@@ -1,7 +1,43 @@
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
+import '../speech/speech_engine.dart';
 import 'word_path.dart';
+
+/// What the finder hands back.
+///
+/// One screen answers both halves of the same question. Whether the word turns
+/// out to be on the board is the answer, not a different question, so it must
+/// not decide which screen somebody had to open (§4.46).
+sealed class FindResult {
+  const FindResult();
+}
+
+/// A word that is on the board, and the movements that reach it.
+class RouteToWord extends FindResult {
+  const RouteToWord(this.path);
+
+  final WordPath path;
+}
+
+/// A word that is not on the board, typed out and already spoken.
+class TypedWord extends FindResult {
+  const TypedWord(this.word);
+
+  final String word;
+}
+
+/// Whether the finder should offer to say the typed word as it stands.
+///
+/// True once something has been typed and nothing that came back is that word.
+/// A near miss counts: "grandad" coming back for "grandma" is the board
+/// answering a different question, and the person is still holding a word it
+/// does not have.
+bool nothingIsThatWord(String query, List<WordPath> found) {
+  final typed = query.trim().toLowerCase();
+  if (typed.isEmpty) return false;
+  return !found.any((path) => path.label.trim().toLowerCase() == typed);
+}
 
 /// Finding a word somebody knows is in there somewhere.
 ///
@@ -24,10 +60,17 @@ class FindAWord extends StatefulWidget {
     required this.vocabularyId,
     this.vocabLevel,
     this.search,
+    this.speech,
   });
 
   final WordbridgeDatabase db;
   final String vocabularyId;
+
+  /// Says a word the board does not have, once, before handing it over.
+  ///
+  /// That one hearing is the feedback that the typing worked; it is not said
+  /// again when it reaches the sentence.
+  final SpeechEngine? speech;
 
   /// How words are looked up. [findWords] unless something supplies another.
   ///
@@ -42,17 +85,22 @@ class FindAWord extends StatefulWidget {
   /// and this is the one place they would trust it.
   final int? vocabLevel;
 
-  /// The word to walk to, or null if nobody chose one.
-  static Future<WordPath?> show(
+  /// The word to walk to or to say, or null if nobody chose either.
+  static Future<FindResult?> show(
     BuildContext context, {
     required WordbridgeDatabase db,
     required String vocabularyId,
     int? vocabLevel,
-  }) => Navigator.of(context).push<WordPath>(
-    MaterialPageRoute<WordPath>(
+    SpeechEngine? speech,
+  }) => Navigator.of(context).push<FindResult>(
+    MaterialPageRoute<FindResult>(
       fullscreenDialog: true,
-      builder: (_) =>
-          FindAWord(db: db, vocabularyId: vocabularyId, vocabLevel: vocabLevel),
+      builder: (_) => FindAWord(
+        db: db,
+        vocabularyId: vocabularyId,
+        vocabLevel: vocabLevel,
+        speech: speech,
+      ),
     ),
   );
 
@@ -104,9 +152,28 @@ class _FindAWordState extends State<FindAWord> {
     setState(() => _found = found);
   }
 
+  /// Says the typed word once and hands it over as it stands.
+  ///
+  /// Speech is tried before the screen closes, and a failure closes it anyway:
+  /// the word still belongs in the sentence, and a screen that would not shut
+  /// because the voice was busy is a person stuck behind a keyboard.
+  Future<void> _sayItAnyway() async {
+    final word = _field.text.trim();
+    if (word.isEmpty) return;
+
+    try {
+      await widget.speech?.speak(word);
+    } catch (_) {
+      // Nowhere to report it to, and the word is not lost by it.
+    }
+
+    if (mounted) Navigator.of(context).pop(TypedWord(word));
+  }
+
   @override
   Widget build(BuildContext context) {
     final typed = _field.text.trim().isNotEmpty;
+    final missing = nothingIsThatWord(_field.text, _found);
 
     return Scaffold(
       appBar: AppBar(
@@ -162,11 +229,27 @@ class _FindAWordState extends State<FindAWord> {
                       style: const TextStyle(fontSize: 16),
                     ),
                     trailing: const Icon(Icons.turn_right_rounded),
-                    onTap: () => Navigator.of(context).pop(path),
+                    onTap: () => Navigator.of(context).pop(RouteToWord(path)),
                   ),
               ],
             ),
           ),
+
+          // Below the results rather than above them. Somebody reading the
+          // list should not have it pushed down by a control that appeared.
+          if (missing)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: FilledButton.icon(
+                onPressed: _sayItAnyway,
+                icon: const Icon(Icons.volume_up_rounded),
+                label: const Text('Say it and add it'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  textStyle: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
         ],
       ),
     );

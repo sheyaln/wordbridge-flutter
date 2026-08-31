@@ -53,6 +53,12 @@ class _Speech implements SpeechEngine {
   Future<void> setVolume(double volume) async {}
 }
 
+/// A voice that refuses. The word still has to reach the sentence.
+class _BrokenSpeech extends _Speech {
+  @override
+  Future<void> speak(String text) async => throw StateError('no voice');
+}
+
 /// Finding a word, and being shown the way to it.
 ///
 /// The decision under test is §4.42's: the finder presses the keys rather than
@@ -286,7 +292,7 @@ void main() {
     });
 
     testWidgets('hands back the word that was chosen', (tester) async {
-      WordPath? chosen;
+      FindResult? chosen;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -315,8 +321,148 @@ void main() {
       await tester.tap(find.widgetWithText(ListTile, 'eat').first);
       await tester.pumpAndSettle();
 
-      expect(chosen, isNotNull);
-      expect(chosen!.label, 'eat');
+      expect(chosen, isA<RouteToWord>());
+      expect((chosen! as RouteToWord).path.label, 'eat');
+    });
+  });
+
+  /// §4.46. A word the board does not have is still a word somebody is
+  /// holding, and they have already typed it.
+  group('a word the finder cannot find', () {
+    group('when the offer to say it anyway applies', () {
+      test('not before anything is typed', () {
+        expect(nothingIsThatWord('', const []), isFalse);
+        expect(nothingIsThatWord('   ', const []), isFalse);
+      });
+
+      test('when nothing came back at all', () {
+        expect(nothingIsThatWord('grandma', const []), isTrue);
+      });
+
+      test('and when something came back that is a different word', () {
+        // "grandad" for "grandma" is the board answering a different
+        // question. The person is still holding a word it does not have.
+        expect(nothingIsThatWord('grandma', [_result('grandad')]), isTrue);
+      });
+
+      test('but not when the board has exactly that word', () {
+        expect(nothingIsThatWord('food', [_result('food')]), isFalse);
+      });
+
+      test('however it was capitalised or spaced', () {
+        expect(nothingIsThatWord('  Food ', [_result('food')]), isFalse);
+      });
+    });
+
+    testWidgets('the offer is not made while the word is on the board', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FindAWord(db: db, vocabularyId: vocabularyId),
+        ),
+      );
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextField), 'eat');
+      await pumpFrames(tester);
+
+      expect(find.text('Say it and add it'), findsNothing);
+    });
+
+    testWidgets('and it says the word and hands it back as typed', (
+      tester,
+    ) async {
+      FindResult? chosen;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                chosen = await FindAWord.show(
+                  context,
+                  db: db,
+                  vocabularyId: vocabularyId,
+                  speech: speech,
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Battenberg');
+      await pumpFrames(tester);
+
+      await tester.tap(find.text('Say it and add it'));
+      await tester.pumpAndSettle();
+
+      expect(chosen, isA<TypedWord>());
+      expect((chosen! as TypedWord).word, 'Battenberg');
+      expect(speech.said, [
+        'Battenberg',
+      ], reason: 'the one hearing is the feedback that the typing worked');
+    });
+
+    testWidgets('a voice that will not speak still lets the word through', (
+      tester,
+    ) async {
+      // A screen that would not shut because the voice was busy is a person
+      // stuck behind a keyboard.
+      FindResult? chosen;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                chosen = await FindAWord.show(
+                  context,
+                  db: db,
+                  vocabularyId: vocabularyId,
+                  speech: _BrokenSpeech(),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Battenberg');
+      await pumpFrames(tester);
+
+      await tester.tap(find.text('Say it and add it'));
+      await tester.pumpAndSettle();
+
+      expect((chosen! as TypedWord).word, 'Battenberg');
+    });
+
+    testWidgets('the word reaches the sentence without being said twice', (
+      tester,
+    ) async {
+      await pumpTalkScreen(tester);
+
+      await tester.tap(find.byTooltip('Another way to a word'));
+      await pumpFrames(tester);
+      await tester.tap(find.text('Find a word'));
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextField), 'Battenberg');
+      await pumpFrames(tester);
+      await tester.tap(find.text('Say it and add it'));
+      await pumpFrames(tester);
+
+      expect(find.textContaining('Battenberg'), findsWidgets);
+      expect(speech.said, [
+        'Battenberg',
+      ], reason: 'the finder said it and the sentence said it again');
     });
   });
 

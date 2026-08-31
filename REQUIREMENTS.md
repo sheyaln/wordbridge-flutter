@@ -3224,6 +3224,43 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.46 A word the finder cannot find is still a word — delivered
+
+Reported: *"If a word is not available in 'Find a word', the same button to
+'say it and add it' should appear. That way, a word that isn't already in any
+of the boards can be immediately added to the utterance bar instead of having
+to exit 'Find a word' and enter 'Type a word' and then re-type it."*
+
+The finder already tells you the word is not there. Then it makes you leave,
+find the other key, and type the word a second time — while the person you were
+talking to waits. Two screens for one need, and the second one asks for
+something the first one is already holding.
+
+Both screens are asking about a word somebody has in mind and has just typed
+out. Whether it turns out to be on the board is the *answer*, not a different
+question, and the answer should not decide which screen you had to open.
+
+**The button appears when nothing on the board is that word** — not only on an
+empty list. "grandad" coming back for "grandma" is the board answering a
+different question, and the person is still holding a word it does not have.
+`nothingIsThatWord` is the predicate, named so a test can hold it.
+
+**It sits below the results, not above them.** A control that pushes the list
+down while somebody is reading it is the §4.45 mistake in the other direction.
+
+Same label, same behaviour as §4.42's typing screen: say the word once, hand it
+to the sentence, no part of speech attached. Nothing here knows one, and
+guessing would offer "+ed" on a person's name.
+
+**What it does not do: add the word to the board.** That is a placement, and
+placements go through the editor where the motor-plan cost is stated (§7). This
+is the once-said word — a visitor, a place name, something on television — and
+§4.42 already settled that those belong in the sentence and nowhere else.
+
+The finder now hands back one of two things — `RouteToWord` or `TypedWord` —
+rather than a path, so the two outcomes cannot be confused for each other at
+the call site. Nine tests, five mutations, all caught.
+
 ### 4.45 One screen for the voice — delivered
 
 Reported: *"Voice selection should be a submenu on both 'Voice' and 'A voice of

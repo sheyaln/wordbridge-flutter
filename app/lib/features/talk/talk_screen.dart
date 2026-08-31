@@ -846,27 +846,42 @@ class TalkScreenState extends State<TalkScreen> {
     final word = await TypeAWord.show(context, speech: widget.speech);
     if (word == null || !mounted) return;
 
+    _addTypedWord(word);
+  }
+
+  /// Puts a word the board does not have into the sentence.
+  ///
+  /// One route, because two screens now hand one back — the typing screen and
+  /// the finder, when what somebody typed turned out not to be there (§4.46).
+  void _addTypedWord(String word) {
     setState(() {
       _utterance.add(word);
       _reached = null;
     });
   }
 
-  /// Looks for a word, and walks the way to it.
+  /// Looks for a word, and either walks the way to it or says it as typed.
   ///
-  /// Nothing is added to the sentence here. What comes back is a place on the
-  /// board, and the point is to arrive at it by the movements that reach it —
-  /// see [walkTo].
+  /// A word that is there is arrived at by the movements that reach it — see
+  /// [walkTo] — and nothing is added to the sentence. A word that is not there
+  /// has already been spoken by the finder and goes straight in, exactly as the
+  /// typing screen's does.
   Future<void> _findWord() async {
-    final path = await FindAWord.show(
+    final found = await FindAWord.show(
       context,
       db: widget.db,
       vocabularyId: widget.vocabularyId,
       vocabLevel: widget.vocabLevel,
+      speech: widget.speech,
     );
-    if (path == null || !mounted) return;
+    if (found == null || !mounted) return;
 
-    walkTo(path);
+    switch (found) {
+      case RouteToWord(:final path):
+        walkTo(path);
+      case TypedWord(:final word):
+        _addTypedWord(word);
+    }
   }
 
   /// Ends the sentence with a mark, and says it.
