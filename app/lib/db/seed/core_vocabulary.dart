@@ -909,6 +909,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'jealous',
           'confused',
           'surprised',
+          // An ordinary evaluative adjective, in the band that already holds
+          // them. It opens no row and widens none.
+          'cute',
         ], level: 3),
         ...adjectives(['safe', 'ready'], level: 2),
       ],
@@ -951,6 +954,22 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // likely. Without it "maybe" has to cover everything from probably to
         // almost certainly not.
         ...adjectives(['unlikely'], level: 3),
+      ],
+    ),
+
+    // Degree words, which is a class this board had none of (§4.42). They
+    // attach to an adjective, and three of the bands above are nothing but
+    // adjectives — so this is the board they belong on and this is the row a
+    // caregiver will reach for when they ask for another one.
+    //
+    // "too" was considered and left out. It means "also" as often as it means
+    // "excessively", and a key with two meanings and one location is the
+    // confusion this board exists to avoid.
+    Band(
+      name: 'how much',
+      shedRank: 6,
+      items: [
+        ...adverbs(['very', 'really', 'a little'], level: 3),
       ],
     ),
 
@@ -1258,6 +1277,25 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['swap', 'meet', 'visit'], level: 3),
         ...verbs(['hug'], level: 1),
         ...verbs(['kiss', 'laugh', 'cry'], level: 2),
+      ],
+    ),
+
+    // Adverbs of manner, designed once rather than answered again for every
+    // one somebody asks for (§4.42). They modify verbs, and this is the verb
+    // board; anywhere else and the word is a movement away from the word it
+    // attaches to.
+    Band(
+      name: 'how',
+      shedRank: 6,
+      items: [
+        ...adverbs([
+          'quietly',
+          'loudly',
+          'slowly',
+          'quickly',
+          'carefully',
+          'gently',
+        ], level: 3),
       ],
     ),
 

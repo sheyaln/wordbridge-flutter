@@ -218,6 +218,22 @@ void main() {
     );
   });
 
+  testWidgets('the board that gained an adverb row, with its rows named', (
+    tester,
+  ) async {
+    // §4.42 gave `doing` a `how` band, which is a seventh band on a board with
+    // six content rows at 7x12 — so something now pages off that did not
+    // before. This is the picture of what that costs, and it is here because
+    // no golden covered either of the two boards that gained a band.
+    await settings.set('regionLabels', true);
+    await pump(tester);
+    await openBoard(tester, 'doing');
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/doing_labelled.png'),
+    );
+  });
+
   testWidgets('the newest category board, with its rows named', (tester) async {
     // The board added last, which is the one nobody has looked at yet. Its
     // rows carry the widest labels in the set — "days of the week", "parts of

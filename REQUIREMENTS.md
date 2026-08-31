@@ -3021,6 +3021,35 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
   adverb. They do not belong in one band.
 - **Adverbs**, as a class. Related to the above and worth designing once.
 
+**Delivered, and the two lists turned out to be one question.** `sometimes` and
+`always` shipped in §4.28's `when` band on `time` — frequency adverbs, answering
+"when", already home. That left three words in two classes, and neither class
+had a band anywhere, which is exactly what "worth designing once" meant.
+
+So two bands, each on the board holding the words it modifies:
+
+- **`how` on `doing`**, level 3: `quietly`, `loudly`, `slowly`, `quickly`,
+  `carefully`, `gently`. Manner adverbs modify verbs, and `doing` is the verb
+  board. Designing the class once here is cheaper than answering it again for
+  every adverb somebody asks for, and it is the row a caregiver will reach for
+  when they do.
+- **`how much` on `feelings`**, level 3: `very`, `really`, `a little`. Degree
+  words modify adjectives, and `feelings` is where the adjectives are — three
+  of its bands are nothing else. `too` was considered and left out: it means
+  "also" as often as it means "excessively", and a key with two meanings and
+  one location is the confusion this board exists to avoid.
+- **`cute` → `feelings` / `more feelings`**, level 3, beside `silly`, `funny`,
+  `proud` and `shy`. An ordinary evaluative adjective in the band that already
+  holds them; it opens no row and widens none.
+
+**What this costs, and it is not nothing.** Two new bands are two more rows on
+two category boards. At 7×12 a category board has six content rows and both of
+these already had more bands than that, so the arrival pushes what pages off
+one place further. Existing boards are untouched — the layout is materialised
+once at profile creation and nothing re-runs it, and the top-up only fills
+locations that are still free — so this reaches new profiles, which §5.1 has
+already accepted as the price. The goldens were regenerated and read.
+
 #### Reorganisation, which is displacing and needs care
 
 - **Subcategories on `food`** — breakfast, lunch, dinner, snack, dessert,
