@@ -3123,8 +3123,31 @@ set moved when they did; the geometry was then read rather than assumed.
 
   Displacing for anyone who has learned it on `doing`, and that is why it is a
   seed change reaching new profiles rather than an edit to a board in use.
-- **Vulgar and genital vocabulary on page two of `body`, for the adult preset.**
-  Today `swearingBand` is on `feelings` and the anatomical words are on `body`.
+- **Vulgar and genital vocabulary on page two of `body`, for the adult preset
+  — delivered.** Today `swearingBand` is on `feelings` and the anatomical words
+  are on `body`.
+
+  A `private` band on `body`, adult preset only, at the shed rank that puts it
+  on page two — which is what was asked for and is also the right place: it is
+  vocabulary somebody reaches for deliberately, not vocabulary they should have
+  to page past to reach `head` and `hurting`.
+
+  **This is a safeguarding requirement, not a completeness one.** An adult who
+  cannot name their own genitals cannot describe pain in them to a doctor,
+  cannot consent, and cannot report being touched. The adult preset's existing
+  `self care` band is written against exactly that argument — *"an adult who
+  cannot say 'medication' or name a body part to a doctor is dependent on
+  someone else's guess about their own body"* — and this is the half of it that
+  was missing.
+
+  Plain anatomical words, not euphemisms: a euphemism is a word a listener may
+  decline to understand. `butt` stays where §4.42 put it on the ordinary `body`
+  band, because it is an ordinary body part and a child needs it.
+
+  **Not gated behind the profanity switch.** That switch is for `swearingBand`
+  — words somebody chooses to swear with. Naming your own body is not swearing,
+  and putting the two behind one control would mean a caregiver who turns off
+  strong language also takes away the vocabulary for a medical appointment.
 - **Optionally, every verb also appears on `doing`** wherever else it lives.
   Deliberately a copy, which is the §4.16 pinning argument again: two routes to
   one word, neither disturbing the other. Note it collides with the standing

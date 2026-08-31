@@ -92,6 +92,49 @@ void main() {
 
       expect(labels, isNot(contains('landlord')));
       expect(labels, isNot(contains('fuck')));
+      expect(labels, isNot(contains('penis')));
+    });
+
+    group('and an adult can name their own body', () {
+      // The half of "name a body part to a doctor" the `self care` band leaves
+      // out. An adult who cannot name their own genitals cannot describe pain
+      // in them, cannot consent, and cannot report being touched.
+      test('in plain words rather than euphemisms', () async {
+        final id = await seedCoreBoardSet(db, ageBand: AgeBand.adult);
+        final labels = await labelsFor(id);
+
+        expect(
+          labels,
+          containsAll(['penis', 'vulva', 'vagina', 'breast', 'anus']),
+        );
+        expect(labels, containsAll(['do not touch me']));
+      });
+
+      test('and it is not behind the profanity switch', () async {
+        // That switch gates the words somebody chooses to swear with. Behind
+        // one control, a caregiver turning off strong language would also take
+        // away the vocabulary for a medical appointment.
+        final id = await seedCoreBoardSet(
+          db,
+          ageBand: AgeBand.adult,
+          profanity: false,
+        );
+
+        final visible = await labelsFor(id, visible: true);
+        expect(visible, contains('penis'));
+        expect(
+          visible,
+          isNot(contains('fuck')),
+          reason: 'the premise: strong language really is switched off',
+        );
+      });
+
+      test('and `butt` stays where a child can reach it', () async {
+        // An ordinary body part on the ordinary band (§4.42), not something
+        // an adult preset unlocks.
+        final id = await seedCoreBoardSet(db, ageBand: AgeBand.child);
+        expect(await labelsFor(id), contains('butt'));
+      });
     });
 
     test('a teenager gets teenage words', () async {

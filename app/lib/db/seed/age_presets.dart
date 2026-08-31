@@ -214,6 +214,41 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
           ], level: 2),
         ],
       ),
+      // The half of "name a body part to a doctor" the band above leaves out.
+      // An adult who cannot name their own genitals cannot describe pain in
+      // them, cannot consent, and cannot report being touched — and every one
+      // of those is a thing this population is at documented risk of.
+      //
+      // Plain anatomical words rather than euphemisms, because a euphemism is
+      // a word a listener may decline to understand.
+      //
+      // Shed rank 8 puts it on page two of `body` at 7x12, which is what was
+      // asked for and is also right: this is vocabulary somebody reaches for
+      // deliberately, and nobody should page past it to reach `head`.
+      //
+      // Not behind the profanity switch. That gates `swearingBand` — words
+      // somebody chooses to swear with — and naming your own body is not
+      // swearing. Behind one control, a caregiver turning off strong language
+      // would also take away the vocabulary for a medical appointment.
+      Band(
+        name: 'private',
+        shedRank: 8,
+        items: [
+          ...nouns([
+            'penis',
+            'testicles',
+            'vulva',
+            'vagina',
+            'breast',
+            'nipple',
+            'anus',
+          ], level: 2),
+          ...nouns(['sex', 'condom', 'erection'], level: 3),
+          // `butt` is not here. It is an ordinary body part on the ordinary
+          // band (§4.42), and a child needs it.
+          ...phrases(['do not touch me', 'I did not agree to this'], level: 2),
+        ],
+      ),
     ],
     'people': [
       Band(
