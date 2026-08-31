@@ -16,6 +16,7 @@ import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
+import 'pinning.dart';
 import 'placement_rules.dart';
 import 'remap.dart';
 import 'remap_confirm_sheet.dart';
@@ -263,6 +264,12 @@ class _BoardEditorState extends State<BoardEditor> {
 
   Future<void> _showActions(Button button) async {
     final impact = await _remap.impactOfMoving(button.id);
+    // Read once, here: whether this word already has a second route to itself
+    // decides whether the sheet offers to give it one or to take it away.
+    final pinned =
+        button.isSystem || await livesInPinnedColumn(widget.db, button)
+        ? null
+        : await pinnedRowOf(widget.db, button);
     if (!mounted) return;
 
     await showModalBottomSheet<void>(
@@ -364,6 +371,37 @@ class _BoardEditorState extends State<BoardEditor> {
                   );
                 },
               ),
+              // Offered whether or not it can be done, and refused with the
+              // reason. §4.15's argument again.
+              if (pinned == null)
+                ListTile(
+                  leading: const Icon(Icons.push_pin_outlined),
+                  title: const Text('Reach this from every board'),
+                  subtitle: const Text(
+                    'Adds it to the pinned column, so it costs the same '
+                    'movements wherever you are. It keeps the location it has.',
+                  ),
+                  isThreeLine: true,
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _pin(button);
+                  },
+                )
+              else
+                ListTile(
+                  leading: const Icon(Icons.push_pin),
+                  title: const Text('Stop reaching this from every board'),
+                  subtitle: const Text(
+                    'Takes the pinned locations back. The word stays exactly '
+                    'where it lives — the pin was a second way to it, never a '
+                    'move.',
+                  ),
+                  isThreeLine: true,
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _unpin(button, pinned);
+                  },
+                ),
               // Offered on the frame keys too, and refused there with a reason.
               // A control that is simply absent reads as a bug and explains
               // nothing — the same argument board deletion makes (§4.15).
@@ -384,6 +422,85 @@ class _BoardEditorState extends State<BoardEditor> {
         ),
       ),
     );
+  }
+
+  /// Takes a pin back, and says what it does not touch.
+  Future<void> _unpin(Button button, int row) async {
+    final vocabulary = await (widget.db.select(
+      widget.db.vocabularies,
+    )..where((v) => v.id.equals(widget.vocabularyId))).getSingle();
+    if (!mounted) return;
+
+    final agreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Stop reaching "${button.label}" from every board?'),
+        content: Text(
+          'Its pinned locations go back to being empty and reserved. '
+          '"${button.label}" itself does not move — it keeps the location it '
+          'has always had, and the movements to it from there are unchanged.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Leave it pinned'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Unpin it'),
+          ),
+        ],
+      ),
+    );
+    if (agreed != true) return;
+
+    await unpinWord(widget.db, vocabulary: vocabulary, row: row);
+    if (mounted) _snack('"${button.label}" is no longer on every board.');
+  }
+
+  /// Gives a word a second, shorter route to itself (§4.16).
+  ///
+  /// A copy rather than a move, so nothing that has been learned changes, and
+  /// the cost is stated in the units it is paid in: one location on every
+  /// board, not one location.
+  Future<void> _pin(Button button) async {
+    final refusal = await refusalToPin(widget.db, button);
+    if (!mounted) return;
+    if (refusal != null) {
+      _snack(refusal);
+      return;
+    }
+
+    final boards =
+        await (widget.db.select(widget.db.boards)
+              ..where((b) => b.vocabularyId.equals(widget.vocabularyId))
+              ..where((b) => b.deletedAt.isNull()))
+            .get();
+    if (!mounted) return;
+
+    final agreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reach "${button.label}" from every board?'),
+        content: Text(pinCost(label: button.label, boards: boards.length)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Pin it'),
+          ),
+        ],
+      ),
+    );
+    if (agreed != true) return;
+
+    await pinWord(widget.db, button);
+    if (mounted) {
+      _snack('"${button.label}" is now on every board.');
+    }
   }
 
   /// Removes a word, once somebody has typed out that they mean it.

@@ -4112,7 +4112,7 @@ Not built: any way back. Soft deletion means a removed board is recoverable in
 principle, and `edit_events` holds what would be needed, but there is no
 restore screen.
 
-### 4.16 Pinning a word to every board — agreed, not built
+### 4.16 Pinning a word to every board — delivered
 
 Requested: a caregiver should be able to pin a word.
 
@@ -4183,6 +4183,44 @@ with a full displaced-word report or nowhere.
 Hiding never releases a location (§2), so a hidden `when` does not make its cell
 available to something else. That rule is what makes "grow over time" and
 "never relocate" both true, and pinning is not the thing to break it for.
+
+#### Built, and one of those three answers was overtaken
+
+**The system row is no longer a candidate.** §4.16 offered the gap at column 2
+as the one spare location at 7×12, and §4.43 then closed that row to words —
+using this section's own reasoning to do it. The gap is a deliberate blank whose
+whole job is that an imprecise reach for `back` does not land on a category key,
+and a word there is spent guard. So the rule is now simply: **the pinned column,
+or nothing.** At 7 rows the column is exactly full and pinning is refused with
+that as the reason; at 8 rows or more there is one.
+
+Everything else stands as written. A pin is a copy: `pinWord` places the word
+at one row of the pinned column on *every* board and leaves the original where
+it is, so `unpinWord` takes those locations back to reserved and cannot strand
+anything. Both are offered from the word's sheet in the board editor, each with
+what it costs stated first.
+
+Four things worth recording:
+
+- **A row counts as free only where every board has it free.** One board having
+  put a word there takes the row off the table for all of them: a pin is one
+  location on every board or it is not a pin.
+- **The cost is stated in locations, not in words.** "One location is
+  available" is the wrong number. `pinCost` says eleven locations across eleven
+  boards, and says the word keeps the one it already has.
+- **A word that lives *only* in the pinned column is not a pin of anything.**
+  The questions are exactly that, and unpinning one would be a deletion wearing
+  the word "unpin" — the sentence that makes unpinning safe, "the word keeps
+  the location it has always had", is false of it. `livesInPinnedColumn` is
+  what stops the editor offering it.
+- **The refusal is enforced in `pinWord` as well as on the screen**, the same
+  arrangement §4.43 uses, because a rule only the screen enforces has a way
+  round it.
+
+Twenty-five tests, five mutations. The second survived and was worth chasing:
+the test asserted only that pinning on a full column *threw*, and without the
+guard it still did — on an empty list, which is the right outcome for the wrong
+reason. It now asserts the sentence a caregiver would have read.
 
 ### 4.6a Sentences the board still cannot build
 
