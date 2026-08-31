@@ -4424,12 +4424,14 @@ quietly absent:
 
 Small, real, and none of them urgent:
 
-- **`symbol_picker` writes a null on removal** and `board_editor` translates
-  that into the removal marker after the sheet closes, so the knowledge sits
-  one file from the write. The picker also still offers "Remove the picture"
-  on a button already marked as having none.
-- **`resolveLabel` honours no timeout**, unlike `resolve`. A pack that hangs
-  leaves cells marked "still looking" for good rather than for a second.
+- **`symbol_picker` writes a null on removal — fixed.** It writes
+  `removedPictureSymbolId` itself, so the knowledge no longer sits one file
+  from the write, and `board_editor` translates nothing. `_hasPicture` also
+  excludes that marker, so "Remove the picture" is not offered on a button
+  already marked as having none.
+- **`resolveLabel` honours no timeout — fixed.** It carries the same
+  `.timeout(budget, onTimeout: labelOnly)` as `resolveChosen`, so a pack that
+  hangs costs a cell a second of "still looking" rather than for good.
 - **`GridSurface` cannot render a cell differently**, so the editor carries its
   own board — roughly eighty parallel lines, and a new image kind has to be
   handled in two places. A `cellBuilder` hook would let both share one surface.
