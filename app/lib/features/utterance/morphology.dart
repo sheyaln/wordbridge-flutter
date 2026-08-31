@@ -11,8 +11,13 @@ import '../../db/tables.dart';
 
 /// Past tenses that no rule produces.
 ///
-/// Only verbs the shipped vocabulary can actually reach. Adding a verb to a
-/// board means checking whether it belongs here too.
+/// It used to hold only the verbs the shipped vocabulary could reach, which
+/// meant a caregiver who added `swim` to a board got `swimmed` from the "+ed"
+/// key — a wrong word, said out loud, by a key that looked like it worked.
+/// The table is developer-maintained and the editor does not prompt for a
+/// form, so the answer is to maintain it: it now covers the ordinary irregular
+/// verbs of English whether or not this app ships them, and a caregiver's own
+/// verb is as likely to be right as a seeded one.
 const _irregularPast = <String, String>{
   'go': 'went',
   'get': 'got',
@@ -57,6 +62,66 @@ const _irregularPast = <String, String>{
   'hit': 'hit',
   'let': 'let',
   'shut': 'shut',
+
+  // Not in the shipped vocabulary, and reachable the moment somebody adds one.
+  'swim': 'swam',
+  'fly': 'flew',
+  'drive': 'drove',
+  'ride': 'rode',
+  'write': 'wrote',
+  'speak': 'spoke',
+  'choose': 'chose',
+  'forget': 'forgot',
+  'begin': 'began',
+  'blow': 'blew',
+  'grow': 'grew',
+  'know': 'knew',
+  'throw': 'threw',
+  'build': 'built',
+  'send': 'sent',
+  'spend': 'spent',
+  'lend': 'lent',
+  'feed': 'fed',
+  'meet': 'met',
+  'keep': 'kept',
+  'sweep': 'swept',
+  'creep': 'crept',
+  'teach': 'taught',
+  'catch': 'caught',
+  'fight': 'fought',
+  'seek': 'sought',
+  'sell': 'sold',
+  'bite': 'bit',
+  'hide': 'hid',
+  'shake': 'shook',
+  'wake': 'woke',
+  'freeze': 'froze',
+  'steal': 'stole',
+  'swing': 'swung',
+  'ring': 'rang',
+  'stick': 'stuck',
+  'dig': 'dug',
+  'lead': 'led',
+  'bleed': 'bled',
+  'shoot': 'shot',
+  'mean': 'meant',
+  'deal': 'dealt',
+  'burn': 'burnt',
+  'learn': 'learnt',
+  'smell': 'smelt',
+  'spell': 'spelt',
+  'spill': 'spilt',
+  'spoil': 'spoilt',
+  'cost': 'cost',
+  'quit': 'quit',
+  'set': 'set',
+  'spread': 'spread',
+  'burst': 'burst',
+  'become': 'became',
+  'lie': 'lay',
+  'lay': 'laid',
+  'pay': 'paid',
+  'wind': 'wound',
 };
 
 /// Plurals and third-person singulars that no rule produces.

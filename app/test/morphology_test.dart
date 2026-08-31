@@ -3,6 +3,45 @@ import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/utterance/morphology.dart';
 
 void main() {
+  /// §6. A caregiver's own verb is as likely to be right as a seeded one.
+  ///
+  /// The table used to hold only what the shipped vocabulary could reach, so
+  /// adding `swim` to a board got `swimmed` out of the "+ed" key — a wrong
+  /// word, said out loud, by a key that looked like it worked.
+  group('irregular verbs a caregiver might add', () {
+    test('take their real past tense, not a regular one', () {
+      for (final pair in {
+        'swim': 'swam',
+        'fly': 'flew',
+        'drive': 'drove',
+        'write': 'wrote',
+        'teach': 'taught',
+        'catch': 'caught',
+        'build': 'built',
+        'forget': 'forgot',
+      }.entries) {
+        expect(
+          applyMorpheme(pair.key, MorphemeKind.pastEd),
+          pair.value,
+          reason: '"${pair.key}" would have been regularised',
+        );
+      }
+    });
+
+    test('including the ones that do not change at all', () {
+      for (final word in ['cost', 'quit', 'set', 'spread', 'burst']) {
+        expect(applyMorpheme(word, MorphemeKind.pastEd), word);
+      }
+    });
+
+    test('and a regular verb is still regular', () {
+      // The table is an exception list. A verb that follows the rule must not
+      // be in it, or the rule stops being the rule.
+      expect(applyMorpheme('want', MorphemeKind.pastEd), 'wanted');
+      expect(applyMorpheme('jump', MorphemeKind.pastEd), 'jumped');
+    });
+  });
+
   String past(String w) => applyMorpheme(w, MorphemeKind.pastEd);
   String plural(String w) => applyMorpheme(w, MorphemeKind.pluralS);
   String ing(String w) => applyMorpheme(w, MorphemeKind.ing);

@@ -4727,17 +4727,35 @@ Violating any of these is a bug regardless of what else it buys.
 ## 6. Open questions
 
 - **Does `back` earn its slot?** With auto-return and a pinned `home`, it may be
-  redundant. Usage data will answer this; don't guess.
-- **Is 7×12 right on a mini?** Resolved as "not too dense" by observation, but
-  superseded by §4.1.
+  redundant. Usage data will answer this; don't guess. **Blocked on data, not
+  on work** — §4.49 fixed the device id the log needed, §4.44 made consent
+  persist, and the counts now accumulate. It answers itself once somebody has
+  used a board for a few weeks with recording on.
+- ~~**Is 7×12 right on a mini?**~~ **Answered.** "Not too dense" by
+  observation, and superseded by §4.1: the grid is derived from the screen, so
+  a mini is not asked the same question any more.
 - **Free personal-team signing expires after 7 days.** Fine for development,
-  unacceptable for a real user. Needs a paid account before anyone relies on it.
-- **Irregular verbs added through the editor** get regular endings — `swim`
-  would become `swimmed`. The table is developer-maintained; the editor does not
-  prompt for it.
+  unacceptable for a real user. Needs a paid account before anyone relies on
+  it. **Blocked on a purchase, not on engineering.**
+- ~~**Irregular verbs added through the editor** get regular endings — `swim`
+  would become `swimmed`.~~ **Fixed by maintaining the table.** It held only
+  the verbs the shipped vocabulary could reach, so a caregiver's own verb got a
+  wrong word said out loud by a key that looked like it worked. It now covers
+  the ordinary irregular verbs of English whether or not this app ships them —
+  around sixty more — so an added verb is as likely to be right as a seeded
+  one. The editor still does not prompt for a form, and does not need to for
+  anything in the table.
 - **Grammar availability reads only the immediately preceding word.** "I want a
   drink" hides `+ed` even though you might want to inflect `want`. Fixing that
-  needs a notion of which word is being edited.
+  needs a notion of which word is being edited — a cursor in the sentence, and
+  every key in the bar re-reading against it rather than against the end.
+
+  **Not built, and the reason is that the cheap version is worse than the
+  problem.** Offering `+ed` whenever *any* verb is in the bar puts the key back
+  on screen for "I want a drink" and applies it to `drink`, which is a wrong
+  word rather than a missing key. A real cursor is a change to how the bar is
+  read, written and spoken, and it is worth doing when somebody actually
+  reaches for it — the workaround today is one backspace.
 
 ---
 
