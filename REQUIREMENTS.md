@@ -3115,8 +3115,14 @@ set moved when they did; the geometry was then read rather than assumed.
   the batch. Today `food` is one board of rows; this asks for a board of boards.
   It changes what a learned key opens, so it is rebuild-class and needs the
   §4.20 path.
-- **Move `cook` from `doing` to `food`.** It is on `doing` at level 3 today.
-  Displacing for anyone who has learned it, cheap for anyone who has not.
+- **Move `cook` from `doing` to `food` — delivered.** It joined `food` /
+  `eating`, beside the food it acts on: one movement to `cook` and one to what
+  is being cooked beats two boards for one sentence. It took a location on that
+  row that was already being held open, so **not one word already on the food
+  board moved** — the golden shows it in verb green in a cell that was blank.
+
+  Displacing for anyone who has learned it on `doing`, and that is why it is a
+  seed change reaching new profiles rather than an edit to a board in use.
 - **Vulgar and genital vocabulary on page two of `body`, for the adult preset.**
   Today `swearingBand` is on `feelings` and the anatomical words are on `body`.
 - **Optionally, every verb also appears on `doing`** wherever else it lives.
@@ -3124,6 +3130,25 @@ set moved when they did; the geometry was then read rather than assumed.
   one word, neither disturbing the other. Note it collides with the standing
   rule that one word twice on **one** board is a defect — these would be on
   different boards, which is already allowed.
+
+  **Decided: not as a blanket copy. §4.16 is the version of this that ships.**
+  The argument for it was pinning's argument, and pinning now exists — per
+  word, chosen by the person who knows the user, with what it costs stated
+  before it is paid. Doing it for *every* verb instead fails on two counts:
+
+  - **`doing` cannot hold them.** It already pages at 7×12 and gained a row to
+    the `how` band. Copying the verbs off `food`, `play`, `body` and `places`
+    onto it would push most of its own verbs onto a second page — buying a
+    shorter route to somebody else's verbs by lengthening the route to the ones
+    this board is *for*.
+  - **It answers a question nobody asked per word.** This section already
+    settled that `again`, `before` and `after` stay where they are, because one
+    word with two homes and neither obvious is worse than one movement further
+    away. A blanket copy makes that true of every verb at once.
+
+  What a caregiver wanted from it — "this person says `eat` constantly and it
+  is two movements away" — is exactly what a pin does, for `eat`, without doing
+  it to forty other words that nobody reaches for.
 
 #### Modes and features, each its own piece of work
 

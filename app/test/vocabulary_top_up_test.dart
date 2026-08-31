@@ -540,7 +540,7 @@ void main() {
       // the six question words every board carries in its pinned column.
       // Arithmetic, not behaviour: a word added to the shipped vocabulary
       // moves this number and nothing else.
-      expect(words.keys, hasLength(54 + 6));
+      expect(words.keys, hasLength(53 + 6));
       expect(
         result.added.where((a) => a.board == 'doing').map((a) => a.label),
         containsAll(['wash', 'breathe', 'cry']),

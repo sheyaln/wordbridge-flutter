@@ -522,7 +522,10 @@ void main() {
         containsAll(['wash', 'sit', 'ask', 'remember', 'hold', 'share']),
         reason: 'a strip of the doing board was never placed',
       );
-      expect(labels, hasLength(48));
+      // One fewer since `cook` moved to `food` (§4.42). Arithmetic, not
+      // behaviour: a word leaving the shipped board moves this number and
+      // nothing else.
+      expect(labels, hasLength(47));
     });
 
     test('the 7x12 food board is exactly where it ships', () async {
@@ -535,8 +538,12 @@ void main() {
       // it. A row that runs drinks into bread has to be learned word by word;
       // a row that is only drinks is learned once. The empty tails are not
       // waste — they are where a caregiver's own words for that cluster go.
+      //
+      // `cook` arrived here from `doing` (§4.42) and took a location that was
+      // held open, which is what an addition is supposed to do: not one word
+      // already on this board moved to make room for it.
       const shipped = [
-        'eat drink food straw plate . . . . . .',
+        'eat drink food straw plate cook . . . . .',
         'water milk juice squash tea coffee fizzy . . . .',
         'breakfast lunch dinner snack soup pizza chicken . . . .',
         'bread toast cereal rice pasta egg cheese butter honey jam .',

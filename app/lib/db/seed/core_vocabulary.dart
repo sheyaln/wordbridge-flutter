@@ -647,6 +647,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...nouns(['food'], level: 1),
         ...nouns(['straw'], level: 2),
         ...nouns(['plate'], level: 3),
+        // Moved here from `doing` / `handling`. It is a verb, but it is a verb
+        // about the nouns on this board, and one movement to `cook` plus one
+        // to what is being cooked beats two boards for one sentence.
+        ...verbs(['cook'], level: 3),
       ],
     ),
 
@@ -1266,7 +1270,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['hold'], level: 2),
         ...verbs(['drop'], level: 3),
         ...verbs(['find'], level: 2),
-        ...verbs(['lose', 'fix', 'clean', 'cut', 'cook'], level: 3),
+        // `cook` is not here. It moved to `food` / `eating`, beside the food
+        // it acts on (§4.42) — displacing for anybody who had learned it on
+        // this board, which is why it is a seed change reaching new profiles
+        // and not an edit to a board in use.
+        ...verbs(['lose', 'fix', 'clean', 'cut'], level: 3),
       ],
     ),
 
