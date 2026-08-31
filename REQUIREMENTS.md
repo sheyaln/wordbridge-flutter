@@ -3038,7 +3038,22 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
   hardest without — `chair`, `bed`, `shoes`, `coat` — are drawn at level 2.
   That is a deliberate under-reach: the level-2 ceiling exists to stop level 2
   quietly becoming level 3, and spending 24 of it on one fringe board is how
-  that happens.
+  that happens. The ceiling did **not** need raising, which is what four rather
+  than twenty-four buys.
+
+  **Seven fixtures moved, and every one of them was arithmetic.** §4.28 said
+  this would happen and it did: a premise like "this grid gives every category
+  a permanent slot" or "the row has a slot spare" costs one more column, or one
+  more unshipped board, every single time a category ships. Two fixture grids
+  went from 14 columns to 15, one unship list gained a third name, and four
+  lists of category names gained `objects`.
+
+  One was **not** arithmetic and is worth recording. A test asserted
+  `categoryNames.last == 'time'` under the name *"is the last key on the wheel,
+  so nothing else moved"* — and being last is not what made `time` safe.
+  Appending is. It now asserts that every category which existed before `time`
+  still sits exactly where it did, which is the claim the name was making and
+  is stronger than the one it checked.
 - **`sleep` and more verbs** — `sleep` exists on `doing` at level 1.
 - **Descriptors: `very`, `cute`, `sometimes`, `always`, `quietly`** — asked for
   explicitly at level 3. None exist. Note these are three different word
