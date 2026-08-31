@@ -8,7 +8,11 @@ import '../../db/board_builder.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
+import '../../db/ids.dart';
+import '../../db/seed/band_layout.dart';
 import '../grid/grid_geometry.dart';
+import '../grid/region_label_strip.dart';
+import '../grid/region_labels.dart';
 import '../grid/grid_surface.dart';
 import '../grid/symbol_view.dart';
 import '../symbols/auto_symbol.dart';
@@ -608,6 +612,36 @@ class _BoardEditorState extends State<BoardEditor> {
     );
   }
 
+  /// Lets a caregiver say what a run of locations is for (§4.26).
+  ///
+  /// Chosen from the names the shipped layout already uses, so the vocabulary
+  /// of the board stays the same between the rows that came with it and the
+  /// ones somebody added — with free text last, because a row built for one
+  /// child's swimming club is not on any list.
+  Future<void> _nameLine(int line, RegionNames names) async {
+    final chosen = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) =>
+          SafeArea(child: _NameALine(current: names.forLine(line))),
+    );
+    if (chosen == null || !mounted) return;
+
+    final updated = chosen.isEmpty
+        ? names.without(line)
+        : names.with_(line, chosen);
+
+    await (widget.db.update(
+      widget.db.boards,
+    )..where((b) => b.id.equals(widget.boardId))).write(
+      BoardsCompanion(
+        lineNames: Value(updated.isEmpty ? null : RegionNames.encode(updated)),
+        updatedAt: Value(nowMs()),
+      ),
+    );
+    await _load();
+  }
+
   void _snack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -691,16 +725,60 @@ class _BoardEditorState extends State<BoardEditor> {
                 if (cells == null) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                final regions = BoardRegions.decode(_board?.bandMap);
+                final names = RegionNames.decode(_board?.lineNames);
+                // Down the side by default. A board a caregiver made has no
+                // bands and no axis, and naming a row is what §4.26 asked for.
+                final axis = regions?.axis ?? BandAxis.rows;
+                final byColumn = axis == BandAxis.columns;
+                final labels = editableRegionLabels(
+                  regions: regions,
+                  names: names,
+                  lines: byColumn ? vocab.gridCols : vocab.gridRows,
+                );
+
                 return Padding(
                   padding: const EdgeInsets.all(8),
-                  child: _EditorBoard(
-                    rows: vocab.gridRows,
-                    cols: vocab.gridCols,
-                    cells: cells,
-                    colourScheme: vocab.colourScheme,
-                    resolver: widget.resolver,
-                    pickedUpButtonId: moving?.id,
-                    onSelect: _onCellTapped,
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final board = _EditorBoard(
+                        rows: vocab.gridRows,
+                        cols: vocab.gridCols,
+                        cells: cells,
+                        colourScheme: vocab.colourScheme,
+                        resolver: widget.resolver,
+                        pickedUpButtonId: moving?.id,
+                        onSelect: _onCellTapped,
+                      );
+
+                      final strip = SizedBox(
+                        width: byColumn ? null : regionLabelExtent,
+                        height: byColumn ? regionLabelExtent : null,
+                        child: RegionLabelStrip(
+                          labels: labels,
+                          rows: vocab.gridRows,
+                          cols: vocab.gridCols,
+                          axis: axis,
+                          gridWidth: box.maxWidth,
+                          gridHeight: box.maxHeight,
+                          onTap: (line) => _nameLine(line, names),
+                        ),
+                      );
+
+                      return byColumn
+                          ? Column(
+                              children: [
+                                strip,
+                                Expanded(child: board),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                strip,
+                                Expanded(child: board),
+                              ],
+                            );
+                    },
                   ),
                 );
               },
@@ -1060,6 +1138,98 @@ class _CellLabel extends StatelessWidget {
           fontStyle: italic ? FontStyle.italic : FontStyle.normal,
           color: Colors.black87,
         ),
+      ),
+    );
+  }
+}
+
+/// Choosing what a row is for.
+///
+/// A list rather than a text field, because every band the app ships already
+/// has a name written for a reader — `drinks`, `doing`, `people you know` —
+/// and picking from that list keeps the vocabulary of the board consistent
+/// between the rows that came with it and the ones somebody added. Free text
+/// is last and not first, for the row built for one child's swimming club.
+class _NameALine extends StatefulWidget {
+  const _NameALine({required this.current});
+
+  final String? current;
+
+  @override
+  State<_NameALine> createState() => _NameALineState();
+}
+
+class _NameALineState extends State<_NameALine> {
+  late final _typed = TextEditingController(text: widget.current ?? '');
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      builder: (context, controller) => ListView(
+        controller: controller,
+        children: [
+          const ListTile(
+            title: Text(
+              'What is this row for?',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'A name here is shown above the row when "Label what each part '
+              'of the board is for" is on. Rebuilding the board set or '
+              'changing the grid re-lays every row, and these are dropped '
+              'rather than moved onto a row that is not the one you named.',
+            ),
+            isThreeLine: true,
+          ),
+          const Divider(height: 1),
+          if (widget.current != null)
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('No name'),
+              subtitle: const Text('Falls back to what the layout calls it'),
+              onTap: () => Navigator.of(context).pop(''),
+            ),
+          for (final name in namesToOffer)
+            ListTile(
+              leading: Icon(
+                name == widget.current
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+              ),
+              title: Text(name),
+              onTap: () => Navigator.of(context).pop(name),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _typed,
+                  decoration: const InputDecoration(
+                    labelText: 'Or a name of your own',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.of(context).pop(_typed.text.trim()),
+                  child: const Text('Use this name'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

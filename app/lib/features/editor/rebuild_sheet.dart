@@ -133,6 +133,15 @@ class _RebuildSheetState extends State<RebuildSheet> {
                   Text(impact.handAdded.join(', ')),
                 ],
                 const SizedBox(height: 12),
+                // §4.26. Names are per line, and line 3 afterwards is not the
+                // line 3 that was named — carrying one onto a different row
+                // would be worse than losing it.
+                const Text(
+                  'Any names you gave rows are dropped as well. The new boards '
+                  'lay every row out afresh, so a name kept would end up over '
+                  'a row you did not name.',
+                ),
+                const SizedBox(height: 12),
                 if (impact.recordedTaps > 0)
                   Text(
                     '$who has tapped these boards ${impact.recordedTaps} '

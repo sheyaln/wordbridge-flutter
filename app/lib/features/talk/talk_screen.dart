@@ -555,6 +555,7 @@ class TalkScreenState extends State<TalkScreen> {
       _currentBoardId = vocab.rootBoardId;
       _wheel = _CategoryWheel.parse(vocab.systemCellMap);
       _bandMaps = {for (final b in boards) b.id: b.bandMap};
+      _lineNames = {for (final b in boards) b.id: b.lineNames};
       _lowestContentLevel = lowest;
       _routes = routes;
     });
@@ -604,6 +605,9 @@ class TalkScreenState extends State<TalkScreen> {
   /// Each board's regions, as recorded when it was built.
   Map<String, String?> _bandMaps = const {};
 
+  /// The names a caregiver chose for lines of each board (§4.26).
+  Map<String, String?> _lineNames = const {};
+
   /// How caregiver mode is asked for on this device.
   ///
   /// Held rather than read on demand because it is consulted while the board
@@ -621,6 +625,9 @@ class TalkScreenState extends State<TalkScreen> {
 
   String? get _currentBandMap =>
       _currentBoardId == null ? null : _bandMaps[_currentBoardId];
+
+  String? get _currentLineNames =>
+      _currentBoardId == null ? null : _lineNames[_currentBoardId];
 
   String? _cellsBoardId;
   Stream<List<PlacedCell>>? _cells;
@@ -1234,6 +1241,16 @@ class TalkScreenState extends State<TalkScreen> {
                       final regions = _showRegions
                           ? BoardRegions.decode(_currentBandMap)
                           : null;
+                      // A board a caregiver made has no bands, so its names
+                      // are the only labels it has — and they run down the
+                      // side, because naming a row is what was asked for.
+                      final labels = _showRegions
+                          ? regionLabels(
+                              regions: regions,
+                              names: RegionNames.decode(_currentLineNames),
+                            )
+                          : const <RegionLabel>[];
+                      final labelAxis = regions?.axis ?? BandAxis.rows;
 
                       return Padding(
                         padding: const EdgeInsets.all(gridInset),
@@ -1257,7 +1274,7 @@ class TalkScreenState extends State<TalkScreen> {
                               ),
                             );
 
-                            if (regions == null || regions.isEmpty) return grid;
+                            if (labels.isEmpty) return grid;
 
                             // Chrome beside the grid rather than in it. A label
                             // that took a location would be teaching the layout
@@ -1269,15 +1286,15 @@ class TalkScreenState extends State<TalkScreen> {
                             // above, a category board bands by row so they run
                             // down the side. Drawn across the wrong edge, every
                             // label lands on top of the others.
-                            final byColumn = regions.axis == BandAxis.columns;
+                            final byColumn = labelAxis == BandAxis.columns;
                             final strip = SizedBox(
                               width: byColumn ? null : regionLabelExtent,
                               height: byColumn ? regionLabelExtent : null,
                               child: RegionLabelStrip(
-                                regions: regions,
+                                labels: labels,
                                 rows: vocab.gridRows,
                                 cols: vocab.gridCols,
-                                axis: regions.axis,
+                                axis: labelAxis,
                                 gridWidth: box.maxWidth,
                                 gridHeight: box.maxHeight,
                               ),

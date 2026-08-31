@@ -1839,7 +1839,7 @@ published whole-day figure. It is now 37, guarded separately from the category
 boards, which still hold to 36 — see §4.11 for why that is a number worth
 moving once and the copy that had to move with it.
 
-### 4.26 A caregiver can name a row themselves — agreed, not built
+### 4.26 A caregiver can name a row themselves — delivered
 
 The labels in §4.19 come from the shipped layout, which means a board a
 caregiver made by hand has none, and a row whose contents they changed keeps
@@ -1876,6 +1876,35 @@ Two costs to state plainly when it is built:
   `drinks`. That is the caregiver's call to make and their mistake to fix — the
   alternative is refusing a name because the software disagrees, on a board
   whose entire premise is that the people who know the user decide.
+
+#### Built as designed, with schema 7
+
+`boards.line_names` is a new nullable column — a JSON map of line index to
+name, kept separate from `band_map` so that what the layout decided and what a
+person chose can never be confused for one another. **Migration 7 adds it and
+nothing else**, and a board that predates it keeps whatever the layout called
+its rows, which is what it was already showing.
+
+- **`regionLabels` merges the two**, and an override on a band's first line
+  renames that band while keeping its extent — the name is what changes, not
+  what it covers. An override on a line no band owns stands alone, which is the
+  only kind a hand-made board can have.
+- **The editor's strip shows the empty rows too**, through
+  `editableRegionLabels`, because a row with no name has to have somewhere to
+  tap or it can never gain one. The talk screen is given none of those blanks:
+  in front of the user they would be chrome that says nothing.
+- **The list is the shipped layout's own names**, sorted, with free text last —
+  so the words on the strip stay the same words whether the row came with the
+  board or somebody added it, and the swimming club still gets a name.
+- **A board with no bands is labelled down the side.** It has no axis to read,
+  and naming a *row* is what was asked for.
+- **Both re-laying paths now say what they drop.** The rebuild sheet and the
+  grid-change screen each state that names are discarded and why: line 3
+  afterwards is not the line 3 that was named, and carrying a name onto a
+  different row would be worse than losing it.
+
+Twenty-one tests, five mutations, all caught, plus a migration test that the
+new column arrives empty.
 
 ### 4.30 Deleting a word — delivered
 

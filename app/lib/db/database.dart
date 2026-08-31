@@ -58,7 +58,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -125,6 +125,13 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         // has nothing to name their regions from and simply does not label
         // them. Rebuilding a board set fills it in.
         await m.addColumn(boards, boards.bandMap);
+      }
+
+      if (from < 7) {
+        // Nothing named until somebody names something. A board that predates
+        // this keeps whatever the layout called its rows, which is what it
+        // was already showing.
+        await m.addColumn(boards, boards.lineNames);
       }
 
       if (from < 5) {

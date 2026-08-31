@@ -234,7 +234,19 @@ void main() {
     // Forces the upgrade to run.
     await db.select(db.profiles).get();
 
-    expect(db.schemaVersion, 6);
+    expect(db.schemaVersion, 7);
+  });
+
+  test('and the column added at 7 is there and empty', () async {
+    // §4.26. Nothing named until somebody names something: a board that
+    // predates this keeps whatever the layout called its rows, which is what
+    // it was already showing.
+    final db = openUpgraded();
+    addTearDown(db.close);
+
+    final boards = await db.select(db.boards).get();
+    expect(boards, isNotEmpty, reason: 'the premise');
+    expect(boards.every((b) => b.lineNames == null), isTrue);
   });
 
   test('the board survives the upgrade untouched', () async {

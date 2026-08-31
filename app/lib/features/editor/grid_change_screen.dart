@@ -288,6 +288,13 @@ class _ImpactReport extends StatelessWidget {
             ),
         ],
         const SizedBox(height: 16),
+        // §4.26. Names are per line, and this re-lays every line.
+        const Text(
+          'Any names you gave rows are dropped. Every row is laid out afresh, '
+          'so a name kept would end up over a row you did not name.',
+          style: TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
         const Text(
           'The board as it is now is kept, not deleted. If this turns out to '
           'be the wrong call, it can be put back exactly as it was.',

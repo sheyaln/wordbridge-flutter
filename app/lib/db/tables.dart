@@ -183,6 +183,18 @@ class Boards extends Table with _Timestamps {
   /// by hand, which has no bands.
   TextColumn get bandMap => text().nullable()();
 
+  /// Names a caregiver chose for lines of this board, as JSON (§4.26).
+  ///
+  /// Kept separate from [bandMap] so that what the layout decided and what a
+  /// person chose can never be confused for one another, and keyed by **line
+  /// index** rather than by band: a board a caregiver made by hand has no
+  /// bands at all, and naming a row is exactly what it needs.
+  ///
+  /// A rebuild (§4.20) or a grid change re-lays the board, so line 3 afterwards
+  /// is not the line 3 that was named. Both discard these rather than carry a
+  /// name onto a different row, and both say so.
+  TextColumn get lineNames => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -36,15 +36,18 @@ const _regionLabelLines = 2;
 class RegionLabelStrip extends StatelessWidget {
   const RegionLabelStrip({
     super.key,
-    required this.regions,
+    required this.labels,
     required this.rows,
     required this.cols,
     required this.axis,
     required this.gridWidth,
     required this.gridHeight,
+    this.onTap,
   });
 
-  final BoardRegions regions;
+  /// What to draw and where: the layout's names with a caregiver's over them.
+  final List<RegionLabel> labels;
+
   final int rows;
   final int cols;
 
@@ -55,6 +58,10 @@ class RegionLabelStrip extends StatelessWidget {
 
   /// Which way the labels run, which is the axis the bands claim.
   final BandAxis axis;
+
+  /// Told which line was tapped, where a caregiver may name one (§4.26).
+  /// Absent on the talk screen, where the strip is a label and not a control.
+  final void Function(int line)? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -76,12 +83,13 @@ class RegionLabelStrip extends StatelessWidget {
 
         return Stack(
           children: [
-            for (final band in regions.bands)
+            for (final band in labels)
               Positioned.fromRect(
                 rect: _rectFor(geometry, band, constraints),
                 child: _Label(
-                  text: regionLabel(band.name),
+                  text: band.name,
                   colour: colour,
+                  onTap: onTap == null ? null : () => onTap!(band.first),
                   // Down the side, the strip is as narrow as a label is tall,
                   // so the word has to run along the row rather than across
                   // it. Reading bottom to top is the convention a spine uses
@@ -97,7 +105,7 @@ class RegionLabelStrip extends StatelessWidget {
 
   Rect _rectFor(
     GridGeometry geometry,
-    ({String name, int first, int last}) band,
+    RegionLabel band,
     BoxConstraints constraints,
   ) {
     if (axis == BandAxis.columns) {
@@ -117,17 +125,19 @@ class _Label extends StatelessWidget {
     required this.text,
     required this.colour,
     required this.quarterTurns,
+    this.onTap,
   });
 
   final String text;
   final Color colour;
   final int quarterTurns;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final edge = BorderSide(color: colour.withValues(alpha: 0.4));
 
-    return Padding(
+    final label = Padding(
       padding: quarterTurns == 0
           ? const EdgeInsets.symmetric(horizontal: 2)
           : const EdgeInsets.symmetric(vertical: 2),
@@ -156,6 +166,14 @@ class _Label extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    final onTap = this.onTap;
+    if (onTap == null) return label;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: label,
     );
   }
 }
