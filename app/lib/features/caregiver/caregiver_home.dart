@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show BooleanExpressionOperators, Value;
 import 'package:flutter/material.dart';
 
@@ -83,6 +85,16 @@ class _CaregiverHomeState extends State<CaregiverHome> {
   int _tab = 0;
   late final _backup = widget.backup ?? BackupService(widget.db);
   late final _boards = widget.boards ?? BoardFileStore(widget.db);
+
+  @override
+  void initState() {
+    super.initState();
+    // A copy of the board as it was found, so everything done in here can be
+    // taken back in one move (§4.41 part 4b). Not awaited and never fatal:
+    // opening caregiver mode does not stop the board working, and a copy that
+    // would not write must not stop somebody getting to the settings.
+    unawaited(_backup.takeSessionSnapshot());
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -681,4 +681,93 @@ void main() {
       expect(snapshotTakenAt('wordbridge-20260101TXX0000000Z.db'), null);
     });
   });
+
+  /// §4.41 part 4b. The copy caregiver mode takes on the way in, so that
+  /// everything done in there can be taken back in one move.
+  group('the copy taken when caregiver mode opens', () {
+    test('writes a board that can be read back', () async {
+      final attempt = await backup.takeSessionSnapshot();
+
+      expect(attempt.problem, isNull);
+      expect(attempt.snapshot, isNotNull);
+      expect(File(attempt.snapshot!.path).existsSync(), isTrue);
+      expect(attempt.snapshot!.schemaVersion, db.schemaVersion);
+
+      final read = await backup.sessionSnapshot();
+      expect(read, isNotNull);
+      expect(read!.path, attempt.snapshot!.path);
+    });
+
+    test('is nothing at all until one has been taken', () async {
+      expect(await backup.sessionSnapshot(), isNull);
+    });
+
+    test('is one file, overwritten, not a growing pile', () async {
+      // `VACUUM INTO` refuses a destination that already exists, so a second
+      // opening of caregiver mode has to clear the first copy out of the way
+      // — or it silently keeps handing back a board from an earlier session.
+      expect((await backup.takeSessionSnapshot()).problem, isNull);
+      await personalise();
+      expect((await backup.takeSessionSnapshot()).problem, isNull);
+
+      final directory = Directory(p.join(documents.path, 'backups'));
+      final sessions = directory.listSync().whereType<File>().where(
+        (f) => p.basename(f.path) == BackupService.sessionFileName,
+      );
+      expect(sessions, hasLength(1));
+
+      // And it is the second one: the copy on disk describes the board as it
+      // stood when caregiver mode was opened most recently.
+      final now = await everything();
+      final session = await backup.sessionSnapshot();
+      await backup.restore(session!);
+      expect(await everything(), now);
+    });
+
+    test('and it is not one of the five dates', () async {
+      // Exploring what the editor can do must not push a week-old backup out
+      // of the ring: that would trade the thing a caregiver might need for the
+      // thing they probably will not.
+      await backup.takeSessionSnapshot();
+
+      expect(await backup.snapshots(), isEmpty);
+    });
+
+    test('so the ring keeps its full length beside it', () async {
+      await backup.takeSessionSnapshot();
+      for (var i = 0; i < BackupService.keep; i++) {
+        await backup.takeSnapshot();
+      }
+      await backup.takeSessionSnapshot();
+
+      expect(await backup.snapshots(), hasLength(BackupService.keep));
+      expect(await backup.sessionSnapshot(), isNotNull);
+    });
+
+    test('puts the board back, exactly', () async {
+      await backup.takeSessionSnapshot();
+
+      final before = await everything();
+      await personalise();
+      expect(await everything(), isNot(before), reason: 'the premise');
+
+      final session = await backup.sessionSnapshot();
+      final result = await backup.restore(session!);
+
+      expect(result.restored, isTrue);
+      expect(await everything(), before);
+    });
+
+    test(
+      'a file that is not a database is not offered as a way back',
+      () async {
+        final directory = Directory(p.join(documents.path, 'backups'))
+          ..createSync(recursive: true);
+        File(p.join(directory.path, BackupService.sessionFileName))
+            .writeAsStringSync('not a database');
+
+        expect(await backup.sessionSnapshot(), isNull);
+      },
+    );
+  });
 }

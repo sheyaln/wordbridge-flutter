@@ -25,6 +25,10 @@ class BackupsScreen extends StatefulWidget {
 
 class _BackupsScreenState extends State<BackupsScreen> {
   List<Snapshot>? _snapshots;
+
+  /// The copy taken when caregiver mode opened, if there is one.
+  Snapshot? _session;
+
   String? _problem;
   bool _busy = false;
 
@@ -42,7 +46,13 @@ class _BackupsScreenState extends State<BackupsScreen> {
   Future<void> _load() async {
     try {
       final found = await widget.backup.snapshots();
-      if (mounted) setState(() => _snapshots = found);
+      final session = await widget.backup.sessionSnapshot();
+      if (mounted) {
+        setState(() {
+          _snapshots = found;
+          _session = session;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -108,9 +118,58 @@ class _BackupsScreenState extends State<BackupsScreen> {
     }
   }
 
+  /// Takes back everything done since this screen's session began.
+  ///
+  /// What §4.42 asked for as a Save button, and better on the case actually
+  /// described — exploring, changing several things, and wanting out of all of
+  /// them — without re-introducing the uncommitted work §1's four parents lost.
+  /// Everything is still written the moment it is done; this is a way back,
+  /// not a way to defer.
+  Future<void> _putItBack(Snapshot session) async {
+    final board = await describeBoard(widget.db);
+    if (!mounted) return;
+
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Put the board back the way you found it?'),
+        content: Text(sessionRestoreWarning(board: board, session: session)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep the changes'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Put it back'),
+          ),
+        ],
+      ),
+    );
+    if (go != true) return;
+
+    setState(() => _busy = true);
+    final result = await restoreKeepingACopy(widget.backup, session);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _problem = result.problem;
+    });
+    await _load();
+
+    if (result.restored && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The board is back the way you found it.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshots = _snapshots;
+    final session = _session;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Backups')),
@@ -137,6 +196,22 @@ class _BackupsScreenState extends State<BackupsScreen> {
                     label: const Text('Back up now'),
                   ),
                 ),
+                if (session != null) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.settings_backup_restore),
+                    title: const Text('Put the board back the way I found it'),
+                    subtitle: Text(
+                      'Undoes everything done since this screen was opened at '
+                      '${snapshotWhen(session.takenAt)}. A copy of the board '
+                      'as it is now is saved first, so this can be undone too.',
+                    ),
+                    isThreeLine: true,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _busy ? null : () => _putItBack(session),
+                  ),
+                  const Divider(height: 1),
+                ],
                 if (_problem != null)
                   ListTile(
                     leading: Icon(
@@ -223,6 +298,26 @@ Future<BoardSize> describeBoard(WordbridgeDatabase db) async {
     words: buttons.where((b) => !b.isSystem && b.deletedAt == null).length,
     boards: boards.where((b) => b.deletedAt == null).length,
   );
+}
+
+/// What putting the board back costs, said before it happens.
+///
+/// Deliberately shorter than [restoreWarning]. A caregiver reaching for this
+/// is undoing their own last few minutes, not choosing between dates, and the
+/// thing they need told is that it goes back to what they walked in on.
+String sessionRestoreWarning({
+  required BoardSize board,
+  required Snapshot session,
+}) {
+  final words = board.words == 1 ? '1 word' : '${board.words} words';
+  final boards = board.boards == 1 ? '1 board' : '${board.boards} boards';
+
+  return 'The board goes back to how it stood at '
+      '${snapshotWhen(session.takenAt)}, when this screen was opened. '
+      'Anything added, moved or hidden since then goes with it — the board on '
+      'this device is $words across $boards.\n\n'
+      'A copy of the board as it is right now is saved first, so this can be '
+      'undone too.';
 }
 
 /// What a restore costs, said before it happens.

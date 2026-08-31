@@ -910,6 +910,41 @@ void main() {
       expect(find.text('Daniel · en-GB'), findsOneWidget);
     });
 
+    testWidgets('a voice can be heard without being chosen', (tester) async {
+      // The neural list has had a speaker on every row since it was written.
+      // Losing it from the device list when the two were merged meant a
+      // caregiver comparing a dozen voices had to set each one to hear it.
+      final engine = await open(tester);
+
+      await tester.tap(find.text('Which voice'));
+      await settle(tester);
+
+      await tester.tap(find.byTooltip('Hear Daniel'));
+      await settle(tester);
+
+      expect(engine.spoken, contains(VoiceScreen.previewSentence));
+      expect(settings.voiceName, isNull, reason: 'listening to a voice set it');
+    });
+
+    testWidgets('and the profile\'s own voice is put back afterwards', (
+      tester,
+    ) async {
+      await settings.set('voiceName', 'Serena');
+      await settings.set('voiceLocale', 'en-GB');
+      final engine = await open(tester);
+
+      await tester.tap(find.text('Which voice'));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Hear Daniel'));
+      await settle(tester);
+
+      // The engine is left on the voice the board actually uses, not the one
+      // that was auditioned. (Where the profile has chosen none, there is no
+      // way to ask an engine for "whatever this tablet uses", so it keeps the
+      // audition until something is chosen — see `_hearVoice`.)
+      expect(engine.chosenVoice?.name, 'Serena');
+    });
+
     testWidgets('the screen behind catches up with what was chosen on it', (
       tester,
     ) async {

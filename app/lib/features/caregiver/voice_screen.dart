@@ -146,6 +146,34 @@ class _VoiceScreenState extends State<VoiceScreen> {
     await _device.speak(VoiceScreen.previewSentence);
   }
 
+  /// Speaks one voice without choosing it.
+  ///
+  /// A caregiver comparing a dozen voices should not have to set each one to
+  /// hear it — the neural list has had a speaker on every row since it was
+  /// written, and taking that away from the device list when the two were
+  /// merged was a regression. The profile's own settings are put back
+  /// afterwards, so listening changes nothing that is stored.
+  ///
+  /// One residue, and it is the platform's: there is no way to ask a speech
+  /// engine to go back to "whatever this tablet uses". So for a profile that
+  /// has never chosen a voice, the engine is left holding the last one
+  /// auditioned until a voice is chosen or the app is next opened — which is
+  /// when `openSession` applies the profile's settings again. Nothing is
+  /// written down, and choosing one is the next tap on the same page.
+  Future<void> _hearVoice(VoiceOption voice) async {
+    await _setup.apply(
+      voiceName: voice.name,
+      voiceLocale: voice.locale,
+      voiceIdentifier: voice.identifier,
+      rate: _settings.speechRate,
+      pitch: _settings.speechPitch,
+      volume: _settings.speechVolume,
+      tone: _settings.tone,
+    );
+    await _device.speak(VoiceScreen.previewSentence);
+    await _applyAll();
+  }
+
   /// What the board will actually say, in whichever voice is set.
   Future<void> _previewChosen() async {
     await _applyAll();
@@ -165,6 +193,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
           settings: _settings,
           locale: widget.locale,
           onPreview: _previewDevice,
+          onHear: _hearVoice,
         ),
       ),
     );
@@ -356,12 +385,16 @@ class _DeviceVoicePicker extends StatefulWidget {
     required this.settings,
     required this.locale,
     required this.onPreview,
+    required this.onHear,
   });
 
   final VoiceSetup setup;
   final ProfileSettings settings;
   final String locale;
   final Future<void> Function() onPreview;
+
+  /// Speaks one voice without choosing it.
+  final Future<void> Function(VoiceOption) onHear;
 
   @override
   State<_DeviceVoicePicker> createState() => _DeviceVoicePickerState();
@@ -371,7 +404,16 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
   List<VoiceOption>? _voices;
   int _hiddenNovelty = 0;
 
+  /// The voice being spoken right now, so its own row shows the wait.
+  VoiceOption? _playing;
+
   ProfileSettings get _settings => widget.settings;
+
+  Future<void> _hear(VoiceOption voice) async {
+    setState(() => _playing = voice);
+    await widget.onHear(voice);
+    if (mounted) setState(() => _playing = null);
+  }
 
   @override
   void initState() {
@@ -409,6 +451,8 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
             selectedName: _settings.voiceName,
             selectedLocale: _settings.voiceLocale,
             selectedIdentifier: _settings.voiceIdentifier,
+            playing: _playing,
+            onHear: _hear,
             onSelected: (voice) async {
               await _set('voiceName', voice?.name);
               await _set('voiceLocale', voice?.locale);
@@ -450,6 +494,8 @@ class _VoiceList extends StatelessWidget {
     required this.selectedName,
     required this.selectedLocale,
     required this.selectedIdentifier,
+    required this.playing,
+    required this.onHear,
     required this.onSelected,
   });
 
@@ -457,6 +503,8 @@ class _VoiceList extends StatelessWidget {
   final String? selectedName;
   final String? selectedLocale;
   final String? selectedIdentifier;
+  final VoiceOption? playing;
+  final Future<void> Function(VoiceOption) onHear;
   final ValueChanged<VoiceOption?> onSelected;
 
   @override
@@ -512,6 +560,20 @@ class _VoiceList extends StatelessWidget {
                     value: VoiceSetup.voiceKey(voice),
                     title: Text(voice.name),
                     subtitle: Text(_describe(voice)),
+                    // Hearing one is not choosing it. A caregiver comparing a
+                    // dozen voices for somebody else should be able to listen
+                    // through the list without setting each one on the way.
+                    secondary: IconButton(
+                      icon: playing == voice
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.volume_up_rounded),
+                      tooltip: 'Hear ${voice.name}',
+                      onPressed: playing == null ? () => onHear(voice) : null,
+                    ),
                   ),
               ],
             ],

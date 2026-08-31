@@ -27,6 +27,15 @@ class _NoBackups extends BackupService {
 
   @override
   Future<List<Snapshot>> snapshots() async => const [];
+
+  // Caregiver mode takes a copy on the way in (§4.41 part 4b). Real, here,
+  // would be a file write started inside a widget test.
+  @override
+  Future<Snapshot?> sessionSnapshot() async => null;
+
+  @override
+  Future<SnapshotAttempt> takeSessionSnapshot() async =>
+      (snapshot: null, problem: null);
 }
 
 /// Board files without a folder under them, for the same reason as

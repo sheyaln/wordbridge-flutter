@@ -189,6 +189,85 @@ void main() {
     });
   });
 
+  /// §4.41 part 4b. What §4.42 asked for as a Save button, without
+  /// re-introducing the uncommitted work §1's four parents lost.
+  group('putting the board back the way it was found', () {
+    const row = 'Put the board back the way I found it';
+
+    testWidgets('is not offered where no copy was taken', (tester) async {
+      await open(tester);
+
+      expect(find.text(row), findsNothing);
+    });
+
+    testWidgets('and names the moment caregiver mode was opened', (
+      tester,
+    ) async {
+      backup.session = _snapshotAt(DateTime.utc(2026, 8, 30, 10, 15));
+      await open(tester);
+
+      expect(find.text(row), findsOneWidget);
+      expect(
+        find.textContaining(snapshotWhen(backup.session!.takenAt)),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('says what it costs before it does it', (tester) async {
+      backup.session = _snapshotAt(DateTime.utc(2026, 8, 30, 10, 15));
+      await open(tester);
+
+      await tester.tap(find.text(row));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.textContaining('goes back to how it stood'), findsOneWidget);
+
+      // And backing out of the question changes nothing.
+      await tester.tap(find.text('Keep the changes'));
+      await tester.pumpAndSettle();
+      expect(backup.restored, isEmpty);
+    });
+
+    testWidgets('copies the board before replacing it', (tester) async {
+      // The same rule as every other restore: a caregiver who puts it back and
+      // then wants their changes has one way left, and this is it.
+      backup.session = _snapshotAt(DateTime.utc(2026, 8, 30, 10, 15));
+      await open(tester);
+
+      await tester.tap(find.text(row));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Put it back'));
+      await tester.pumpAndSettle();
+
+      expect(backup.order, ['took', 'restored']);
+      expect(backup.restored.single.takenAt, backup.session!.takenAt);
+      expect(
+        backup.taken.single,
+        backup.session!.path,
+        reason: 'the copy pushed the session snapshot out of the ring',
+      );
+    });
+
+    testWidgets('and a refusal is read out rather than swallowed', (
+      tester,
+    ) async {
+      backup.session = _snapshotAt(DateTime.utc(2026, 8, 30, 10, 15));
+      backup.refuseRestore = 'That copy is no longer on this device.';
+      await open(tester);
+
+      await tester.tap(find.text(row));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Put it back'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('That copy is no longer on this device.'),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('what the caregiver is told', () {
     test('the count is words and boards, not rows', () async {
       final board = await describeBoard(db);
@@ -284,6 +363,18 @@ class _Backups extends BackupService {
   bool unreadable = false;
 
   String? refuseRestore;
+
+  /// The copy caregiver mode takes on the way in, or null where there is none.
+  Snapshot? session;
+
+  @override
+  Future<Snapshot?> sessionSnapshot() async => session;
+
+  @override
+  Future<SnapshotAttempt> takeSessionSnapshot() async {
+    order.add('took the session copy');
+    return (snapshot: session, problem: null);
+  }
 
   @override
   Future<List<Snapshot>> snapshots() async {

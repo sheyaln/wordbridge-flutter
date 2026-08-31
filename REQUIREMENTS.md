@@ -2823,6 +2823,31 @@ cannot be undone at all, and a move made after one of those cannot be either.
 - **`undoLast` walks every edit kind**, not only `remap`. Separate, smaller,
   and worth doing either way.
 
+**Part 4b delivered.** `CaregiverHome` copies the board on the way in, and the
+Backups screen offers *Put the board back the way I found it*, naming the
+moment the screen was opened.
+
+- **One file, overwritten, and deliberately not one of the five.** Exploring
+  what the editor can do must not push a week-old backup out of the ring: that
+  would trade the thing a caregiver might need for the thing they probably will
+  not. It is named so `snapshotTakenAt` does not recognise it, which is what
+  keeps it out of both the list and the prune.
+- **It copies the board before replacing it**, through `restoreKeepingACopy`
+  like every other restore, so putting it back is itself undoable.
+- **Not awaited and never fatal.** Opening caregiver mode does not stop the
+  board working, and a copy that will not write must not stop somebody reaching
+  the settings.
+- **A Save button is still not what ships.** Everything is written the moment it
+  is done, on purpose. This is a way back, not a way to defer.
+
+Nine tests across the two files, three mutations. The third survived and the
+test was hollow: "one file, overwritten" counted files with a fixed name, which
+is one however many times it fails to write. `VACUUM INTO` refuses a
+destination that already exists, so without the delete a second opening of
+caregiver mode silently keeps handing back a board from an earlier session. The
+test now restores the copy and checks it describes the board that was actually
+walked in on.
+
 A Save button is **not** what ships. Everything is written the moment it is
 done, on purpose; a screen where work exists but is not committed is the state
 those parents described losing.

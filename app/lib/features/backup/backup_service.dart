@@ -105,9 +105,88 @@ class BackupService {
   /// free to delete is not a backup.
   static const folder = 'backups';
 
+  /// The copy taken when caregiver mode opens (§4.41 part 4b).
+  ///
+  /// One file, overwritten each time, and deliberately not one of [keep]. A
+  /// caregiver exploring what the editor can do is the case this exists for,
+  /// and letting that exploration push a week-old backup out of the ring would
+  /// trade the thing they might need for the thing they probably will not.
+  ///
+  /// Named so that [snapshotTakenAt] does not recognise it, which is what
+  /// keeps it out of [snapshots] and out of the prune. It is a way back from
+  /// this session, not a date in a list of dates.
+  static const sessionFileName = 'wordbridge-session.db';
+
   /// The most recent attempt, including one nobody was waiting on.
   SnapshotAttempt? get lastAttempt => _lastAttempt;
   SnapshotAttempt? _lastAttempt;
+
+  /// Copies the board as it stands, over any previous session copy.
+  ///
+  /// Never throws and never prunes. It runs while somebody may be mid-sentence
+  /// — opening caregiver mode does not stop the board working — so a failure
+  /// here costs the caregiver a way back and must not cost anybody a word.
+  Future<SnapshotAttempt> takeSessionSnapshot() async {
+    try {
+      final file = File(p.join((await _directory()).path, sessionFileName));
+      // Overwritten rather than kept: what it is for is the session about to
+      // start, and the one from last week describes a board nobody is looking
+      // at. `VACUUM INTO` refuses a file that already exists.
+      if (await file.exists()) await file.delete();
+
+      await _db.customStatement('VACUUM INTO ?', [file.path]);
+
+      final version = await snapshotSchemaVersion(file);
+      if (version == null) {
+        if (await file.exists()) await file.delete();
+        return (
+          snapshot: null,
+          problem:
+              'The copy of the board could not be written completely and has '
+              'been discarded. Check there is free space on this device.',
+        );
+      }
+
+      return (
+        snapshot: (
+          path: file.path,
+          takenAt: (await file.stat()).modified,
+          bytes: await file.length(),
+          schemaVersion: version,
+        ),
+        problem: null,
+      );
+    } catch (e) {
+      return (snapshot: null, problem: 'The board could not be copied. $e');
+    }
+  }
+
+  /// The session copy, or null where there is not one to go back to.
+  ///
+  /// Its time comes from the file rather than from its name, unlike every
+  /// other snapshot. That is safe precisely because this one never leaves the
+  /// device or survives being copied around: it is written and read within one
+  /// sitting, on the tablet that wrote it.
+  Future<Snapshot?> sessionSnapshot() async {
+    try {
+      final file = File(p.join((await _directory()).path, sessionFileName));
+      if (!await file.exists()) return null;
+
+      final version = await snapshotSchemaVersion(file);
+      if (version == null) return null;
+
+      return (
+        path: file.path,
+        takenAt: (await file.stat()).modified,
+        bytes: await file.length(),
+        schemaVersion: version,
+      );
+    } catch (_) {
+      // A way back that cannot be read is not one, and the list of dates below
+      // it still works.
+      return null;
+    }
+  }
 
   Future<Directory> _directory() async {
     final directory = Directory(
