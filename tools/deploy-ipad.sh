@@ -17,6 +17,17 @@ if ! xcrun devicectl list devices 2>/dev/null | grep -q "$DEVICE"; then
   exit 1
 fi
 
+echo "Resolving and generating…"
+flutter pub get
+
+# `*.g.dart` is gitignored, so a worktree checked out at a commit that changed
+# the schema still holds the *previous* build's generated tables. The first
+# schema change since this script was written built an app whose Dart could not
+# see a column its own table declared, and the failure reads as a code error in
+# a file nobody had touched. Generating here costs seconds and removes the
+# whole class.
+dart run build_runner build --delete-conflicting-outputs
+
 echo "Building release…"
 flutter build ios --release
 
