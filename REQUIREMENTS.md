@@ -3048,7 +3048,25 @@ these already had more bands than that, so the arrival pushes what pages off
 one place further. Existing boards are untouched — the layout is materialised
 once at profile creation and nothing re-runs it, and the top-up only fills
 locations that are still free — so this reaches new profiles, which §5.1 has
-already accepted as the price. The goldens were regenerated and read.
+already accepted as the price.
+
+**Measured, because the suite said something surprising.** A bake-list test
+that had held for months started failing, and the number it reported had gone
+*down*. It had not: comparing the placed words before and after showed nothing
+lost and eleven gained. What had changed was the denominator — each new band
+gives its board another page at 7×12, a page is 84 locations, and almost all of
+them are reserved and empty. So the shipped set went from 1176 locations to
+1344 while the bake list went from 1201 utterances to 1212, and "more
+utterances than locations" stopped being true.
+
+The assertion was rewritten against the number it was always really about —
+more utterances than *words*, because the endings multiply them — and a second
+test now records that the location count is the larger of the two, so nobody
+estimates a bake from it and overshoots by a third.
+
+**A golden was added for `doing`**, the board that gained the adverb row.
+Neither board that gained a band had one, which is why nothing in the golden
+set moved when they did; the geometry was then read rather than assumed.
 
 #### Reorganisation, which is displacing and needs care
 

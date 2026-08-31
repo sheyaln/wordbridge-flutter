@@ -48,17 +48,34 @@ void main() {
 
     tearDown(() async => db.close());
 
-    test('it is far more than the number of locations', () async {
-      // The locations are 377, but a location is not an utterance. The
-      // measured total over the shipped vocabulary is 1231, and the endings
-      // are the majority — which is the easy half to leave out of an estimate.
+    test('it is far more than the number of words on the board', () async {
+      // A word is not an utterance. The endings multiply it — `want`,
+      // `wanted`, `wanting`, `wants` are four clips off one key — and they are
+      // the easy half to leave out of an estimate.
       final words = await bakeVocabulary(db, vocabularyId);
       expect(words.length, greaterThan(700));
 
+      final placed = await (db.select(
+        db.buttons,
+      )..where((b) => b.isSystem.equals(false))).get();
+      expect(words.length, greaterThan(placed.length));
+    });
+
+    test('though it is no longer more than the number of locations', () async {
+      // It used to be, and the comparison was written against locations for
+      // that reason. It stopped being true when §4.42's two new bands gave two
+      // category boards another page each: a page is 84 locations and almost
+      // all of them are reserved and empty, while the bake list de-duplicates.
+      //
+      // Kept as a test rather than deleted, because the number that matters is
+      // how long a bake takes, and reading it off the cell count would now be
+      // an overestimate by a third.
+      final words = await bakeVocabulary(db, vocabularyId);
       final locations = await (db.select(
         db.cells,
       )..where((c) => c.boardId.isNotNull())).get();
-      expect(words.length, greaterThan(locations.length));
+
+      expect(locations.length, greaterThan(words.length));
     });
 
     test('a morpheme key speaks the form it produced, so that is baked', () {
