@@ -487,10 +487,16 @@ void main() {
   });
 
   group('a snapshot from before an update', () {
-    /// Winds a snapshot back to schema 5, which had no `boards.band_map`.
+    /// Winds a snapshot back to schema 5, which had neither of the two
+    /// columns later versions added to `boards`.
+    ///
+    /// Both have to go, or the upgrade runs into its own work: a file that
+    /// claims to be version 5 while carrying a version 7 column is not a
+    /// version 5 file, and the migration is right to fall over on it.
     void makeItOlder(Snapshot snapshot) {
       editSnapshot(snapshot, (handle) {
         handle.execute('ALTER TABLE boards DROP COLUMN band_map');
+        handle.execute('ALTER TABLE boards DROP COLUMN line_names');
         handle.userVersion = 5;
       });
     }
@@ -513,9 +519,11 @@ void main() {
         isNotEmpty,
         reason: 'a hidden word was lost crossing the version boundary',
       );
-      // Version 5 never recorded band maps, so there are none to come back.
+      // Version 5 recorded neither band maps nor row names, so there are
+      // none of either to come back.
       for (final board in await db.select(db.boards).get()) {
         expect(board.bandMap, null);
+        expect(board.lineNames, null);
       }
     });
 
