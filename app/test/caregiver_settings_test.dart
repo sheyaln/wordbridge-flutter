@@ -78,6 +78,7 @@ const _reachable = <String, List<String>>{
   'How it sounds': ['Which voice', 'Tone', 'Speed', 'Pitch', 'Volume'],
   'How it behaves': [
     'Go back to the home board after each word',
+    'Say each word as it is chosen',
     'Pause after the board changes',
     'Show how a word was reached',
     'Label what each part of the board is for',

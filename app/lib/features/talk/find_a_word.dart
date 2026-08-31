@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
@@ -33,11 +35,25 @@ class TypedWord extends FindResult {
 /// A near miss counts: "grandad" coming back for "grandma" is the board
 /// answering a different question, and the person is still holding a word it
 /// does not have.
+///
+/// On its own this is true almost all the time, because the search matches on a
+/// prefix — "f" already returns "food" and is not "food". What keeps the button
+/// from being furniture is not the predicate but the wait: it has to hold still
+/// for [FindAWord.offerAfter] before the button appears, so it turns up when
+/// somebody has stopped typing rather than between two letters.
 bool nothingIsThatWord(String query, List<WordPath> found) {
   final typed = query.trim().toLowerCase();
   if (typed.isEmpty) return false;
   return !found.any((path) => path.label.trim().toLowerCase() == typed);
 }
+
+/// What the offer says it will do.
+///
+/// The word "say" comes off when this profile has asked for quiet (§4.48). A
+/// button that promises a sound nobody is going to hear is a button that looks
+/// broken the first time it is pressed.
+String sayItLabel({required bool speaks}) =>
+    speaks ? 'Say it and add to sentence' : 'Add to sentence';
 
 /// Finding a word somebody knows is in there somewhere.
 ///
@@ -85,6 +101,15 @@ class FindAWord extends StatefulWidget {
   /// and this is the one place they would trust it.
   final int? vocabLevel;
 
+  /// How long the typing has to stop before the offer to say the word anyway
+  /// appears.
+  ///
+  /// The predicate behind it is true almost all the time — a prefix search
+  /// means "f" returns "food" and is not "food" — so what makes the button an
+  /// offer rather than furniture is that it waits for somebody to have
+  /// finished, instead of flashing between two letters.
+  static const offerAfter = Duration(seconds: 1);
+
   /// The word to walk to or to say, or null if nobody chose either.
   static Future<FindResult?> show(
     BuildContext context, {
@@ -122,6 +147,14 @@ class _FindAWordState extends State<FindAWord> {
   /// finger as they reached for it.
   int _search = 0;
 
+  /// Whether the offer to say the word anyway has settled into view.
+  ///
+  /// Goes false the instant a key is pressed and comes back a second after the
+  /// last one. A button that appeared between two letters, next to a list still
+  /// being filled, would be competing with the results for the press.
+  bool _offering = false;
+  Timer? _offerTimer;
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +163,7 @@ class _FindAWordState extends State<FindAWord> {
 
   @override
   void dispose() {
+    _offerTimer?.cancel();
     _field.dispose();
     _focus.dispose();
     super.dispose();
@@ -146,10 +180,20 @@ class _FindAWordState extends State<FindAWord> {
 
   Future<void> _look(String query) async {
     final mine = ++_search;
+    // The offer goes away for the whole of the next keystroke, whatever it
+    // turns out to be, and earns its way back after the typing stops.
+    _offerTimer?.cancel();
+    if (_offering) setState(() => _offering = false);
+
     final found = await _lookUp(query);
 
     if (!mounted || mine != _search) return;
     setState(() => _found = found);
+
+    if (!nothingIsThatWord(query, found)) return;
+    _offerTimer = Timer(FindAWord.offerAfter, () {
+      if (mounted) setState(() => _offering = true);
+    });
   }
 
   /// Says the typed word once and hands it over as it stands.
@@ -173,7 +217,6 @@ class _FindAWordState extends State<FindAWord> {
   @override
   Widget build(BuildContext context) {
     final typed = _field.text.trim().isNotEmpty;
-    final missing = nothingIsThatWord(_field.text, _found);
 
     return Scaffold(
       appBar: AppBar(
@@ -237,13 +280,13 @@ class _FindAWordState extends State<FindAWord> {
 
           // Below the results rather than above them. Somebody reading the
           // list should not have it pushed down by a control that appeared.
-          if (missing)
+          if (_offering)
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
               child: FilledButton.icon(
                 onPressed: _sayItAnyway,
                 icon: const Icon(Icons.volume_up_rounded),
-                label: const Text('Say it and add it'),
+                label: Text(sayItLabel(speaks: widget.speech != null)),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
                   textStyle: const TextStyle(fontSize: 18),

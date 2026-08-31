@@ -164,6 +164,20 @@ class TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  /// Whether each key speaks as it is pressed (§4.48).
+  bool get _speakEachWord => widget.settings?.speakEachWord ?? true;
+
+  /// Says a word as it lands, unless this profile has asked for quiet.
+  ///
+  /// The sentence is still spoken when it is sent. This is the choice between
+  /// hearing each key and hearing the finished sentence, not a mute, so it
+  /// covers only the four routes that speak a word on its own — the fifth is
+  /// the sentence itself, and it is untouched.
+  Future<void> _sayWord(String text) async {
+    if (!_speakEachWord) return;
+    await _saying(() => widget.speech.speak(text));
+  }
+
   int get wheelPages => _wheel?.pages ?? 1;
 
   /// The route the finder is walking, and how far along it is.
@@ -766,7 +780,7 @@ class TalkScreenState extends State<TalkScreen> {
           pos: button.partOfSpeech,
         );
         _markReached(button.label);
-        await _saying(() => widget.speech.speak(_withRepair(repaired, button)));
+        await _sayWord(_withRepair(repaired, button));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
             _currentBoardId = _rootBoardId;
@@ -886,7 +900,12 @@ class TalkScreenState extends State<TalkScreen> {
   /// copula read the word before them, and a typed word tells them nothing —
   /// which is honest: guessing would offer "+ed" on a person's name.
   Future<void> _typeWord() async {
-    final word = await TypeAWord.show(context, speech: widget.speech);
+    // No engine where this profile has asked for quiet, so the button says
+    // "Add to sentence" and means it (§4.48).
+    final word = await TypeAWord.show(
+      context,
+      speech: _speakEachWord ? widget.speech : null,
+    );
     if (word == null || !mounted) return;
 
     _addTypedWord(word);
@@ -915,7 +934,7 @@ class TalkScreenState extends State<TalkScreen> {
       db: widget.db,
       vocabularyId: widget.vocabularyId,
       vocabLevel: widget.vocabLevel,
-      speech: widget.speech,
+      speech: _speakEachWord ? widget.speech : null,
     );
     if (found == null || !mounted) return;
 
@@ -961,7 +980,7 @@ class TalkScreenState extends State<TalkScreen> {
   /// suggestion — so speech starts here as fast as it does from the grid.
   Future<void> _onSuggestion(Button button) async {
     final repaired = _utterance.add(button.message, pos: button.partOfSpeech);
-    await _saying(() => widget.speech.speak(_withRepair(repaired, button)));
+    await _sayWord(_withRepair(repaired, button));
 
     unawaited(_recordSuggestion(button));
   }
@@ -1058,7 +1077,7 @@ class TalkScreenState extends State<TalkScreen> {
       // share a path that appends.
       if (button.message == 'article') {
         _utterance.add(button.label, pos: PartOfSpeech.determiner);
-        await _saying(() => widget.speech.speak(button.label));
+        await _sayWord(button.label);
         return;
       }
 
@@ -1070,13 +1089,13 @@ class TalkScreenState extends State<TalkScreen> {
         past: button.message == 'past',
         mode: _copulaMode,
       );
-      await _saying(() => widget.speech.speak(form));
+      await _sayWord(form);
       return;
     }
 
     final inflected = _utterance.replaceLast((w) => applyMorpheme(w, kind));
     if (inflected == null) return;
-    await _saying(() => widget.speech.speak(inflected));
+    await _sayWord(inflected);
   }
 
   void _record(PlacedCell placed, Button button) {

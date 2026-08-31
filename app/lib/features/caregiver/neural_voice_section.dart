@@ -11,7 +11,7 @@ import '../speech/neural/neural_voice.dart';
 import '../speech/neural/voice_model.dart';
 import 'voice_screen.dart';
 
-/// The neural voice, and everything it costs, at the top of the voice screen.
+/// The neural voice, and everything it costs, below the device's own voice.
 ///
 /// Every number a caregiver is shown here is one somebody has to live with:
 /// how much disk, how long the bake, how much of the board can be said in the
@@ -20,7 +20,9 @@ import 'voice_screen.dart';
 ///
 /// A section rather than a screen of its own, because "which voice speaks" is
 /// one question and it used to be asked on two pages that did not mention each
-/// other. The device voice sits directly below this, under [VoiceScreen].
+/// other. It sits **below** the device voice under [VoiceScreen], and is
+/// labelled pre-alpha where it sits: this is the experiment, and a screen that
+/// opened on it read as though the experiment were the arrangement.
 class NeuralVoiceSection extends StatefulWidget {
   const NeuralVoiceSection({
     super.key,
@@ -283,6 +285,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const VoiceHeader('Neural voice — pre-alpha'),
         const _PreAlpha(),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -317,24 +320,24 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
             child: Column(
               children: [
                 RadioListTile<bool>(
-                  value: true,
-                  title: const Text('Neural voice'),
-                  subtitle: Text(
-                    '${neuralVoiceById(_settings.neuralVoiceId).name} — words '
-                    'made in advance play instantly, and anything else is '
-                    'synthesised on the spot.',
-                  ),
-                  isThreeLine: true,
-                ),
-                RadioListTile<bool>(
                   value: false,
                   title: const Text('Device voice'),
                   subtitle: Text(
                     _settings.voiceName == null
-                        ? 'The tablet\'s own speech. The board sounds exactly '
-                              'as it does now.'
-                        : '${_settings.voiceName}. The board sounds exactly as '
-                              'it does now.',
+                        ? 'The tablet\'s own speech, set up above. What the '
+                              'board uses unless somebody chooses otherwise.'
+                        : '${_settings.voiceName}, set up above. What the '
+                              'board uses unless somebody chooses otherwise.',
+                  ),
+                  isThreeLine: true,
+                ),
+                RadioListTile<bool>(
+                  value: true,
+                  title: const Text('Neural voice — pre-alpha'),
+                  subtitle: Text(
+                    '${neuralVoiceById(_settings.neuralVoiceId).name}. Words '
+                    'made in advance play instantly, and anything else is '
+                    'synthesised on the spot.',
                   ),
                   isThreeLine: true,
                 ),
@@ -343,7 +346,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
           ),
         ],
 
-        const VoiceHeader('Neural voice'),
+        const VoiceHeader('Downloading the neural voice'),
         _ModelTile(
           published: _speech.models.published,
           installed: _installed,

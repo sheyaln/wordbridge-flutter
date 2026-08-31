@@ -866,6 +866,23 @@ class _Settings extends StatelessWidget {
             },
           ),
         if (settings != null)
+          SwitchListTile(
+            value: settings!.speakEachWord,
+            title: const Text('Say each word as it is chosen'),
+            subtitle: const Text(
+              'On, every key speaks as it is pressed, and the sentence is '
+              'spoken again when it is sent. Off, the board stays quiet until '
+              'the sentence is sent — for a classroom or a waiting room, where '
+              'each word being read out gets in the way of building it. The '
+              'sentence key always speaks either way.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('speakEachWord', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
           _SettleDelay(settings: settings!, onChanged: onChanged),
         if (settings != null)
           SwitchListTile(

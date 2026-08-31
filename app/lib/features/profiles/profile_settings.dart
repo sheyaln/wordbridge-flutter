@@ -213,6 +213,13 @@ class ProfileSettings extends ChangeNotifier {
   /// exists to refuse.
   WalkMode get walkMode => _enum('walkMode', WalkMode.values, WalkMode.presses);
 
+  /// Whether each key speaks as it is pressed (§4.48).
+  ///
+  /// On by default, which is what shipped. Off leaves the board silent until
+  /// the sentence is sent — a choice between hearing each key and hearing the
+  /// finished sentence, not a mute: the sentence key is untouched either way.
+  bool get speakEachWord => _values['speakEachWord'] as bool? ?? true;
+
   /// Name each run of locations by what it is for.
   ///
   /// Off by default. It is scaffolding for the people teaching a board rather

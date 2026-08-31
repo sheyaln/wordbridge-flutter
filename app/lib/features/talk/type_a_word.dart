@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../speech/speech_engine.dart';
+import 'find_a_word.dart';
 
 /// Typing a word the board does not have.
 ///
@@ -118,7 +119,7 @@ class _TypeAWordState extends State<TypeAWord> {
             FilledButton.icon(
               onPressed: _hasWord ? _send : null,
               icon: const Icon(Icons.volume_up_rounded),
-              label: const Text('Say it and add it'),
+              label: Text(sayItLabel(speaks: widget.speech != null)),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
                 textStyle: const TextStyle(fontSize: 18),

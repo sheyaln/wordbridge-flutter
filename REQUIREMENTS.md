@@ -3224,6 +3224,48 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.48 Quiet until the sentence is sent — delivered
+
+Requested: *"'Say it and add it' should say 'Say it and add to sentence'. The
+'Say it' part should disappear when a user toggles off speak-as-you-type mode."*
+
+The second half asks for a mode that does not exist yet. It is §4.42's
+**quiet-until-spoken**, and the plan asked for it in Phase 2: *"utterance bar
+with both speak-on-tap and speak-on-send as settings"*. Only speak-on-tap was
+built. This is a gap against the original scope rather than a new idea, and a
+button that promises to say something is a good place to have noticed it.
+
+**One setting, under "How it behaves": say each word as it is chosen.** On by
+default, which is what ships. Off, every key is silent and the sentence is
+spoken when it is sent — for a classroom, a waiting room, or anywhere each word
+being read aloud gets in the way of building the sentence.
+
+**It silences the five per-word routes and nothing else**: a tapped word, a
+suggestion, an article, a copula, and a word ending. The sentence key is
+untouched. This is a choice between hearing each key and hearing the finished
+sentence, not a mute — §5 non-negotiable 1 stands, and the sentence still
+speaks.
+
+**One interaction worth naming.** Under `CopulaMode.toggle`, each press of the
+"am/is/are" key cycles the form and *"the sound is the only thing telling them
+which form they have landed on"*. With this off, the sound is gone and the
+utterance bar is the only thing left saying so. The bar does say it, in the
+text, which is why this is a note rather than a refusal — but the two settings
+are worse together than either is alone.
+
+**The two buttons say what they will do.** "Say it and add it" becomes **"Say
+it and add to sentence"**, and with this mode off it becomes **"Add to
+sentence"** — the button stops promising a sound that is not coming. Both
+screens, because §4.46 gave them the same button on purpose.
+
+The mode reaches them by being handed no voice at all rather than by a second
+flag: `TypeAWord` and `FindAWord` are given `null` for the engine when a
+profile has asked for quiet, and `sayItLabel` reads that. The label then says
+what will happen for the same reason in both cases — a build with no engine and
+a profile that wants none are the same thing to somebody waiting to hear a word.
+
+Nine tests, four mutations, all caught.
+
 ### 4.47 The walk can wait to be pressed — delivered
 
 Requested: *"In the 'Find a word', it should be an option for whether the guide
@@ -3294,10 +3336,28 @@ Both screens are asking about a word somebody has in mind and has just typed
 out. Whether it turns out to be on the board is the *answer*, not a different
 question, and the answer should not decide which screen you had to open.
 
-**The button appears when nothing on the board is that word** — not only on an
-empty list. "grandad" coming back for "grandma" is the board answering a
-different question, and the person is still holding a word it does not have.
-`nothingIsThatWord` is the predicate, named so a test can hold it.
+**The button appears when nothing on the board is exactly that word, one
+second after the typing stops.**
+
+It took three passes to land, and the middle one is worth keeping.
+
+1. Offered on a near miss — "grandad" coming back for "grandma" is the board
+   answering a different question, and the person is still holding a word it
+   does not have.
+2. *"It should only appear when no matches are found, not always."* Correct
+   about the symptom: a prefix search matches early, so "f" returns "food" and
+   is not "food", and the button was on screen from the first letter typed,
+   beside a list it was competing with for the press.
+3. *"It should only show up when there's no exact match (and the search bar is
+   not empty). Add a 1s delay."* Which keeps the near-miss case — that case is
+   real — and fixes the actual complaint, because the flicker was never about
+   which words matched. It was about **when**: the button was appearing between
+   two letters. A second of stillness is the difference between an offer and
+   furniture, and it costs nothing to somebody who has stopped typing.
+
+`nothingIsThatWord` is the predicate and `FindAWord.offerAfter` is the wait,
+both named so a test can hold them. The offer also goes away the instant the
+next letter lands, rather than waiting to be re-evaluated.
 
 **It sits below the results, not above them.** A control that pushes the list
 down while somebody is reading it is the §4.45 mistake in the other direction.
@@ -3362,6 +3422,20 @@ between (§4.43a). On it:
 **The neural option is refused, not hidden, before the model is downloaded.**
 Greyed with the reason on the row, and the Download button directly beneath it.
 A missing option explains nothing; §4.43's board-delete rule again.
+
+**The device voice goes first, and the neural one below it — corrected after
+the first build.** Reported: *"Neural voice is in pre-alpha. It should NOT be
+the default."* The setting never was: `neuralVoice` reads false for every
+profile that has not switched it on. What was wrong was the screen. Merging the
+two put the pre-alpha banner at the top of the whole page and the device dials
+below the download progress for a 305 MB experiment, so a screen that opened on
+the experiment read as though the experiment were the arrangement.
+
+The device voice is what ships, what speaks, and what the neural voice falls
+back to, so it is first. The neural half sits under a header that says
+**pre-alpha** where it sits, and "Device voice" is the first of the two options
+rather than the second. Nothing about which one is stored as the default
+changed, because nothing needed to.
 
 **The device dials are previewed through the platform engine, not the neural
 one wrapping it.** Otherwise dragging pitch with the neural voice on plays a

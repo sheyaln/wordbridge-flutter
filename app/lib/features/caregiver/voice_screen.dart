@@ -201,17 +201,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
       ),
       body: ListView(
         children: [
-          if (neural != null)
-            NeuralVoiceSection(
-              speech: neural,
-              settings: _settings,
-              db: widget.db!,
-              vocabularyId: widget.vocabularyId!,
-              onChanged: () {
-                if (mounted) setState(() {});
-              },
-            ),
-
+          // The device's own voice first, and the neural one below it. It is
+          // what ships, what speaks by default, and what a pre-alpha feature
+          // falls back to — a screen that opened on the experiment read as
+          // though the experiment were the arrangement.
           const VoiceHeader('Device voice'),
           if (neuralOn)
             const VoiceNote(
@@ -295,6 +288,17 @@ class _VoiceScreenState extends State<VoiceScreen> {
             'enough across a room or from the back of a car, turn the tablet '
             'up too — the app cannot do it for you.',
           ),
+
+          if (neural != null)
+            NeuralVoiceSection(
+              speech: neural,
+              settings: _settings,
+              db: widget.db!,
+              vocabularyId: widget.vocabularyId!,
+              onChanged: () {
+                if (mounted) setState(() {});
+              },
+            ),
           const SizedBox(height: 32),
         ],
       ),

@@ -158,7 +158,10 @@ void main() {
       // Clips made under an older recipe are playable and wrong — they came
       // from a different string. Bumping the recipe is how they are retired
       // rather than reused, so the number has to reach the pack's name.
-      expect(ClipStore.idFor('af_bella', 1.0), endsWith('-v${ClipStore.recipe}'));
+      expect(
+        ClipStore.idFor('af_bella', 1.0),
+        endsWith('-v${ClipStore.recipe}'),
+      );
       expect(ClipStore.recipe, greaterThan(1));
     });
 

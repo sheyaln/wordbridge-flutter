@@ -114,6 +114,15 @@ void main() {
     }
   }
 
+  /// Long enough for the finder's offer to settle into view.
+  ///
+  /// It waits for the typing to stop rather than appearing between two
+  /// letters, so a test that types and looks straight away sees nothing.
+  Future<void> settleOffer(WidgetTester tester) async {
+    await tester.pump(FindAWord.offerAfter);
+    await pumpFrames(tester);
+  }
+
   Future<void> pumpTalkScreen(WidgetTester tester) async {
     tester.view.physicalSize = const Size(2048, 1536);
     tester.view.devicePixelRatio = 2.0;
@@ -327,6 +336,76 @@ void main() {
     });
   });
 
+  /// §4.48. The choice between hearing each key and hearing the sentence.
+  ///
+  /// The plan asked for both as settings in Phase 2 and only one was built.
+  group('when the board is quiet until the sentence is sent', () {
+    /// A word on the home board, so no navigation is involved.
+    const word = 'want';
+
+    testWidgets('every key speaks, by default', (tester) async {
+      await pumpTalkScreen(tester);
+
+      await tester.tap(find.text(word));
+      await pumpFrames(tester);
+
+      expect(speech.said, [word]);
+    });
+
+    testWidgets('with it off the key is silent and the word still lands', (
+      tester,
+    ) async {
+      await settings.set('speakEachWord', false);
+      await pumpTalkScreen(tester);
+
+      await tester.tap(find.text(word));
+      await pumpFrames(tester);
+
+      expect(speech.said, isEmpty);
+      // Once on the key, once in the bar. The word arrived; it was not said.
+      expect(find.text(word), findsNWidgets(2));
+    });
+
+    testWidgets('and the sentence key still speaks', (tester) async {
+      // This is a choice between hearing each key and hearing the finished
+      // sentence, not a mute. §5 non-negotiable 1 stands.
+      await settings.set('speakEachWord', false);
+      await pumpTalkScreen(tester);
+
+      await tester.tap(find.text(word));
+      await pumpFrames(tester);
+      expect(speech.said, isEmpty, reason: 'the premise');
+
+      await tester.tap(find.byTooltip('Speak'));
+      await pumpFrames(tester);
+
+      expect(speech.said, [word]);
+    });
+
+    testWidgets('and the typing screen stops promising a sound', (
+      tester,
+    ) async {
+      await settings.set('speakEachWord', false);
+      await pumpTalkScreen(tester);
+
+      await tester.tap(find.byTooltip('Another way to a word'));
+      await pumpFrames(tester);
+      await tester.tap(find.text('Type a word'));
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextField), 'Battenberg');
+      await settleOffer(tester);
+
+      expect(find.text('Add to sentence'), findsOneWidget);
+
+      await tester.tap(find.text('Add to sentence'));
+      await pumpFrames(tester);
+
+      expect(speech.said, isEmpty);
+      expect(find.textContaining('Battenberg'), findsWidgets);
+    });
+  });
+
   /// §4.46. A word the board does not have is still a word somebody is
   /// holding, and they have already typed it.
   group('a word the finder cannot find', () {
@@ -340,9 +419,9 @@ void main() {
         expect(nothingIsThatWord('grandma', const []), isTrue);
       });
 
-      test('and when something came back that is a different word', () {
-        // "grandad" for "grandma" is the board answering a different
-        // question. The person is still holding a word it does not have.
+      test('and when what came back is a different word', () {
+        // "grandad" for "grandma" is the board answering a different question.
+        // The person is still holding a word it does not have.
         expect(nothingIsThatWord('grandma', [_result('grandad')]), isTrue);
       });
 
@@ -355,7 +434,19 @@ void main() {
       });
     });
 
-    testWidgets('the offer is not made while the word is on the board', (
+    group('what the offer says it will do', () {
+      test('says it and adds it, where a word will be heard', () {
+        expect(sayItLabel(speaks: true), 'Say it and add to sentence');
+      });
+
+      test('and only adds it, where this profile has asked for quiet', () {
+        // A button promising a sound nobody is going to hear is a button that
+        // looks broken the first time it is pressed (§4.48).
+        expect(sayItLabel(speaks: false), 'Add to sentence');
+      });
+    });
+
+    testWidgets('the offer stops promising a sound under quiet', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -365,10 +456,70 @@ void main() {
       );
       await pumpFrames(tester);
 
-      await tester.enterText(find.byType(TextField), 'eat');
+      await tester.enterText(find.byType(TextField), 'zzzzz');
+      await settleOffer(tester);
+
+      expect(find.text('Add to sentence'), findsOneWidget);
+      expect(find.text('Say it and add to sentence'), findsNothing);
+    });
+
+    testWidgets('the offer waits for the typing to stop', (tester) async {
+      // The predicate behind it is true almost all the time — "ea" is not
+      // "eat" — so without the wait the button would be on screen from the
+      // first letter, competing with the results for the press.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FindAWord(db: db, vocabularyId: vocabularyId, speech: speech),
+        ),
+      );
       await pumpFrames(tester);
 
-      expect(find.text('Say it and add it'), findsNothing);
+      await tester.enterText(find.byType(TextField), 'ea');
+      await pumpFrames(tester, frames: 4);
+      expect(find.text('Say it and add to sentence'), findsNothing);
+
+      await settleOffer(tester);
+      expect(find.text('Say it and add to sentence'), findsOneWidget);
+    });
+
+    testWidgets('and goes away again the moment another letter lands', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FindAWord(db: db, vocabularyId: vocabularyId, speech: speech),
+        ),
+      );
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextField), 'ea');
+      await settleOffer(tester);
+      expect(
+        find.text('Say it and add to sentence'),
+        findsOneWidget,
+        reason: 'the premise',
+      );
+
+      await tester.enterText(find.byType(TextField), 'eat');
+      await pumpFrames(tester, frames: 4);
+
+      expect(find.text('Say it and add to sentence'), findsNothing);
+    });
+
+    testWidgets('the offer is not made while the word is on the board', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FindAWord(db: db, vocabularyId: vocabularyId, speech: speech),
+        ),
+      );
+      await pumpFrames(tester);
+
+      await tester.enterText(find.byType(TextField), 'eat');
+      await settleOffer(tester);
+
+      expect(find.text('Say it and add to sentence'), findsNothing);
     });
 
     testWidgets('and it says the word and hands it back as typed', (
@@ -397,9 +548,9 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Battenberg');
-      await pumpFrames(tester);
+      await settleOffer(tester);
 
-      await tester.tap(find.text('Say it and add it'));
+      await tester.tap(find.text('Say it and add to sentence'));
       await tester.pumpAndSettle();
 
       expect(chosen, isA<TypedWord>());
@@ -437,9 +588,9 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Battenberg');
-      await pumpFrames(tester);
+      await settleOffer(tester);
 
-      await tester.tap(find.text('Say it and add it'));
+      await tester.tap(find.text('Say it and add to sentence'));
       await tester.pumpAndSettle();
 
       expect((chosen! as TypedWord).word, 'Battenberg');
@@ -456,8 +607,8 @@ void main() {
       await pumpFrames(tester);
 
       await tester.enterText(find.byType(TextField), 'Battenberg');
-      await pumpFrames(tester);
-      await tester.tap(find.text('Say it and add it'));
+      await settleOffer(tester);
+      await tester.tap(find.text('Say it and add to sentence'));
       await pumpFrames(tester);
 
       expect(find.textContaining('Battenberg'), findsWidgets);
