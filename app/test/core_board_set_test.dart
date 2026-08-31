@@ -543,7 +543,7 @@ void main() {
       // held open, which is what an addition is supposed to do: not one word
       // already on this board moved to make room for it.
       const shipped = [
-        'eat drink food straw plate cook . . . . .',
+        'eat drink food straw plate cook taste chew swallow pour spill',
         'water milk juice squash tea coffee fizzy . . . .',
         'breakfast lunch dinner snack soup pizza chicken . . . .',
         'bread toast cereal rice pasta egg cheese butter honey jam .',
@@ -609,7 +609,18 @@ void main() {
         'salad',
       ]);
       expect(byRow[1], ['cake', 'biscuit', 'crisps', 'yoghurt']);
-      expect(byRow.keys, hasLength(2));
+      // §4.42's two new clusters went to the back of the queue rather than
+      // pushing `fruit` off page one — a band that has just arrived does not
+      // displace one somebody may already have learned.
+      expect(byRow[2], [
+        'dessert',
+        'sweets',
+        'chocolate',
+        'ice cream',
+        'pudding',
+      ]);
+      expect(byRow[3], ['cup', 'bowl', 'spoon', 'fork', 'knife', 'napkin']);
+      expect(byRow.keys, hasLength(4));
     });
 
     test('every row of a category board is one cluster', () async {

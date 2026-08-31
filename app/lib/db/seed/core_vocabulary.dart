@@ -651,6 +651,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // about the nouns on this board, and one movement to `cook` plus one
         // to what is being cooked beats two boards for one sentence.
         ...verbs(['cook'], level: 3),
+        // The rest of what a person does with food (§4.42). `open` is not
+        // here — it is a level-1 core word on the root board and one word has
+        // one location.
+        ...verbs(['taste', 'chew', 'swallow', 'pour', 'spill'], level: 3),
       ],
     ),
 
@@ -730,6 +734,36 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['cake', 'biscuit'], level: 2),
         ...nouns(['crisps', 'yoghurt'], level: 3),
+      ],
+    ),
+
+    // The half of "treats" that was missing, and the half a person is most
+    // often offered a choice between (§4.42).
+    // Above `treats` and below the reserve, so these two are what pages off
+    // rather than what pushes `fruit` off. A band added to a full board takes
+    // the back of the queue: nothing that was on page one goes to page two to
+    // make room for something that has just arrived.
+    Band(
+      name: 'sweet things',
+      shedRank: 8,
+      items: [
+        ...nouns(['dessert', 'sweets'], level: 2),
+        ...nouns(['chocolate', 'ice cream', 'pudding'], level: 3),
+      ],
+    ),
+
+    // The objects a meal happens with. Naming the thing you need is how you
+    // ask for it without anybody having to guess which one.
+    Band(
+      name: 'at the table',
+      shedRank: 8,
+      items: [
+        // `plate` is on the `eating` row already, and one word has one
+        // location.
+        // All level 3. The level-2 ceiling is a wall rather than a budget
+        // (§4.28), and a row of tableware is not what a day becomes sayable
+        // on — `hungry`, `drink` and `more` already are.
+        ...nouns(['cup', 'bowl', 'spoon', 'fork', 'knife', 'napkin'], level: 3),
       ],
     ),
 

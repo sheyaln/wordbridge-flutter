@@ -3123,6 +3123,38 @@ set moved when they did; the geometry was then read rather than assumed.
   the batch. Today `food` is one board of rows; this asks for a board of boards.
   It changes what a learned key opens, so it is rebuild-class and needs the
   §4.20 path.
+
+  **Settled: the vocabulary ships, the board of boards does not.** Two halves,
+  and only one of them survives contact with this app's own rules.
+
+  **The vocabulary — delivered.** Two bands on `food`: `sweet things` (dessert,
+  sweets, chocolate, ice cream, pudding) and `at the table` (cup, bowl, spoon,
+  fork, plate is already there, napkin), plus food verbs on the `eating` row
+  it already has. `food` already pages at 7×12, so this grows the board the way
+  every other addition does — into locations that were reserved for it — and
+  nothing on it moves.
+
+  **The board of boards — refused, with the reason.** Every arrangement of it
+  breaks something this file is built on:
+
+  - **Making `breakfast` a navigate key changes what a learned movement does.**
+    It speaks today. A user who has learned that key would press it and go
+    somewhere instead of saying something, with no way to report it. That is
+    the single failure the whole motor-plan argument exists to prevent, and no
+    amount of §4.20 confirmation makes it safe for the person using the board
+    — only for the caregiver agreeing to it.
+  - **Keeping `breakfast` and adding a `breakfast` key next to it** puts one
+    word twice, one movement apart, doing two different things. That is the
+    standing rule about one word twice on one board, and a page is not far
+    enough away to make it a different question.
+  - **A `more food` key opening a menu of five boards** adds a movement to
+    every food word behind it. Depth is the thing §4.16 was written to remove,
+    and spending it to organise a board that already pages is paying twice.
+
+  What the request is really about is **more food vocabulary, organised**, and
+  `food`'s own paging already organises it — one band to a row, each row one
+  cluster, which is the arrangement §4.24 settled. The words arrive. The
+  restructure does not, and this is the record of why rather than a silence.
 - **Move `cook` from `doing` to `food` — delivered.** It joined `food` /
   `eating`, beside the food it acts on: one movement to `cook` and one to what
   is being cooked beats two boards for one sentence. It took a location on that
@@ -3231,8 +3263,27 @@ set moved when they did; the geometry was then read rather than assumed.
   board.** The profile already has `displayName`. Cheap, and it is the single
   most personal word on any board.
 - **Phrases on the first page of a category, or deeper — a caregiver's
-  choice.** Pre-made phrases like "I don't know" or "ask me". Only meaningful
-  where the category has more than one page.
+  choice. Delivered.** Pre-made phrases like "I don't know" or "ask me". Only
+  meaningful where the category has more than one page.
+
+  **Putting a phrase on a board was already possible** — "Add a word" takes
+  whatever is typed, spaces included, and the shipped `saying` band on every
+  category board is nothing but phrases. What was missing is the *pre-made*
+  half: a caregiver staring at an empty cell has to think of the phrase before
+  they can type it, and the ones worth having are the ones nobody thinks of
+  until the moment they are needed.
+
+  So the add-a-word dialog now offers a list, the same shape as §4.26's row
+  names: the phrases first, a text field last. Twenty-odd of them, grouped by
+  what they are *for* rather than by word class — interrupting, asking for
+  time, correcting somebody, ending a conversation — because those are the
+  moments an AAC user is most often talked over in, and the phrase that ends
+  one is worth a location on any board.
+
+  **They are ordinary buttons.** A phrase is a label and a spoken message like
+  any other word; nothing about it is a new kind of thing, and the editor's
+  existing rules — the system row is closed (§4.43), a location is permanent —
+  apply to it unchanged.
 
 #### A key every board carries is one key — delivered
 

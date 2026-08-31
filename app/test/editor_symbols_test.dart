@@ -228,7 +228,7 @@ void main() {
     await tester.tap(cell(1, 2));
     await tester.pump();
     await tester.pump();
-    expect(find.text('Add a word'), findsOneWidget);
+    expect(find.text('What goes here?'), findsOneWidget);
 
     await tester.tap(find.text('Cancel'));
     await tester.pump();
@@ -309,7 +309,7 @@ void main() {
     await tester.tap(cell(1, 2));
     await tester.pump();
     await tester.pump();
-    expect(find.text('Add a word'), findsOneWidget);
+    expect(find.text('What goes here?'), findsOneWidget);
 
     await tester.tap(find.text('Cancel'));
     await tester.pump();

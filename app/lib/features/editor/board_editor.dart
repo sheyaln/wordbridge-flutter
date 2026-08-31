@@ -240,29 +240,17 @@ class _BoardEditorState extends State<BoardEditor> {
     );
   }
 
+  /// Asks what goes on the location, offering the phrases first (§4.42).
+  ///
+  /// A caregiver staring at an empty cell has to think of the phrase before
+  /// they can type it, and the ones worth having are the ones nobody thinks of
+  /// until the moment they are needed. So the list comes first and the text
+  /// field last, the same shape as naming a row.
   Future<String?> _promptForWord() {
-    final controller = TextEditingController();
-    return showDialog<String>(
+    return showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add a word'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Word'),
-          onSubmitted: (v) => Navigator.of(context).pop(v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      builder: (context) => const SafeArea(child: _AddAWord()),
     );
   }
 
@@ -1234,3 +1222,131 @@ class _NameALineState extends State<_NameALine> {
     );
   }
 }
+
+/// What goes on an empty location: a phrase off the list, or anything typed.
+///
+/// The phrases are grouped by the moment they are for rather than by word
+/// class. Interrupting, buying time, correcting somebody, ending a
+/// conversation — those are the moments an AAC user is most often talked over
+/// in, and the phrase that ends one is worth a location on any board.
+class _AddAWord extends StatefulWidget {
+  const _AddAWord();
+
+  @override
+  State<_AddAWord> createState() => _AddAWordState();
+}
+
+class _AddAWordState extends State<_AddAWord> {
+  final _typed = TextEditingController();
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      builder: (context, controller) => ListView(
+        controller: controller,
+        children: [
+          // The way out is at the top, where it is always on screen. At the
+          // bottom it would be behind twenty phrases and a keyboard, and a
+          // caregiver who opened this by mistake would be left guessing that
+          // tapping the dimmed part of the screen works.
+          ListTile(
+            title: const Text(
+              'What goes here?',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text(
+              'A phrase off the list, or anything you type. Either way it is '
+              'an ordinary key: it speaks what it says and it keeps this '
+              'location.',
+            ),
+            isThreeLine: true,
+            trailing: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ),
+          const Divider(height: 1),
+          for (final group in readyMadePhrases.entries) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                group.key,
+                style: Theme.of(context).textTheme.titleSmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
+              ),
+            ),
+            for (final phrase in group.value)
+              ListTile(
+                dense: true,
+                title: Text(phrase),
+                onTap: () => Navigator.of(context).pop(phrase),
+              ),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _typed,
+                  decoration: const InputDecoration(
+                    labelText: 'Or a word or phrase of your own',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.of(context).pop(_typed.text.trim()),
+                  child: const Text('Add it'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Phrases a caregiver can put on a board without having to think of them.
+///
+/// Grouped by the moment they are for. Every one of them is something an AAC
+/// user needs at a speed the board cannot otherwise reach: by the time a
+/// sentence has been built word by word, the conversation has moved on.
+const readyMadePhrases = <String, List<String>>{
+  'Getting a word in': [
+    'wait, I am typing',
+    'let me finish',
+    'I have something to say',
+    'ask me, not them',
+  ],
+  'Buying time': ['give me a minute', 'I am thinking', 'I will tell you later'],
+  'Putting it right': [
+    'that is not what I meant',
+    'you got it wrong',
+    'start again',
+    'I said no',
+  ],
+  'Answers that are not yes or no': [
+    'I do not know',
+    'I do not mind',
+    'maybe later',
+    'ask somebody else',
+  ],
+  'Ending it': [
+    'I am done',
+    'leave me alone',
+    'I want to go home',
+    'that is enough',
+  ],
+};
