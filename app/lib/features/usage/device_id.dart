@@ -1,0 +1,42 @@
+import '../../db/database.dart';
+import '../../db/ids.dart';
+
+/// The key the device's id is kept under.
+const deviceIdKey = 'deviceId';
+
+/// The id this tablet logs under, made once and kept.
+///
+/// It used to be a fresh `newId()` at every launch, which is the same as having
+/// none. `usage_events.device_id` exists so that a profile carried between a
+/// tablet at home and one at school can be told apart afterwards (§7), and a
+/// column with a new value every morning answers that question with the number
+/// of times the app has been opened.
+///
+/// Device-scoped rather than per profile, and stored in `app_state` beside the
+/// caregiver gesture for the same reason: which tablet this is is not a fact
+/// about the person speaking on it.
+///
+/// It is an opaque id and nothing else. It is not derived from anything the
+/// platform knows about the hardware or its owner, and it never leaves the
+/// device — a usage log is a transcript of one person's private speech, and
+/// what identifies the tablet it was typed on has to be as uninteresting as
+/// the rest of it.
+Future<String> deviceIdFor(WordbridgeDatabase db) async {
+  final stored = await _stored(db);
+  if (stored != null) return stored;
+
+  final made = newId();
+  await db
+      .into(db.appState)
+      .insertOnConflictUpdate(
+        AppStateCompanion.insert(key: deviceIdKey, value: made),
+      );
+  return made;
+}
+
+Future<String?> _stored(WordbridgeDatabase db) async {
+  final row = await (db.select(
+    db.appState,
+  )..where((s) => s.key.equals(deviceIdKey))).getSingleOrNull();
+  return row?.value;
+}

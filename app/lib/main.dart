@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'db/database.dart';
-import 'db/ids.dart';
 import 'features/auth/pin.dart';
 import 'features/backup/backup_service.dart';
 import 'features/backup/pre_migration.dart';
@@ -22,6 +21,7 @@ import 'features/symbols/symbol_resolver.dart';
 import 'features/symbols/system_emoji_pack.dart';
 import 'features/talk/fallback_board.dart';
 import 'features/talk/talk_screen.dart';
+import 'features/usage/device_id.dart';
 import 'features/usage/logger.dart';
 
 /// The resolver every board on this device draws through.
@@ -216,7 +216,10 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   // setting applied at session open.
   final _speech = NeuralSpeechEngine(FlutterTtsEngine());
 
-  late final _logger = UsageLogger(_db, deviceId: newId());
+  /// Built once the database is open, because the id it logs under is read
+  /// from it. Nothing is offered a logger before `_bootstrap` has finished:
+  /// the screen holds a spinner until it does.
+  UsageLogger? _logger;
   late final _auth = PinAuth(_db);
   late final _profiles = ProfileRepository(_db);
   late final _backup = BackupService(_db);
@@ -249,6 +252,10 @@ class _WordbridgeAppState extends State<WordbridgeApp>
       backup: _backup,
     );
 
+    // After the snapshot, because this is the first query and therefore the
+    // thing that opens the database.
+    _logger = UsageLogger(_db, deviceId: await deviceIdFor(_db));
+
     return _profiles.resume();
   }
 
@@ -274,7 +281,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     // Anything buffered goes to disk before the OS can suspend or kill us.
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      _logger.flush();
+      _logger?.flush();
       // 833 MB resident, for a feature nothing in the background is using, on
       // a tablet with 3 GB. Holding it is how a communication device becomes
       // the app the OS kills to make room for something else. The cache does
@@ -287,7 +294,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _logger.dispose();
+    _logger?.dispose();
     _resolver.dispose();
     _globalSymbols.dispose();
     _db.close();
@@ -315,7 +322,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
             db: _db,
             profile: profile,
             speech: _speech,
-            logger: _logger,
+            logger: _logger!,
             auth: _auth,
             resolver: _resolver,
             registry: _symbols,

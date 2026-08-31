@@ -3224,6 +3224,32 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.49 A new device id every launch — delivered
+
+Found while reading the wiring rather than reported. `UsageLogger` was built as
+`UsageLogger(_db, deviceId: newId())`, so every launch of the app logged under
+a device id nobody had seen before.
+
+`usage_events.device_id` exists so that a profile carried between a tablet at
+home and one at school can be told apart afterwards (§7). A column with a fresh
+value every morning answers that question with **the number of times the app
+has been opened**, which is worse than leaving it null: it looks like an answer.
+
+Nothing had broken visibly, because nothing reads the column yet — the
+caregiver summary and the `.obl` export both group by profile. It would have
+broken the first time somebody asked the question it is there to answer, on a
+log by then months long and unfixable in hindsight.
+
+`deviceIdFor` makes one on first launch and reads it back afterwards, from
+`app_state` beside the caregiver gesture (§4.27) and for the same reason: which
+tablet this is is not a fact about the person speaking on it. It is opaque and
+derived from nothing — not the hardware, not its owner — and it never leaves
+the device.
+
+The logger is now built inside `_bootstrap`, after the pre-migration snapshot,
+because reading the id is the first query and therefore the thing that opens
+the database. Four tests, two mutations, both caught.
+
 ### 4.48 Quiet until the sentence is sent — delivered
 
 Requested: *"'Say it and add it' should say 'Say it and add to sentence'. The

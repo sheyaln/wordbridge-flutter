@@ -5,6 +5,7 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/features/profiles/grid_choice.dart';
 import 'package:wordbridge/features/profiles/profile_repository.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
+import 'package:wordbridge/features/usage/device_id.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 import 'package:wordbridge/main.dart';
 
@@ -69,6 +70,47 @@ void main() {
 
       expect(settings.usageTracking, isFalse);
       expect(ProfileSettings.usageTrackingForNewProfiles, isFalse);
+    });
+  });
+
+  /// §4.49. Which tablet a recording was made on.
+  group('the device this was logged on', () {
+    test('is made once and kept', () async {
+      final first = await deviceIdFor(db);
+      final second = await deviceIdFor(db);
+
+      // The reason this exists. It was `newId()` at every launch, so
+      // `usage_events.device_id` answered "which tablet" with the number of
+      // times the app had been opened.
+      expect(second, first);
+      expect(first, isNotEmpty);
+    });
+
+    test('and survives the app being closed', () async {
+      final first = await deviceIdFor(db);
+
+      // A second run of the app over the same file.
+      final reopened = await deviceIdFor(db);
+      expect(reopened, first);
+    });
+
+    test('belongs to the tablet, not to a profile', () async {
+      // Which tablet this is is not a fact about the person speaking on it,
+      // so it sits in `app_state` beside the caregiver gesture rather than in
+      // anybody's settings.
+      final id = await deviceIdFor(db);
+      final row = await (db.select(
+        db.appState,
+      )..where((s) => s.key.equals(deviceIdKey))).getSingle();
+
+      expect(row.value, id);
+    });
+
+    test('and two tablets do not share one', () async {
+      final other = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(other.close);
+
+      expect(await deviceIdFor(other), isNot(await deviceIdFor(db)));
     });
   });
 
