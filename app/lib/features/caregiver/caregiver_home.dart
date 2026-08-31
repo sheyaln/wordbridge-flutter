@@ -979,6 +979,23 @@ class _Settings extends StatelessWidget {
             },
           ),
         if (settings != null)
+          SwitchListTile(
+            value: settings!.contractions,
+            title: const Text('Join "not" to the word before it'),
+            subtitle: const Text(
+              'On, "can" then "not" is spoken as "can\'t", the way "a" becomes '
+              '"an" — the board is somebody\'s speech rather than a transcript '
+              'of the keys they pressed. Off, both words are said as they were '
+              'pressed, which suits teaching them separately. No key moves '
+              'either way.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('contractions', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
           _CopulaMode(settings: settings!, onChanged: onChanged),
         if (settings != null)
           SwitchListTile(

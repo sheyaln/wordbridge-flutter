@@ -775,12 +775,16 @@ class TalkScreenState extends State<TalkScreen> {
 
     switch (button.action) {
       case ButtonAction.speak:
-        final repaired = _utterance.add(
-          button.message,
-          pos: button.partOfSpeech,
-        );
+        // "not" landing behind "can" collapses the pair rather than adding to
+        // it, so what is said is the contraction and not the word pressed.
+        final contracted = _contracts
+            ? _utterance.contract(button.message)
+            : null;
+        final repaired = contracted != null
+            ? null
+            : _utterance.add(button.message, pos: button.partOfSpeech);
         _markReached(button.label);
-        await _sayWord(_withRepair(repaired, button));
+        await _sayWord(contracted ?? _withRepair(repaired, button));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
             _currentBoardId = _rootBoardId;
@@ -979,8 +983,11 @@ class TalkScreenState extends State<TalkScreen> {
   /// Nothing is read from the database first — the button arrived with the
   /// suggestion — so speech starts here as fast as it does from the grid.
   Future<void> _onSuggestion(Button button) async {
-    final repaired = _utterance.add(button.message, pos: button.partOfSpeech);
-    await _sayWord(_withRepair(repaired, button));
+    final contracted = _contracts ? _utterance.contract(button.message) : null;
+    final repaired = contracted != null
+        ? null
+        : _utterance.add(button.message, pos: button.partOfSpeech);
+    await _sayWord(contracted ?? _withRepair(repaired, button));
 
     unawaited(_recordSuggestion(button));
   }
@@ -1062,6 +1069,9 @@ class TalkScreenState extends State<TalkScreen> {
 
   CopulaMode get _copulaMode =>
       widget.settings?.copulaMode ?? CopulaMode.toggle;
+
+  /// Whether "can" and "not" are spoken as "can't" (§4.42).
+  bool get _contracts => widget.settings?.contractions ?? true;
 
   /// Inflects the last word, or appends an agreeing form of "to be".
   ///

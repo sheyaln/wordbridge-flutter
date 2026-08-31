@@ -204,6 +204,17 @@ class ProfileSettings extends ChangeNotifier {
   CopulaMode get copulaMode =>
       _enum('copulaMode', CopulaMode.values, CopulaMode.toggle);
 
+  /// Whether "can" followed by "not" is spoken as "can't" (§4.42).
+  ///
+  /// On, because "can not" is not a sentence anybody says out loud and the
+  /// board is somebody's speech rather than a transcript of their keystrokes.
+  /// Off is offered because it is a house style rather than a correctness fix:
+  /// a team teaching the two words separately wants to hear the two words.
+  ///
+  /// Safe as a getter default, and safe to reach a board built before it
+  /// existed, because it changes what is spoken and never where anything is.
+  bool get contractions => _values['contractions'] as bool? ?? true;
+
   /// Who presses the keys on the way to a word the finder found (§4.47).
   ///
   /// The board does, by default — which is what shipped, and the mode a

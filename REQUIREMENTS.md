@@ -3074,13 +3074,42 @@ call to `setButtonSymbol` — because it is inside a modal sheet. The same
 residue `openSession` and `awaiting` leave, and the third time this shape has
 come up.
 
-#### Contractions as a setting
+#### Contractions as a setting — delivered
 
 Added to the `can't` item above: *"'can not' → 'can't' and 'will not' → 'won't'
 should be a setting too."* Agreed, and it settles the question the item left
 open. Contraction is a house style rather than a correctness fix — some
 teams will want the board to say exactly what was pressed — so it belongs with
 the other grammar switches under §4.7 rather than being applied always.
+
+**Built as the "a" → "an" repair's sibling**, and for the same reason: the user
+cannot know how the sentence will continue when they press the first word, so
+the sentence is corrected behind them once it does.
+
+**On by default.** "can not" is not a sentence anybody says out loud, and the
+board is somebody's speech rather than a transcript of the keys they pressed.
+It is safe as a getter default and safe to reach a board built before it
+existed, because it changes what is *spoken* and never where anything is — the
+one class of default this file allows to move.
+
+**It is the one repair that removes a word**, so it is asked *before* `add`
+rather than inside it: `contract` returns the contraction and does not add the
+word, and the caller says the contraction instead. Folding it into `add`'s
+return would have meant saying "can't not".
+
+Three things it deliberately does not do:
+
+- **"am" is absent from the table.** English contracts "I am not" at the other
+  end — "I'm not" — and "amn't" is not a word anybody says. Contracting the
+  subject reaches back past the word behind and is a different rule.
+- **A copula still waiting for its subject is left alone.** "is" at the front
+  of a question has not agreed with anything yet (§4.10), and "isn't" is
+  outside the ring `_fixOpeningCopula` corrects, so contracting there would
+  strand "isn't you" where "aren't you" belongs.
+- **The contraction is marked inflected**, so the word-ending keys are not
+  offered on top of it. "+ed" after "don't" is a key that builds "don'ted".
+
+Nineteen tests, five mutations, all caught.
 
 #### Undo goes one step, and only for moves
 

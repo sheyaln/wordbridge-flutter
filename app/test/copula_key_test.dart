@@ -409,4 +409,48 @@ void main() {
 
     expect(speech.said, ['is', 'it']);
   });
+
+  /// §4.42. "can" then "not", spoken as one word.
+  group('joining "not" to the word in front of it', () {
+    testWidgets('says the contraction and not the word pressed', (
+      tester,
+    ) async {
+      final can = await cellOf(label: 'can');
+      final not = await cellOf(label: 'not');
+
+      await pumpTalkScreen(tester);
+      await tap(tester, can);
+      await tap(tester, not);
+
+      expect(speech.said, ['can', "can't"]);
+    });
+
+    testWidgets('and with the setting off both words are said as pressed', (
+      tester,
+    ) async {
+      await settings.set('contractions', false);
+
+      final can = await cellOf(label: 'can');
+      final not = await cellOf(label: 'not');
+
+      await pumpTalkScreen(tester);
+      await tap(tester, can);
+      await tap(tester, not);
+
+      expect(speech.said, ['can', 'not']);
+    });
+
+    testWidgets('a pair English does not contract is untouched either way', (
+      tester,
+    ) async {
+      final want = await cellOf(label: 'want');
+      final not = await cellOf(label: 'not');
+
+      await pumpTalkScreen(tester);
+      await tap(tester, want);
+      await tap(tester, not);
+
+      expect(speech.said, ['want', 'not']);
+    });
+  });
 }

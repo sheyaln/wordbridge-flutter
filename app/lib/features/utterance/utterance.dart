@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../db/tables.dart';
+import 'contractions.dart';
 import 'morphology.dart';
 
 /// One word in the sentence, and what it was.
@@ -71,6 +72,42 @@ class UtteranceBar extends ChangeNotifier {
   }
 
   UtteranceEntry? get last => _entries.isEmpty ? null : _entries.last;
+
+  /// Joins a "not" to the word in front of it, or leaves both alone.
+  ///
+  /// Returns the contraction when the pair collapsed into one — in which case
+  /// [word] has **not** been added and the caller says the contraction instead
+  /// of the word — and null when nothing happened, in which case the caller
+  /// goes on to [add] it as usual.
+  ///
+  /// Asked before [add] rather than inside it because this is the one repair
+  /// that removes a word rather than correcting one, so what to say afterwards
+  /// is a different sentence rather than a longer one.
+  ///
+  /// **A copula still waiting for its subject is left alone.** "is" placed at
+  /// the front of a question has not agreed with anything yet (§4.10), and
+  /// "isn't" is outside the ring [_fixOpeningCopula] would correct — so
+  /// contracting it there would strand "isn't you" where "aren't you" belongs.
+  String? contract(String word) {
+    if (!isNegation(word) || _entries.isEmpty) return null;
+
+    final previous = _entries.last;
+    if (previous.subjectFollows) return null;
+
+    final contracted = contractionFor(previous.text);
+    if (contracted == null) return null;
+
+    _entries[_entries.length - 1] = (
+      text: contracted,
+      pos: previous.pos,
+      // Inflected, so a word ending pressed afterwards does not try to build
+      // "can'ted" out of it.
+      inflected: true,
+      subjectFollows: false,
+    );
+    notifyListeners();
+    return contracted;
+  }
 
   /// Adds a word, and returns the word before it if adding this one corrected
   /// that word — null when nothing was corrected.

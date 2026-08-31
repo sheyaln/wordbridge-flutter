@@ -108,6 +108,7 @@ const _reachable = <String, List<String>>{
   ],
   'Words and grammar': [
     'Show word endings only when they fit',
+    'Join "not" to the word before it',
     'Choosing between "am", "is" and "are"',
     'Hide other verbs after a verb',
     'Suggest the next word',
