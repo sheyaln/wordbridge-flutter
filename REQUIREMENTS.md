@@ -1473,11 +1473,16 @@ Carried forward, in the order they matter:
 
 - **Volume above the device's own maximum** (§4.4) is the one part of the
   original scope that platform speech cannot deliver. It needs §4.5.
-- **Level does double duty** — it decides both what is drawn on day one and
-  what a small grid sheds first. `_shedLeastImportant` sorts by
-  `[level, shedRank, index]`, so level dominates what pages off.
+- **Level did double duty — fixed, as `pageRank`.** It decided both what is
+  drawn on day one and what a small grid sheds first, so a word could not be
+  drawn earlier without also changing what paged off around it.
+  `BandItem.pageRank` is now the second, independent rank, defaulting to
+  `level * 10` so an item can be placed between two levels without renumbering
+  anything. Both fixes below landed with it: the eight home verbs are level 2
+  with `pageRank: 30`, and the endings and articles carry
+  `grammarKeyPageRank`.
 
-  > **Being built now, as `pageRank`.** A second, independent rank on
+  > **The design, as it was written before it was built.** A second, independent rank on
   > `BandItem` deciding what pages off, leaving `level` to decide only what is
   > drawn. Default `level * 10`, so an item can be placed between two levels
   > without renumbering anything: level 1 is 10, level 2 is 20, level 3 is 30.
@@ -1508,10 +1513,13 @@ Carried forward, in the order they matter:
   The fix is a `pageRank` in `band_layout.dart` separate from `level`, which
   would let those eight be level 2 — drawn, on page 2 — while still being the
   run that pages off.
-- **Word endings and articles shed first on a small grid**, because they are
-  all level 2 with the highest shed ranks. So the users least able to afford
-  an extra movement are the ones who lose the grammar engine. Worth a
-  deliberate decision rather than leaving it as fallout.
+- **Word endings and articles shed first on a small grid — fixed.** They were
+  all level 2 with the highest shed ranks, so the users least able to afford an
+  extra movement were the ones who lost the grammar engine. They now carry
+  `grammarKeyPageRank`, which puts them after the level-1 core and ahead of
+  ordinary level-2 vocabulary: a small grid keeps the grammar engine on page 1
+  and pages off fringe nouns instead. A deliberate decision rather than
+  fallout, which is what this bullet asked for.
 - **`docs/starter-vocabulary.md` — delivered.** The clean-room derivation the
   `core_vocabulary.dart` header and §7 both point at: counts per level measured
   from the code at `91df220`, every source named with how it was verified, what
