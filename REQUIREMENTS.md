@@ -2998,11 +2998,27 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
 
 #### Modes and features, each its own piece of work
 
-- **"View all mode"** — show every cell, ignoring `hidden` and `vocab_level`.
-  A render filter override, and it must not write anything: the value of it is
-  that a caregiver can see the whole board and then leave it exactly as it was.
-  Careful against non-negotiable 8 — a location the user cannot see never
-  speaks — which this does not violate, because it makes them all visible.
+- **"View all mode" — delivered.** Every cell drawn, ignoring `hidden` and
+  `vocab_level`. A render filter override that writes nothing: no level is
+  raised, nothing is unhidden, and the board can be looked at and left exactly
+  as it was. It does not violate non-negotiable 8 — a location the user cannot
+  see never speaks — because it makes them all visible, and a word drawn but
+  inert would be the worse of the two failures.
+
+  **Held on the talk screen, not on the profile.** It is a way of looking at a
+  board, not a fact about a person, so it lives where `app_mode` lives:
+  in memory, cleared by closing the app. A reserved location stays empty —
+  there is nothing on it to reveal.
+
+  **And the board says so while it is on**, in a strip that turns it off from
+  where it is being looked at. That strip is the only chrome in this app that
+  exists to be noticed rather than read, because the failure it guards against
+  is a caregiver forgetting and handing somebody a board carrying every hidden
+  word with nothing to say why.
+
+  Nine tests, four mutations. It also moved a premise: "How it behaves" used to
+  disappear entirely without a profile's settings, and now survives on this one
+  control, because this is the first thing in it that does not need a profile.
 - **"Quiet until spoken mode"** — do not speak each word as it lands, only the
   finished sentence. **The plan asked for both speak-on-tap and speak-on-send
   as settings in Phase 2 and only speak-on-tap was built** (`talk_screen.dart`

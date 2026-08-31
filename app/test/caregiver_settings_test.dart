@@ -105,6 +105,7 @@ const _reachable = <String, List<String>>{
     'Show how a word was reached',
     'Label what each part of the board is for',
     'After choosing a word in "Find a word"',
+    'Show every word, including hidden ones',
   ],
   'Words and grammar': [
     'Show word endings only when they fit',
@@ -212,6 +213,7 @@ void main() {
           boards: _NoBoardFiles(db),
           userName: 'Maya',
           onSwitchProfile: onSwitchProfile,
+          onViewAll: (_) {},
         ),
       ),
     );
@@ -342,11 +344,22 @@ void main() {
     ) async {
       await pumpSettings(tester, withSettings: false, withSpeech: false);
 
-      // Every control in these three needs the profile's settings, or a voice
+      // Every control in these two needs the profile's settings, or a voice
       // to set.
       expect(find.text('How it sounds'), findsNothing);
-      expect(find.text('How it behaves'), findsNothing);
       expect(find.text('Words and grammar'), findsNothing);
+
+      // "How it behaves" survives on one control: view-all is a way of
+      // looking at a board rather than a fact about a person, so it does not
+      // need a profile to honour it.
+      expect(find.text('How it behaves'), findsOneWidget);
+      await open(tester, 'How it behaves');
+      expect(find.text('Show every word, including hidden ones'), findsOne);
+      expect(
+        find.text('Go back to the home board after each word'),
+        findsNothing,
+      );
+      await back(tester);
 
       // The rest still stand on their own.
       expect(find.text('Who is using this'), findsOneWidget);

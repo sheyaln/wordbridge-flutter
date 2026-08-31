@@ -164,6 +164,23 @@ class TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  /// Every word drawn, whatever its level and whether or not it is hidden.
+  ///
+  /// §4.42's view-all. Held here and never written: the value of it is that a
+  /// caregiver can see the whole board and then leave it exactly as it was, so
+  /// no level is raised, nothing is unhidden, and closing the app clears it.
+  ///
+  /// The board says so while it is on. A caregiver who forgets is the failure
+  /// this would otherwise have — the person using it would be handed a board
+  /// with every hidden word on it and no sign that anything was different.
+  bool _viewAll = false;
+
+  /// Turns view-all on or off. The caregiver screen's control, and the strip's.
+  void setViewAll(bool on) {
+    if (_viewAll == on) return;
+    setState(() => _viewAll = on);
+  }
+
   /// Whether each key speaks as it is pressed (§4.48).
   bool get _speakEachWord => widget.settings?.speakEachWord ?? true;
 
@@ -1144,6 +1161,8 @@ class TalkScreenState extends State<TalkScreen> {
           resolver: widget.resolver,
           userName: widget.userName,
           onSwitchProfile: widget.onSwitchProfile,
+          viewAll: _viewAll,
+          onViewAll: setViewAll,
         ),
       ),
     );
@@ -1187,6 +1206,11 @@ class TalkScreenState extends State<TalkScreen> {
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                 ),
+                // A board showing words it does not normally show has to say
+                // so, and be turnable off from where it is being looked at. A
+                // caregiver who forgets would otherwise hand somebody a board
+                // with every hidden word on it and nothing to say why.
+                if (_viewAll) _ViewAllStrip(onStop: () => setViewAll(false)),
                 // Above the grid and below the sentence, where it reads as
                 // part of the sentence being built rather than part of the
                 // board. Absent entirely when off, so a profile that does not
@@ -1224,6 +1248,7 @@ class TalkScreenState extends State<TalkScreen> {
                                 vocabLevel: widget.vocabLevel,
                                 resolver: widget.resolver,
                                 isAvailable: _isAvailable,
+                                viewAll: _viewAll,
                                 colourScheme: vocab.colourScheme,
                                 onSelect: _onSelect,
                                 pairHold: _entry.pairHold,
@@ -1648,5 +1673,46 @@ class _CategoryWheel {
       // then behave as plain navigation, which is what they already are.
       return null;
     }
+  }
+}
+
+/// Says the board is drawing every word, and turns it off from where it is
+/// being looked at.
+///
+/// Deliberately in the way. It is the only chrome in this app that exists to
+/// be noticed rather than read, because the failure it guards against is a
+/// caregiver forgetting and handing somebody a board with every hidden word on
+/// it and nothing to say why.
+class _ViewAllStrip extends StatelessWidget {
+  const _ViewAllStrip({required this.onStop});
+
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final colours = Theme.of(context).colorScheme;
+    return Material(
+      color: colours.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+        child: Row(
+          children: [
+            Icon(
+              Icons.visibility_outlined,
+              size: 20,
+              color: colours.onTertiaryContainer,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Showing every word, including hidden ones',
+                style: TextStyle(color: colours.onTertiaryContainer),
+              ),
+            ),
+            TextButton(onPressed: onStop, child: const Text('Stop')),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -28,6 +28,7 @@ class GridSurface extends StatefulWidget {
     required this.colourScheme,
     required this.onSelect,
     this.showHidden = false,
+    this.viewAll = false,
     this.resolver,
     this.symbolPackIds = boardSymbolPackIds,
     this.isAvailable,
@@ -49,6 +50,16 @@ class GridSurface extends StatefulWidget {
   /// word needs to see that a location is already spoken for; the AAC user
   /// must not, or the mask means nothing.
   final bool showHidden;
+
+  /// Draws every word, whatever its level and whether or not it is hidden.
+  ///
+  /// §4.42's view-all: a caregiver seeing the whole board and then leaving it
+  /// exactly as it was. Nothing is written — no level is raised and nothing is
+  /// unhidden — so turning it off restores the board to the cell.
+  ///
+  /// It does not break §5 non-negotiable 8. A location the user cannot see
+  /// never speaks; this makes them all visible, so all of them may.
+  final bool viewAll;
 
   final ColourScheme colourScheme;
   final void Function(PlacedCell) onSelect;
@@ -139,6 +150,7 @@ class _GridSurfaceState extends State<GridSurface> {
                     vocabLevel: widget.vocabLevel,
                     colourScheme: widget.colourScheme,
                     showHidden: widget.showHidden,
+                    viewAll: widget.viewAll,
                     resolver: widget.resolver,
                     symbolPackIds: widget.symbolPackIds,
                     isAvailable: widget.isAvailable,
@@ -209,6 +221,7 @@ class _Cell extends StatelessWidget {
     required this.vocabLevel,
     required this.colourScheme,
     required this.showHidden,
+    required this.viewAll,
     required this.resolver,
     required this.symbolPackIds,
     required this.isAvailable,
@@ -219,6 +232,7 @@ class _Cell extends StatelessWidget {
   final int vocabLevel;
   final ColourScheme colourScheme;
   final bool showHidden;
+  final bool viewAll;
   final SymbolResolver? resolver;
   final List<String> symbolPackIds;
   final bool Function(Button)? isAvailable;
@@ -226,7 +240,11 @@ class _Cell extends StatelessWidget {
 
   bool get _isMasked {
     final b = placed.button;
-    if (b == null || b.hidden || b.vocabLevel > vocabLevel) return true;
+    if (b == null) return true;
+    // Every word, whatever it would ordinarily be spared from. A reserved
+    // location is still reserved: there is nothing there to show.
+    if (viewAll) return false;
+    if (b.hidden || b.vocabLevel > vocabLevel) return true;
     return !(isAvailable?.call(b) ?? true);
   }
 

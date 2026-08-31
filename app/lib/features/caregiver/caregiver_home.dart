@@ -54,6 +54,8 @@ class CaregiverHome extends StatefulWidget {
     this.onSwitchProfile,
     this.backup,
     this.boards,
+    this.viewAll = false,
+    this.onViewAll,
   });
 
   final WordbridgeDatabase db;
@@ -76,6 +78,15 @@ class CaregiverHome extends StatefulWidget {
   /// Where exported and imported board files are. Same arrangement, and the
   /// same reason: a widget test cannot be allowed to read the real folder.
   final BoardFileStore? boards;
+
+  /// Whether the board underneath is drawing every word (§4.42).
+  ///
+  /// Held by the talk screen rather than by a profile: it is a way of looking
+  /// at a board, not a fact about a person, and it must not survive the app
+  /// being closed. Absent where nothing can honour it, and the switch is then
+  /// not offered rather than offered and inert.
+  final bool viewAll;
+  final ValueChanged<bool>? onViewAll;
 
   @override
   State<CaregiverHome> createState() => _CaregiverHomeState();
@@ -132,6 +143,8 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           settings: widget.settings,
           onSwitchProfile: widget.onSwitchProfile,
           userName: widget.userName,
+          viewAll: widget.viewAll,
+          onViewAll: widget.onViewAll,
           onChanged: () => setState(() {}),
         ),
       },
@@ -606,6 +619,8 @@ class _Settings extends StatelessWidget {
     required this.boards,
     required this.settings,
     required this.onChanged,
+    required this.viewAll,
+    required this.onViewAll,
     this.speech,
     this.onSwitchProfile,
     this.userName,
@@ -621,6 +636,8 @@ class _Settings extends StatelessWidget {
   final String? userName;
   final ProfileSettings? settings;
   final VoidCallback onChanged;
+  final bool viewAll;
+  final ValueChanged<bool>? onViewAll;
   final void Function(Profile)? onSwitchProfile;
 
   @override
@@ -954,6 +971,23 @@ class _Settings extends StatelessWidget {
           ),
         if (settings != null)
           _WalkMode(settings: settings!, onChanged: onChanged),
+        if (onViewAll != null)
+          SwitchListTile(
+            value: viewAll,
+            title: const Text('Show every word, including hidden ones'),
+            subtitle: const Text(
+              'Draws the whole board — words above this profile\'s level and '
+              'words that have been hidden — so you can see what is there '
+              'without changing anything. Nothing is written down: no level is '
+              'raised and nothing is unhidden. The board says so while it is '
+              'on, and closing the app turns it off.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) {
+              onViewAll!(v);
+              onChanged();
+            },
+          ),
       ],
     ),
     _Section(
