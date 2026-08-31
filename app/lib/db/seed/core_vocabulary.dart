@@ -474,6 +474,7 @@ const categoryNames = [
   // opening exactly what it always opened.
   'numbers',
   'time',
+  'objects',
 ];
 
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
@@ -1383,6 +1384,77 @@ final categoryBands = <String, List<Band<SeedWord>>>{
   // "before" and "after" are deliberately absent: they are on `numbers`, in
   // `in order`, where they mean sequence. Putting them here as well would give
   // one word two homes and neither would be the obvious one.
+  // A board set that could say `eat`, `hurt`, `outside` and `tomorrow` could
+  // not name a chair. The root board's `THINGS` band is a reserve, not a
+  // board, so until this there was no category for objects at all (§4.42).
+  //
+  // Banded by where a thing is rather than by word class, because that is how
+  // somebody looks for an object — and almost all of it is level 3, since an
+  // objects board is naming vocabulary and level 2 is where a day becomes
+  // sayable.
+  'objects': [
+    Band(
+      name: 'around the house',
+      shedRank: 1,
+      items: [
+        ...nouns(['chair', 'bed'], level: 2),
+        // `door` and `window` are not here. Both are on `places` / `at home`,
+        // and one word with two homes and neither obvious is worse than one
+        // movement further away (§4.42).
+        ...nouns(['table', 'light', 'floor', 'wall'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'things I use',
+      shedRank: 2,
+      items: [
+        ...nouns([
+          'phone',
+          'keys',
+          'bag',
+          'money',
+          'glasses',
+          'watch',
+        ], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'at school',
+      shedRank: 3,
+      items: [
+        // `book` is on `play` / `toys`, where reading for pleasure is what it
+        // is for, and stays there.
+        ...nouns([
+          'pencil',
+          'pen',
+          'paper',
+          'scissors',
+          'glue',
+          'computer',
+        ], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'clothes',
+      shedRank: 4,
+      items: [
+        ...nouns(['shoes', 'coat'], level: 2),
+        ...nouns(['shirt', 'trousers', 'socks', 'hat'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
   'time': [
     // The answers to "when" that come before anybody can name a day, and the
     // reason this board earns level 1 rather than waiting for level 3. A

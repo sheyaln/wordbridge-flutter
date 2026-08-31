@@ -3012,8 +3012,33 @@ Worth deciding once for the whole family: `can't`, `won't`, `isn't`, `didn't`.
 
 #### Vocabulary that needs a home first
 
-- **An `objects` category.** The `THINGS` band is a reserve on the root board,
-  not a board. There is no category for objects at all.
+- **An `objects` category — delivered.** The `THINGS` band is a reserve on the
+  root board, not a board, and there was no category for objects at all: a
+  board set that can say `eat`, `hurt`, `outside` and `tomorrow` could not name
+  a chair.
+
+  Appended to `categoryNames` as the tenth, which is what makes it safe — the
+  wheel is a window onto that list in order, so a name added at the end leaves
+  every key already learned opening exactly what it always opened. At 7×12 the
+  wheel already turned twice for nine categories and six slots; ten still fit
+  in two turns, so it costs no extra movement to reach anything.
+
+  Four bands, each a place rather than a word class, because that is how
+  somebody looks for an object: `around the house`, `things I use`,
+  `at school`, `clothes`. Five with the `ours` reserve, on a board with six
+  content rows, so nothing pages off.
+
+  **`door`, `window` and `book` are deliberately not on it.** All three already
+  have homes — the first two on `places` / `at home`, the third on `play` /
+  `toys` — and §4.42 already settled that one word with two homes and neither
+  obvious is worse than one movement further away.
+
+  **Almost all of it is level 3.** An objects board is naming vocabulary and a
+  level-2 board is where a day becomes sayable, so only the four a day is
+  hardest without — `chair`, `bed`, `shoes`, `coat` — are drawn at level 2.
+  That is a deliberate under-reach: the level-2 ceiling exists to stop level 2
+  quietly becoming level 3, and spending 24 of it on one fringe board is how
+  that happens.
 - **`sleep` and more verbs** — `sleep` exists on `doing` at level 1.
 - **Descriptors: `very`, `cute`, `sometimes`, `always`, `quietly`** — asked for
   explicitly at level 3. None exist. Note these are three different word

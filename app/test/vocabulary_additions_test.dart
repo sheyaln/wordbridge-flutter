@@ -123,8 +123,21 @@ void main() {
   });
 
   group('the time board', () {
-    test('is the last key on the wheel, so nothing else moved', () {
-      expect(categoryNames.last, 'time');
+    test('was appended, so nothing else moved', () {
+      // It was the last key when it landed and is not any more — `objects`
+      // shipped after it. What made it safe is the thing that still has to
+      // hold: every category that existed before it sits exactly where it did,
+      // so every key already learned opens what it always opened.
+      expect(categoryNames.take(categoryNames.indexOf('time')), [
+        'people',
+        'food',
+        'play',
+        'feelings',
+        'places',
+        'body',
+        'doing',
+        'numbers',
+      ]);
     });
 
     test('answers when, at level 1', () async {

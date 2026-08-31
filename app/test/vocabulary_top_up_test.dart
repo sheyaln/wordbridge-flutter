@@ -503,10 +503,15 @@ void main() {
     // nothing already placed moves — and on a wheel that has to start turning
     // those questions get tangled up with which turn a key is showing. The
     // turning case has its own group below.
+    //
+    // The width follows the number of shipped categories: it was 14 for nine
+    // of them and is 15 for ten. That is the premise, not the subject — a
+    // narrower grid here does not make the test harder, it makes it a
+    // different test that the group below already runs.
     setUp(() async {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
-      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 14);
+      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 15);
     });
 
     test('the board arrives, with its words in it', () async {
@@ -616,7 +621,7 @@ void main() {
         );
       }
 
-      expect(after['doing'], (page: 0, slot: 8));
+      expect(after['doing'], (page: 0, slot: 9));
       expect(frame.categories.map((c) => c.name).toList(), [
         'people',
         'food',
@@ -628,6 +633,7 @@ void main() {
         // this test arrives last however many shipped after it.
         'numbers',
         'time',
+        'objects',
         'doing',
       ]);
 
@@ -722,11 +728,13 @@ void main() {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
       vocabId = await seedCoreBoardSet(db);
-      // Two, so that seven remain and the row is exactly full without a cycle
+      // Enough that seven remain and the row is exactly full without a cycle
       // key. A wheel that already turns always has room for one more turn, so
-      // there would be nothing to refuse.
+      // there would be nothing to refuse — which means this list grows by one
+      // every time a category ships.
       await unship(db, vocabId, 'doing');
       await unship(db, vocabId, 'time');
+      await unship(db, vocabId, 'objects');
 
       // Whichever column the row is not using — with eight categories that is
       // the gap, not the tail. Found rather than named, so this keeps testing
@@ -761,7 +769,7 @@ void main() {
       final result = await topUpVocabulary(db, vocabularyId: vocabId);
 
       // Both, because a row with nothing spare has nothing spare for either.
-      expect(result.refusedBoards, ['doing', 'time']);
+      expect(result.refusedBoards, ['doing', 'time', 'objects']);
       expect(result.addedBoards, isEmpty);
       expect(result.added, isEmpty);
       expect(
@@ -798,8 +806,10 @@ void main() {
     }
 
     test('a wheel that already turns just gains a turn', () async {
-      // 5x9 shows three categories at a time, so a seventh costs no key at
-      // all — it is one more press of one that is already there.
+      // 5x9 shows three categories at a time, so one more costs no key at all
+      // — it is one more press of one that is already there. A re-added
+      // category lands at the end of the list, not back where it was, which
+      // is the rule that keeps every learned key opening what it opened.
       await seedAt(5, 9);
       final before = await wheelPositions(narrow, narrowId);
       final was = await frameOf(narrow, narrowId);
@@ -816,7 +826,7 @@ void main() {
       for (final entry in before.entries) {
         expect(after[entry.key], entry.value, reason: '"${entry.key}" moved');
       }
-      expect(after['doing'], (page: 2, slot: 2));
+      expect(after['doing'], (page: 3, slot: 0));
 
       for (final entry in fingerprintBefore.entries) {
         expect(
@@ -832,10 +842,11 @@ void main() {
       // cannot have one, so the wheel has to start turning — and the key that
       // turns it goes in the gap column, the only one the row is not using.
       //
-      // Two boards short of the shipped set, so that seven remain and the
-      // wheel is still. The shipped set has nine categories and turns the
-      // wheel on this grid already, which is not the state under test.
-      await seedAt(7, 12, without: const ['doing', 'time']);
+      // Short of the shipped set by enough that seven remain and the wheel is
+      // still. The shipped set turns the wheel on this grid already, which is
+      // not the state under test — so this list grows by one every time a
+      // category ships.
+      await seedAt(7, 12, without: const ['doing', 'time', 'objects']);
       final was = await frameOf(narrow, narrowId);
       expect(was.cycleCol, isNull, reason: 'the fixture already cycles');
       expect(was.categoryCols, [3, 4, 5, 6, 7, 8, 9]);
@@ -972,6 +983,7 @@ void main() {
         'doing',
         'numbers',
         'time',
+        'objects',
         'feelings',
       ]);
     });
