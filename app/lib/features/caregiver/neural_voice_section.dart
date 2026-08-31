@@ -11,19 +11,24 @@ import '../speech/neural/neural_voice.dart';
 import '../speech/neural/voice_model.dart';
 import 'voice_screen.dart';
 
-/// Switching the downloaded voice on, and everything that costs.
+/// The neural voice, and everything it costs, at the top of the voice screen.
 ///
 /// Every number a caregiver is shown here is one somebody has to live with:
 /// how much disk, how long the bake, how much of the board can be said in the
-/// chosen voice yet, and how often the platform voice has had to step in. None
+/// chosen voice yet, and how often the device voice has had to step in. None
 /// of it is inferred and none of it is rounded into reassurance.
-class NeuralVoiceScreen extends StatefulWidget {
-  const NeuralVoiceScreen({
+///
+/// A section rather than a screen of its own, because "which voice speaks" is
+/// one question and it used to be asked on two pages that did not mention each
+/// other. The device voice sits directly below this, under [VoiceScreen].
+class NeuralVoiceSection extends StatefulWidget {
+  const NeuralVoiceSection({
     super.key,
     required this.speech,
     required this.settings,
     required this.db,
     required this.vocabularyId,
+    required this.onChanged,
   });
 
   final NeuralSpeechEngine speech;
@@ -31,28 +36,15 @@ class NeuralVoiceScreen extends StatefulWidget {
   final WordbridgeDatabase db;
   final String vocabularyId;
 
-  static Future<void> show(
-    BuildContext context, {
-    required NeuralSpeechEngine speech,
-    required ProfileSettings settings,
-    required WordbridgeDatabase db,
-    required String vocabularyId,
-  }) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => NeuralVoiceScreen(
-        speech: speech,
-        settings: settings,
-        db: db,
-        vocabularyId: vocabularyId,
-      ),
-    ),
-  );
+  /// Told when the voice that speaks changes, so the device half below can say
+  /// whether it is the voice or the fallback.
+  final VoidCallback onChanged;
 
   @override
-  State<NeuralVoiceScreen> createState() => _NeuralVoiceScreenState();
+  State<NeuralVoiceSection> createState() => _NeuralVoiceSectionState();
 }
 
-class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
+class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
   ModelProgress? _progress;
   StreamSubscription<ModelProgress>? _install;
 
@@ -131,8 +123,7 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     if (!agreed) return;
 
     await _speech.models.deleteModel();
-    await _set('neuralVoice', false);
-    await _speech.useNeuralVoice(enabled: false);
+    await _setEnabled(false);
     await _refresh();
   }
 
@@ -145,12 +136,13 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
       speed: _settings.speechRate,
     );
     if (mounted) setState(() => _bake = null);
+    widget.onChanged();
     await _refresh();
   }
 
   /// Changing the voice makes every clip in the cache wrong, not stale.
   ///
-  /// The board keeps speaking throughout — in the platform voice for anything
+  /// The board keeps speaking throughout — in the device voice for anything
   /// not yet baked in the new one — which is the honest cost and is said
   /// before it is paid.
   Future<void> _chooseVoice(NeuralVoice voice) async {
@@ -178,6 +170,7 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     );
     await _speech.pruneOtherVoices();
     if (mounted) setState(() => _bake = null);
+    widget.onChanged();
     await _refresh();
   }
 
@@ -283,120 +276,147 @@ class _NeuralVoiceScreenState extends State<NeuralVoiceScreen> {
     final words = _words?.length ?? 0;
     final baked = _speech.clips?.count ?? 0;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Neural voice')),
-      body: ListView(
-        children: [
-          const _PreAlpha(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Text(
-              'A neural voice runs on this tablet. It sounds more like a '
-              'person than the device voice does, and it does not sound like '
-              'every other AAC user.\n\n'
-              'One download, then nothing. No account, no connection, nothing '
-              'sent anywhere — so it works the same with no signal.',
-            ),
+    // Nothing to choose between until there is a second voice on the tablet,
+    // and nothing to choose at all where a buffer cannot be played back.
+    final chooseable = _installed && _speech.canPlay;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _PreAlpha(),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Text(
+            'A neural voice runs on this tablet. It sounds more like a person '
+            'than the device voice does, and it does not sound like every '
+            'other AAC user.\n\n'
+            'One download, then nothing. No account, no connection, nothing '
+            'sent anywhere — so it works the same with no signal.',
+          ),
+        ),
+
+        if (!_speech.canPlay)
+          const ListTile(
+            leading: Icon(Icons.error_outline),
+            title: Text('This tablet cannot play a neural voice'),
+            subtitle: Text('The board keeps using the device voice.'),
           ),
 
-          if (!_speech.canPlay)
-            const ListTile(
-              leading: Icon(Icons.error_outline),
-              title: Text('This tablet cannot play it'),
-              subtitle: Text('The board keeps using the device voice.'),
+        // The choice, and it is a choice rather than a switch. "Use the neural
+        // voice", off, names one of the two voices and leaves the other
+        // unnamed — and the unnamed one is the one that is speaking.
+        if (chooseable) ...[
+          const VoiceHeader('Which voice speaks'),
+          RadioGroup<bool>(
+            groupValue: on,
+            onChanged: (chosen) {
+              if (chosen != null && chosen != on) {
+                unawaited(_setEnabled(chosen));
+              }
+            },
+            child: Column(
+              children: [
+                RadioListTile<bool>(
+                  value: true,
+                  title: const Text('Neural voice'),
+                  subtitle: Text(
+                    '${neuralVoiceById(_settings.neuralVoiceId).name} — words '
+                    'made in advance play instantly, and anything else is '
+                    'synthesised on the spot.',
+                  ),
+                  isThreeLine: true,
+                ),
+                RadioListTile<bool>(
+                  value: false,
+                  title: const Text('Device voice'),
+                  subtitle: Text(
+                    _settings.voiceName == null
+                        ? 'The tablet\'s own speech. The board sounds exactly '
+                              'as it does now.'
+                        : '${_settings.voiceName}. The board sounds exactly as '
+                              'it does now.',
+                  ),
+                  isThreeLine: true,
+                ),
+              ],
             ),
-
-          const _Header('Download'),
-          _ModelTile(
-            published: _speech.models.published,
-            installed: _installed,
-            onDisk: _onDisk,
-            partial: _partial,
-            progress: _progress,
-            onInstall: _startInstall,
-            onDelete: _deleteModel,
           ),
-
-          if (_installed) ...[
-            const Divider(height: 32),
-            SwitchListTile(
-              value: on,
-              title: const Text('Use the neural voice'),
-              subtitle: const Text(
-                'Off, the board sounds exactly as it does now. On, everything '
-                'is spoken in this voice — words made in advance play '
-                'instantly, and anything else is synthesised on the spot.',
-              ),
-              isThreeLine: true,
-              onChanged: _speech.canPlay ? _setEnabled : null,
-            ),
-          ],
-
-          if (_installed && on) ...[
-            const _Header('Voice'),
-            ListTile(
-              leading: const Icon(Icons.record_voice_over_outlined),
-              title: Text(neuralVoiceById(_settings.neuralVoiceId).name),
-              subtitle: Text(
-                '${neuralVoiceById(_settings.neuralVoiceId).accent} · '
-                '${kokoroVoices.length} to choose from',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _openVoicePicker,
-            ),
-
-            _Header('Words made in advance'),
-            _BakeTile(
-              baked: baked,
-              words: words,
-              job: _bake,
-              busy: _busy,
-              onStart: _startBake,
-              onPause: () => _bake?.pause(),
-            ),
-
-            const _Header('Times the device voice was used instead'),
-            _FallbackTile(
-              count: _speech.fallbackCount,
-              recent: _speech.fallbacks,
-            ),
-
-            const _Header('How long synthesis may take'),
-            ListTile(
-              title: Text('${_settings.synthesisBudget}'),
-              subtitle: Text(
-                _settings.synthesisBudgetMeasured
-                    ? 'Measured on this tablet. Anything not made in advance '
-                          'is synthesised, and falls back to the device voice '
-                          'only if it takes longer than this.'
-                    : 'A safe default for the slowest tablet. Measure to get '
-                          'this tablet\'s own number, which is usually lower.',
-              ),
-              isThreeLine: true,
-              trailing: FilledButton.tonal(
-                onPressed: _busy == null ? _measure : null,
-                child: const Text('Measure'),
-              ),
-            ),
-          ],
-
-          if (_busy != null)
-            ListTile(
-              leading: const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              title: Text(_busy!),
-            ),
-          const SizedBox(height: 32),
         ],
-      ),
+
+        const VoiceHeader('Neural voice'),
+        _ModelTile(
+          published: _speech.models.published,
+          installed: _installed,
+          onDisk: _onDisk,
+          partial: _partial,
+          progress: _progress,
+          onInstall: _startInstall,
+          onDelete: _deleteModel,
+        ),
+
+        if (_installed && on) ...[
+          ListTile(
+            leading: const Icon(Icons.graphic_eq_outlined),
+            title: const Text('Which voice'),
+            subtitle: Text(
+              '${neuralVoiceById(_settings.neuralVoiceId).name} · '
+              '${neuralVoiceById(_settings.neuralVoiceId).accent} · '
+              '${kokoroVoices.length} to choose from',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openVoicePicker,
+          ),
+
+          const VoiceHeader('Words made in advance'),
+          _BakeTile(
+            baked: baked,
+            words: words,
+            job: _bake,
+            busy: _busy,
+            onStart: _startBake,
+            onPause: () => _bake?.pause(),
+          ),
+
+          const VoiceHeader('Times the device voice was used instead'),
+          _FallbackTile(
+            count: _speech.fallbackCount,
+            recent: _speech.fallbacks,
+          ),
+
+          const VoiceHeader('How long synthesis may take'),
+          ListTile(
+            title: Text('${_settings.synthesisBudget}'),
+            subtitle: Text(
+              _settings.synthesisBudgetMeasured
+                  ? 'Measured on this tablet. Anything not made in advance is '
+                        'synthesised, and falls back to the device voice only '
+                        'if it takes longer than this.'
+                  : 'A safe default for the slowest tablet. Measure to get '
+                        'this tablet\'s own number, which is usually lower.',
+            ),
+            isThreeLine: true,
+            trailing: FilledButton.tonal(
+              onPressed: _busy == null ? _measure : null,
+              child: const Text('Measure'),
+            ),
+          ),
+        ],
+
+        if (_busy != null)
+          ListTile(
+            leading: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            title: Text(_busy!),
+          ),
+      ],
     );
   }
 }
 
-/// Choosing which voice, and hearing one before choosing it.
+/// Choosing which neural voice, and hearing one before choosing it.
 ///
 /// Its own page so the sections that report on the voice already chosen are not
 /// pushed below a list nobody needs after the first visit.
@@ -428,7 +448,7 @@ class _VoicePickerState extends State<_VoicePicker> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Voice')),
+      appBar: AppBar(title: const Text('Neural voice')),
       body: ListView(
         children: [
           const Padding(
@@ -468,14 +488,11 @@ class _VoicePickerState extends State<_VoicePicker> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 32),
-            child: Text(
-              'The speed dial works with these voices. The pitch dial does '
-              'not — they have no pitch control, so it only affects the '
-              'device voice.',
-            ),
+          const VoiceNote(
+            'The speed dial works with these voices. The pitch dial does not — '
+            'they have no pitch control, so it only affects the device voice.',
           ),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -486,7 +503,7 @@ class _VoicePickerState extends State<_VoicePicker> {
 ///
 /// Not a disclaimer in small print at the bottom. A caregiver is deciding how
 /// somebody else will sound, and the person it is for may not be able to say
-/// it came out wrong — so what is uncertain about it goes above the switch,
+/// it came out wrong — so what is uncertain about it goes above the choice,
 /// not below it.
 class _PreAlpha extends StatelessWidget {
   const _PreAlpha();
@@ -733,21 +750,6 @@ class _FallbackTile extends StatelessWidget {
       ],
     );
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-    child: Text(
-      text,
-      style: Theme.of(context).textTheme.titleSmall
-          ?.copyWith(color: Theme.of(context).colorScheme.primary),
-    ),
-  );
 }
 
 String _megabytes(int bytes) => '${(bytes / 1000000).round()} MB';

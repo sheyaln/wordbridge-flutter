@@ -3224,7 +3224,7 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
-### 4.45 One screen for the voice — agreed, being built
+### 4.45 One screen for the voice — delivered
 
 Reported: *"Voice selection should be a submenu on both 'Voice' and 'A voice of
 their own'. Like, I never realized we had pitch control on the device's own
@@ -3272,10 +3272,22 @@ between (§4.43a). On it:
 Greyed with the reason on the row, and the Download button directly beneath it.
 A missing option explains nothing; §4.43's board-delete rule again.
 
+**The device dials are previewed through the platform engine, not the neural
+one wrapping it.** Otherwise dragging pitch with the neural voice on plays a
+synthesised sentence that pitch does nothing to, and the dial reads as broken.
+It is not — it belongs to the other voice. `deviceVoiceEngine` is the one
+predicate, named rather than left inside the widget so a test can hold it.
+
 `caregiver_settings_test.dart` holds `_reachable`, the map of section → controls
 that must stay findable. It gains Tone, Speed, Pitch and Volume — the four that
 were nominally reachable and practically were not. That is the point of the
 change, so it belongs in the contract.
+
+Ten tests, four mutations, all caught. What is **not** covered: the neural half
+has no widget test, because `NeuralVoiceSection` reads the model store from
+disk in `initState` and a widget test's clock never lets that finish. Its logic
+is tested through `neural_ladder_test.dart` and the section is a rendering of
+it; the arrangement is verified by eye on the device.
 
 ### 4.44 Recording is asked at setup, and the answer is kept — delivered
 

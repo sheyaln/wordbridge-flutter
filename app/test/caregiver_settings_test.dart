@@ -70,7 +70,12 @@ const _reachable = <String, List<String>>{
   // One screen rather than a page of controls, so the row on the list opens
   // it directly. What has to stay reachable is the control, not the hop.
   'Backups': ['Back up now'],
-  'How it sounds': ['Voice'],
+  // Also one screen. The four below it were nominally reachable and
+  // practically were not: they sat under every offline voice the tablet has,
+  // and a caregiver who had used the app for weeks did not know pitch control
+  // existed (§4.45). The list is behind "Which voice" now, and these are on
+  // the screen the row opens.
+  'How it sounds': ['Which voice', 'Tone', 'Speed', 'Pitch', 'Volume'],
   'How it behaves': [
     'Go back to the home board after each word',
     'Pause after the board changes',
@@ -261,10 +266,7 @@ void main() {
         matching: find.byType(ListTile),
       );
       expect(header, findsOneWidget);
-      expect(
-        (tester.widget<ListTile>(header).title! as Text).data,
-        'Maya',
-      );
+      expect((tester.widget<ListTile>(header).title! as Text).data, 'Maya');
 
       // First on the screen, not merely present.
       final tiles = tester.widgetList<ListTile>(find.byType(ListTile));
@@ -350,6 +352,21 @@ void main() {
       await pumpSettings(tester);
 
       expect(find.textContaining('Alex · Calm'), findsOneWidget);
+
+      await closeHome(tester);
+    });
+
+    testWidgets('and it names the voice that is actually speaking', (
+      tester,
+    ) async {
+      // A profile carries `neuralVoice` across builds, and this build has no
+      // neural engine to honour it. The row has to say what somebody will
+      // hear, which here is still the device's own voice.
+      await settings.set('neuralVoice', true);
+      await pumpSettings(tester);
+
+      expect(find.textContaining('Alex · Calm'), findsOneWidget);
+      expect(find.textContaining('Neural voice'), findsNothing);
 
       await closeHome(tester);
     });

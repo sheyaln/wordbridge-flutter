@@ -1,11 +1,48 @@
 import 'package:flutter/material.dart';
 
+import '../../db/database.dart';
 import '../profiles/profile_settings.dart';
+import '../speech/neural/neural_engine.dart';
 import '../speech/speech_engine.dart';
 import '../speech/tone.dart';
 import '../speech/voice_setup.dart';
+import 'neural_voice_section.dart';
 
-/// Choosing how this profile sounds.
+/// Whether the neural half of the voice screen has everything it needs.
+///
+/// A build without the engine, or a caller that did not pass the board the
+/// bake would read its words from, gets the device's own voice and nothing
+/// else — which is all such a build has anyway.
+bool showsNeuralVoice(
+  SpeechEngine speech, {
+  WordbridgeDatabase? db,
+  String? vocabularyId,
+}) => speech is NeuralSpeechEngine && db != null && vocabularyId != null;
+
+/// The engine the device-voice controls are previewed through.
+///
+/// The platform engine directly, never the neural one wrapping it. A caregiver
+/// dragging the pitch dial with the neural voice on would otherwise hear a
+/// synthesised sentence that pitch does nothing to, and conclude the dial is
+/// broken. It is not — it belongs to the other voice.
+SpeechEngine deviceVoiceEngine(SpeechEngine speech) =>
+    speech is NeuralSpeechEngine ? speech.platform : speech;
+
+/// What the device-voice row says, so the list does not have to be opened to
+/// find out which voice is set.
+String deviceVoiceLine(String? name, String? locale) {
+  if (name == null) return 'Whatever this tablet uses';
+  return locale == null ? name : '$name · $locale';
+}
+
+/// How this profile sounds — both voices, on one screen.
+///
+/// One question is being answered here: what does this person sound like. It
+/// used to be two screens, neither of which said the other existed, and the
+/// device voice was filed under the one you reached by turning the neural
+/// voice off — as though it were the alternative rather than what the neural
+/// voice falls back to for every word not yet made (§4.5). Configuring it is
+/// never irrelevant, so it is never hidden.
 ///
 /// Every control previews itself the moment it moves. A caregiver setting a
 /// voice for someone else cannot judge it from a number, and the person it is
@@ -15,22 +52,39 @@ class VoiceScreen extends StatefulWidget {
     super.key,
     required this.speech,
     required this.settings,
+    this.db,
+    this.vocabularyId,
     this.locale = 'en',
   });
 
   final SpeechEngine speech;
   final ProfileSettings settings;
+
+  /// Where the words the neural voice would make in advance are read from.
+  ///
+  /// Without them the screen is the device's own voice and nothing else, which
+  /// is what a build with no neural engine has anyway.
+  final WordbridgeDatabase? db;
+  final String? vocabularyId;
+
   final String locale;
 
   static Future<void> show(
     BuildContext context, {
     required SpeechEngine speech,
     required ProfileSettings settings,
+    WordbridgeDatabase? db,
+    String? vocabularyId,
     String locale = 'en',
   }) => Navigator.of(context).push(
     MaterialPageRoute<void>(
-      builder: (_) =>
-          VoiceScreen(speech: speech, settings: settings, locale: locale),
+      builder: (_) => VoiceScreen(
+        speech: speech,
+        settings: settings,
+        db: db,
+        vocabularyId: vocabularyId,
+        locale: locale,
+      ),
     ),
   );
 
@@ -59,39 +113,21 @@ class VoiceScreen extends StatefulWidget {
 }
 
 class _VoiceScreenState extends State<VoiceScreen> {
-  late final _setup = VoiceSetup(widget.speech);
-
-  List<VoiceOption>? _voices;
-  int _hiddenNovelty = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVoices();
-  }
-
-  Future<void> _loadVoices() async {
-    final voices = await _setup.usableVoices(
-      locale: widget.locale,
-      includeNovelty: _settings.noveltyVoices,
-    );
-    final hidden = await _setup.noveltyCount(locale: widget.locale);
-    if (mounted) {
-      setState(() {
-        _voices = voices;
-        _hiddenNovelty = hidden;
-      });
-    }
-  }
-
   ProfileSettings get _settings => widget.settings;
 
-  /// Pushes the settings to the engine and speaks, so the change is heard
-  /// rather than described.
-  Future<void> _preview() async {
-    await _applyAll();
-    await widget.speech.speak(VoiceScreen.previewSentence);
-  }
+  /// The neural half of the screen, or null where there is none to show.
+  NeuralSpeechEngine? get _neural =>
+      showsNeuralVoice(
+        widget.speech,
+        db: widget.db,
+        vocabularyId: widget.vocabularyId,
+      )
+      ? widget.speech as NeuralSpeechEngine
+      : null;
+
+  SpeechEngine get _device => deviceVoiceEngine(widget.speech);
+
+  late final _setup = VoiceSetup(_device);
 
   Future<void> _applyAll() => _setup.apply(
     voiceName: _settings.voiceName,
@@ -103,8 +139,37 @@ class _VoiceScreenState extends State<VoiceScreen> {
     tone: _settings.tone,
   );
 
+  /// Pushes the settings to the engine and speaks, so the change is heard
+  /// rather than described.
+  Future<void> _previewDevice() async {
+    await _applyAll();
+    await _device.speak(VoiceScreen.previewSentence);
+  }
+
+  /// What the board will actually say, in whichever voice is set.
+  Future<void> _previewChosen() async {
+    await _applyAll();
+    await widget.speech.speak(VoiceScreen.previewSentence);
+  }
+
   Future<void> _set(String key, Object? value) async {
     await _settings.set(key, value);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openDeviceVoices() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _DeviceVoicePicker(
+          setup: _setup,
+          settings: _settings,
+          locale: widget.locale,
+          onPreview: _previewDevice,
+        ),
+      ),
+    );
+    // The row is a route below the picker and cannot redraw while it is
+    // covered, so it would still name the voice that was set before.
     if (mounted) setState(() {});
   }
 
@@ -120,12 +185,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
     final toneLabel = tone == Tone.normal ? null : tone.label;
     final rateCeiling = tone.rateCeiling;
 
+    final neural = _neural;
+    final neuralOn = neural != null && _settings.neuralVoice;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Voice'),
+        title: const Text('How it sounds'),
         actions: [
           IconButton(
-            onPressed: _preview,
+            onPressed: _previewChosen,
             icon: const Icon(Icons.volume_up_rounded),
             tooltip: 'Hear it',
           ),
@@ -133,56 +201,44 @@ class _VoiceScreenState extends State<VoiceScreen> {
       ),
       body: ListView(
         children: [
-          const _SectionHeader('Voice'),
-          _VoiceList(
-            voices: _voices,
-            selectedName: _settings.voiceName,
-            selectedLocale: _settings.voiceLocale,
-            selectedIdentifier: _settings.voiceIdentifier,
-            onSelected: (voice) async {
-              await _set('voiceName', voice?.name);
-              await _set('voiceLocale', voice?.locale);
-              await _set('voiceIdentifier', voice?.identifier);
-              await _preview();
-            },
-          ),
-          SwitchListTile(
-            value: _settings.noveltyVoices,
-            title: const Text('Include the joke voices'),
+          if (neural != null)
+            NeuralVoiceSection(
+              speech: neural,
+              settings: _settings,
+              db: widget.db!,
+              vocabularyId: widget.vocabularyId!,
+              onChanged: () {
+                if (mounted) setState(() {});
+              },
+            ),
+
+          const VoiceHeader('Device voice'),
+          if (neuralOn)
+            const VoiceNote(
+              'What speaks when the neural voice is not ready — a word that '
+              'has not been made yet, and any sentence that takes longer than '
+              'the wait allowed. Worth setting even with the neural voice on, '
+              'because this is the voice somebody hears when it matters most. '
+              'The pitch dial belongs to this voice only; the neural voices '
+              'have no pitch control.',
+            ),
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_outlined),
+            title: const Text('Which voice'),
             subtitle: Text(
-              _hiddenNovelty == 0
-                  ? 'This device offers none.'
-                  : 'Robots, singing and cartoon characters — '
-                        '$_hiddenNovelty of them on this device. Left out by '
-                        'default so the speaking voices are easier to compare.',
+              deviceVoiceLine(_settings.voiceName, _settings.voiceLocale),
             ),
-            isThreeLine: _hiddenNovelty > 0,
-            onChanged: (v) async {
-              await _set('noveltyVoices', v);
-              await _loadVoices();
-            },
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openDeviceVoices,
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: Text(
-              'Only voices that work without a connection are listed. A voice '
-              'that needs the network is one this device loses exactly when '
-              'it is furthest from home.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.4,
-              ),
-            ),
-          ),
-          const Divider(),
-          const _SectionHeader('Tone'),
+
+          const VoiceHeader('Tone'),
           RadioGroup<Tone>(
             groupValue: _settings.tone,
             onChanged: (value) async {
               if (value == null) return;
               await _set('tone', value.name);
-              await _preview();
+              await _previewDevice();
             },
             child: Column(
               children: [
@@ -191,24 +247,16 @@ class _VoiceScreenState extends State<VoiceScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Text(
-              'These four are what a phone or tablet\'s own speech can '
-              'actually do: it offers speed, pitch and volume, and nothing '
-              'else. Sarcasm needs a rise and fall across the whole sentence, '
-              'and a real whisper needs breath — neither is something an app '
-              'can ask for. "Quiet" is this voice turned down, and is named '
-              'that rather than "whisper" because that is what you will hear.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.4,
-              ),
-            ),
+          const VoiceNote(
+            'These four are what a tablet\'s own speech can actually do: it '
+            'offers speed, pitch and volume, and nothing else. Sarcasm needs a '
+            'rise and fall across the whole sentence, and a real whisper needs '
+            'breath — neither is something an app can ask for. "Quiet" is this '
+            'voice turned down, and is named that rather than "whisper" '
+            'because that is what you will hear.',
           ),
-          const Divider(),
-          const _SectionHeader('Speed, pitch and volume'),
+
+          const VoiceHeader('Speed, pitch and volume'),
           _Dial(
             label: 'Speed',
             value: _settings.speechRate,
@@ -218,7 +266,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
             max: VoiceScreen.speedMax,
             ceiling: rateCeiling < VoiceScreen.speedMax ? rateCeiling : null,
             onChanged: (v) => _set('speechRate', v),
-            onSettled: _preview,
+            onSettled: _previewDevice,
           ),
           _Dial(
             label: 'Pitch',
@@ -228,7 +276,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
             min: VoiceScreen.pitchMin,
             max: VoiceScreen.pitchMax,
             onChanged: (v) => _set('speechPitch', v),
-            onSettled: _preview,
+            onSettled: _previewDevice,
           ),
           _Dial(
             label: 'Volume',
@@ -238,42 +286,158 @@ class _VoiceScreenState extends State<VoiceScreen> {
             min: VoiceScreen.volumeMin,
             max: VoiceScreen.volumeMax,
             onChanged: (v) => _set('speechVolume', v),
-            onSettled: _preview,
+            onSettled: _previewDevice,
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 32),
-            child: Text(
-              'A tone multiplies these, so where one is set the second figure '
-              'is what the voice is actually given. Volume here is a share of '
-              'the device\'s own volume and cannot go above it. If this is not '
-              'loud enough across a room or from the back of a car, turn the '
-              'device up too — the app cannot do it for you.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.4,
-              ),
-            ),
+          const VoiceNote(
+            'A tone multiplies these, so where one is set the second figure is '
+            'what the voice is actually given. Volume here is a share of the '
+            'tablet\'s own volume and cannot go above it. If this is not loud '
+            'enough across a room or from the back of a car, turn the tablet '
+            'up too — the app cannot do it for you.',
           ),
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
+/// One heading on the voice screen.
+///
+/// Shared with [NeuralVoiceSection] so the two halves of one screen cannot
+/// come to head their sections differently.
+class VoiceHeader extends StatelessWidget {
+  const VoiceHeader(this.text, {super.key});
 
-  final String title;
+  final String text;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+    padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
     child: Text(
-      title,
-      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      text,
+      style: Theme.of(context).textTheme.titleSmall
+          ?.copyWith(color: Theme.of(context).colorScheme.primary),
     ),
   );
+}
+
+/// The small print under a control, saying what it does and does not do.
+class VoiceNote extends StatelessWidget {
+  const VoiceNote(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        height: 1.4,
+      ),
+    ),
+  );
+}
+
+/// Every voice this tablet can speak in, on a page of its own.
+///
+/// A caregiver reads this list once and the dials every time they come back,
+/// so the list is the thing that moves. It used to sit above them, and the
+/// result was pitch control nobody knew was there.
+class _DeviceVoicePicker extends StatefulWidget {
+  const _DeviceVoicePicker({
+    required this.setup,
+    required this.settings,
+    required this.locale,
+    required this.onPreview,
+  });
+
+  final VoiceSetup setup;
+  final ProfileSettings settings;
+  final String locale;
+  final Future<void> Function() onPreview;
+
+  @override
+  State<_DeviceVoicePicker> createState() => _DeviceVoicePickerState();
+}
+
+class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
+  List<VoiceOption>? _voices;
+  int _hiddenNovelty = 0;
+
+  ProfileSettings get _settings => widget.settings;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final voices = await widget.setup.usableVoices(
+      locale: widget.locale,
+      includeNovelty: _settings.noveltyVoices,
+    );
+    final hidden = await widget.setup.noveltyCount(locale: widget.locale);
+    if (mounted) {
+      setState(() {
+        _voices = voices;
+        _hiddenNovelty = hidden;
+      });
+    }
+  }
+
+  Future<void> _set(String key, Object? value) async {
+    await _settings.set(key, value);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Device voice')),
+      body: ListView(
+        children: [
+          _VoiceList(
+            voices: _voices,
+            selectedName: _settings.voiceName,
+            selectedLocale: _settings.voiceLocale,
+            selectedIdentifier: _settings.voiceIdentifier,
+            onSelected: (voice) async {
+              await _set('voiceName', voice?.name);
+              await _set('voiceLocale', voice?.locale);
+              await _set('voiceIdentifier', voice?.identifier);
+              await widget.onPreview();
+            },
+          ),
+          SwitchListTile(
+            value: _settings.noveltyVoices,
+            title: const Text('Include the joke voices'),
+            subtitle: Text(
+              _hiddenNovelty == 0
+                  ? 'This tablet offers none.'
+                  : 'Robots, singing and cartoon characters — '
+                        '$_hiddenNovelty of them on this tablet. Left out by '
+                        'default so the speaking voices are easier to compare.',
+            ),
+            isThreeLine: _hiddenNovelty > 0,
+            onChanged: (v) async {
+              await _set('noveltyVoices', v);
+              await _load();
+            },
+          ),
+          const VoiceNote(
+            'Only voices that work without a connection are listed. A voice '
+            'that needs the network is one this tablet loses exactly when it '
+            'is furthest from home.',
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
 }
 
 class _VoiceList extends StatelessWidget {
@@ -303,14 +467,10 @@ class _VoiceList extends StatelessWidget {
     }
 
     if (voices.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'This device reports no offline voices for the board\'s language. '
-          'The system voice is still used; install a voice in the device\'s '
-          'own speech settings to choose one here.',
-          style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
-        ),
+      return const VoiceNote(
+        'This tablet reports no offline voices for the board\'s language. The '
+        'system voice is still used; install a voice in the tablet\'s own '
+        'speech settings to choose one here.',
       );
     }
 
@@ -339,7 +499,7 @@ class _VoiceList extends StatelessWidget {
             children: [
               const RadioListTile<String?>(
                 value: null,
-                title: Text('Whatever the device uses'),
+                title: Text('Whatever the tablet uses'),
               ),
               for (final group in groups) ...[
                 if (group.heading case final heading?) _GroupHeader(heading),
@@ -354,18 +514,10 @@ class _VoiceList extends StatelessWidget {
           ),
         ),
         if (unlabelled)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text(
-              'This device does not say which of its voices are male and which '
-              'are female, so they are listed together. The names are the only '
-              'clue it gives.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.4,
-              ),
-            ),
+          const VoiceNote(
+            'This tablet does not say which of its voices are male and which '
+            'are female, so they are listed together. The names are the only '
+            'clue it gives.',
           ),
       ],
     );
@@ -389,11 +541,11 @@ class _GroupHeader extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
-          color: Colors.black54,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     ),
@@ -460,7 +612,9 @@ class _Dial extends StatelessWidget {
             toneLabel == null || effective == setting
                 ? setting
                 : '$setting · $effective with $toneLabel',
-            style: const TextStyle(color: Colors.black54),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -476,18 +630,10 @@ class _Dial extends StatelessWidget {
             onChangeEnd: (_) => onSettled(),
           ),
           if (ceiling != null && value > ceiling)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                '$toneLabel already takes this to the limit of what the '
-                'device\'s speech accepts, so anything above '
-                '${_percent(ceiling)} sounds the same.',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  height: 1.4,
-                ),
-              ),
+            VoiceNote(
+              '$toneLabel already takes this to the limit of what the tablet\'s '
+              'speech accepts, so anything above ${_percent(ceiling)} sounds '
+              'the same.',
             ),
         ],
       ),

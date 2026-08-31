@@ -6,6 +6,7 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/features/caregiver/voice_screen.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
+import 'package:wordbridge/features/speech/neural/neural_engine.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/speech/tone.dart';
 import 'package:wordbridge/features/speech/voice_setup.dart';
@@ -18,6 +19,7 @@ class _RecordingEngine implements SpeechEngine {
   final bool rejects;
 
   final applied = <String, Object>{};
+  final spoken = <String>[];
   VoiceOption? chosenVoice;
 
   @override
@@ -47,7 +49,7 @@ class _RecordingEngine implements SpeechEngine {
   @override
   Future<void> init() async {}
   @override
-  Future<void> speak(String text) async {}
+  Future<void> speak(String text) async => spoken.add(text);
 
   @override
   Future<void> speakUtterance(String text) => speak(text);
@@ -767,6 +769,165 @@ void main() {
       await open(tester);
 
       expect(find.textContaining('sounds the same'), findsNothing);
+    });
+  });
+
+  /// §4.45. Two screens became one, and the list of voices went behind a row.
+  ///
+  /// The complaint that started it: *"I never realized we had pitch control on
+  /// the device's own voice because there's so many voices to scroll
+  /// through."* A control below a list nobody scrolls is a control nobody has.
+  group('one screen for both voices', () {
+    late WordbridgeDatabase db;
+    late ProfileSettings settings;
+
+    setUp(() async {
+      db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      await seedCoreBoardSet(db);
+      settings = ProfileSettings(db, 'default');
+      await settings.load();
+    });
+    tearDown(() async => db.close());
+
+    group('which halves of the screen there are', () {
+      test('the device\'s own voice alone, with no neural engine', () {
+        expect(
+          showsNeuralVoice(_RecordingEngine(), db: db, vocabularyId: 'v1'),
+          isFalse,
+        );
+      });
+
+      test('and alone again where the board to bake from is missing', () {
+        // The bake reads its word list from the board. Offering the section
+        // without one would show a progress bar over nothing.
+        final neural = NeuralSpeechEngine(_RecordingEngine());
+        expect(showsNeuralVoice(neural, vocabularyId: 'v1'), isFalse);
+        expect(showsNeuralVoice(neural, db: db), isFalse);
+        expect(showsNeuralVoice(neural, db: db, vocabularyId: 'v1'), isTrue);
+      });
+    });
+
+    group('which engine the device dials are heard through', () {
+      test('the platform engine, not the neural one wrapping it', () {
+        // Otherwise dragging pitch with the neural voice on plays a
+        // synthesised sentence that pitch does nothing to, and the dial reads
+        // as broken. It is not — it belongs to the other voice.
+        final platform = _RecordingEngine();
+        expect(deviceVoiceEngine(NeuralSpeechEngine(platform)), same(platform));
+      });
+
+      test('and itself where there is nothing wrapping it', () {
+        final plain = _RecordingEngine();
+        expect(deviceVoiceEngine(plain), same(plain));
+      });
+    });
+
+    group('what the row says without the list being opened', () {
+      test('the voice and where it speaks', () {
+        expect(deviceVoiceLine('Daniel', 'en-GB'), 'Daniel · en-GB');
+      });
+
+      test('the name alone where no locale was stored', () {
+        expect(deviceVoiceLine('Daniel', null), 'Daniel');
+      });
+
+      test('and what happens when nobody has chosen', () {
+        expect(deviceVoiceLine(null, 'en-GB'), 'Whatever this tablet uses');
+      });
+    });
+
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 25; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+    }
+
+    Future<_RecordingEngine> open(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final engine = _RecordingEngine(
+        available: [
+          voice('Daniel', quality: 'enhanced'),
+          voice('Serena'),
+          voice('Bells', isNovelty: true),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VoiceScreen(speech: engine, settings: settings),
+        ),
+      );
+      await settle(tester);
+      return engine;
+    }
+
+    testWidgets('the dials are on the screen, and the voices are not', (
+      tester,
+    ) async {
+      await open(tester);
+
+      expect(find.text('Speed'), findsOneWidget);
+      expect(find.text('Pitch'), findsOneWidget);
+      expect(find.text('Volume'), findsOneWidget);
+      expect(find.text('Tone'), findsOneWidget);
+
+      // The list that used to sit above all four.
+      expect(find.text('Daniel'), findsNothing);
+      expect(find.text('Serena'), findsNothing);
+      expect(find.text('Which voice'), findsOneWidget);
+    });
+
+    testWidgets('the list is one tap away, and a choice is written down', (
+      tester,
+    ) async {
+      final engine = await open(tester);
+
+      await tester.tap(find.text('Which voice'));
+      await settle(tester);
+
+      expect(find.text('Daniel'), findsOneWidget);
+      expect(find.text('Serena'), findsOneWidget);
+      // The joke voices stay behind their switch on this page too.
+      expect(find.text('Bells'), findsNothing);
+
+      await tester.tap(find.text('Daniel'));
+      await settle(tester);
+
+      expect(settings.voiceName, 'Daniel');
+      expect(engine.chosenVoice?.name, 'Daniel');
+      expect(
+        engine.spoken,
+        contains(VoiceScreen.previewSentence),
+        reason: 'a voice was chosen and never heard',
+      );
+
+      await tester.pageBack();
+      await settle(tester);
+
+      expect(find.text('Daniel · en-GB'), findsOneWidget);
+    });
+
+    testWidgets('the screen behind catches up with what was chosen on it', (
+      tester,
+    ) async {
+      // The row is a route below the picker and cannot redraw itself while it
+      // is covered. A caregiver who comes back to a row still naming the old
+      // voice has no way to tell whether the choice took.
+      await open(tester);
+      expect(find.text('Whatever this tablet uses'), findsOneWidget);
+
+      await tester.tap(find.text('Which voice'));
+      await settle(tester);
+      await tester.tap(find.text('Serena'));
+      await settle(tester);
+      await tester.pageBack();
+      await settle(tester);
+
+      expect(find.text('Whatever this tablet uses'), findsNothing);
+      expect(find.text('Serena · en-GB'), findsOneWidget);
     });
   });
 }

@@ -15,7 +15,6 @@ import '../editor/board_editor.dart';
 import '../editor/grid_change_screen.dart';
 import '../editor/rebuild_sheet.dart';
 import '../prediction/word_prediction.dart';
-import '../speech/neural/neural_engine.dart';
 import '../speech/neural/neural_voice.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_picker.dart';
@@ -28,7 +27,6 @@ import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
 import 'backups_screen.dart';
-import 'neural_voice_screen.dart';
 import 'voice_screen.dart';
 
 /// Everything behind the PIN.
@@ -756,54 +754,33 @@ class _Settings extends StatelessWidget {
         ),
       ),
     ),
-    _Section(
-      icon: Icons.record_voice_over_outlined,
-      title: 'How it sounds',
-      description:
-          'The voice that speaks, and how fast, how high and how loud it is',
-      state: settings == null || speech == null
-          ? null
-          : '${settings!.voiceName ?? 'The device\'s own voice'} · '
-                '${settings!.tone.label}',
-      tiles: (context, onChanged) => [
-        if (settings != null && speech != null)
-          ListTile(
-            leading: const Icon(Icons.record_voice_over_outlined),
-            title: const Text('Voice'),
-            subtitle: Text(
-              '${settings!.voiceName ?? 'The device\'s own voice'} · '
-              '${settings!.tone.label}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => VoiceScreen.show(
-              context,
-              speech: speech!,
-              settings: settings!,
-            ).then((_) => onChanged()),
-          ),
-        if (settings != null && speech is NeuralSpeechEngine)
-          ListTile(
-            leading: const Icon(Icons.graphic_eq_outlined),
-            title: const Text('Neural voice'),
-            subtitle: Text(
-              settings!.neuralVoice
-                  ? 'Pre-alpha · on · '
-                        '${neuralVoiceById(settings!.neuralVoiceId).name}'
-                  : 'Pre-alpha · off · a downloadable voice that runs on this '
-                        'tablet and sounds more like a person',
-            ),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => NeuralVoiceScreen.show(
-              context,
-              speech: speech! as NeuralSpeechEngine,
-              settings: settings!,
-              db: db,
-              vocabularyId: vocabularyId,
-            ).then((_) => onChanged()),
-          ),
-      ],
-    ),
+    // One screen holding both voices, so the row opens it directly (§4.43a).
+    // Which voice speaks is one question, and it used to be asked on two pages
+    // that did not mention each other.
+    if (settings != null && speech != null)
+      _Section(
+        icon: Icons.record_voice_over_outlined,
+        title: 'How it sounds',
+        description:
+            'The voice that speaks, and how fast, how high and how loud it is',
+        // A profile can carry `neuralVoice` on a build that has no neural
+        // engine — the setting outlives the binary. The row names the voice
+        // that is actually speaking, which in that case is the device's.
+        state:
+            settings!.neuralVoice &&
+                showsNeuralVoice(speech!, db: db, vocabularyId: vocabularyId)
+            ? 'Neural voice, pre-alpha · '
+                  '${neuralVoiceById(settings!.neuralVoiceId).name}'
+            : '${settings!.voiceName ?? 'The device\'s own voice'} · '
+                  '${settings!.tone.label}',
+        opens: (context) => VoiceScreen.show(
+          context,
+          speech: speech!,
+          settings: settings!,
+          db: db,
+          vocabularyId: vocabularyId,
+        ),
+      ),
     _Section(
       icon: Icons.touch_app_outlined,
       title: 'How it behaves',
