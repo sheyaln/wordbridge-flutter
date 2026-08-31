@@ -3270,24 +3270,69 @@ set moved when they did; the geometry was then read rather than assumed.
   choice. Delivered.** Pre-made phrases like "I don't know" or "ask me". Only
   meaningful where the category has more than one page.
 
-  **Putting a phrase on a board was already possible** — "Add a word" takes
-  whatever is typed, spaces included, and the shipped `saying` band on every
-  category board is nothing but phrases. What was missing is the *pre-made*
-  half: a caregiver staring at an empty cell has to think of the phrase before
-  they can type it, and the ones worth having are the ones nobody thinks of
-  until the moment they are needed.
+  **Misread once, and the sentence says which reading is right.** It was built
+  first as a list of pre-made phrases to choose from when adding a word — but
+  "a caregiver's choice" is not *which phrase*, it is *which page*, and
+  "only meaningful where the category has more than one page" only makes sense
+  that way: the choice does not exist until there is a second page to put the
+  row on.
 
-  So the add-a-word dialog now offers a list, the same shape as §4.26's row
-  names: the phrases first, a text field last. Twenty-odd of them, grouped by
-  what they are *for* rather than by word class — interrupting, asking for
-  time, correcting somebody, ending a conversation — because those are the
-  moments an AAC user is most often talked over in, and the phrase that ends
-  one is worth a location on any board.
+  So what was asked for is **control over where a category's phrase row sits**.
+  Every category board ships a `saying` band on page one; a caregiver who
+  reaches for those phrases constantly wants them there, and one who never does
+  wants that row back for vocabulary.
 
-  **They are ordinary buttons.** A phrase is a label and a spoken message like
-  any other word; nothing about it is a new kind of thing, and the editor's
-  existing rules — the system row is closed (§4.43), a location is permanent —
-  apply to it unchanged.
+  **It is a displacing edit and is treated as one.** A row moving between pages
+  takes every word on it to a new location — the whole thing this app exists to
+  avoid doing by accident — so it goes through a confirmation that says how
+  many words move and how often those locations have been reached for, in the
+  same terms as the remap warning (§7).
+
+  **The row keeps its line.** It moves to the *same* line on the other page, so
+  the words stay at the height they were and only the page changes. That is the
+  smallest movement that does what was asked.
+
+  **Refused rather than forced** where the target line is not free on every
+  page of the group, where the row is the system row, and where there is only
+  one page — each with the reason, which is §4.15's rule again.
+
+  **Reversible exactly.** The line it leaves goes back to reserved, so moving
+  it back puts every word where it was.
+
+  **The pre-made phrase list stays**, because it is useful and harmless: "Add a
+  word" offers about twenty phrases grouped by the moment they are for —
+  interrupting, buying time, putting somebody right, ending a conversation —
+  with free text last. It was not what this entry asked for and it is not
+  pretending to be.
+
+  **Reached from the row's own label**, which §4.26 had already made tappable:
+  tapping a row now offers naming it *or* moving it, because the label is the
+  thing on screen that is the row. A control for it anywhere else would be a
+  control the caregiver has to work out they are pointing at.
+
+  **The group's pages are walked through the paging keys, not the board
+  names.** A caregiver may rename a board and may not rewire it, so reading the
+  group off `food`, `food 2`, `food 3` would lose it the moment somebody did —
+  the same argument §4.42 made about the trail. The walk is cycle-guarded: a
+  board set edited by hand can point a paging key at a board that points back,
+  and an editor that hangs is worse than one that shows a short list.
+
+  **Only rows move.** A board banded by columns has no next page a column could
+  go to that means anything, and inventing one would move words sideways across
+  a board they were laid out along.
+
+  **The pinned question column is not part of a row.** It carries `what` and
+  `where` at identical coordinates on every board *and every page* (§4.16), and
+  they are ordinary vocabulary rather than system keys — so nothing here may
+  match on `isSystem` alone. Missing that was the first bug: every row looked
+  spoken for, because the question in it is.
+
+  Eighteen tests, five mutations. The fifth survived and was worth chasing: the
+  test asserted `moveRow` refuses a full destination, and without the guard it
+  still threw — from `moveButton`, with a message close enough to fool the
+  assertion. The case only the row guard can catch is an **empty** row, where
+  without it the move succeeds silently and a caregiver is told a row moved
+  that never existed.
 
 #### A key every board carries is one key — delivered
 

@@ -24,6 +24,7 @@ import '../symbols/symbol_resolver.dart';
 import 'pinning.dart';
 import 'placement_rules.dart';
 import 'remap.dart';
+import 'row_move.dart';
 import 'remap_confirm_sheet.dart';
 import 'symbol_picker.dart';
 import 'word_delete_sheet.dart';
@@ -601,6 +602,150 @@ class _BoardEditorState extends State<BoardEditor> {
     );
   }
 
+  /// What a caregiver can do to a row: name it, or move it to another page.
+  ///
+  /// Both hang off the row's own label, because that is the thing on screen
+  /// that *is* the row — a control for it anywhere else would be a control for
+  /// something the caregiver has to work out they are pointing at.
+  Future<void> _onRowTapped(int line, RegionNames names, BandAxis axis) async {
+    final board = _board;
+    if (board == null) return;
+
+    // Only rows move. A board banded by columns has no "next page" a column
+    // could go to that means anything, and inventing one would move words
+    // sideways across a board they were laid out along.
+    final pages = axis == BandAxis.rows
+        ? await pagesOfGroup(widget.db, board)
+        : const <Board>[];
+    if (!mounted) return;
+
+    final elsewhere = [
+      for (final p in pages)
+        if (p.id != board.id) p,
+    ];
+    if (elsewhere.isEmpty) {
+      await _nameLine(line, names);
+      return;
+    }
+
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('Row ${line + 1} of "${board.name}"'),
+              subtitle: Text(
+                names.forLine(line) == null
+                    ? 'Not named yet'
+                    : 'Called "${names.forLine(line)}"',
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.label_outline),
+              title: const Text('Say what this row is for'),
+              subtitle: const Text('Shown above it when labels are on'),
+              onTap: () => Navigator.of(sheetContext).pop('name'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.low_priority),
+              title: const Text('Move this row to another page'),
+              subtitle: const Text(
+                'Every word on it moves. It keeps the same row, one page '
+                'across, and moving it back puts them all where they were.',
+              ),
+              isThreeLine: true,
+              onTap: () => Navigator.of(sheetContext).pop('move'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+
+    if (chosen == 'name') {
+      await _nameLine(line, names);
+    } else {
+      await _moveRow(line, board, elsewhere);
+    }
+  }
+
+  /// Moves a whole row to another page, once somebody has been told what it
+  /// costs (§4.42).
+  Future<void> _moveRow(int line, Board board, List<Board> elsewhere) async {
+    final destination = elsewhere.length == 1
+        ? elsewhere.single
+        : await showModalBottomSheet<Board>(
+            context: context,
+            builder: (sheetContext) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const ListTile(title: Text('Move it to')),
+                  const Divider(height: 1),
+                  for (final page in elsewhere)
+                    ListTile(
+                      leading: const Icon(Icons.auto_stories_outlined),
+                      title: Text(page.name),
+                      onTap: () => Navigator.of(sheetContext).pop(page),
+                    ),
+                ],
+              ),
+            ),
+          );
+    if (destination == null || !mounted) return;
+
+    final refusal = await refusalToMoveRow(
+      widget.db,
+      from: board,
+      line: line,
+      to: destination,
+    );
+    if (!mounted) return;
+    if (refusal != null) {
+      _snack(refusal);
+      return;
+    }
+
+    final cost = await rowMoveCost(widget.db, from: board, line: line);
+    if (!mounted) return;
+
+    final agreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Move row ${line + 1} to "${destination.name}"?'),
+        content: SingleChildScrollView(
+          child: Text(
+            rowMoveWarning(
+              cost: cost,
+              toBoardName: destination.name,
+              userName: widget.userName,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Leave it here'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Move the row'),
+          ),
+        ],
+      ),
+    );
+    if (agreed != true) return;
+
+    await moveRow(widget.db, from: board, line: line, to: destination);
+    if (mounted) {
+      _snack('Row ${line + 1} is now on "${destination.name}".');
+    }
+    await _load();
+  }
+
   /// Lets a caregiver say what a run of locations is for (§4.26).
   ///
   /// Chosen from the names the shipped layout already uses, so the vocabulary
@@ -750,7 +895,7 @@ class _BoardEditorState extends State<BoardEditor> {
                           axis: axis,
                           gridWidth: box.maxWidth,
                           gridHeight: box.maxHeight,
-                          onTap: (line) => _nameLine(line, names),
+                          onTap: (line) => _onRowTapped(line, names, axis),
                         ),
                       );
 
