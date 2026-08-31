@@ -1469,7 +1469,11 @@ vocabulary:
 
 ### 4.6 Still to do
 
-Carried forward, in the order they matter:
+Carried forward, in the order they matter. **Everything below is either
+delivered or names what blocks it** — the two that are not built are the volume
+ceiling, which needs a neural voice the platform will not give us, and a set of
+standing facts about how full the board is, which are constraints rather than
+tasks.
 
 - **Volume above the device's own maximum** (§4.4) is the one part of the
   original scope that platform speech cannot deliver. It needs §4.5.
@@ -2632,7 +2636,7 @@ test, and mutation-testing showed the voice one had never been covered either:
 the line that calls it broke nothing. Both now go through the function the app
 actually opens a session with, and deleting either call fails a test.
 
-### 4.41 Durability — agreed, being built
+### 4.41 Durability — delivered, apart from sync
 
 The milestone after §4.40, chosen by going through this file and finding that
 two of the eleven non-negotiables in §5 have no implementation and the
@@ -2910,7 +2914,7 @@ those parents described losing.
   that was actually made. Anything leaving the tablet is a transcript of a
   disabled person's private speech and needs the §7 consent argument first.
 
-### 4.42 Haley's second round — logged, triaged, mostly not built
+### 4.42 Haley's second round — delivered, apart from the restructure
 
 A batch from the TA test-driving this, taken verbatim and sorted here rather
 than worked through in the order it arrived. Some of it was already built and
@@ -4470,10 +4474,30 @@ quietly absent:
   If it is fixed, the honest fix is plural detection rather than a smarter
   repair: deferring past determiners only helps for the handful of words known
   to be plural, and "where is my shoes" would stay wrong either way.
+
+  **Settled: `people` stays unsayable, and the reason is the category key.**
+  Every board carries a navigate key labelled `people` on its system row. A
+  speakable `people` anywhere in the board set is therefore that word twice on
+  one board, one movement apart, doing two different things — which is the
+  defect §4.42 names and §4.42a's frame argument exists to prevent. There is no
+  location in the set where that is not true, so this is a decision rather than
+  an omission. The plural subject the board *can* say is `they`, and
+  `copulaFor` already agrees with it.
 - **A second sentence in one bar.** After a punctuation mark every grammar key
   is hidden, so "are you ok? is it my turn?" needs a clear in between.
-- **Contracted negatives** — "isn't it my turn?", "aren't you coming?". `not`
-  is on the board, so only the contraction is missing.
+- **Contracted negatives — mostly delivered (§4.48).** `not` landing behind a
+  form of "to be" now joins to it, so "it isn't my turn" and "you aren't
+  coming" are one press each.
+
+  **The inverted question is still not buildable**, and deliberately: "isn't it
+  my turn?" puts the copula in front of its subject, where it has not agreed
+  with anything yet, and §4.10's repair settles it once the subject arrives.
+  Contracting it there would strand "isn't you" where "aren't you" belongs, so
+  a copula still waiting for its subject is left alone. The un-contracted form
+  — "is not it my turn?" — is what the board produces, and it is understood.
+  Closing this properly means teaching the contraction to settle the way the
+  copula does, which is a second repair on the same word and worth doing only
+  if somebody asks for it.
 - **"some is left."** Deliberately traded: the copula key is hidden after
   determiners that stand in for a noun not yet tapped, which is what stops the
   board producing "an is", "the is" and "more is". Demonstratives still take
