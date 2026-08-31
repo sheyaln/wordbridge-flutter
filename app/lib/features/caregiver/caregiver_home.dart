@@ -455,13 +455,13 @@ class _RegionLabels extends StatelessWidget {
           children: [
             SwitchListTile(
               value: settings.regionLabels,
-              title: const Text('Label what each part of the board is for'),
+              title: const Text('Label each row'),
               subtitle: const Text(
-                'A strip above the grid names each run of locations — who, '
-                'doing, where, asking. The board groups words by their job '
-                'and nothing on the grid says so, which is the first thing '
-                'anyone teaching it has to explain. It takes its height from '
-                'the grid, so every button is a little shorter while it is on.',
+                'A strip beside the grid names each run of locations: who, '
+                'doing, where, asking. The board groups words by their job and '
+                'nothing on the grid says so, which is the first thing anyone '
+                'teaching it has to explain. The strip takes its space from '
+                'the grid, so buttons are slightly shorter while it is on.',
               ),
               isThreeLine: true,
               onChanged: (v) async {
@@ -473,9 +473,9 @@ class _RegionLabels extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Text(
-                  'These boards were built before they recorded which part is '
-                  'which, so there is nothing yet to label. Rebuilding them '
-                  'from the shipped vocabulary fills it in.',
+                  'These boards were built before row groupings were '
+                  'recorded, so there is nothing to label yet. Rebuilding from '
+                  'the shipped vocabulary fills it in.',
                   style: TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ),
@@ -499,13 +499,13 @@ class _WalkMode extends StatelessWidget {
 
   static const _descriptions = {
     WalkMode.presses:
-        'The board goes through the route on its own, about a second on each '
-        'key, and stops on the word without saying it. The quickest way to be '
-        'shown where something is.',
+        'The board follows the route itself, about a second on each key, and '
+        'stops on the word without speaking it. Fastest way to show a '
+        'communication partner where a word lives.',
     WalkMode.waits:
-        'The ring stays over each key until that key is pressed, then moves to '
-        'the next one. Slower, and it is the movement being made rather than '
-        'watched — which is the one that is learned.',
+        'The ring waits over each key until it is selected, then moves to the '
+        'next. Slower, and the movement is made rather than watched, which is '
+        'the one that builds a motor plan.',
   };
 
   @override
@@ -515,10 +515,11 @@ class _WalkMode extends StatelessWidget {
       children: [
         const ListTile(
           leading: Icon(Icons.travel_explore_outlined),
-          title: Text('After choosing a word in "Find a word"'),
+          title: Text('After choosing a word in Find a word'),
           subtitle: Text(
-            'Either way the board takes the same route and stops on the word '
-            'without speaking it. The press that says it is always theirs.',
+            'Either way the board follows the same route and stops on the word '
+            'without speaking it. The selection that speaks it is always '
+            'theirs.',
           ),
           isThreeLine: true,
         ),
@@ -554,13 +555,13 @@ class _CopulaMode extends StatelessWidget {
 
   static const _descriptions = {
     CopulaMode.toggle:
-        'The key gives "is", and pressing it again gives "are", then "am", '
-        'each one spoken as it arrives and each one replacing the last. To '
-        'ask "are you ok?", press it twice.',
+        'The key gives "is". Selecting it again gives "are", then "am", each '
+        'spoken as it arrives and each replacing the last. To ask "are you '
+        'ok?", select it twice.',
     CopulaMode.agree:
-        'The key gives "is" and corrects it once the subject arrives, so '
-        '"is" then "you" becomes "are you" and the pair is spoken again. '
-        'Fewer presses, but the word is heard before it is right.',
+        'The key gives "is" and corrects it once the subject arrives, so "is" '
+        'then "you" becomes "are you", spoken again as a pair. Fewer '
+        'selections, but the first word is heard before it is right.',
   };
 
   @override
@@ -570,11 +571,11 @@ class _CopulaMode extends StatelessWidget {
       children: [
         const ListTile(
           leading: Icon(Icons.change_history_outlined),
-          title: Text('Choosing between "am", "is" and "are"'),
+          title: Text('Choosing between am, is and are'),
           subtitle: Text(
-            'Both agree with a subject already in the sentence — "I" gives '
-            '"am" either way. They differ when the question puts the verb '
-            'first.',
+            'Both options agree with a subject already in the sentence, so '
+            '"I" gives "am" either way. They differ when a question puts the '
+            'verb first, as in "are you ok?".',
           ),
           isThreeLine: true,
         ),
@@ -744,18 +745,16 @@ class _Settings extends StatelessWidget {
   List<_Section> get _sections => [
     _Section(
       icon: Icons.people_outline,
-      title: 'Who is using this',
+      title: 'Profile',
       description:
-          'Which person the board belongs to, how much of the vocabulary is '
-          'drawn, and words that have shipped since it was built',
+          'Who this board set belongs to, the vocabulary level it draws, and '
+          'words added by newer versions of the app',
       tiles: (context, onChanged) => [
         if (onSwitchProfile != null)
           ListTile(
             leading: const Icon(Icons.people_outline),
             title: const Text('Profiles'),
-            subtitle: const Text(
-              'Switch to someone else, or set up a new person',
-            ),
+            subtitle: const Text('Switch profile, or add a new one'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _switchProfile(context),
           ),
@@ -778,10 +777,10 @@ class _Settings extends StatelessWidget {
     ),
     _Section(
       icon: Icons.grid_on_outlined,
-      title: 'The board',
+      title: 'Board',
       description:
-          'How big the buttons are, which way round the grid sits, and '
-          'starting the whole board set again from the shipped words',
+          'Button size, orientation, and rebuilding the board set from the '
+          'vocabulary this version ships',
       state: settings == null
           ? null
           : '${settings!.iconSize.label} icons, '
@@ -794,7 +793,7 @@ class _Settings extends StatelessWidget {
             subtitle: Text(
               '${settings!.iconSize.label} icons, '
               '${settings!.orientation.label.toLowerCase()}. Changing either '
-              'one rebuilds every board and moves almost every word.',
+              'rebuilds the board set and moves almost every word.',
             ),
             isThreeLine: true,
             trailing: const Icon(Icons.chevron_right),
@@ -817,12 +816,11 @@ class _Settings extends StatelessWidget {
           ),
         ListTile(
           leading: const Icon(Icons.restart_alt),
-          title: const Text('Rebuild from the shipped vocabulary'),
+          title: const Text('Rebuild from shipped vocabulary'),
           subtitle: const Text(
-            'Builds a new board set from the words this version of the app '
-            'ships, at the same grid. Words added by hand are discarded, and '
-            'every word lands where the current version puts it rather than '
-            'where these boards do.',
+            'Builds a new board set at the same grid size from the vocabulary '
+            'this version ships. Words you added are discarded, and every '
+            'word lands where this version places it.',
           ),
           isThreeLine: true,
           trailing: const Icon(Icons.chevron_right),
@@ -847,8 +845,8 @@ class _Settings extends StatelessWidget {
       icon: Icons.history,
       title: 'Backups',
       description:
-          'Copies of the whole board kept on this device, and getting one '
-          'back. One is taken before every update.',
+          'Full copies of this board set, and restoring one. A copy is taken '
+          'automatically before every update.',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BackupsScreen(db: db, backup: backup),
@@ -862,8 +860,8 @@ class _Settings extends StatelessWidget {
       icon: Icons.swap_horiz,
       title: 'Import and export',
       description:
-          'Writing this board set out as a file another program can open, '
-          'and bringing one in. Not a backup.',
+          'Open Board Format files, for moving a board set between programs. '
+          'Not a backup.',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BoardFilesScreen(
@@ -881,9 +879,8 @@ class _Settings extends StatelessWidget {
     if (settings != null && speech != null)
       _Section(
         icon: Icons.record_voice_over_outlined,
-        title: 'How it sounds',
-        description:
-            'The voice that speaks, and how fast, how high and how loud it is',
+        title: 'Speech',
+        description: 'Which voice speaks, and its rate, pitch and volume',
         // A profile can carry `neuralVoice` on a build that has no neural
         // engine — the setting outlives the binary. The row names the voice
         // that is actually speaking, which in that case is the device's.
@@ -904,20 +901,20 @@ class _Settings extends StatelessWidget {
       ),
     _Section(
       icon: Icons.touch_app_outlined,
-      title: 'How it behaves',
+      title: 'Board behaviour',
       description:
-          'Going home after a word, the pause after the board changes, and '
-          'the strips that name where a word is and how it was reached',
+          'Returning home after a word, the pause after a page change, and '
+          'the strips that label rows and show the route to a word',
       tiles: (context, onChanged) => [
         if (settings != null)
           SwitchListTile(
             value: settings!.autoReturn,
-            title: const Text('Go back to the home board after each word'),
+            title: const Text('Return to the home board after each word'),
             subtitle: const Text(
               'On, every word costs the same movements every time, because '
-              'each one starts from the same place. Off suits someone '
-              'building a longer sentence out of one category who would '
-              'otherwise pay the trip back out for every word.',
+              'each starts from the same place. Off suits someone building a '
+              'long sentence from one category, who would otherwise pay the '
+              'trip back for every word.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -928,13 +925,13 @@ class _Settings extends StatelessWidget {
         if (settings != null)
           SwitchListTile(
             value: settings!.speakEachWord,
-            title: const Text('Say each word as it is chosen'),
+            title: const Text('Speak each word as it is selected'),
             subtitle: const Text(
-              'On, every key speaks as it is pressed, and the sentence is '
-              'spoken again when it is sent. Off, the board stays quiet until '
-              'the sentence is sent — for a classroom or a waiting room, where '
-              'each word being read out gets in the way of building it. The '
-              'sentence key always speaks either way.',
+              'On, every key speaks as it is selected and the finished '
+              'sentence is spoken again when sent. Off, the board stays silent '
+              'until the sentence is sent, which suits a classroom or a '
+              'waiting room where hearing each word aloud gets in the way. The '
+              'sentence key speaks either way.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -947,14 +944,13 @@ class _Settings extends StatelessWidget {
         if (settings != null)
           SwitchListTile(
             value: settings!.breadcrumbs,
-            title: const Text('Show how a word was reached'),
+            title: const Text('Show the route to each word'),
             subtitle: const Text(
-              'A strip along the bottom reads home → body → more words → '
-              'dizzy, so you can see the route and help repeat it. It stays '
-              'up after the board has gone back home, until the next word is '
-              'started. It takes its height from the grid, so every button is '
-              'a little shorter while it is on; turning it off puts them back '
-              'exactly as they were.',
+              'A strip along the bottom reads home, body, more words, dizzy, '
+              'so a communication partner can see the route and repeat it. It '
+              'stays up until the next word is started. The strip takes its '
+              'space from the grid, so buttons are slightly shorter while it '
+              'is on. Turning it off restores them exactly.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -976,11 +972,11 @@ class _Settings extends StatelessWidget {
             value: viewAll,
             title: const Text('Show every word, including hidden ones'),
             subtitle: const Text(
-              'Draws the whole board — words above this profile\'s level and '
-              'words that have been hidden — so you can see what is there '
-              'without changing anything. Nothing is written down: no level is '
-              'raised and nothing is unhidden. The board says so while it is '
-              'on, and closing the app turns it off.',
+              'Draws the whole board set, including words above this '
+              'profile\'s vocabulary level and words that have been hidden. '
+              'Nothing is written: no level is raised and nothing is unhidden. '
+              'The board displays a banner while this is on, and closing the '
+              'app turns it off.',
             ),
             isThreeLine: true,
             onChanged: (v) {
@@ -992,19 +988,18 @@ class _Settings extends StatelessWidget {
     ),
     _Section(
       icon: Icons.spellcheck,
-      title: 'Words and grammar',
+      title: 'Grammar',
       description:
-          'Word endings, the choice between am, is and are, and the strip '
-          'that suggests what comes next',
+          'Word endings, how am, is and are are chosen, and word prediction',
       tiles: (context, onChanged) => [
         if (settings != null)
           SwitchListTile(
             value: settings!.contextualGrammar,
-            title: const Text('Show word endings only when they fit'),
+            title: const Text('Show word endings only where they apply'),
             subtitle: const Text(
-              'With this on, "+ed" appears once there is a verb to attach it '
-              'to and is hidden otherwise. It always returns to the same '
-              'place. Turn it off to keep every key visible at all times.',
+              'On, "+ed" appears once there is a verb to attach it to and is '
+              'hidden otherwise, always returning to the same location. Off '
+              'keeps every key visible at all times.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -1015,12 +1010,11 @@ class _Settings extends StatelessWidget {
         if (settings != null)
           SwitchListTile(
             value: settings!.contractions,
-            title: const Text('Join "not" to the word before it'),
+            title: const Text('Contract not with the word before it'),
             subtitle: const Text(
-              'On, "can" then "not" is spoken as "can\'t", the way "a" becomes '
-              '"an" — the board is somebody\'s speech rather than a transcript '
-              'of the keys they pressed. Off, both words are said as they were '
-              'pressed, which suits teaching them separately. No key moves '
+              'On, "can" then "not" is spoken as "can\'t", in the same way "a" '
+              'becomes "an" before a vowel. Off, both words are spoken as '
+              'selected, which suits teaching them separately. No key moves '
               'either way.',
             ),
             isThreeLine: true,
@@ -1036,9 +1030,9 @@ class _Settings extends StatelessWidget {
             value: settings!.filterVerbs,
             title: const Text('Hide other verbs after a verb'),
             subtitle: const Text(
-              'After "I want", the other verbs disappear until "to" or a '
-              'modal makes a second verb possible. Less clutter mid-sentence, '
-              'but the board changes shape while it is being used.',
+              'After "I want", the other verbs are hidden until "to" or a '
+              'modal makes a second verb possible. Less clutter mid sentence, '
+              'at the cost of a board that changes shape while in use.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -1049,13 +1043,13 @@ class _Settings extends StatelessWidget {
         if (settings != null)
           SwitchListTile(
             value: settings!.prediction,
-            title: const Text('Suggest the next word'),
+            title: const Text('Word prediction'),
             subtitle: const Text(
               'A strip above the board offers likely next words, learned from '
               'this profile\'s own sentences. It never rearranges the board. '
-              'It does take its height from the grid, so every button is a '
-              'little shorter while it is on; turning it off puts them back '
-              'exactly as they were and forgets what it learned.',
+              'The strip takes its space from the grid, so buttons are '
+              'slightly shorter while it is on. Turning it off restores them '
+              'exactly and discards what was learned.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -1067,10 +1061,10 @@ class _Settings extends StatelessWidget {
         if (settings != null && settings!.prediction)
           ListTile(
             leading: const Icon(Icons.restart_alt),
-            title: const Text('Start the suggestions over'),
+            title: const Text('Reset word prediction'),
             subtitle: const Text(
-              'Forgets every pair of words learned so far. Worth doing after '
-              'a stretch where somebody else was using the device.',
+              'Discards every word pair learned so far. Worth doing after a '
+              'period where somebody else was using the tablet.',
             ),
             onTap: () async {
               await forgetPredictions(db, profileId);
@@ -1085,23 +1079,25 @@ class _Settings extends StatelessWidget {
     ),
     _Section(
       icon: Icons.lock_outline,
-      title: 'Getting in here',
+      title: 'Access to settings',
       description:
-          'The gesture that opens this screen, and how long it is held for',
+          'The gesture that opens this screen, and how long it is held',
       tiles: (context, onChanged) => [_CaregiverEntryTile(db: db)],
     ),
     _Section(
       icon: Icons.insights_outlined,
-      title: 'Recording',
+      title: 'Usage tracking',
       description:
-          'Whether taps are counted, so the editor can say how much practice '
-          'a position has had',
+          'Whether selections are recorded, so the editor can report how much '
+          'practice a location has had',
       state: logger.enabled ? 'On' : 'Off',
       tiles: (context, onChanged) => [
         SwitchListTile(
           value: logger.enabled,
-          title: const Text('Track word usage'),
-          subtitle: const Text('Stays on this device. Off by default.'),
+          title: const Text('Track usage'),
+          subtitle: const Text(
+            'Records which locations are selected. Off by default.',
+          ),
           onChanged: settings == null
               ? null
               : (v) async {
@@ -1116,9 +1112,9 @@ class _Settings extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.all(16),
           child: Text(
-            'Recording is what lets wordbridge tell you how much practice a '
-            'position has had before you move it. With it off, the editor '
-            'still works but cannot warn you.',
+            'Usage tracking is what lets the editor report how much practice '
+            'a location has had before you move it. With it off the editor '
+            'still works, but cannot tell you what a move costs.',
             style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
           ),
         ),
@@ -1127,7 +1123,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.info_outline,
       title: 'About',
-      description: 'Where the pictures came from, and what their licences ask',
+      description: 'Symbol sets, their sources and their licences',
       tiles: (context, onChanged) => [
         ListTile(
           leading: const Icon(Icons.image_outlined),
@@ -1228,16 +1224,16 @@ class _CaregiverEntryTileState extends State<_CaregiverEntryTile> {
           padding: const EdgeInsets.all(16),
           child: Text(
             entry.gesture == CaregiverGesture.twoCorners
-                ? 'Holding the top-left corner of the sentence bar on its own '
-                      'also still works, at '
+                ? 'Holding the top left corner of the sentence bar on its '
+                      'own also works, at '
                       '${CaregiverEntry.oneHandedFallback.inSeconds} seconds. '
-                      'That way in cannot be switched off: two corners needs '
+                      'That route cannot be turned off: two corners requires '
                       'two hands, and whoever picks this tablet up next may '
-                      'not have them — including you, on a day you are holding '
+                      'not have them, including you on a day you are holding '
                       'something else.'
-                : 'One finger, one corner. Slower than the two-corner hold and '
-                      'easier to stumble across, which is the trade: it is the '
-                      'one gesture anybody can make.',
+                : 'One finger, one corner. Slower than the two corner hold and '
+                      'easier to trigger by accident. It is the one gesture '
+                      'anybody can make.',
             style: const TextStyle(
               fontSize: 13,
               color: Colors.black54,
@@ -1269,15 +1265,15 @@ class _VocabularyLevel extends StatelessWidget {
 
   static const _descriptions = {
     1:
-        'Learning single words. The Universal Core 36, plus “maybe” so an '
-        'answer can be a hedge rather than a commitment. Never more than 37 '
-        'on a page. No word endings and no am/is/are, so “are you ok?” and '
-        'the past tense are out of reach at this level.',
+        'Single words. Core vocabulary only: the Universal Core 36 plus '
+        '“maybe”. At most 37 words on a page. No word endings and no am, is '
+        'or are, so the past tense and “are you ok?” wait for level 2.',
     2:
-        'Putting words together. Adds the word endings, a and the, and '
-        'am/is/are — the keys a sentence needs — along with the words an '
-        'ordinary day takes.',
-    3: 'Using the whole board. Everything, including anything added since.',
+        'Short sentences. Adds the grammar keys, plus the fringe vocabulary '
+        'an ordinary day needs, such as food, feelings and places.',
+    3:
+        'Full vocabulary. Every word this board set carries, including any '
+        'added since.',
   };
 
   @override
@@ -1297,7 +1293,7 @@ class _VocabularyLevel extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.layers_outlined),
-              title: const Text('How many words are shown'),
+              title: const Text('Vocabulary level'),
               subtitle: Text(_descriptions[level]!),
               isThreeLine: true,
             ),
@@ -1325,10 +1321,9 @@ class _VocabularyLevel extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Text(
-                'Words that appear when you raise this have been holding their '
-                'locations since the board was built. Nothing moves to make '
-                'room for them, and lowering it again puts them back out of '
-                'sight without losing them.',
+                'Words revealed by raising this have held their locations '
+                'since the board set was built. Nothing moves to make room, '
+                'and lowering it hides them again without losing them.',
                 style: TextStyle(fontSize: 13, color: Colors.black54),
               ),
             ),
@@ -1392,8 +1387,8 @@ class _StrongLanguage extends StatelessWidget {
           value: settings.profanity,
           title: const Text('Include strong language'),
           subtitle: const Text(
-            'Off hides these words where they are rather than removing them, '
-            'so turning it back on moves nothing.',
+            'Off hides these words in place rather than deleting them, so '
+            'turning it back on moves nothing.',
           ),
           isThreeLine: true,
           onChanged: (v) async {
@@ -1525,7 +1520,7 @@ class _NewWordsState extends State<_NewWords> {
   /// words are nowhere on the device and no key would reach them, which a
   /// count of everything else would hide entirely.
   static String _refused(List<String> boards) =>
-      '${boards.join(', ')} — no key could be made to open '
+      '${boards.join(', ')}: no key could be made to open '
       '${boards.length == 1 ? 'it' : 'them'}, so those words are not on this '
       'board set at all.';
 
@@ -1556,7 +1551,7 @@ class _NewWordsState extends State<_NewWords> {
               if (preview.addedBoards.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  '${_arriving(preview.addedBoards)} — added at the end, so '
+                  '${_arriving(preview.addedBoards)}. Added at the end, so '
                   'every key already on the board keeps opening what it '
                   'always opened.',
                   style: const TextStyle(fontSize: 13),
@@ -1568,7 +1563,7 @@ class _NewWordsState extends State<_NewWords> {
                   child: Text(
                     [
                       for (final a in preview.added)
-                        '${a.label}  —  ${a.board}, row ${a.row + 1}, '
+                        '${a.label}:  ${a.board}, row ${a.row + 1}, '
                             'column ${a.col + 1}',
                     ].join('\n'),
                     style: const TextStyle(fontSize: 13, height: 1.5),

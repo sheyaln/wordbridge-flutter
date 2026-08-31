@@ -17,10 +17,10 @@ const deviceIdKey = 'deviceId';
 /// about the person speaking on it.
 ///
 /// It is an opaque id and nothing else. It is not derived from anything the
-/// platform knows about the hardware or its owner, and it never leaves the
-/// device — a usage log is a transcript of one person's private speech, and
-/// what identifies the tablet it was typed on has to be as uninteresting as
-/// the rest of it.
+/// platform knows about the hardware or its owner, which matters because it
+/// travels: a backup carries the usage log, and a caregiver may copy a backup
+/// to iCloud Drive or Google Drive. What identifies the tablet has to be as
+/// uninteresting as possible wherever the file ends up.
 Future<String> deviceIdFor(WordbridgeDatabase db) async {
   final stored = await _stored(db);
   if (stored != null) return stored;

@@ -181,12 +181,24 @@ class _BackupsScreenState extends State<BackupsScreen> {
                   leading: const Icon(Icons.history_toggle_off),
                   title: Text(lastBackedUp(snapshots)),
                   subtitle: const Text(
-                    'A backup is the whole board — every word, every picture, '
-                    'every location, and what has been used. It is taken '
-                    'automatically before an update, and stays on this device. '
-                    'Nothing is sent anywhere.',
+                    'A backup is the whole board set: every word, picture and '
+                    'location, plus any usage recorded. One is taken '
+                    'automatically before every update.',
                   ),
                   isThreeLine: true,
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: Text(
+                    'Backups are saved on this tablet, in Files under '
+                    'wordbridge. Copy one to iCloud Drive or Google Drive from '
+                    'there. A backup that is only on the tablet does not '
+                    'survive losing the tablet.\n\n'
+                    'A backup includes any usage recorded, which is a record '
+                    'of one person\'s speech. Somewhere shared is somewhere '
+                    'other people can read it.',
+                    style: TextStyle(fontSize: 13, height: 1.4),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -200,11 +212,11 @@ class _BackupsScreenState extends State<BackupsScreen> {
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.settings_backup_restore),
-                    title: const Text('Put the board back the way I found it'),
+                    title: const Text('Restore to when settings were opened'),
                     subtitle: Text(
-                      'Undoes everything done since this screen was opened at '
+                      'Undoes every change made since '
                       '${snapshotWhen(session.takenAt)}. A copy of the board '
-                      'as it is now is saved first, so this can be undone too.',
+                      'set as it is now is saved first, so this is reversible.',
                     ),
                     isThreeLine: true,
                     trailing: const Icon(Icons.chevron_right),
@@ -312,12 +324,11 @@ String sessionRestoreWarning({
   final words = board.words == 1 ? '1 word' : '${board.words} words';
   final boards = board.boards == 1 ? '1 board' : '${board.boards} boards';
 
-  return 'The board goes back to how it stood at '
-      '${snapshotWhen(session.takenAt)}, when this screen was opened. '
-      'Anything added, moved or hidden since then goes with it — the board on '
-      'this device is $words across $boards.\n\n'
-      'A copy of the board as it is right now is saved first, so this can be '
-      'undone too.';
+  return 'The board set goes back to how it stood at '
+      '${snapshotWhen(session.takenAt)}, when settings were opened. Anything '
+      'added, moved or hidden since then goes with it. This board set is '
+      '$words across $boards.\n\n'
+      'A copy as it is now is saved first, so this is reversible.';
 }
 
 /// What a restore costs, said before it happens.
@@ -330,9 +341,9 @@ String restoreWarning({required BoardSize board, required Snapshot snapshot}) {
   final words = board.words == 1 ? '1 word' : '${board.words} words';
   final boards = board.boards == 1 ? '1 board' : '${board.boards} boards';
 
-  return 'The board on this device — $words across $boards — will be replaced '
-      'by the one from ${snapshotWhen(snapshot.takenAt)}. Anything added, '
-      'moved or hidden since then goes with it.\n\n'
-      'A copy of the board as it is right now is saved first, so you can come '
-      'back to it.';
+  return 'The board set on this tablet, $words across $boards, will be '
+      'replaced by the one from ${snapshotWhen(snapshot.takenAt)}. Anything '
+      'added, moved or hidden since then goes with it.\n\n'
+      'A copy of the board set as it is now is saved first, so this is '
+      'reversible.';
 }

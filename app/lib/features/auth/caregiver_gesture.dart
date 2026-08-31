@@ -16,7 +16,7 @@ enum CaregiverGesture {
   twoCorners(
     'Both bottom corners, held together',
     'Press and hold the bottom-left and bottom-right locations of the board at '
-        'the same time — home and the “more words” key. A hand resting on the '
+        'the same time: home and the “more words” key. A hand resting on the '
         'tablet cannot produce two contacts that far apart.',
   );
 

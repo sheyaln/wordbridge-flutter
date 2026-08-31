@@ -57,12 +57,12 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
   }
 
   Future<void> _export() async {
-    setState(() => _busy = 'Writing the file…');
+    setState(() => _busy = 'Exporting…');
     try {
       final file = await widget.store.exportVocabulary(widget.vocabularyId);
       _say('Wrote ${file.name}.');
     } catch (e) {
-      _say('The board could not be written out: $e');
+      _say('The board set could not be exported: $e');
     }
     if (mounted) setState(() => _busy = null);
     await _refresh();
@@ -70,16 +70,16 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
 
   Future<void> _import(BoardFile file) async {
     final agreed = await _confirm(
-      title: 'Bring in "${file.name}"?',
+      title: 'Import "${file.name}"?',
       body:
-          'It arrives as a new person, so nothing on this board moves and the '
-          'tablet keeps speaking exactly as it does now. Switch to them from '
-          '"Who is using this" when you want to see it.',
-      action: 'Bring it in',
+          'It arrives as a new profile, so nothing on this board set moves '
+          'and the tablet keeps speaking exactly as it does now. Switch to it '
+          'from Profile when you want to see it.',
+      action: 'Import',
     );
     if (!agreed) return;
 
-    setState(() => _busy = 'Reading ${file.name}…');
+    setState(() => _busy = 'Importing ${file.name}…');
     final outcome = await widget.store.import(file);
     if (!mounted) return;
     setState(() => _busy = null);
@@ -92,7 +92,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
 
     widget.onImported?.call();
     if (outcome.notes.isEmpty) {
-      _say('Brought in as a new person.');
+      _say('Imported as a new profile.');
     } else {
       await _showNotes(outcome.notes);
     }
@@ -102,8 +102,8 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
     final agreed = await _confirm(
       title: 'Delete "${file.name}"?',
       body:
-          'Only the file. Any board already brought in from it stays exactly '
-          'where it is.',
+          'Deletes the file only. Any board set already imported from it is '
+          'unaffected.',
       action: 'Delete',
     );
     if (!agreed) return;
@@ -120,7 +120,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
   Future<void> _showNotes(List<String> notes) => showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Brought in, with these differences'),
+      title: const Text('Imported, with these differences'),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(child: Text(notes.join('\n\n'))),
@@ -171,11 +171,11 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
 
           ListTile(
             leading: const Icon(Icons.ios_share),
-            title: const Text('Write this board set out'),
+            title: const Text('Export this board set'),
             subtitle: const Text(
-              'One .obz file holding every board, its words, its pictures and '
-              'the links between them. Open Files on this tablet, then '
-              'wordbridge → boards, to mail it or copy it somewhere.',
+              'One .obz file holding every board, its words, its symbols and '
+              'the links between them. Find it in Files under wordbridge, '
+              'boards, to mail it or copy it to iCloud Drive or Google Drive.',
             ),
             isThreeLine: true,
             trailing: FilledButton(
@@ -196,9 +196,9 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
-                'None yet. Anything exported here shows up in this list, and '
-                'so does any .obf or .obz put into Files → wordbridge → '
-                'boards from somewhere else.',
+                'None yet. Anything exported appears in this list, as does '
+                'any .obf or .obz file placed in Files under wordbridge, '
+                'boards.',
               ),
             )
           else
@@ -217,7 +217,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
                     ),
                     FilledButton.tonal(
                       onPressed: _busy == null ? () => _import(file) : null,
-                      child: const Text('Bring in'),
+                      child: const Text('Import'),
                     ),
                   ],
                 ),
@@ -270,12 +270,11 @@ class _NotABackup extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'An exported file carries the words, the pictures and the '
-                  'links. It does not carry which locations are empty on '
-                  'purpose, how much of the vocabulary is shown, what is '
-                  'hidden, or anything recorded. Use Backups to keep a board '
-                  'safe. Use this to give it to somebody, or to another '
-                  'program.',
+                  'An exported file carries words, symbols and links. It does '
+                  'not carry which locations are reserved, the vocabulary '
+                  'level, what is hidden, or any usage recorded. Use Backups '
+                  'to keep a board set safe. Use this to move one to another '
+                  'program or another person.',
                   style: Theme.of(context).textTheme.bodyMedium
                       ?.copyWith(color: colours.onTertiaryContainer),
                 ),

@@ -360,7 +360,7 @@ class BoardDeletion {
         BoardDeleteRefusal.onTheCategoryWheel,
         '"${board.name}" has a place on the category wheel. The keys along the '
             'bottom row are a window onto a fixed list, so taking a name out of it '
-            'changes which board every key after it opens — a relocation of what a '
+            'changes which board every key after it opens, relocating what a '
             'learned key does, without a single button moving. Empty it instead: '
             'the board stays where the keys expect it and the words on it go.',
       );

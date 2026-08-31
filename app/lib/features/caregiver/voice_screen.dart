@@ -237,12 +237,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
           const VoiceHeader('Device voice'),
           if (neuralOn)
             const VoiceNote(
-              'What speaks when the neural voice is not ready — a word that '
-              'has not been made yet, and any sentence that takes longer than '
-              'the wait allowed. Worth setting even with the neural voice on, '
-              'because this is the voice somebody hears when it matters most. '
-              'The pitch dial belongs to this voice only; the neural voices '
-              'have no pitch control.',
+              'Speaks whenever the neural voice is not ready: a word not yet '
+              'synthesised, or a sentence that exceeds the wait allowed. Worth '
+              'setting even with the neural voice on, since this is what is '
+              'heard when it matters. Pitch applies to this voice only, as the '
+              'neural voices offer no pitch control.',
             ),
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
@@ -270,12 +269,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
             ),
           ),
           const VoiceNote(
-            'These four are what a tablet\'s own speech can actually do: it '
-            'offers speed, pitch and volume, and nothing else. Sarcasm needs a '
-            'rise and fall across the whole sentence, and a real whisper needs '
-            'breath — neither is something an app can ask for. "Quiet" is this '
-            'voice turned down, and is named that rather than "whisper" '
-            'because that is what you will hear.',
+            'These four are what text to speech can produce. It offers rate, '
+            'pitch and volume only. Sarcasm needs a rise and fall across a '
+            'whole sentence and a whisper needs breath, and neither is '
+            'available to an app. Quiet is this voice turned down, named for '
+            'what you will actually hear.',
           ),
 
           const VoiceHeader('Speed, pitch and volume'),
@@ -311,11 +309,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
             onSettled: _previewDevice,
           ),
           const VoiceNote(
-            'A tone multiplies these, so where one is set the second figure is '
-            'what the voice is actually given. Volume here is a share of the '
-            'tablet\'s own volume and cannot go above it. If this is not loud '
-            'enough across a room or from the back of a car, turn the tablet '
-            'up too — the app cannot do it for you.',
+            'A tone multiplies these values, so the second figure is what the '
+            'voice is actually given. Volume here is a proportion of the '
+            'tablet volume and cannot exceed it. If this is not loud enough '
+            'across a room, raise the tablet volume as well.',
           ),
 
           if (neural != null)
@@ -466,9 +463,9 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
             subtitle: Text(
               _hiddenNovelty == 0
                   ? 'This tablet offers none.'
-                  : 'Robots, singing and cartoon characters — '
-                        '$_hiddenNovelty of them on this tablet. Left out by '
-                        'default so the speaking voices are easier to compare.',
+                  : 'Robots, singing and cartoon characters. '
+                        '$_hiddenNovelty on this tablet, left out by default '
+                        'so the speaking voices are easier to compare.',
             ),
             isThreeLine: _hiddenNovelty > 0,
             onChanged: (v) async {
@@ -477,9 +474,9 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
             },
           ),
           const VoiceNote(
-            'Only voices that work without a connection are listed. A voice '
-            'that needs the network is one this tablet loses exactly when it '
-            'is furthest from home.',
+            'Only offline voices are listed. A voice that requires a network '
+            'connection is unavailable exactly when the tablet is furthest '
+            'from home.',
           ),
           const SizedBox(height: 32),
         ],
@@ -520,9 +517,9 @@ class _VoiceList extends StatelessWidget {
 
     if (voices.isEmpty) {
       return const VoiceNote(
-        'This tablet reports no offline voices for the board\'s language. The '
-        'system voice is still used; install a voice in the tablet\'s own '
-        'speech settings to choose one here.',
+        'This tablet reports no offline voices for the board language. The '
+        'system voice is still used. Install a voice in the tablet speech '
+        'settings to choose one here.',
       );
     }
 
@@ -581,9 +578,9 @@ class _VoiceList extends StatelessWidget {
         ),
         if (unlabelled)
           const VoiceNote(
-            'This tablet does not say which of its voices are male and which '
-            'are female, so they are listed together. The names are the only '
-            'clue it gives.',
+            'This tablet does not report which voices are male and which are '
+            'female, so they are listed together. The names are the only '
+            'indication available.',
           ),
       ],
     );
@@ -697,9 +694,8 @@ class _Dial extends StatelessWidget {
           ),
           if (ceiling != null && value > ceiling)
             VoiceNote(
-              '$toneLabel already takes this to the limit of what the tablet\'s '
-              'speech accepts, so anything above ${_percent(ceiling)} sounds '
-              'the same.',
+              '$toneLabel already reaches the limit text to speech accepts, '
+              'so anything above ${_percent(ceiling)} sounds the same.',
             ),
         ],
       ),

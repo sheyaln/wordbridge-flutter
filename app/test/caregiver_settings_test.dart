@@ -77,50 +77,47 @@ class _SilentSpeech implements SpeechEngine {
 /// somebody is actually looking for, and a rearrangement that keeps the widget
 /// tree and loses the words is still a control they cannot find.
 const _reachable = <String, List<String>>{
-  'Who is using this': [
+  'Profile': [
     'Profiles',
-    'How many words are shown',
+    'Vocabulary level',
     'New words',
     'Include strong language',
   ],
-  'The board': [
-    'Button size and orientation',
-    'Rebuild from the shipped vocabulary',
-  ],
+  'Board': ['Button size and orientation', 'Rebuild from shipped vocabulary'],
   // One screen rather than a page of controls, so the row on the list opens
   // it directly. What has to stay reachable is the control, not the hop.
   'Backups': ['Back up now'],
   // §4.41 part 3. The readers and writers existed and nothing called them.
-  'Import and export': ['Write this board set out', 'Files on this tablet'],
+  'Import and export': ['Export this board set', 'Files on this tablet'],
   // Also one screen. The four below it were nominally reachable and
   // practically were not: they sat under every offline voice the tablet has,
   // and a caregiver who had used the app for weeks did not know pitch control
   // existed (§4.45). The list is behind "Which voice" now, and these are on
   // the screen the row opens.
-  'How it sounds': ['Which voice', 'Tone', 'Speed', 'Pitch', 'Volume'],
-  'How it behaves': [
-    'Go back to the home board after each word',
-    'Say each word as it is chosen',
+  'Speech': ['Which voice', 'Tone', 'Speed', 'Pitch', 'Volume'],
+  'Board behaviour': [
+    'Return to the home board after each word',
+    'Speak each word as it is selected',
     'Pause after the board changes',
-    'Show how a word was reached',
-    'Label what each part of the board is for',
-    'After choosing a word in "Find a word"',
+    'Show the route to each word',
+    'Label each row',
+    'After choosing a word in Find a word',
     'Show every word, including hidden ones',
   ],
-  'Words and grammar': [
-    'Show word endings only when they fit',
-    'Join "not" to the word before it',
-    'Choosing between "am", "is" and "are"',
+  'Grammar': [
+    'Show word endings only where they apply',
+    'Contract not with the word before it',
+    'Choosing between am, is and are',
     'Hide other verbs after a verb',
-    'Suggest the next word',
-    'Start the suggestions over',
+    'Word prediction',
+    'Reset word prediction',
   ],
-  'Getting in here': [
+  'Access to settings': [
     'One corner, held',
     'Both bottom corners, held together',
     'Held for 2 seconds',
   ],
-  'Recording': ['Track word usage'],
+  'Usage tracking': ['Track usage'],
   'About': ['Symbol credits'],
 };
 
@@ -346,14 +343,14 @@ void main() {
 
       // Every control in these two needs the profile's settings, or a voice
       // to set.
-      expect(find.text('How it sounds'), findsNothing);
-      expect(find.text('Words and grammar'), findsNothing);
+      expect(find.text('Speech'), findsNothing);
+      expect(find.text('Grammar'), findsNothing);
 
       // "How it behaves" survives on one control: view-all is a way of
       // looking at a board rather than a fact about a person, so it does not
       // need a profile to honour it.
-      expect(find.text('How it behaves'), findsOneWidget);
-      await open(tester, 'How it behaves');
+      expect(find.text('Board behaviour'), findsOneWidget);
+      await open(tester, 'Board behaviour');
       expect(find.text('Show every word, including hidden ones'), findsOne);
       expect(
         find.text('Go back to the home board after each word'),
@@ -362,12 +359,12 @@ void main() {
       await back(tester);
 
       // The rest still stand on their own.
-      expect(find.text('Who is using this'), findsOneWidget);
-      expect(find.text('The board'), findsOneWidget);
+      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Board'), findsOneWidget);
       expect(find.text('Backups'), findsOneWidget);
       expect(find.text('Import and export'), findsOneWidget);
-      expect(find.text('Getting in here'), findsOneWidget);
-      expect(find.text('Recording'), findsOneWidget);
+      expect(find.text('Access to settings'), findsOneWidget);
+      expect(find.text('Usage tracking'), findsOneWidget);
       expect(find.text('About'), findsOneWidget);
 
       await closeHome(tester);
@@ -378,8 +375,8 @@ void main() {
     ) async {
       await pumpSettings(tester, withSettings: false, withSpeech: false);
 
-      await open(tester, 'The board');
-      expect(find.text('Rebuild from the shipped vocabulary'), findsOneWidget);
+      await open(tester, 'Board');
+      expect(find.text('Rebuild from shipped vocabulary'), findsOneWidget);
       expect(find.text('Button size and orientation'), findsNothing);
 
       await back(tester);
@@ -425,8 +422,8 @@ void main() {
     testWidgets('recording says on once it is on', (tester) async {
       await pumpSettings(tester);
 
-      await open(tester, 'Recording');
-      await tester.tap(find.text('Track word usage'));
+      await open(tester, 'Usage tracking');
+      await tester.tap(find.text('Track usage'));
       await settle(tester);
       await back(tester);
 
@@ -440,15 +437,15 @@ void main() {
   group('a control moved on a section page', () {
     testWidgets('shows its new value without leaving the page', (tester) async {
       await pumpSettings(tester);
-      await open(tester, 'How it behaves');
+      await open(tester, 'Board behaviour');
 
       final auto = find.ancestor(
-        of: find.text('Go back to the home board after each word'),
+        of: find.text('Return to the home board after each word'),
         matching: find.byType(SwitchListTile),
       );
       expect(tester.widget<SwitchListTile>(auto).value, isTrue);
 
-      await tester.tap(find.text('Go back to the home board after each word'));
+      await tester.tap(find.text('Return to the home board after each word'));
       await settle(tester);
 
       expect(
@@ -467,14 +464,14 @@ void main() {
     ) async {
       await settings.set('prediction', false);
       await pumpSettings(tester);
-      await open(tester, 'Words and grammar');
+      await open(tester, 'Grammar');
 
-      expect(find.text('Start the suggestions over'), findsNothing);
+      expect(find.text('Reset word prediction'), findsNothing);
 
-      await tester.tap(find.text('Suggest the next word'));
+      await tester.tap(find.text('Word prediction'));
       await settle(tester);
 
-      expect(find.text('Start the suggestions over'), findsOneWidget);
+      expect(find.text('Reset word prediction'), findsOneWidget);
 
       await back(tester);
       await closeHome(tester);
@@ -486,9 +483,9 @@ void main() {
       tester,
     ) async {
       await pumpSettings(tester);
-      await open(tester, 'The board');
+      await open(tester, 'Board');
 
-      await tester.tap(find.text('Rebuild from the shipped vocabulary'));
+      await tester.tap(find.text('Rebuild from shipped vocabulary'));
       await settle(tester);
 
       expect(find.text('Type REBUILD to continue.'), findsOneWidget);
@@ -504,7 +501,7 @@ void main() {
       tester,
     ) async {
       await pumpSettings(tester);
-      await open(tester, 'The board');
+      await open(tester, 'Board');
 
       await tester.tap(find.text('Button size and orientation'));
       await settle(tester);
@@ -538,7 +535,7 @@ void main() {
       var switched = 0;
       await pumpSettings(tester, onSwitchProfile: (_) => switched++);
 
-      await open(tester, 'Who is using this');
+      await open(tester, 'Profile');
       await tester.tap(find.text('Profiles'));
       await settle(tester);
 

@@ -116,17 +116,17 @@ void main() {
       // showing, so each question has to be scrolled to before it exists.
       final list = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
-        find.text('What are they ready for?'),
+        find.text('Vocabulary level'),
         120,
         scrollable: list,
       );
-      expect(find.text('What are they ready for?'), findsOneWidget);
+      expect(find.text('Vocabulary level'), findsOneWidget);
 
       // No birthday, so the band proposes level 2. Answering with the first
       // board is the answer that has to survive.
       expect(AgeBand.forBirthDate(null).startingLevel, 2);
 
-      final firstBoard = find.text('Learning single words');
+      final firstBoard = find.text('Single words');
       await tester.scrollUntilVisible(firstBoard, 120, scrollable: list);
       // Built is not the same as on screen: the sliver builds a little past
       // the fold, and a card below it cannot be tapped.

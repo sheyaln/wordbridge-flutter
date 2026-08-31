@@ -1028,7 +1028,7 @@ void main() {
       await settle(tester);
 
       // The vocabulary controls live on their own page now.
-      await tester.tap(find.text('Who is using this'));
+      await tester.tap(find.text('Profile'));
       await settle(tester);
     }
 
@@ -1060,7 +1060,7 @@ void main() {
       expect(find.text('A new category could not be added'), findsOneWidget);
       expect(
         find.textContaining(
-          'doing — no key could be made to open it, so those words are not '
+          'doing: no key could be made to open it, so those words are not '
           'on this board set at all.',
         ),
         findsOneWidget,
@@ -1083,7 +1083,7 @@ void main() {
       expect(find.textContaining('and a new category?'), findsOneWidget);
       expect(
         find.textContaining(
-          'New category: doing — added at the end, so every key already on '
+          'New category: doing. Added at the end, so every key already on '
           'the board keeps opening what it always opened.',
         ),
         findsOneWidget,

@@ -361,7 +361,7 @@ class _SymbolPickerState extends State<SymbolPicker> {
                   ? const Center(
                       child: Text(
                         'No symbols found for that word.\n'
-                        'A button with no picture still works — it shows the '
+                        'A button with no picture still works. It shows the '
                         'word instead.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.black45),

@@ -192,7 +192,7 @@ void main() {
   /// §4.41 part 4b. What §4.42 asked for as a Save button, without
   /// re-introducing the uncommitted work §1's four parents lost.
   group('putting the board back the way it was found', () {
-    const row = 'Put the board back the way I found it';
+    const row = 'Restore to when settings were opened';
 
     testWidgets('is not offered where no copy was taken', (tester) async {
       await open(tester);

@@ -159,7 +159,7 @@ class _GridChangeScreenState extends State<GridChangeScreen> {
               'These two answers decide how many rows and columns there are, '
               'so changing either one rebuilds every board. Almost every word '
               'moves. Do this when the board no longer fits the person using '
-              'it — not to tidy it up.',
+              'it, not to tidy it up.',
               style: TextStyle(fontSize: 13, height: 1.4),
             ),
           ),
@@ -281,7 +281,7 @@ class _ImpactReport extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Text(
-                '${word.label} — ${word.taps} taps, '
+                '${word.label}: ${word.taps} taps, '
                 '${word.from} → ${word.to}',
                 style: const TextStyle(fontSize: 13),
               ),

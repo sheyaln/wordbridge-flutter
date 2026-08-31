@@ -386,9 +386,9 @@ class _BoardEditorState extends State<BoardEditor> {
                   leading: const Icon(Icons.push_pin),
                   title: const Text('Stop reaching this from every board'),
                   subtitle: const Text(
-                    'Takes the pinned locations back. The word stays exactly '
-                    'where it lives — the pin was a second way to it, never a '
-                    'move.',
+                    'Takes the pinned locations back. The word stays where '
+                    'it lives, because the pin was a second route to it '
+                    'rather than a move.',
                   ),
                   isThreeLine: true,
                   onTap: () async {
@@ -431,8 +431,8 @@ class _BoardEditorState extends State<BoardEditor> {
         title: Text('Stop reaching "${button.label}" from every board?'),
         content: Text(
           'Its pinned locations go back to being empty and reserved. '
-          '"${button.label}" itself does not move — it keeps the location it '
-          'has always had, and the movements to it from there are unchanged.',
+          '"${button.label}" itself does not move. It keeps the location it '
+          'has always had, and the movements to it are unchanged.',
         ),
         actions: [
           TextButton(
@@ -825,7 +825,7 @@ class _BoardEditorState extends State<BoardEditor> {
                 UndoOutcome.undone => 'Change undone',
                 UndoOutcome.nothing => 'Nothing to undo',
                 UndoOutcome.blocked =>
-                  'That change cannot be taken back now — something else has '
+                  'That change cannot be taken back now, because something has '
                       'taken the location it needs.',
               });
             },
@@ -842,7 +842,9 @@ class _BoardEditorState extends State<BoardEditor> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Moving "${moving.label}" — tap an empty cell'),
+                    child: Text(
+                      'Moving "${moving.label}". Select an empty location',
+                    ),
                   ),
                   TextButton(
                     onPressed: _cancelMove,

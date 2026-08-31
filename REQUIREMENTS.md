@@ -3620,6 +3620,56 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.50 Settings and setup copy, audited — delivered
+
+Requested: *"Change 'Recording' to 'Usage Tracking', and it should be asked
+about during profile setup. Backup to personal iCloud/GDrive (remove all the
+verbiage about things never going anywhere, replace it with verbiage about it
+being private where necessary and relevant only). Lastly, audit the text that
+will be shown in the settings menu and setup assistant... make sure it all
+sounds professional, contains no dashes or hyphens, does not speak down to the
+user, uses standard tech industry and AAC industry phrasing, and
+explains/provides good examples for the categories/settings, is terse."*
+
+**Usage tracking.** The section is renamed from *Recording*, which was this
+project's own word for it; *usage tracking* is what the field calls it and what
+a report to a funder will say. Setup already asked (§4.44); the question is
+reworded to match.
+
+**Backups are not sealed in the device, and the copy stops claiming they are.**
+It said "nothing is sent anywhere" and "never leaves the device" in five
+places. That was a promise about this app's own behaviour being read as a
+promise about the file, and the two are different: the folder is exposed to
+Files (§4.41 part 3), so a caregiver can already copy a backup into iCloud
+Drive or Google Drive, and iOS includes the app's Documents in the device
+backup unless something opts out. Nothing does.
+
+So the copy says what is true and useful instead: backups sit in Files, they
+can be copied to iCloud Drive or Google Drive from there, and a copy off the
+tablet is the one that survives the tablet. Privacy is stated where it is
+**relevant** rather than as a blanket claim: a usage log is a record of one
+person's speech, so a caregiver moving one somewhere shared is told that once,
+at the point they might.
+
+**The audit.** Every string a caregiver reads in setup or settings, rewritten
+against four rules:
+
+- **No dashes.** The house style leaned on the em dash for asides, which reads
+  as thinking aloud. Each one is now a full stop or a clause. Hyphens went too,
+  including in the words: *pre-alpha* is **early access**, *auto-return* is
+  **return home**, *text-to-speech* is **text to speech**.
+- **Industry words, not invented ones.** *Vocabulary level*, *grid size*,
+  *core vocabulary*, *fringe vocabulary*, *motor planning*, *text to speech*,
+  *communication partner*, *access method*. A caregiver who has met AAC before
+  should recognise the screen; one who has not gets the term and its meaning
+  together, once.
+- **An example where the setting is abstract.** "Speak each word as it is
+  selected" now says what off sounds like in a classroom, and the vocabulary
+  levels name what a person can and cannot say at each.
+- **Terse, and not talking down.** The longest notes were three sentences of
+  justification aimed at somebody being persuaded. A caregiver is choosing, not
+  being sold to: what it does, what it costs, and what it does not touch.
+
 ### 4.49 A new device id every launch — delivered
 
 Found while reading the wiring rather than reported. `UsageLogger` was built as

@@ -25,7 +25,7 @@ Future<String?> refusalToPlaceAt(
 
   if (!isSystemRow(vocabulary, row)) return null;
 
-  return 'That row is the one every board carries — home, back, the category '
+  return 'That row is the one every board carries: home, back, the category '
       'keys and the key that turns them. A word there would speak in a row '
       'that navigates, and it would take the gap that stops a reach for '
       '"back" landing on a category. Any other free location will take it.';

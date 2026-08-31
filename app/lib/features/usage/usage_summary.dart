@@ -153,9 +153,9 @@ class _UsageSummaryState extends State<UsageSummary> {
           // way, so nobody is left reading a dash.
           waiting: const Row(
             children: [
-              _Stat(value: '—', label: 'words spoken'),
+              _Stat(value: '0', label: 'words spoken'),
               SizedBox(width: 32),
-              _Stat(value: '—', label: 'different words'),
+              _Stat(value: '0', label: 'different words'),
             ],
           ),
           builder: (context, d) => Row(
@@ -253,8 +253,9 @@ class _UsageSummaryState extends State<UsageSummary> {
 
         const SizedBox(height: 40),
         const Text(
-          'This never leaves the device. Nothing is uploaded and nobody else '
-          'can see it.',
+          'Kept on this tablet. This is a record of one person\'s speech, so '
+          'treat a copy of it the way you would treat anything else they said '
+          'in private.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
@@ -396,8 +397,8 @@ class _LoggingOff extends StatelessWidget {
           // of this is a transcript of a disabled person's speech, and turning
           // it on should be a choice somebody made on purpose.
           Text(
-            'Turn this on to see which words get used and how often. '
-            'Everything stays on this device.',
+            'Turn on usage tracking to see which words are used and how '
+            'often.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.black54, height: 1.4),
           ),

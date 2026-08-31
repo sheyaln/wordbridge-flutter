@@ -155,7 +155,7 @@ class _PinGateState extends State<PinGate> {
               Text(
                 _justReset
                     ? 'The old PIN is cleared. Nothing else changed. Set a new '
-                          'one now — caregiver mode stays shut until you do. '
+                          'one now. Caregiver mode stays shut until you do. '
                           '4 to 6 digits.'
                     : 'This keeps the board editor out of reach during '
                           'everyday use. 4 to 6 digits.',

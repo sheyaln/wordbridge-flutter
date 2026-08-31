@@ -17,22 +17,22 @@ import 'profile_repository.dart';
 enum _Readiness {
   single(
     1,
-    'Learning single words',
-    'The Universal Core 36, plus “maybe” so an answer can be a hedge rather '
-        'than a commitment. Never more than 37 on a page. No word endings and '
-        'no am/is/are, so “are you ok?” and the past tense are out of reach '
-        'until the next step.',
+    'Single words',
+    'Core vocabulary only: the Universal Core 36 plus “maybe”. At most 37 '
+        'words on a page. No word endings and no am, is or are, so the past '
+        'tense and “are you ok?” wait for the next level.',
   ),
   combining(
     2,
-    'Putting words together',
-    'Adds the word endings, a and the, and am/is/are — the keys a sentence '
-        'needs — along with the words an ordinary day takes.',
+    'Short sentences',
+    'Adds the grammar keys: word endings, a and the, and am, is and are. '
+        'Plus the fringe vocabulary an ordinary day needs, such as food, '
+        'feelings and places.',
   ),
   whole(
     3,
-    'Using the whole board',
-    'Everything, including anything added later.',
+    'Full vocabulary',
+    'Every word this board set carries, including any added later.',
   );
 
   const _Readiness(this.level, this.label, this.description);
@@ -177,7 +177,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
                 labelText: 'Name',
-                helperText: 'Only shown to you, never spoken aloud.',
+                helperText: 'Shown in settings only. Never spoken aloud.',
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -186,8 +186,8 @@ class _ProfileSetupState extends State<ProfileSetup> {
           _Section(
             title: 'Date of birth',
             note:
-                'Sets the starting words, and nothing else. The core board is '
-                'the same at every age.',
+                'Sets the starting vocabulary level and the fringe vocabulary '
+                'for that age. The core board is identical at every age.',
             child: Row(
               children: [
                 Expanded(
@@ -223,8 +223,8 @@ class _ProfileSetupState extends State<ProfileSetup> {
           _Section(
             title: 'How is the tablet held?',
             note:
-                'Chosen, not sensed. The board locks to it, so turning the '
-                'tablet over never rearranges anything.',
+                'Set here rather than sensed. The board locks to this '
+                'orientation, so rotating the tablet never rearranges it.',
             child: Row(
               children: [
                 for (final option in BoardOrientation.values)
@@ -244,11 +244,10 @@ class _ProfileSetupState extends State<ProfileSetup> {
           ),
 
           _Section(
-            title: 'How big do the buttons need to be?',
+            title: 'Button size',
             note:
-                'Match this to how accurately they can point, not to how it '
-                'looks. Bigger buttons are easier to hit and mean fewer words '
-                'on each board.',
+                'Match this to how accurately they can point. Larger buttons '
+                'are easier to select and fit fewer words on each page.',
             child: Column(
               children: [
                 for (final size in IconSize.values)
@@ -263,11 +262,11 @@ class _ProfileSetupState extends State<ProfileSetup> {
           ),
 
           _Section(
-            title: 'What are they ready for?',
+            title: 'Vocabulary level',
             note:
-                'Changeable at any time, in settings. Changing it moves '
-                'nothing — words appear and disappear where they have always '
-                'been, so a movement learned once is learned for good.',
+                'Adjustable at any time in settings. Raising or lowering it '
+                'moves nothing. Words appear and disappear in the locations '
+                'they already hold, so motor planning is preserved.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -290,10 +289,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
             _Section(
               title: 'Strong language',
               note:
-                  'Adults who use AAC consistently report being handed a '
-                  'child’s vocabulary. Switching this off hides these words '
-                  'where they are rather than removing them, so switching it '
-                  'back on later moves nothing.',
+                  'Adults who use AAC report being given a child’s vocabulary. '
+                  'Turning this off hides these words in place rather than '
+                  'deleting them, so turning it back on moves nothing.',
               child: SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Include swearing'),
@@ -304,12 +302,12 @@ class _ProfileSetupState extends State<ProfileSetup> {
 
           if (widget.isFirstRun)
             _Section(
-              title: 'How do you get into settings?',
+              title: 'Access to settings',
               note:
-                  'Asked once, for the tablet rather than for one person. '
-                  'There is no settings button on the board — the person using '
-                  'it would find it, and everything behind it can undo months '
-                  'of learned positions. Changeable later in settings.',
+                  'Set once for this tablet rather than per profile. The board '
+                  'carries no settings button, because the person using it '
+                  'would find it, and the editor behind it can undo months of '
+                  'learned positions. Adjustable later in settings.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -325,10 +323,10 @@ class _ProfileSetupState extends State<ProfileSetup> {
                     ),
                   if (_gesture == CaregiverGesture.twoCorners)
                     const _Note(
-                      'Holding one corner still works, at fifteen seconds '
-                      'instead of two. Two corners needs two hands, and '
-                      'whoever picks up this tablet next may not have them — '
-                      'so the slower way in stays, whatever you choose here.',
+                      'Holding one corner also works, at fifteen seconds '
+                      'rather than two. Two corners requires two hands, and '
+                      'whoever picks this tablet up next may not have them, so '
+                      'the slower route stays available whatever you choose.',
                     ),
                 ],
               ),
@@ -343,28 +341,30 @@ class _ProfileSetupState extends State<ProfileSetup> {
           // caregiver moves a word, and switched on a year late it can only
           // speak for the year it has seen.
           _Section(
-            title: 'Record which words are used?',
+            title: 'Usage tracking',
             note:
-                'Stays on this tablet. Nothing is sent anywhere, and you can '
-                'turn it off or delete it later.',
+                'A record of which locations are selected, kept on this '
+                'tablet. It is a record of one person’s speech, so it is off '
+                'unless you turn it on, and you can turn it off or delete it '
+                'at any time.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _OptionCard(
-                  title: 'Yes, record it',
+                  title: 'Track usage',
                   subtitle:
-                      'wordbridge can then warn you how much practice a '
-                      'position has had before you move a word, and show what '
-                      'has been said.',
+                      'The editor can then tell you how much practice a '
+                      'location has had before you move a word, and the usage '
+                      'report can show what has been said.',
                   selected: _usageTracking,
                   onTap: () => setState(() => _usageTracking = true),
                 ),
                 const SizedBox(height: 8),
                 _OptionCard(
-                  title: 'No, do not record',
+                  title: 'Do not track usage',
                   subtitle:
-                      'The board works exactly the same. The editor cannot '
-                      'tell you what a move will cost.',
+                      'The board behaves identically. The editor cannot tell '
+                      'you what moving a word will cost.',
                   selected: !_usageTracking,
                   onTap: () => setState(() => _usageTracking = false),
                 ),
@@ -472,7 +472,7 @@ class _Chip extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '$label — $description',
+                '$label. $description',
                 style: const TextStyle(fontSize: 13),
               ),
             ),
@@ -655,10 +655,10 @@ class _GridSummary extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Every word gets a permanent location on this grid. Changing the '
-            'orientation or the icon size later rebuilds it, which moves '
-            'every word — you will be warned, and told exactly how much '
-            'practice it costs, before anything happens.',
+            'Every word takes a permanent location on this grid. Changing the '
+            'orientation or button size later rebuilds the board set and moves '
+            'every word. You will be shown exactly what that costs before '
+            'anything changes.',
             style: TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ],

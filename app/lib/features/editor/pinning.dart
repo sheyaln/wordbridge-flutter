@@ -111,7 +111,7 @@ Future<String?> refusalToPin(WordbridgeDatabase db, Button button) async {
 
   if ((await freePinnedRows(db, vocabulary)).isEmpty) {
     return 'The pinned column is full. Every location in it is spoken for, '
-        'and hiding one of the question words does not free it — a location a '
+        'and hiding one of the question words does not free it. A location a '
         'word holds stays that word\'s.';
   }
 
@@ -173,9 +173,9 @@ Future<int?> pinnedRowOf(WordbridgeDatabase db, Button button) async {
 /// caregiver told "one location is available" has been told the wrong number.
 String pinCost({required String label, required int boards}) =>
     'A pinned word takes the same location on every board, so "$label" costs '
-    '${boards == 1 ? '1 location' : '$boards locations'} — one on each of the '
+    '${boards == 1 ? '1 location' : '$boards locations'}, one on each of the '
     '${boards == 1 ? 'board' : '$boards boards'} in this set. Nothing already '
-    'on the board moves, and "$label" keeps the location it has now as well.';
+    'placed moves, and "$label" keeps the location it has now as well.';
 
 /// Copies a word into the pinned column on every board.
 ///
