@@ -10,6 +10,7 @@ import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
 import '../../db/ids.dart';
 import '../../db/seed/band_layout.dart';
+import '../grid/cell_layout.dart';
 import '../grid/grid_geometry.dart';
 import '../grid/region_label_strip.dart';
 import '../grid/region_labels.dart';
@@ -834,42 +835,22 @@ class _EditorBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final geometry = GridGeometry(
-          rows: rows,
-          cols: cols,
-          size: Size(constraints.maxWidth, constraints.maxHeight),
-        );
-
-        return Stack(
-          children: [
-            for (final placed in cells)
-              Positioned.fromRect(
-                rect: geometry.rectFor(
-                  placed.cell.row,
-                  placed.cell.col,
-                  spanRows: placed.cell.spanRows,
-                  spanCols: placed.cell.spanCols,
-                ),
-                // Keyed by location, not by content, so a word moving away
-                // leaves the square standing.
-                child: KeyedSubtree(
-                  key: ValueKey('${placed.cell.row}:${placed.cell.col}'),
-                  child: placed.button == null
-                      ? _ReservedCell(onTap: () => onSelect(placed))
-                      : _WordCell(
-                          button: placed.button!,
-                          colourScheme: colourScheme,
-                          resolver: resolver,
-                          pickedUp: placed.button!.id == pickedUpButtonId,
-                          onTap: () => onSelect(placed),
-                        ),
-                ),
-              ),
-          ],
-        );
-      },
+    // The same placement the user's board draws from (§4.6b). A location half
+    // a millimetre apart on the two boards is not the same location, and this
+    // is the board a caregiver audits the other one from.
+    return CellLayout(
+      rows: rows,
+      cols: cols,
+      cells: cells,
+      cellBuilder: (placed) => placed.button == null
+          ? _ReservedCell(onTap: () => onSelect(placed))
+          : _WordCell(
+              button: placed.button!,
+              colourScheme: colourScheme,
+              resolver: resolver,
+              pickedUp: placed.button!.id == pickedUpButtonId,
+              onTap: () => onSelect(placed),
+            ),
     );
   }
 }

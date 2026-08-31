@@ -6,7 +6,7 @@ import '../../theme/fitzgerald.dart';
 import '../auth/corner_pair_hold.dart';
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_resolver.dart';
-import 'grid_geometry.dart';
+import 'cell_layout.dart';
 import 'symbol_view.dart';
 
 /// One location and whatever currently occupies it.
@@ -122,69 +122,48 @@ class _GridSurfaceState extends State<GridSurface> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final geometry = GridGeometry(
-          rows: widget.rows,
-          cols: widget.cols,
-          size: Size(constraints.maxWidth, constraints.maxHeight),
-        );
-        final pairHold = widget.pairHold;
+    final pairHold = widget.pairHold;
 
-        return Stack(
-          children: [
-            for (final placed in widget.cells)
-              Positioned.fromRect(
-                rect: geometry.rectFor(
-                  placed.cell.row,
-                  placed.cell.col,
-                  spanRows: placed.cell.spanRows,
-                  spanCols: placed.cell.spanCols,
-                ),
-                // Keyed by location, not by content, so swapping boards
-                // reuses the same widget rather than tearing down the grid.
-                child: KeyedSubtree(
-                  key: ValueKey('${placed.cell.row}:${placed.cell.col}'),
-                  child: _Cell(
-                    placed: placed,
-                    vocabLevel: widget.vocabLevel,
-                    colourScheme: widget.colourScheme,
-                    showHidden: widget.showHidden,
-                    viewAll: widget.viewAll,
-                    resolver: widget.resolver,
-                    symbolPackIds: widget.symbolPackIds,
-                    isAvailable: widget.isAvailable,
-                    onSelect: _select,
-                  ),
-                ),
-              ),
+    return CellLayout(
+      rows: widget.rows,
+      cols: widget.cols,
+      cells: widget.cells,
+      cellBuilder: (placed) => _Cell(
+        placed: placed,
+        vocabLevel: widget.vocabLevel,
+        colourScheme: widget.colourScheme,
+        showHidden: widget.showHidden,
+        viewAll: widget.viewAll,
+        resolver: widget.resolver,
+        symbolPackIds: widget.symbolPackIds,
+        isAvailable: widget.isAvailable,
+        onSelect: _select,
+      ),
+      overlay: (geometry) => [
+        if (widget.pointAt case final at?)
+          Positioned.fromRect(
+            rect: geometry.rectFor(at.row, at.col),
+            child: const IgnorePointer(child: _Pointer()),
+          ),
 
-            if (widget.pointAt case final at?)
-              Positioned.fromRect(
-                rect: geometry.rectFor(at.row, at.col),
-                child: const IgnorePointer(child: _Pointer()),
-              ),
-
-            // Over the grid, and anchored to the two locations rather than to
-            // the keys that happen to occupy them — the bottom right is a
-            // reserved blank on a board with no second page, and the gesture
-            // has to mean the same thing there.
-            if (pairHold != null && widget.onPairHold != null)
-              Positioned.fill(
-                child: CornerPairHold(
-                  first: geometry.rectFor(widget.rows - 1, 0),
-                  second: geometry.rectFor(widget.rows - 1, widget.cols - 1),
-                  hold: pairHold,
-                  onTouched: () => _pairFired = false,
-                  onComplete: () {
-                    _pairFired = true;
-                    widget.onPairHold!();
-                  },
-                ),
-              ),
-          ],
-        );
-      },
+        // Over the grid, and anchored to the two locations rather than to
+        // the keys that happen to occupy them — the bottom right is a
+        // reserved blank on a board with no second page, and the gesture
+        // has to mean the same thing there.
+        if (pairHold != null && widget.onPairHold != null)
+          Positioned.fill(
+            child: CornerPairHold(
+              first: geometry.rectFor(widget.rows - 1, 0),
+              second: geometry.rectFor(widget.rows - 1, widget.cols - 1),
+              hold: pairHold,
+              onTouched: () => _pairFired = false,
+              onComplete: () {
+                _pairFired = true;
+                widget.onPairHold!();
+              },
+            ),
+          ),
+      ],
     );
   }
 }

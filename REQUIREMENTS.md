@@ -4491,9 +4491,22 @@ Small, real, and none of them urgent:
 - **`resolveLabel` honours no timeout — fixed.** It carries the same
   `.timeout(budget, onTimeout: labelOnly)` as `resolveChosen`, so a pack that
   hangs costs a cell a second of "still looking" rather than for good.
-- **`GridSurface` cannot render a cell differently**, so the editor carries its
-  own board — roughly eighty parallel lines, and a new image kind has to be
-  handled in two places. A `cellBuilder` hook would let both share one surface.
+- **`GridSurface` cannot render a cell differently — fixed, as `CellLayout`.**
+  The editor carried its own board, and the duplicated part was never the
+  drawing: it was the *placement*. Both files ran the same `LayoutBuilder` →
+  `GridGeometry` → `Stack` of `Positioned.fromRect`, and both keyed each child
+  on `'row:col'` for the same reason, written out twice.
+
+  That is the one thing in this app that must never differ between the two
+  boards. A location half a millimetre apart on the caregiver's board and the
+  user's is not the same location, and a caregiver auditing where a word sits
+  would be auditing a picture of somewhere else.
+
+  So `CellLayout` owns the placement and takes a `cellBuilder`; `GridSurface`
+  passes its `_Cell` and its ring, the editor passes its own. **Not** by
+  routing the editor through `GridSurface` — that carries the talk screen's
+  gestures, including the two-corner hold into caregiver mode, and the editor
+  wants none of it.
 - **The bundled pack list was written twice — fixed**, and had become three by
   the time the emoji pack landed. One `boardSymbolPackIds` now; see §4.35.
 - **Nothing writes `UsageSource.switchAccess`.** The reports count it
