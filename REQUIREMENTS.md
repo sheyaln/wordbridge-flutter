@@ -3620,6 +3620,72 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.55 American spelling, everywhere — delivered
+
+Requested: *"We're gonna wanna rename everything British in the codebase before
+we go to the app store... We want something that won't break in the future. And
+we'll want it to use American spelling in the code cause I'll be maintaining
+that code."*
+
+Not the §4.50 pass, which fixed user-facing register and left the code alone.
+This is identifiers too, because the person maintaining them should not have to
+remember which convention each file was written in.
+
+**115 files.** Roughly 213 occurrences, about 52 of them in comments and 22 in
+user-facing strings; the rest identifiers.
+
+#### It is a blank slate, and the first attempt forgot that
+
+The first pass built a compatibility layer: a schema 8 migration renaming
+`colour_scheme`, and an OBF importer that read both the old extension key and
+the new one. Both were then deleted, because **there is nothing to be
+compatible with.** No App Store release, no second device, and the one iPad
+holding a database can be reinstalled in a minute.
+
+So the column is simply named correctly, the version 1 fixture in
+`migration_test.dart` carries the name it has now, and the schema stays at 7.
+What that costs is one reinstall on a tablet already running an old build.
+
+The rule worth keeping: a compatibility shim is a claim that somebody out there
+has the old thing. Before writing one, name them. If the list is empty, the
+shim is permanent complexity bought for nobody.
+
+#### Three things that are not ours to rename
+
+- **Flutter's own API.** `Colors.grey` and `Colors.blueGrey` are spelled the
+  British way by the framework. The sweep renamed them and the build stopped.
+- **The OBF specification's field names** — `license`, `vocalization`,
+  `load_board` (§8). Already American, but the point is that they belong to a
+  published format other applications read. A file with a field we renamed is
+  a file nobody else can open, and being able to leave wordbridge is the
+  argument for supporting the format at all.
+- **`synthesis`**, which is identical in both dialects. Only the verb
+  inflections move. Renaming the noun turned `SynthesisBudget` into
+  `SynthesizBudget` and broke fourteen call sites.
+
+#### The rename that had to change course
+
+`ColourScheme` became **`ColorConvention`**, not `ColorScheme`, because
+`ColorScheme` is already a Flutter Material class. The obvious rename produced
+`ambiguous_import` in every file importing both, and the workarounds — `hide`
+clauses or import prefixes — would have been a papercut forever. The doc
+comment already called it a convention. Column is `color_convention`.
+
+#### What a blanket sweep is bad at
+
+It cannot tell a name from a quotation of a name. Both places it went wrong
+were strings that had to keep the old spelling, and both would have been
+silent:
+
+- the historical column name inside a `renameColumn` call, which the sweep
+  rewrote so the rename renamed the new name to itself;
+- the OBF compatibility key, rewritten until it was identical to the key it
+  existed to differ from.
+
+Both are gone now for the blank-slate reason above, but the lesson survives
+them: **a migration and a compatibility path exist to remember what things used
+to be called, so they are the two places a spelling sweep must never reach.**
+
 ### 4.54 The intake, deployed — delivered
 
 Requested: *"Terraform should live in a separate repo... a wordbridge-infra dir
