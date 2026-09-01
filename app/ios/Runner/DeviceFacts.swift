@@ -29,8 +29,16 @@ public class DeviceFacts: NSObject, FlutterPlugin {
   private static func machine() -> String {
     var system = utsname()
     uname(&system)
-    return withUnsafePointer(to: &system.machine) {
-      $0.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: system.machine)) {
+
+    // Copied out before it is pointed at. Taking a pointer to `system.machine`
+    // while `system` is still the thing being read is an overlapping access,
+    // and Xcode refuses to build it.
+    let identifier = system.machine
+    return withUnsafePointer(to: identifier) { pointer in
+      pointer.withMemoryRebound(
+        to: CChar.self,
+        capacity: MemoryLayout.size(ofValue: identifier)
+      ) {
         String(cString: $0)
       }
     }
