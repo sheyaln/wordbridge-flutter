@@ -13,5 +13,6 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     ClipAudio.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "ClipAudio")!)
+    DeviceFacts.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "DeviceFacts")!)
   }
 }

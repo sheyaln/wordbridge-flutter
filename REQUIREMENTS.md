@@ -3620,7 +3620,7 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
-### 4.52 Reporting, voice measurement, and a store listing — in progress
+### 4.52 Reporting, voice measurement, and a store listing — delivered
 
 Requested: *"Send crash reports, send bug reports, or send feature requests. We
 also want to collect data about the neural voice's performance (get user
@@ -3724,6 +3724,46 @@ every external link.
 Carried over from §7 and §9: *LAMP* and *LAMP Words for Life* are PRC marks and
 stay out of the name, the subtitle, the keywords and the bundle id. The
 comparison belongs in prose on a website, not in store metadata.
+
+**Two rejections avoided, and one of them was a live crash.**
+
+- **No `PrivacyInfo.xcprivacy` existed.** Apple has required one since May 2024
+  for any app touching a required-reason API, and wordbridge touches one on
+  every visit to the backups screen: `BackupService.snapshots` and
+  `BoardFileStore.files` both read `FileStat.modified` so a caregiver can tell
+  one backup from another. Written, declaring `C617.1`, no tracking, and the
+  report data types.
+- **No `NSPhotoLibraryUsageDescription` or `NSCameraUsageDescription`.** This
+  was not a store problem, it was a bug on the tablet Haley has: iOS does not
+  refuse a picker request made without a usage string, it **terminates the
+  app**. So "use my own photo" and "take a photo" in the symbol picker killed
+  wordbridge mid-session, and the only thing that made it survivable is that
+  the board comes back on relaunch. Both strings written as the reason rather
+  than as a request, because iOS already puts the app name and the permission
+  in front of them and what a caregiver does not know is what it is for.
+
+`ITSAppUsesNonExemptEncryption` set to false as well: HTTPS and a PIN hash are
+both exempt, and declaring it stops the question being asked on every upload.
+
+`docs/app-store.md` carries the rest of the checklist and the two things not to
+get wrong: never change the icon, and never let an update reset a board.
+
+#### What this cost, in tests
+
+Seven mutations, six killed outright and one survivor that was worth the
+exercise: `refusalToSend`'s "a name under three characters is not a name" guard
+could be deleted and the test still passed, because the trace it was given did
+not contain the short name it was checking for. The test asserted nothing. It
+now runs against a trace containing `jo`, so only the guard lets it through.
+
+The other hazard this hit is the one that keeps recurring in a different
+costume. `ReportsScreen` reads the device model over a method channel, and an
+**unanswered method channel under the test binding does not throw, it never
+returns** — so the screen sat for ever on an await, the sheet never opened, and
+the failure looked like a missing widget rather than a hang. Injected like
+`BackupService` and `BoardFileStore` before it. That is now three kinds of
+platform call that have to be injectable to be testable: the documents
+directory, the network, and a method channel.
 
 ### 4.51 A phrase for telling somebody why the pause — delivered
 
@@ -4929,6 +4969,14 @@ Violating any of these is a bug regardless of what else it buys.
    (`tools/check_symbol_boundary.sh`).
 11. **No polysemous symbols.** One button, one meaning
     ([ADR-0002](docs/adr/0002-no-polysemous-symbols.md)).
+12. **The app never phones home on its own** (§4.52). Not for a crash, not for
+    a metric, not on a timer, not on first launch. Every byte that leaves a
+    device leaves because a person read what was in it and pressed send, and
+    what they read is the payload itself rather than a summary of it. There is
+    no queue, no retry loop and no background upload — which is why this is a
+    line here rather than a promise in a privacy policy. A report carries no
+    name, no board content, nothing that was ever said, and not the §4.49
+    device id: sending that would let two reports be tied to one person.
 
 ---
 

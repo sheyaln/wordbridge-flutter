@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
 import 'features/profiles/profile_setup.dart';
+import 'features/reporting/crash_store.dart';
 import 'features/speech/neural/neural_engine.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/speech/voice_setup.dart';
@@ -73,7 +75,38 @@ Widget awaiting<T>({
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   installFallbackBoard();
+  recordCaughtFaults(CrashStore());
   runApp(const WordbridgeApp());
+}
+
+/// Writes what a fault was, and does nothing else about it (§4.52).
+///
+/// Deliberately not a crash reporter in the usual sense. Nothing is sent, no
+/// dialog appears and the session is not interrupted: `installFallbackBoard`
+/// means the person holding this tablet still has a board, and stopping them
+/// mid-sentence to ask about a stack trace would be the wrong thing at the
+/// wrong moment. The record waits for the next time an adult opens settings.
+///
+/// Both handlers, because they catch different things — [FlutterError.onError]
+/// is a failure inside the framework's own call stack, and
+/// [PlatformDispatcher.onError] is one that escaped an async gap. A crash
+/// reporter wired to only the first misses every unawaited future in the app.
+///
+/// Chained rather than replacing what is there: Flutter's default handler is
+/// what prints the fault to the console during development, and losing that
+/// would trade a debugging tool for a file nobody is looking at yet.
+void recordCaughtFaults(CrashStore store) {
+  final wasFlutterError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    wasFlutterError?.call(details);
+    unawaited(store.record(details.exception, details.stack));
+  };
+
+  final wasPlatformError = PlatformDispatcher.instance.onError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    unawaited(store.record(error, stack));
+    return wasPlatformError?.call(error, stack) ?? true;
+  };
 }
 
 /// A profile's vocabulary level as it stands, not as it stood when the session

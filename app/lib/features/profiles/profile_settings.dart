@@ -264,6 +264,17 @@ class ProfileSettings extends ChangeNotifier {
   /// what "not asked" means.
   static const usageTrackingForNewProfiles = false;
 
+  /// Whether a report may carry how the neural voice is performing (§4.52).
+  ///
+  /// Its own answer, and deliberately not [usageTracking]'s. One is "record
+  /// which locations are selected, on this tablet, for the editor to read".
+  /// The other is "measurements about the voice may leave with a report I
+  /// send". They are different questions and one answer must not stand for the
+  /// other.
+  ///
+  /// Off unless somebody said yes, on the same principle.
+  bool get voiceMeasurements => _values['voiceMeasurements'] as bool? ?? false;
+
   T _enum<T extends Enum>(String key, List<T> values, T fallback) {
     final stored = _values[key];
     for (final value in values) {

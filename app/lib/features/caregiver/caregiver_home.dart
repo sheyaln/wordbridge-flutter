@@ -30,8 +30,11 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
+import '../reporting/crash_store.dart';
+import '../reporting/report_sender.dart';
 import 'backups_screen.dart';
 import 'board_files_screen.dart';
+import 'reports_screen.dart';
 import 'voice_screen.dart';
 
 /// Everything behind the PIN.
@@ -56,6 +59,8 @@ class CaregiverHome extends StatefulWidget {
     this.boards,
     this.viewAll = false,
     this.onViewAll,
+    this.crashes,
+    this.sender,
   });
 
   final WordbridgeDatabase db;
@@ -78,6 +83,12 @@ class CaregiverHome extends StatefulWidget {
   /// Where exported and imported board files are. Same arrangement, and the
   /// same reason: a widget test cannot be allowed to read the real folder.
   final BoardFileStore? boards;
+
+  /// Where faults this tablet caught are waiting, and where a report goes.
+  /// Both built by existing when nothing supplies one, on the same reasoning:
+  /// a widget test may touch neither the documents directory nor the network.
+  final CrashStore? crashes;
+  final ReportSender? sender;
 
   /// Whether the board underneath is drawing every word (§4.42).
   ///
@@ -145,6 +156,8 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           userName: widget.userName,
           viewAll: widget.viewAll,
           onViewAll: widget.onViewAll,
+          crashes: widget.crashes,
+          sender: widget.sender,
           onChanged: () => setState(() {}),
         ),
       },
@@ -625,6 +638,8 @@ class _Settings extends StatelessWidget {
     this.speech,
     this.onSwitchProfile,
     this.userName,
+    this.crashes,
+    this.sender,
   });
 
   final WordbridgeDatabase db;
@@ -633,6 +648,8 @@ class _Settings extends StatelessWidget {
   final UsageLogger logger;
   final BackupService backup;
   final BoardFileStore boards;
+  final CrashStore? crashes;
+  final ReportSender? sender;
   final SpeechEngine? speech;
   final String? userName;
   final ProfileSettings? settings;
@@ -1116,6 +1133,37 @@ class _Settings extends StatelessWidget {
             'a location has had before you move it. With it off the editor '
             'still works, but cannot tell you what a move costs.',
             style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+          ),
+        ),
+      ],
+    ),
+    _Section(
+      icon: Icons.outgoing_mail,
+      title: 'Reports',
+      description:
+          'Tell us something is wrong or missing, and send faults this tablet '
+          'caught',
+      tiles: (context, onChanged) => [
+        ListTile(
+          leading: const Icon(Icons.report_outlined),
+          title: const Text('Write a report'),
+          subtitle: const Text(
+            'Nothing is sent until you have read it and pressed send',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ReportsScreen(
+                db: db,
+                vocabularyId: vocabularyId,
+                profileId: profileId,
+                settings: settings,
+                speech: speech,
+                crashes: crashes,
+                sender: sender,
+                userName: userName,
+              ),
+            ),
           ),
         ),
       ],

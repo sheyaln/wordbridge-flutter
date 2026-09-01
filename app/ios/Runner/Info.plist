@@ -92,5 +92,23 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<!-- Both are required by iOS before the picker will open, and an app that
+	     asks without them does not fail politely: it is terminated. The symbol
+	     picker offers "use my own photo" and "take a photo", so without these
+	     two keys that button killed the app on a real device (§4.52).
+
+	     Written as the reason rather than as a request. iOS puts the app name
+	     and the permission in front of these words already; what a caregiver
+	     does not know is what it is for. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pictures you choose here go on buttons, so a button can show the actual person, cup or place instead of a symbol.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Photographs taken here go on buttons, so a button can show the actual person, cup or place instead of a symbol.</string>
+	<!-- Export compliance. wordbridge encrypts nothing of its own: HTTPS for
+	     the report intake and the optional downloads, and a hash for the
+	     caregiver PIN. Both are exempt, and declaring it here means the
+	     question is not asked again on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

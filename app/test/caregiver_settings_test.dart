@@ -13,6 +13,7 @@ import 'package:wordbridge/features/backup/snapshot.dart';
 import 'package:wordbridge/features/caregiver/caregiver_home.dart';
 import 'package:wordbridge/features/interop/board_files.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
+import 'package:wordbridge/features/reporting/crash_store.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 
@@ -46,6 +47,14 @@ class _NoBoardFiles extends BoardFileStore {
 
   @override
   Future<List<BoardFile>> files() async => const [];
+}
+
+/// Faults waiting on disk, without the disk. Same reason as [_NoBackups]: the
+/// reports screen reads the folder as it opens, and a real directory read
+/// started inside a widget test never comes back.
+class _NoCrashes extends CrashStore {
+  @override
+  Future<List<CrashRecord>> waiting() async => const [];
 }
 
 class _SilentSpeech implements SpeechEngine {
@@ -118,6 +127,8 @@ const _reachable = <String, List<String>>{
     'Held for 2 seconds',
   ],
   'Usage tracking': ['Track usage'],
+  // §4.52. One screen, on the same reasoning as backups: the row opens it.
+  'Reports': ['Write a report'],
   'About': ['Symbol credits'],
 };
 
@@ -208,6 +219,7 @@ void main() {
           settings: withSettings ? settings : null,
           backup: _NoBackups(db),
           boards: _NoBoardFiles(db),
+          crashes: _NoCrashes(),
           userName: 'Maya',
           onSwitchProfile: onSwitchProfile,
           onViewAll: (_) {},
