@@ -80,6 +80,7 @@ void main() {
                 reserveRank: b.reserveRank,
                 shedRank: b.shedRank,
                 startsLine: b.startsLine,
+                tailOnly: b.tailOnly,
                 fill: b.fill,
               ),
           ],

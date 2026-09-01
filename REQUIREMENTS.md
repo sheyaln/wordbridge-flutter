@@ -3620,6 +3620,186 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.52 Reporting, voice measurement, and a store listing — in progress
+
+Requested: *"Send crash reports, send bug reports, or send feature requests. We
+also want to collect data about the neural voice's performance (get user
+consent!). Lastly, we want to prepare for an initial iOS app store release."*
+
+Four decisions were taken before any of it was built.
+
+| Question | Answer |
+|---|---|
+| Where reports land | A self-hosted intake, on infrastructure we run |
+| What voice data may contain | Technical measurements only. No text, no audio |
+| Store positioning | Education, rated 4+, **not** the Kids Category |
+| Seller | The individual account, shipping now |
+
+**The paid Apple membership is active.** §6 carried "free personal-team signing
+expires after seven days" as a blocker needing a purchase. It is wrong: the
+provisioning profile embedded in the build installed on the iPad was issued
+2026-08-25 and expires **2027-08-25**, and a free personal team cannot issue a
+year. Team `98GHT62M9Q`, `Shehab Alnasrawi`, an individual account. That item is
+struck.
+
+**The code is backed up.** `github.com/sheyaln/wordbridge`, private, default
+branch `master`, 151 commits, 4.63 MiB. It had no remote at all until now, which
+means every commit in this log existed on exactly one laptop. CI runs there on
+push to `master` and already blocks on `motor_plan_invariant_test.dart`.
+
+Private for now, which is a decision worth revisiting rather than forgetting:
+§9 puts the app under MIT and §11 argues that being able to leave wordbridge is
+what makes people trust it. Nothing about the repository being private today
+changes either, and nothing in it is secret. It goes public when there is a
+README somebody could act on.
+
+#### The rule the whole of this is built around
+
+**The app never phones home on its own.** Not for a crash, not for a metric, not
+on a timer, not on first launch. Every byte that leaves the device leaves
+because a person read what was in it and pressed send.
+
+This is not caution for its own sake. Today wordbridge's App Store privacy label
+is *Data Not Collected*, and for a communication device used by disabled
+children that is worth more than any dashboard. The intake exists so that a
+caregiver who wants to report something has somewhere to send it, not so that we
+can watch. Automatic transmission is the one design that would trade the label
+away, and it is refused.
+
+Three consequences that are not obvious:
+
+- **A crash report is composed, stored, and offered on the next launch.** A
+  process that is dying cannot be trusted to finish a network call, and
+  `FallbackBoard` means a crash does not even end the session — the user is
+  still holding a tablet that still talks. So the report waits, and the offer
+  goes to a caregiver in settings rather than interrupting somebody mid
+  sentence.
+- **What is sent is shown first, in full, as text.** Not a summary of it.
+- **Nothing is queued for retry across launches without saying so.** A report
+  that failed to send stays visible as unsent rather than lurking.
+
+#### What a report may never contain
+
+A bug report from an AAC app is the single easiest place in this project to leak
+a disabled person's private speech, because everything interesting is a word
+somebody said.
+
+Excluded, by construction and not by intention: the profile name, the user's
+name, any button label, any board content, any utterance, any usage row, any
+file from the backups folder. Included: app version and build, platform and OS
+version, device model, locale, grid size, vocabulary level, which engine is
+speaking, and free text the reporter typed themselves.
+
+**Stack traces are scrubbed, not trusted.** An exception message is assembled
+from whatever threw, and this codebase throws messages that quote board and word
+names on purpose — `refusalToMoveRow` names the board, `moveRow` rethrows it.
+A trace is passed through a scrubber before it is shown or sent.
+
+#### The voice measurements, and the one field that must be dropped
+
+`NeuralSpeechEngine` already keeps what is wanted: `fallbackCount`, and a ring
+buffer of the last few fallbacks. The buffer's shape is `(at, text, reason)`,
+and **`text` is the sentence the user was trying to say.** So the telemetry type
+is not the fallback type with a flag on it; it is a separate type that cannot
+carry the field, built by a named function that can be tested for dropping it.
+
+What that leaves is enough for the question actually being asked, which is
+whether the neural voice is fast enough on real hardware: reason codes, the
+budget in force, measured synthesis durations, cache hit rate, model version,
+device model. What it cannot answer is "it pronounced this word wrong", and that
+is accepted — a mispronunciation is reported as a bug, in a report a human wrote
+and read, which is the path that already has consent attached to it.
+
+Consent is its own switch, default off, separate from usage tracking (§4.44).
+The two are different questions and one answer must not stand for the other.
+
+#### Store release
+
+Education, 4+, individual seller. Education is where Proloquo2Go and LAMP Words
+for Life both sit; Medical invites questions about regulatory status and
+clinical claims that §Evidence says we should not be inviting yet, and the Kids
+Category bans third-party analytics and requires parental gates in front of
+every external link.
+
+Carried over from §7 and §9: *LAMP* and *LAMP Words for Life* are PRC marks and
+stay out of the name, the subtitle, the keywords and the bundle id. The
+comparison belongs in prose on a website, not in store metadata.
+
+### 4.51 A phrase for telling somebody why the pause — delivered
+
+Requested: *"I want to find a phrase we can add to the root (second page
+material) that basically conveys 'I'm using a speech assisting device'."*
+
+**The phrase is "I use this to talk".**
+
+Five words, no jargon, and the deictic does the work: `this` points at whatever
+the person is already holding, so it is true whether they call it a talker, a
+device or an iPad, and it survives being read off a paper backup board. The
+formal terms were considered and rejected for the same reason each time.
+*Speech generating device* is the funding term and belongs on a funding form;
+said aloud to a bus driver it sounds like a diagnosis being read out.
+*Communication device* is better and still two abstractions away from what is
+happening. What a stranger needs is not the category of the object, it is the
+reason for the wait, and "I use this to talk" is the shortest sentence that
+supplies it.
+
+It is the speaker's own sentence rather than an instruction to the listener.
+"Please wait" is already available as a word (`wait` is on the root board at
+level 1 and marked essential for exactly this reason), so the phrase does not
+duplicate it and the two combine.
+
+**Where it goes, and the engine change that took.** A new `introduction` band,
+appended last to the root board.
+
+The first attempt was `startsLine: false` with a high `pageRank`, on the
+assumption that a band which fills another band's leftover tail costs the grid
+nothing. **It does not.** `totalWidth()` counts every band at a line's worth
+whether or not it starts one, so appending a single word took a column — and
+the column it took was the one 7x12 has spare, which is the reserve the `nouns`
+band holds open for the words a particular person turns out to need on their
+root board. `places` and `describing` each shifted one column left. The test
+that caught it was the one asserting nothing moves, which is the only reason
+this is a paragraph in a log rather than a silent regression in a seed.
+
+Rather than pick a different victim, the engine gained the primitive that was
+missing: **`Band.tailOnly`**. A band declared that way claims no line at all. It
+fills whatever is left of the last line actually written into, and pages
+whatever does not fit. It is excluded from the width measurement, excluded from
+line shedding, and — the part that matters — measures its tail from the **cell**
+cursor rather than the line cursor, so it can never reach into a line some band
+further up is holding open. A reserve is a location promised to a word that does
+not exist yet; a written line's tail is nobody's.
+
+That gives exactly the behaviour asked for. At 7x12 the root board's last row
+ends flush, so the phrase pages, and page one is identical cell for cell to what
+shipped. At 6x12, 8x10 and 5x14 the last row ends short and the phrase takes a
+cell nobody wanted, saving a press for free. At no grid size does anything else
+move.
+
+`pageRank` 40 stays, above everything else the board declares, so that if the
+band ever holds more than one phrase the least useful is the one that pages.
+
+Four mutations, four killed: dropping the width exclusion, treating a flush line
+as having room, letting the shedder take from a `tailOnly` band, and measuring
+the tail from the line cursor. The last of those needed a synthetic band set to
+catch, because the shipped vocabulary declares no reserve after the last band
+that writes — the guard is real, the current vocabulary just cannot exercise it.
+
+**On page two it is placed like any other band.** `layOutOnto` does not honour
+`tailOnly`, deliberately: a later page holds words that have already paid to be
+there and has no reserve to defend, and a band that could claim a line nowhere
+would page for ever. It lands in its own region on home page two, labelled.
+
+**Level 2**, not 1. §4's level 1 is *exactly* the Universal Core 36 on the root
+board, and that claim is load-bearing and tested. A beginner is arguably the
+person most likely to be talked over, but the answer to that is to raise the
+level, not to quietly widen what level 1 means.
+
+Named `introduction`, written over its region as **"how I talk"**, and added to
+the names a caregiver is offered in §4.26's row picker.
+
+Reaches new profiles only, like every seed change.
+
 ### 4.50 Settings and setup copy, audited — delivered
 
 Requested: *"Change 'Recording' to 'Usage Tracking', and it should be asked
@@ -4829,9 +5009,12 @@ Violating any of these is a bug regardless of what else it buys.
 - ~~**Is 7×12 right on a mini?**~~ **Answered.** "Not too dense" by
   observation, and superseded by §4.1: the grid is derived from the screen, so
   a mini is not asked the same question any more.
-- **Free personal-team signing expires after 7 days.** Fine for development,
-  unacceptable for a real user. Needs a paid account before anyone relies on
-  it. **Blocked on a purchase, not on engineering.**
+- ~~**Free personal-team signing expires after 7 days.**~~ **Answered: it was
+  never a free team.** The provisioning profile embedded in the build on the
+  iPad was issued 2026-08-25 and expires **2027-08-25**; a free personal team
+  cannot issue a year. Team `98GHT62M9Q`, `Shehab Alnasrawi`, an individual
+  paid membership, active. The seven-day figure was assumed and never checked
+  against the profile. §4.52 takes it from here.
 - ~~**Irregular verbs added through the editor** get regular endings — `swim`
   would become `swimmed`.~~ **Fixed by maintaining the table.** It held only
   the verbs the shipped vocabulary could reach, so a caregiver's own verb got a

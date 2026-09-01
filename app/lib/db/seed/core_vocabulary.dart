@@ -115,7 +115,8 @@ List<BandItem<SeedWord>> _all(
   List<String> labels,
   PartOfSpeech pos, {
   int level = 2,
-}) => [for (final l in labels) w(l, pos, level: level)];
+  int? pageRank,
+}) => [for (final l in labels) w(l, pos, level: level, pageRank: pageRank)];
 
 List<BandItem<SeedWord>> nouns(List<String> l, {int level = 2}) =>
     _all(l, PartOfSpeech.noun, level: level);
@@ -133,8 +134,11 @@ List<BandItem<SeedWord>> adverbs(List<String> l, {int level = 2}) =>
 /// Whole utterances. One tap produces a complete thing to say, so they take no
 /// endings and no copula — coding them as nouns is what let the board build
 /// "I need a break's".
-List<BandItem<SeedWord>> phrases(List<String> l, {int level = 2}) =>
-    _all(l, PartOfSpeech.social, level: level);
+List<BandItem<SeedWord>> phrases(
+  List<String> l, {
+  int level = 2,
+  int? pageRank,
+}) => _all(l, PartOfSpeech.social, level: level, pageRank: pageRank);
 
 /// A digit to read and a word to say.
 ///
@@ -390,6 +394,27 @@ final homeBands = <Band<SeedWord>>[
       // over one word.
       w('maybe', PartOfSpeech.adverb),
     ],
+  ),
+
+  // What to say to somebody who does not know what they are looking at: a
+  // stranger reads a pause as absence, and starts talking to whoever is
+  // standing next to the user. `this` points at the tablet already in their
+  // hands, so the sentence is true whatever anybody calls the thing.
+  //
+  // "please wait" is deliberately not part of it. `wait` is on this board at
+  // level 1 and marked essential; a phrase that repeated it would buy a second
+  // location for a word already one press away, and the two combine.
+  //
+  // Costs the board nothing at any grid size. The one spare column a 7x12
+  // board has is the reserve `nouns` holds for the words a particular person
+  // turns out to need on the root board, and a shipped phrase is not worth
+  // spending it: this one takes a tail cell where the last row ends short and
+  // pages where it does not.
+  Band(
+    name: 'introduction',
+    startsLine: false,
+    tailOnly: true,
+    items: phrases(['I use this to talk'], pageRank: 40),
   ),
 ];
 

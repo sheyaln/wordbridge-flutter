@@ -99,6 +99,7 @@ class Band<T> {
     this.reserveRank = 100,
     this.shedRank = 100,
     this.startsLine = true,
+    this.tailOnly = false,
     this.fill = BandFill.alongLine,
   });
 
@@ -156,6 +157,30 @@ class Band<T> {
   /// otherwise stay empty, so they cost no shipped word its location — which
   /// is the whole reason extras are appended rather than inserted.
   final bool startsLine;
+
+  /// Claims no line at all: fills whatever tail is left over and pages the
+  /// rest.
+  ///
+  /// [startsLine] alone is not enough for that. A band that fills a tail is
+  /// still counted at a line's worth when the grid is measured, so appending
+  /// even one word costs a line somewhere — and what it costs is whatever the
+  /// grid had spare, which is a reserve some band was holding open. A reserve
+  /// is exactly what must not be spent on a shipped word (§4.51).
+  ///
+  /// So this is the band for vocabulary that is genuinely worth having and
+  /// genuinely not worth a column: it is free where the last line ends short,
+  /// and it pages where the line ends flush. Nothing else on the board can
+  /// move because of it, at any grid size, which is the whole reason it exists.
+  ///
+  /// Only the tail of the last written line, never a line held open further up.
+  /// A band paging its words is a movement; a band spending somebody's reserve
+  /// is a location that never comes back.
+  ///
+  /// Governs the first page only. [layOutOnto] places one like any other band,
+  /// because a later page holds words that have already paid to be there and
+  /// has no reserve to defend — and a band that could claim nothing anywhere
+  /// would page for ever.
+  final bool tailOnly;
 }
 
 /// A word that did not fit, still labelled with where it came from.
@@ -266,6 +291,16 @@ BandLayout<T> layOutBands<T>({
     'a band filled across its lines needs a region of its own to wrap inside',
   );
 
+  assert(
+    bands.every(
+      (b) =>
+          !b.tailOnly ||
+          (!b.startsLine && b.minLines == 0 && b.reserveLines == 0),
+    ),
+    'a band that only fills a tail claims no line, so it can neither start one '
+    'nor hold one open',
+  );
+
   // A line is what a band claims: a column on one axis, a row on the other.
   // Its length is whatever the grid measures in the other direction.
   final lineLength = axis == BandAxis.columns ? contentRows : contentCols;
@@ -293,6 +328,7 @@ BandLayout<T> layOutBands<T>({
   }
 
   int linesOf(Band<T> b) {
+    if (b.tailOnly) return 0;
     final needed = (kept[b.name]!.length / lineLength).ceil();
     return needed > held[b.name]! ? needed : held[b.name]!;
   }
@@ -340,6 +376,29 @@ BandLayout<T> layOutBands<T>({
 
   for (final band in bands) {
     final items = kept[band.name]!;
+
+    if (band.tailOnly) {
+      // Only what is left of the line last written into. Measured from the
+      // cell cursor rather than from the line cursor, because the line cursor
+      // has already stepped past any line a band is holding open, and those
+      // cells belong to whoever reserved them.
+      final used = cell % lineLength;
+      final room = used == 0 ? 0 : lineLength - used;
+
+      // Least important first, and what survives keeps its declared order —
+      // the same rule every other band is shed by, so a band that half fits is
+      // not a different band from one that fits whole.
+      final drop = items.length - room;
+      if (drop > 0) _shedFrom(band, items, overflow, drop);
+
+      for (var i = 0; i < items.length; i++) {
+        placed.add(_placement(cell + i, lineLength, axis, band.name, items[i]));
+      }
+
+      cell += items.length;
+      continue;
+    }
+
     final start = band.startsLine ? line * lineLength : cell;
 
     // Words wrap across the lines the band needs, never the ones it merely
@@ -418,6 +477,11 @@ bool _shedALine<T>(
   List<int>? chosenKey;
 
   for (final band in bands) {
+    // Claims no line, so it has none to give up and taking its words would
+    // narrow nothing. Its overflow is decided at placement, against the tail
+    // that is actually left.
+    if (band.tailOnly) continue;
+
     final items = kept[band.name]!;
     final lines = (items.length / lineLength).ceil();
 

@@ -74,6 +74,7 @@ const _spokenAs = <String, String>{
   'nouns': 'things',
   'places': 'where',
   'describing': 'yes, no and how it is',
+  'introduction': 'how I talk',
   'questions': 'asking',
   'names': 'people you know',
   // Category-board clusters whose one-word name is either jargon or ambiguous.

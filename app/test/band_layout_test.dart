@@ -942,4 +942,123 @@ void main() {
       );
     });
   });
+
+  group('a band that claims no line', () {
+    Band<String> tail(String name, List<String> words) => Band(
+      name: name,
+      startsLine: false,
+      tailOnly: true,
+      items: [for (final w in words) BandItem(w)],
+    );
+
+    List<String> placedIn(BandLayout<String> layout, String name) => [
+      for (final p in layout.placed)
+        if (p.band == name) p.value,
+    ];
+
+    test('takes the tail of the last written line', () {
+      // Four words in a line of six leaves two cells nobody claimed.
+      final layout = layOutBands(
+        rows: 7,
+        cols: 3,
+        bands: [
+          band('words', ['a', 'b', 'c', 'd']),
+          tail('extra', ['x']),
+        ],
+        pinnedCols: 0,
+      );
+
+      expect(placedIn(layout, 'extra'), ['x']);
+      expect(layout.overflow, isEmpty);
+    });
+
+    test('and pages where the line ends flush', () {
+      final layout = layOutBands(
+        rows: 7,
+        cols: 3,
+        bands: [
+          band('words', ['a', 'b', 'c', 'd', 'e', 'f']),
+          tail('extra', ['x']),
+        ],
+        pinnedCols: 0,
+      );
+
+      expect(placedIn(layout, 'extra'), isEmpty);
+      expect(layout.overflow.map((o) => o.item.value), ['x']);
+    });
+
+    test('never a line another band is holding open', () {
+      // The distinction the whole thing turns on, and the one the shipped
+      // vocabulary cannot exercise because nothing after its reserves asks for
+      // one. A reserve is a location promised to a word that does not exist
+      // yet; measuring the tail from the line cursor would hand it to a word
+      // that does, and the promise would be broken by an unrelated edit.
+      final layout = layOutBands(
+        rows: 7,
+        cols: 4,
+        bands: [
+          band('words', ['a', 'b', 'c', 'd'], reserveLines: 1, reserveRank: 0),
+          tail('extra', ['x', 'y', 'z']),
+        ],
+        pinnedCols: 0,
+      );
+
+      expect(layout.bandLines['words'], (
+        first: 0,
+        last: 1,
+      ), reason: 'the reserve was not granted, so the premise is gone');
+
+      // Two cells of the written line, and no more — the six of the reserved
+      // line beside it stay empty.
+      expect(placedIn(layout, 'extra'), ['x', 'y']);
+      expect(layout.overflow.map((o) => o.item.value), ['z']);
+    });
+
+    test('and claims none of the grid when it is measured', () {
+      // Without this the band costs a line even when it fills a tail, and what
+      // that line costs is whichever reserve the grid had spare.
+      final bands = [
+        band('words', ['a', 'b', 'c', 'd'], reserveLines: 1, reserveRank: 0),
+      ];
+
+      final before = layOutBands(rows: 7, cols: 4, bands: bands, pinnedCols: 0);
+      final after = layOutBands(
+        rows: 7,
+        cols: 4,
+        bands: [
+          ...bands,
+          tail('extra', ['x']),
+        ],
+        pinnedCols: 0,
+      );
+
+      expect(after.bandLines, before.bandLines);
+    });
+
+    test('sheds its least important words first, like every other band', () {
+      final layout = layOutBands(
+        rows: 7,
+        cols: 3,
+        bands: [
+          band('words', ['a', 'b', 'c', 'd']),
+          Band(
+            name: 'extra',
+            startsLine: false,
+            tailOnly: true,
+            items: [
+              BandItem('keep', level: 1),
+              BandItem('drop', level: 3),
+              BandItem('also', level: 1),
+            ],
+          ),
+        ],
+        pinnedCols: 0,
+      );
+
+      // Two cells of tail for three words: the level-3 one is the one that
+      // pays, and what survives is still in the order it was declared.
+      expect(placedIn(layout, 'extra'), ['keep', 'also']);
+      expect(layout.overflow.map((o) => o.item.value), ['drop']);
+    });
+  });
 }
