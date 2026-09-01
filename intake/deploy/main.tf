@@ -16,11 +16,39 @@ terraform {
       version = "~> 2.57"
     }
   }
+
+  # ⚠️ The state holds `scaleway_iam_api_key.intake.secret_key` in clear. Keep
+  # it off laptops and out of git: a remote backend on Object Storage, or an
+  # encrypted volume. It is gitignored, which is not the same as safe.
+}
+
+# **Named, never inherited.** The organisation this belongs in is not the one
+# the `scw` CLI profile happens to point at, and an intake that silently
+# deployed into somebody else's production organisation would be discovered by
+# the IAM key showing up there.
+provider "scaleway" {
+  organization_id = var.organization_id
+  project_id      = var.project_id
+  region          = var.region
+}
+
+variable "organization_id" {
+  type        = string
+  description = "The wordbridge organisation. Its own, not one shared with anything else."
 }
 
 variable "project_id" {
   type        = string
-  description = "Scaleway project the intake lives in."
+  description = "A named project inside that organisation."
+
+  # In Scaleway an organisation's default project carries the organisation's
+  # own id. So this catches both mistakes with one comparison: deploying into
+  # some other org's default project, and deploying into this one's rather than
+  # making a named project for the intake.
+  validation {
+    condition     = var.project_id != var.organization_id
+    error_message = "That is the organisation's default project. Make a named project for the intake and pass its id, so its IAM key and its bucket are not mixed in with whatever else lands in the default."
+  }
 }
 
 variable "region" {

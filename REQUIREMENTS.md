@@ -3665,6 +3665,25 @@ The consequence is a disclosure rather than a problem: reports about American
 children's communication devices sit in France, a privacy policy has to say so,
 and a district that asks has to get a straight answer.
 
+**Its own organisation, and a named project inside it.** Not a project beside
+the existing production work: an organisation is Scaleway's billing and IAM
+boundary, this one holds reports about disabled children and a key that can
+write to them, and if wordbridge ever becomes an entity of its own the
+organisation goes with it.
+
+That created a footgun worth guarding rather than remembering. The `scw` CLI
+profile on the machine points at the other organisation, so Terraform would
+have inherited it and deployed silently into somebody else's production —
+discovered later by an IAM key turning up there. So the provider block *names*
+the organisation instead of inheriting it, and `project_id` is refused when it
+equals `organization_id`. In Scaleway an organisation's default project carries
+the organisation's own id, so that one comparison catches both mistakes: the
+wrong organisation entirely, and the right one's default project rather than a
+named one. Verified by running it against the real id it was meant to catch.
+
+Also logged because it is easy to miss: **the Terraform state holds the object
+storage secret key in clear.** Gitignored is not the same as safe.
+
 The service itself is S3 and SMTP, so it stays portable. Cloud Run, GCS and
 SendGrid would be a Terraform swap rather than a rewrite, and that is on
 purpose: the deploy layer is the replaceable part.

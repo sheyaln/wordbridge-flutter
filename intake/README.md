@@ -54,15 +54,46 @@ anybody, so it refuses to start without one.
 
 ## Deploying
 
+### Its own organisation, first
+
+Not a project inside an existing one. A Scaleway **organisation** is the
+billing and IAM boundary, and this one holds reports about disabled children's
+communication devices and an API key that can write to them. It does not belong
+next to anything else, and if wordbridge ever becomes an entity of its own the
+organisation goes with it.
+
+Inside that organisation, make a **named project** — not the default one. The
+Terraform refuses the default: in Scaleway an organisation's default project
+carries the organisation's own id, so comparing the two catches both deploying
+into the wrong organisation entirely and deploying into the right one's
+default.
+
+The `scw` CLI profile on a machine that has other Scaleway work on it points
+somewhere else, and the provider block names the organisation rather than
+inheriting it for that reason. Use a separate profile:
+
+```sh
+scw init --profile wordbridge
+export SCW_PROFILE=wordbridge
+```
+
+### Then
+
 ```sh
 docker build -t rg.fr-par.scw.cloud/wordbridge/intake:$(git rev-parse --short HEAD) .
 docker push rg.fr-par.scw.cloud/wordbridge/intake:…
 
 cd deploy
 terraform init
-terraform apply -var image=… -var project_id=… -var intake_token=… \
+terraform apply \
+  -var organization_id=… -var project_id=… -var image=… \
+  -var intake_token=… \
   -var mail_to=… -var mail_from=… -var smtp_user=… -var smtp_password=…
 ```
+
+⚠️ **The state file holds the object storage secret key in clear.** It is
+gitignored, which is not the same as safe. Put it on a remote backend or an
+encrypted volume before this is anything other than a first deploy.
 
 `terraform output intake_url` is what the app build wants:
 
