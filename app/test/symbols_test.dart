@@ -789,8 +789,12 @@ void main() {
       addTearDown(pack.dispose);
 
       const ref = (packId: 'arasaac', externalId: '2248', label: 'water');
+      // Waited on rather than pumped for. `available` is the pack saying the
+      // file has landed; a fixed number of turns of the event queue is a guess
+      // about how fast the machine is, and it was wrong on a slower one.
+      final announced = pack.available.first;
       await pack.resolve(ref);
-      await pumpEventQueue(times: 100);
+      await announced;
 
       expect(
         (await pack.resolve(ref))!.startsWith(documents.path),

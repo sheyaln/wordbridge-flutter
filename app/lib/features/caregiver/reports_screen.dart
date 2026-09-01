@@ -390,34 +390,53 @@ class _Review extends StatelessWidget {
 
   final Map<String, Object?> payload;
 
+  /// The payload scrolls. The two buttons do not.
+  ///
+  /// They were at the end of the scroll, which put them past the bottom of the
+  /// screen on anything short — a report long enough to be worth reviewing was
+  /// a report whose send button a caregiver had to go looking for. Pinned, so
+  /// what varies with the length of the report is how much of it is visible,
+  /// never whether the decision can be made.
   @override
   Widget build(BuildContext context) => DraggableScrollableSheet(
     expand: false,
     initialChildSize: 0.8,
-    builder: (context, controller) => ListView(
-      controller: controller,
-      padding: const EdgeInsets.all(16),
+    builder: (context, controller) => Column(
       children: [
-        const Text(
-          'This is the whole report. Nothing else goes with it.',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Text(
+            'This is the whole report. Nothing else goes with it.',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
         ),
-        const SizedBox(height: 12),
-        _Payload(text: const JsonEncoder.withIndent('  ').convert(payload)),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Back'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Send this'),
-            ),
-          ],
+        Expanded(
+          child: ListView(
+            controller: controller,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _Payload(
+                text: const JsonEncoder.withIndent('  ').convert(payload),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Back'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Send this'),
+              ),
+            ],
+          ),
         ),
       ],
     ),

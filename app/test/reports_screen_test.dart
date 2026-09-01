@@ -216,6 +216,37 @@ void main() {
     });
   });
 
+  group('a short screen', () {
+    testWidgets('still puts the decision in reach', (tester) async {
+      // The buttons used to sit at the end of the sheet's scroll, so a report
+      // long enough to be worth reviewing was one whose send button was below
+      // the bottom of the screen. It passed on a tall surface and failed on a
+      // short one, which is how CI found it.
+      tester.view.physicalSize = const Size(800, 460);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final client = _Counting(() {});
+      await open(tester, client: client);
+
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.enterText(find.byType(TextField), 'a note');
+      await tester.pump();
+
+      await tester.ensureVisible(find.text('Review and send'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review and send'));
+      await tester.pumpAndSettle();
+
+      // No scrolling to find it. Pinned means visible.
+      expect(find.text('Send this'), findsOneWidget);
+      await tester.tap(find.text('Send this'));
+      await tester.pumpAndSettle();
+
+      expect(client.sent, 1);
+    });
+  });
+
   group('when a fault happened', () {
     // In the words somebody would use out loud. A caregiver deciding whether a
     // fault is worth reporting is asking "was that the thing I just saw?", and
@@ -313,10 +344,12 @@ class _Counting extends http.BaseClient {
   _Counting(this._onSend);
 
   final VoidCallback _onSend;
+  int sent = 0;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     await request.finalize().toBytes();
+    sent++;
     _onSend();
     return http.StreamedResponse(const Stream.empty(), 202);
   }
