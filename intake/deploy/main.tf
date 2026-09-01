@@ -26,6 +26,15 @@ variable "project_id" {
 variable "region" {
   type    = string
   default = "fr-par"
+
+  # Scaleway is EU only: fr-par, nl-ams, pl-waw. There is no US region, which
+  # is a fact worth knowing before this is chosen rather than after.
+}
+
+variable "bucket_name" {
+  type        = string
+  default     = "wordbridge-reports"
+  description = "Bucket names are unique per region across every account, so a taken one has to be changed rather than merged into."
 }
 
 variable "image" {
@@ -61,10 +70,16 @@ variable "smtp_user" {
 
 # Reports live here and nowhere else.
 #
+# **In France, while the operator is in the United States.** That is a
+# deliberate choice and not an accident of a default, but it is a disclosure:
+# a privacy policy has to say where reports are stored, and a US school asking
+# the question has to get a straight answer. It buys no legal protection — a US
+# entity is reachable by US process wherever the bytes sit.
+#
 # Versioning is off on purpose: a report is written once and never edited, so
 # versions would only keep copies of things somebody deleted deliberately.
 resource "scaleway_object_bucket" "reports" {
-  name       = "wordbridge-reports"
+  name       = var.bucket_name
   project_id = var.project_id
   region     = var.region
 

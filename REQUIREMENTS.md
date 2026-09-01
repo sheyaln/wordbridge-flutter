@@ -3641,13 +3641,29 @@ in milliseconds, is what scale to zero wants, and it is a safer decade-long bet
 than a single-vendor Dart backend framework for something nobody will be
 watching.
 
-**Scaleway, not GCP.** Two reasons, in order. Data residency: an EU-only
-provider makes both the privacy policy and any future conversation with a
-school materially easier for an app used by disabled children, and §11 says
-that conversation is the hard part of this project rather than the code. And
-expertise: this has to still be running in three years, and it is far likelier
-to be if it sits on the platform its operator already knows. GCP would also
-need a third party for email regardless.
+**Scaleway, not GCP — but the first reason given for it was wrong.**
+
+The original argument was data residency: an EU-only provider makes the privacy
+policy and any school conversation easier. **The operator is in the United
+States**, which mostly inverts that. A US entity is reachable by US legal
+process wherever the bytes sit, so storing in France buys no protection, and
+"the reports are in France" is a *harder* answer for a US district than a US
+region would be, not an easier one. Recorded because a log with a wrong reason
+in it is worse than no log.
+
+What survives is the half that was always the stronger one: **this has to still
+be running in three years, and it is far likelier to be if it sits on the
+platform its operator already knows.** Plus first-party transactional email,
+where GCP would need a third party regardless.
+
+Scaleway was chosen again on that basis with the correction in front of it.
+Worth knowing that it made the choice narrower than it looked: **Scaleway has
+no US region at all** — fr-par, nl-ams and pl-waw are the whole list — so this
+was never "EU or US on one provider", it was "EU, or a different provider".
+
+The consequence is a disclosure rather than a problem: reports about American
+children's communication devices sit in France, a privacy policy has to say so,
+and a district that asks has to get a straight answer.
 
 The service itself is S3 and SMTP, so it stays portable. Cloud Run, GCS and
 SendGrid would be a Terraform swap rather than a rewrite, and that is on
