@@ -35,3 +35,5 @@ crash.log
 
 # The intake binary, when someone builds it in place.
 /intake/intake
+
+# The intake service and its Terraform live in wordbridge-infra.
