@@ -1139,36 +1139,28 @@ class _Settings extends StatelessWidget {
         ),
       ],
     ),
+    // One screen, so the row opens it directly (§4.43a). What the page in
+    // between held was a row named for the section that opened it.
     _Section(
       icon: Icons.outgoing_mail,
       title: 'Reports',
       description:
           'Tell us something is wrong or missing, and send faults this tablet '
-          'caught',
-      tiles: (context, onChanged) => [
-        ListTile(
-          leading: const Icon(Icons.report_outlined),
-          title: const Text('Write a report'),
-          subtitle: const Text(
-            'Nothing is sent until you have read it and pressed send',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ReportsScreen(
-                db: db,
-                vocabularyId: vocabularyId,
-                profileId: profileId,
-                settings: settings,
-                speech: speech,
-                crashes: crashes,
-                sender: sender,
-                userName: userName,
-              ),
-            ),
+          'caught. Nothing is sent until you have read it and pressed send.',
+      opens: (context) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ReportsScreen(
+            db: db,
+            vocabularyId: vocabularyId,
+            profileId: profileId,
+            settings: settings,
+            speech: speech,
+            crashes: crashes,
+            sender: sender,
+            userName: userName,
           ),
         ),
-      ],
+      ),
     ),
     _Section(
       icon: Icons.info_outline,

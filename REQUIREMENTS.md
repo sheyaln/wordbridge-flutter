@@ -3620,6 +3620,107 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.54 The intake, deployed — delivered
+
+Requested: *"Terraform should live in a separate repo... a wordbridge-infra dir
+for the infra. Create an S3 storage bucket for the state via the CLI. Use
+.tfvars for the secrets, and Github secrets. Make sure the CI has auto-apply on
+merge to master."* Then: *"'Write a report' being nested under 'Report' is
+redundant."*
+
+**Two repositories now**, under `~/code/wordbridge/`:
+`wordbridge-flutter` is this one, `wordbridge-infra` holds the intake service
+and its Terraform. The intake was moved with `git subtree split`, so its
+commits and their reasoning survived the move. Five worktrees hang off this
+checkout, two of them a coworker's active branches; all were repaired after the
+move rather than left broken.
+
+State lives in an Object Storage bucket made by hand with the CLI, versioned,
+because a state backend cannot be managed by the state it holds. The container
+registry namespace is bootstrap by hand for the same class of reason: CI pushes
+an image before Terraform runs, so the namespace has to predate the first
+apply. CI plans on a pull request and **applies on merge**; the pull request is
+the gate.
+
+#### Four ways this went wrong, all worth keeping
+
+**Exported credentials beat the active profile.** `SCW_ACCESS_KEY` and
+`AWS_ACCESS_KEY_ID` were exported in the shell with another project's keys.
+`scw config` reported one organisation while every call went to another, with
+no warning — it put a wordbridge bucket in an unrelated production
+organisation. The Terraform provider now *names* its organisation instead of
+inheriting one, and refuses a `project_id` equal to `organization_id`, which in
+Scaleway is the signature of an organisation's default project.
+
+**A Deny-only bucket policy locked out the owner.** Scaleway grants the bucket
+owner no implicit access once a policy exists, unlike AWS, so a policy
+containing only a Deny denies everyone. Neither Terraform nor the CLI could
+undo it: Terraform fails on `GetBucketCors` while refreshing and the CLI reads
+the bucket before deleting, so neither reached `DeleteBucketPolicy` — the one
+operation Scaleway keeps available to the owner for exactly this. A direct S3
+call fixed it in one line. The conclusion drawn at the time — "never add a
+bucket policy" — was wrong, and is corrected below.
+
+**A placeholder in `terraform.tfvars` overwrote production.** It carried
+`image = ...:bootstrap`, so a local apply silently rewrote the running
+container to a tag nobody had built. Scaleway accepted it, the deploy failed,
+and the container sat in `error` while the health check still answered 200.
+`image` now has no default and no placeholder: an apply must name the tag it
+means, or fail.
+
+**And the one that took longest: the API key had no default project.** Object
+Storage resolves a bucket through the key's default project, and a key without
+one is looking in the wrong place. Every write came back as a flat
+`AccessDenied` — the same message the IAM permission sets and the bucket policy
+produce, so all three looked equally guilty. What settled it was setting a
+bucket policy allowing *everyone everything* and watching the write fail
+anyway, which ruled the policy out entirely.
+
+Access to that bucket turns out to have three independent gates, each answering
+failure identically and none of them saying which refused: the key's default
+project, the IAM permission sets (`ObjectStorageObjectsWrite` alone is not
+enough — a principal that cannot see the bucket cannot write to it), and the
+bucket policy, since the intake runs as its own IAM application rather than as
+the owner. The policy allows administrators everything and the intake
+`PutObject` only, so a compromised container can add reports and cannot
+enumerate anybody's.
+
+**A diagnostic left the bucket open.** The permissive policy used to rule out
+the policy layer stayed live afterwards, and a normal `terraform apply` did not
+detect the drift. Caught by reading the bucket back rather than by trusting the
+apply, and forced with `-replace`. Reading state back is the check; an apply
+that says "no changes" is not.
+
+#### Tested
+
+`ObjectStore.Put` had never run: every test used a fake store, so the code that
+actually speaks S3 was unexercised. There is now a TLS stub and a test that
+drives a real request through the real client into a real bucket write. It
+earned itself immediately — minio-go sends aws-chunked framed bodies over plain
+HTTP and raw bodies over HTTPS, so a plain-HTTP stub would have tested a path
+production never takes.
+
+`intake/smoke.sh` drives the real binary, and against the deployment a real
+report now returns **202 with a quotable reference** and lands in the bucket.
+Writing it turned up two more things: three stale servers from earlier runs
+still holding the port, so the script had been interrogating an old binary with
+old rate-limiter state; and an oversize check passing 400-instead-of-413
+because shell quoting ate the opening brace of the body. It was asserting the
+wrong thing in the wrong direction.
+
+#### The settings screen
+
+`Reports` opened a page holding one row named `Write a report`, which opened a
+screen titled `Reports` — three levels for one destination. §4.43a had already
+built the mechanism for this (`_Section.opens`) and three sections already used
+it; this was the one left behind. It is one tap now, and a new test asserts no
+section says its own name twice over on what it opens, which is the invariant
+that was violated and that nothing checked.
+
+`About` has the same one-row shape but does not repeat its own name, so it is
+left alone: collapsing it is a decision about whether `About` is ever going to
+hold more than symbol credits.
+
 ### 4.53 The intake, and the pipeline behind it — delivered
 
 Requested: *"Let's do the intake. Would love a pipeline of user → intake server

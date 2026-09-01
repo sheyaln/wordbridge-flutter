@@ -127,8 +127,11 @@ const _reachable = <String, List<String>>{
     'Held for 2 seconds',
   ],
   'Usage tracking': ['Track usage'],
-  // §4.52. One screen, on the same reasoning as backups: the row opens it.
-  'Reports': ['Write a report'],
+  // §4.52, and one screen on the same reasoning as backups: the row opens it.
+  // These two are on the reports screen itself, so finding them one tap from
+  // the list is what says there is no page in between holding a row named
+  // after the section that opened it.
+  'Reports': ['Tell us something', 'Review and send'],
   'About': ['Symbol credits'],
 };
 
@@ -268,6 +271,32 @@ void main() {
             reason: '"$title" is not on the "${section.key}" page',
           );
         }
+
+        await back(tester);
+      }
+
+      await closeHome(tester);
+    });
+
+    testWidgets('no section says its own name twice over', (tester) async {
+      // A section whose page holds a row repeating the section name is a stop
+      // on the way to somewhere (§4.43a). It reads as a third level for one
+      // destination: Reports, then a row saying much the same, then a screen
+      // titled Reports again. Where a section is one screen, the row on the
+      // list is the affordance and the screen it opens is the only other
+      // place the name belongs.
+      await pumpSettings(tester, onSwitchProfile: (_) {});
+
+      for (final section in _reachable.keys) {
+        await open(tester, section);
+
+        // Once for the screen it opens, which may carry a name of its own
+        // instead. Never twice.
+        expect(
+          find.text(section).evaluate().length,
+          lessThan(2),
+          reason: '"$section" is said twice over on what it opens',
+        );
 
         await back(tester);
       }
