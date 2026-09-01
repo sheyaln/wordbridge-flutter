@@ -963,11 +963,13 @@ class _Settings extends StatelessWidget {
             value: settings!.breadcrumbs,
             title: const Text('Show the route to each word'),
             subtitle: const Text(
-              'A strip along the bottom reads home, body, more words, dizzy, '
-              'so a communication partner can see the route and repeat it. It '
-              'stays up until the next word is started. The strip takes its '
-              'space from the grid, so buttons are slightly shorter while it '
-              'is on. Turning it off restores them exactly.',
+              'A strip along the bottom lists the keys pressed to reach the '
+              'current word, in order, so a communication partner can read the '
+              'route and repeat it. Reaching "dizzy" shows '
+              'home › body › more words › dizzy. It stays until the next word '
+              'is started. The strip takes its space from the grid, so buttons '
+              'are slightly shorter while it is on, and turning it off '
+              'restores them exactly.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
