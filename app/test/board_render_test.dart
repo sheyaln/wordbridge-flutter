@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/ids.dart';
+import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/db/seed/core_vocabulary.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
@@ -129,20 +131,99 @@ void main() {
 
   /// Opens a category by pressing the key that navigates to it, the way a user
   /// reaches it.
+  /// A word on [boardId] that is on no other board, so its presence proves
+  /// which board is being looked at.
+  Future<String> landmarkOn(String boardId) async {
+    final here =
+        await (db.select(db.buttons).join([
+              innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+            ])..where(
+              db.cells.boardId.equals(boardId) &
+                  db.buttons.isSystem.equals(false),
+            ))
+            .get();
+
+    for (final row in here) {
+      final label = row.readTable(db.buttons).label;
+      final everywhere = await (db.select(
+        db.buttons,
+      )..where((b) => b.label.equals(label))).get();
+      if (everywhere.length == 1) return label;
+    }
+
+    fail('no word is unique to that board, so arriving cannot be detected');
+  }
+
   Future<void> openBoard(WidgetTester tester, String name) async {
     final board = await (db.select(
       db.boards,
     )..where((b) => b.name.equals(name))).getSingle();
 
-    final key = await (db.select(db.buttons).join([
+    // A word that is on the board being opened and nowhere else, so arriving
+    // can be told from not arriving.
+    final landmark = await landmarkOn(board.id);
+
+    Future<bool> arrived() async {
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      return find.text(landmark).evaluate().isNotEmpty;
+    }
+
+    // A paging key is a real button with a real target, so it can be found in
+    // the database and pressed by its coordinates.
+    final keys = await (db.select(db.buttons).join([
       innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
     ])..where(db.buttons.targetBoardId.equals(board.id))).get();
 
-    final cell = key.first.readTable(db.cells);
-    await tester.tap(find.byKey(ValueKey('${cell.row}:${cell.col}')));
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
+    for (final key in keys) {
+      final cell = key.readTable(db.cells);
+      final at = find.byKey(ValueKey('${cell.row}:${cell.col}'));
+      if (at.evaluate().isEmpty) continue;
+      await tester.tap(at);
+      if (await arrived()) return;
     }
+
+    // A category key is not. The system row shows a window onto the category
+    // list and the keys are remapped as the window moves, so nothing in the
+    // database points at `doing` except a paging key on `doing 2`. Looking one
+    // up and tapping its coordinates was the original bug: it landed on an
+    // empty cell of the home board, nothing navigated, and the golden recorded
+    // the home board under another name — byte identical to
+    // `home_labeled.png`, which is exactly what a golden is meant to prevent.
+    //
+    // So this turns the wheel the way a person does.
+    final cycle =
+        await (db.select(db.buttons).join([
+              innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+            ])..where(
+              db.buttons.action.equalsValue(ButtonAction.cycleCategories),
+            ))
+            .get();
+
+    for (var turn = 0; turn <= categoryNames.length; turn++) {
+      final key = find.text(name);
+      if (key.evaluate().isNotEmpty) {
+        await tester.tap(key.first);
+        if (await arrived()) return;
+      }
+
+      var turned = false;
+      for (final row in cycle) {
+        final cell = row.readTable(db.cells);
+        final at = find.byKey(ValueKey('${cell.row}:${cell.col}'));
+        if (at.evaluate().isEmpty) continue;
+        await tester.tap(at);
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        turned = true;
+        break;
+      }
+      if (!turned) break;
+    }
+
+    fail('could not open the "$name" board: "$landmark" never appeared');
   }
 
   testWidgets('the home board', (tester) async {
@@ -158,7 +239,7 @@ void main() {
     await pump(tester);
     await expectLater(
       find.byType(TalkScreen),
-      matchesGoldenFile('goldens/home_labelled.png'),
+      matchesGoldenFile('goldens/home_labeled.png'),
     );
   });
 
@@ -174,7 +255,7 @@ void main() {
     await openBoard(tester, 'home 2');
     await expectLater(
       find.byType(TalkScreen),
-      matchesGoldenFile('goldens/home_page_two_labelled.png'),
+      matchesGoldenFile('goldens/home_page_two_labeled.png'),
     );
   });
 
@@ -214,7 +295,7 @@ void main() {
     await openBoard(tester, 'food');
     await expectLater(
       find.byType(TalkScreen),
-      matchesGoldenFile('goldens/food_labelled.png'),
+      matchesGoldenFile('goldens/food_labeled.png'),
     );
   });
 
@@ -223,14 +304,21 @@ void main() {
   ) async {
     // §4.42 gave `doing` a `how` band, which is a seventh band on a board with
     // six content rows at 7x12 — so something now pages off that did not
-    // before. This is the picture of what that costs, and it is here because
-    // no golden covered either of the two boards that gained a band.
+    // before. This is the picture of what that costs.
+    //
+    // **Page two, because that is where the adverbs went.** Page one holds six
+    // rows of verbs and not one adverb, so a golden of it could never show
+    // what this test is named for. It did not show it before either: the
+    // navigation silently failed and the file was a byte identical copy of
+    // `home_labeled.png`, so this has been a picture of the home board
+    // labeled as the `doing` board since §4.42 added it.
     await settings.set('regionLabels', true);
     await pump(tester);
     await openBoard(tester, 'doing');
+    await openBoard(tester, 'doing 2');
     await expectLater(
       find.byType(TalkScreen),
-      matchesGoldenFile('goldens/doing_labelled.png'),
+      matchesGoldenFile('goldens/doing_page_two_labeled.png'),
     );
   });
 
@@ -272,7 +360,7 @@ void main() {
 
     await expectLater(
       find.byType(TalkScreen),
-      matchesGoldenFile('goldens/time_labelled.png'),
+      matchesGoldenFile('goldens/time_labeled.png'),
     );
   });
 }
