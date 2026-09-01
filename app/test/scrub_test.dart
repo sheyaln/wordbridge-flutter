@@ -69,7 +69,10 @@ void main() {
       final out = scrubbed(
         '#0 x (package:wordbridge/features/talk/talk_screen.dart:12)',
       );
-      expect(out, contains('package:wordbridge/features/talk/talk_screen.dart'));
+      expect(
+        out,
+        contains('package:wordbridge/features/talk/talk_screen.dart'),
+      );
     });
   });
 
@@ -113,10 +116,7 @@ void main() {
     });
 
     test('and checks every name it was given, not just the first', () {
-      expect(
-        refusalToSend('near Rosie', names: ['Maya', 'Rosie']),
-        isNotNull,
-      );
+      expect(refusalToSend('near Rosie', names: ['Maya', 'Rosie']), isNotNull);
     });
   });
 }

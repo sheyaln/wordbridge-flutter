@@ -32,12 +32,22 @@ void main() {
 
   group('the shape', () {
     test('is the whole of it, and nothing else', () {
-      expect(payload().keys, ['schema', 'kind', 'app', 'device', 'board', 'note']);
+      expect(payload().keys, [
+        'schema',
+        'kind',
+        'app',
+        'device',
+        'board',
+        'note',
+      ]);
     });
 
-    test('and names its version, so an old build is told rather than guessed at', () {
-      expect(payload()['schema'], reportSchema);
-    });
+    test(
+      'and names its version, so an old build is told rather than guessed at',
+      () {
+        expect(payload()['schema'], reportSchema);
+      },
+    );
 
     test('the kind travels as a stable string, not an ordinal', () {
       // An index would silently change meaning the moment a kind is added in
@@ -47,7 +57,10 @@ void main() {
     });
 
     test('the note is carried as typed, trimmed', () {
-      expect(payload(note: '  it stopped speaking  ')['note'], 'it stopped speaking');
+      expect(
+        payload(note: '  it stopped speaking  ')['note'],
+        'it stopped speaking',
+      );
     });
 
     test('detail appears only where there is one', () {
@@ -125,7 +138,10 @@ void main() {
       // So a caregiver reads a sentence on the screen rather than meeting a
       // 413 from somewhere they cannot see.
       final huge = payload(note: 'x' * (reportSizeLimit + 1));
-      expect(utf8.encode(jsonEncode(huge)).length, greaterThan(reportSizeLimit));
+      expect(
+        utf8.encode(jsonEncode(huge)).length,
+        greaterThan(reportSizeLimit),
+      );
 
       expect(
         ReportSender(url: 'https://example.invalid', token: 't').send(huge),

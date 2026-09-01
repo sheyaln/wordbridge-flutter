@@ -95,9 +95,8 @@ void main() {
 
     test('and throws away a record nobody could act on', () async {
       final directory = await store.directory();
-      await File(
-        p.join(directory.path, '2026-08-30T00:00:00.000Z.json'),
-      ).writeAsString('not json');
+      await File(p.join(directory.path, '2026-08-30T00:00:00.000Z.json'))
+          .writeAsString('not json');
 
       expect(await store.waiting(), isEmpty);
       expect(await files(), isEmpty, reason: 'the unreadable file was kept');

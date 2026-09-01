@@ -18,14 +18,14 @@ void main() {
     void Function(http.BaseRequest request)? onRequest,
   }) => _FakeClient((request) {
     onRequest?.call(request);
-    return http.StreamedResponse(
-      Stream.value(utf8.encode(body)),
-      status,
-    );
+    return http.StreamedResponse(Stream.value(utf8.encode(body)), status);
   });
 
-  ReportSender sender(http.Client client) =>
-      ReportSender(client: client, url: 'https://intake.invalid/v1', token: 't');
+  ReportSender sender(http.Client client) => ReportSender(
+    client: client,
+    url: 'https://intake.invalid/v1',
+    token: 't',
+  );
 
   group('what a status code means to a caregiver', () {
     test('accepted', () => expect(problemFor(202), isNull));
@@ -75,9 +75,8 @@ void main() {
 
   group('sending', () {
     test('reports the reference on success', () async {
-      final outcome = await sender(
-        answering(202, body: '{"reference":"WB-1"}'),
-      ).send({'schema': 1});
+      final outcome = await sender(answering(202, body: '{"reference":"WB-1"}'))
+          .send({'schema': 1});
 
       expect(outcome.sent, isTrue);
       expect(outcome.reference, 'WB-1');
@@ -104,15 +103,16 @@ void main() {
 
     test('and a token without a URL is not configured either', () {
       expect(ReportSender(url: '', token: 't').configured, isFalse);
-      expect(ReportSender(url: 'https://x.invalid', token: '').configured,
-          isFalse);
+      expect(
+        ReportSender(url: 'https://x.invalid', token: '').configured,
+        isFalse,
+      );
     });
 
     test('carries the token and the JSON content type', () async {
       http.BaseRequest? seen;
-      await sender(
-        answering(202, onRequest: (r) => seen = r),
-      ).send({'schema': 1});
+      await sender(answering(202, onRequest: (r) => seen = r))
+          .send({'schema': 1});
 
       expect(seen!.headers['authorization'], 'Bearer t');
       expect(seen!.headers['content-type'], 'application/json');
@@ -123,22 +123,23 @@ void main() {
       // A redirect is a way for an intake to be repointed at somewhere nobody
       // agreed to. This one goes where it was built to go or it does not go.
       http.BaseRequest? seen;
-      await sender(
-        answering(202, onRequest: (r) => seen = r),
-      ).send({'schema': 1});
+      await sender(answering(202, onRequest: (r) => seen = r))
+          .send({'schema': 1});
 
       expect(seen!.followRedirects, isFalse);
     });
 
-    test('a network that is not there is not an exception a caregiver sees',
-        () async {
-      final outcome = await sender(
-        _FakeClient((_) => throw const SocketFailure()),
-      ).send({'schema': 1});
+    test(
+      'a network that is not there is not an exception a caregiver sees',
+      () async {
+        final outcome = await sender(
+          _FakeClient((_) => throw const SocketFailure()),
+        ).send({'schema': 1});
 
-      expect(outcome.sent, isFalse);
-      expect(outcome.problem, ReportSender.couldNotReach);
-    });
+        expect(outcome.sent, isFalse);
+        expect(outcome.problem, ReportSender.couldNotReach);
+      },
+    );
   });
 }
 
