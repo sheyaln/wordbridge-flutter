@@ -37,8 +37,14 @@ jobs:
       # other's in-memory databases, and a test suite that fails once in ten
       # runs teaches people to re-run it rather than read it. The whole suite
       # takes about five seconds.
+      # The golden tag is excluded, and not because those tests are optional.
+      # The goldens are written on macOS; Linux rasterises text differently, so
+      # all eight fail on this runner whether or not anything changed. They are
+      # run and read locally, which is the only way they work at all — they
+      # draw text as boxes, so what they prove is geometry and a person has to
+      # look at the PNG.
       - name: Test
-        run: flutter test --concurrency=1
+        run: flutter test --concurrency=1 --exclude-tags golden
 
       # Keeps the non-commercial symbol packs droppable — see NOTICE.md.
       - name: Symbol pack licence boundary

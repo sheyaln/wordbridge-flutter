@@ -1,0 +1,14 @@
+# Declares the tags the suite uses, so an unrecognised one is an error rather
+# than a warning nobody reads.
+tags:
+  golden:
+    # Render tests that compare against a PNG in test/goldens/.
+    #
+    # Host-dependent by nature: the goldens are written on macOS and Linux
+    # rasterises text differently, so every one of them fails on a Linux runner
+    # whether or not anything changed. CI excludes this tag for that reason,
+    # not because these tests are optional.
+    #
+    # They are run and read locally, which is the only way they work anyway —
+    # they draw text as boxes, so what they prove is geometry, and a person has
+    # to look at the PNG.
