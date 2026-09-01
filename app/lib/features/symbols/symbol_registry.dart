@@ -4,9 +4,9 @@ import 'symbol_pack.dart';
 
 /// The packs the app knows about, and which of them may currently be used.
 ///
-/// This class exists for one rule: a pack whose licence forbids commercial use
+/// This class exists for one rule: a pack whose license forbids commercial use
 /// is inert until a person explicitly turns it on. Not merely hidden from the
-/// picker — not searched, not resolved, not drawn. ARASAAC and Sclera are
+/// picker: not searched, not resolved, not drawn. ARASAAC is
 /// CC BY-NC; fetching one on a user's instruction is their choice to make,
 /// while shipping one enabled by default would make it ours.
 class SymbolRegistry extends ChangeNotifier {
@@ -25,7 +25,7 @@ class SymbolRegistry extends ChangeNotifier {
   final _packs = <String, SymbolPack>{};
 
   /// Only packs a person has deliberately switched. Anything absent falls back
-  /// to its licence, so a pack added in a later release gets the correct
+  /// to its license, so a pack added in a later release gets the correct
   /// default rather than inheriting a saved set that predates it.
   final _choices = <String, bool>{};
 
@@ -60,7 +60,7 @@ class SymbolRegistry extends ChangeNotifier {
   /// Enabled packs, bundled ones first.
   ///
   /// Order is the preference: where a bundled pack and a downloadable one both
-  /// match a word, the licence-clean local image should be the one offered.
+  /// match a word, the license-clean local image should be the one offered.
   List<SymbolPack> get enabledPacks {
     final enabled = _packs.values.where((p) => isEnabled(p.id));
     return [

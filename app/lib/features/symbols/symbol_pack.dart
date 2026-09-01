@@ -25,7 +25,7 @@ const boardSymbolPackIds = ['core'];
 /// A source of symbols.
 ///
 /// Application code depends on this interface and never on a concrete pack.
-/// The reason is licensing, not tidiness: ARASAAC and Sclera are CC BY-NC and
+/// The reason is licensing, not tidiness: ARASAAC is CC BY-NC-SA and
 /// cannot ship in a build that is sold, so a commercial fork has to be able to
 /// delete those files and still compile. See NOTICE.md.
 abstract interface class SymbolPack {
@@ -38,7 +38,7 @@ abstract interface class SymbolPack {
   /// SPDX-ish identifier, e.g. `CC-BY-SA-4.0`.
   String get license;
 
-  /// Human-readable, shown in-app. Every licence in use here requires the
+  /// Human-readable, shown in-app. Every license in use here requires the
   /// credit to be reachable from inside the running app, not just from the
   /// repository.
   String get attribution;

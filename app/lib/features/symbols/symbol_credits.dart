@@ -16,7 +16,7 @@ import 'package:flutter/services.dart';
 class SymbolCredits extends StatefulWidget {
   /// `system-emoji` is here for its index rather than for its pictures: the
   /// emoji are drawn by the device's own font and belong to whoever wrote it,
-  /// but the names and search words are Unicode CLDR data, whose licence asks
+  /// but the names and search words are Unicode CLDR data, whose license asks
   /// for the same credit as the symbol sets do.
   const SymbolCredits({super.key, this.packs = const ['core', 'system-emoji']});
 
@@ -90,7 +90,7 @@ class _SymbolCreditsState extends State<SymbolCredits> {
             children: [
               const Text(
                 'The pictures on the buttons come from open symbol sets made '
-                'by other people. Their licences ask that they be credited '
+                'by other people. Their licenses ask that they be credited '
                 'wherever the symbols appear.',
                 style: TextStyle(height: 1.5),
               ),
@@ -136,11 +136,11 @@ class _SymbolCreditsState extends State<SymbolCredits> {
               ],
 
               const Text(
-                'wordbridge itself is open source under the MIT licence. That '
-                'licence covers the app, not the symbols above — each set '
+                'wordbridge itself is open source under the MIT license. That '
+                'license covers the app, not the symbols above. Each set '
                 'keeps its own terms, and CC BY-SA in particular means '
                 'anything derived from these symbols stays under the same '
-                'licence.',
+                'license.',
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.black54,

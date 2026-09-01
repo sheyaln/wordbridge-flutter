@@ -18,7 +18,7 @@ import 'symbol_pack.dart';
 /// What is bundled is a keyword index and nothing else — the operating system
 /// exposes no searchable list of what it can draw, so without one a search box
 /// has nothing to answer from. Names and search words come from Unicode CLDR,
-/// under the Unicode licence; see NOTICE.md and the manifest's own
+/// under the Unicode license; see NOTICE.md and the manifest's own
 /// attribution, which the symbol credits screen reads.
 ///
 /// The trade this makes, stated where somebody will find it: the drawing is
@@ -45,7 +45,7 @@ class SystemEmojiPack implements GlyphSymbolPack {
   @override
   String get name => 'Emoji from this device';
 
-  /// The licence of the index, which is the only thing this pack ships. The
+  /// The license of the index, which is the only thing this pack ships. The
   /// glyphs belong to whoever wrote the device's font and are not
   /// redistributed by anyone here.
   @override

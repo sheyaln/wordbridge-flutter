@@ -20,8 +20,8 @@ const customSymbolMaxEdge = 512;
 const customSymbolLicense = 'user-owned';
 const customSymbolAttribution = 'Supplied by the device owner.';
 
-/// A photo normalised for storage: oriented, resized, re-encoded, stripped.
-typedef NormalisedImage = ({Uint8List bytes, int width, int height});
+/// A photo normalized for storage: oriented, resized, re-encoded, stripped.
+typedef NormalizedImage = ({Uint8List bytes, int width, int height});
 
 /// Resizes to [customSymbolMaxEdge] and returns PNG bytes carrying no metadata.
 ///
@@ -33,8 +33,8 @@ typedef NormalisedImage = ({Uint8List bytes, int width, int height});
 /// worth resting a child's home address on. So it is cleared explicitly.
 ///
 /// Returns null if the bytes are not a decodable image.
-NormalisedImage? normaliseSymbolImage(Uint8List bytes) {
-  // decodeImage is documented to return null for unrecognised data but throws
+NormalizedImage? normalizeSymbolImage(Uint8List bytes) {
+  // decodeImage is documented to return null for unrecognized data but throws
   // a RangeError on anything short enough that its format sniffing reads off
   // the end. A truncated download or a file the picker mis-reports must be a
   // declined import, not a crash.
@@ -88,7 +88,7 @@ class CustomSymbolImporter {
   final ImagePicker _picker;
   final Future<Directory> Function() _documentsDirectory;
 
-  /// Returns null if the caregiver cancelled or the file could not be read.
+  /// Returns null if the caregiver canceled or the file could not be read.
   ///
   /// No `maxWidth` is passed to the picker: platform implementations differ on
   /// whether their own resize preserves EXIF, and the one part of this that
@@ -102,16 +102,16 @@ class CustomSymbolImporter {
     return store(await picked.readAsBytes(), label: label);
   }
 
-  /// Normalises, de-duplicates and records the image. Returns null if the
+  /// Normalizes, de-duplicates and records the image. Returns null if the
   /// bytes are not a decodable image.
   Future<Symbol?> store(Uint8List bytes, {required String label}) async {
-    final normalised = normaliseSymbolImage(bytes);
-    if (normalised == null) return null;
+    final normalized = normalizeSymbolImage(bytes);
+    if (normalized == null) return null;
 
-    // Hashing the normalised output rather than the original: the same photo
+    // Hashing the normalized output rather than the original: the same photo
     // imported twice produces byte-identical output, so the hash both
     // de-duplicates and names the file.
-    final hash = sha256.convert(normalised.bytes).toString();
+    final hash = sha256.convert(normalized.bytes).toString();
 
     final existing =
         await (db.select(db.symbols)..where(
@@ -130,7 +130,7 @@ class CustomSymbolImporter {
 
     final file = File(p.join(directory.path, '$hash.png'));
     if (!await file.exists()) {
-      await file.writeAsBytes(normalised.bytes, flush: true);
+      await file.writeAsBytes(normalized.bytes, flush: true);
     }
 
     // A second row over the same file is intentional when the label differs:
@@ -146,8 +146,8 @@ class CustomSymbolImporter {
             license: customSymbolLicense,
             attribution: customSymbolAttribution,
             contentHash: Value(hash),
-            width: Value(normalised.width),
-            height: Value(normalised.height),
+            width: Value(normalized.width),
+            height: Value(normalized.height),
             createdAt: nowMs(),
           ),
         );

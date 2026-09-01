@@ -89,19 +89,19 @@ class AutoSymbol {
   /// put a word in somebody's mouth. Those matches belong in the picker, where
   /// a person is looking and can say no.
   Future<SymbolRef?> _findExact(String label) async {
-    final needle = _normalise(label);
+    final needle = _normalize(label);
     if (needle.isEmpty) return null;
 
     for (final pack in registry.enabledPacks) {
       if (pack is GlyphSymbolPack || !pack.isBundled) continue;
       for (final ref in await pack.search(label, limit: 12)) {
-        if (_normalise(ref.label) == needle) return ref;
+        if (_normalize(ref.label) == needle) return ref;
       }
     }
 
     return fetcher?.bestMatch(label);
   }
 
-  static String _normalise(String? text) =>
+  static String _normalize(String? text) =>
       (text ?? '').trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
 }

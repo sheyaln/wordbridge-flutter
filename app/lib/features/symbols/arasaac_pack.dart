@@ -12,7 +12,7 @@ import 'symbol_pack.dart';
 ///
 /// **Never bundled.** ARASAAC is CC BY-NC-SA: shipping it inside a build that
 /// is sold — or sold with hardware, or behind a paid tier — breaches the
-/// licence. It is downloaded only after a user turns it on, so the
+/// license. It is downloaded only after a user turns it on, so the
 /// non-commercial restriction attaches to their choice. [SymbolRegistry]
 /// enforces that; this class never checks it for itself.
 ///

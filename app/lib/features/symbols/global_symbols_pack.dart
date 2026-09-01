@@ -13,14 +13,14 @@ import 'symbol_pack.dart';
 /// The same four sets and the same source the offline bundler uses, reachable
 /// at runtime so a caregiver adding a word does not have to wait for a release
 /// to get a picture for it. All four are CC BY-SA: attribution and share-alike,
-/// commercial use permitted. **ARASAAC and Sclera are deliberately not here** —
+/// commercial use permitted. **ARASAAC is deliberately not here**:
 /// they are CC BY-NC and stay behind their own opt-in pack.
 ///
 /// Two different jobs, with two different standards of proof:
 ///
 /// **[search] is for a person to look at.** It returns candidates, ranked, and
 /// a caregiver picks one. A human deciding that a picture of a cup means
-/// "drink" is judgement, and judgement is exactly what a caregiver is for.
+/// "drink" is judgment, and judgment is exactly what a caregiver is for.
 ///
 /// **[bestMatch] is for the app to act on unattended.** It returns a symbol
 /// only when the label matches exactly, because an automatic near-miss teaches
@@ -149,12 +149,12 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   ///
   /// What the app is allowed to attach to a button by itself.
   Future<SymbolRef?> bestMatch(String word) async {
-    final needle = _normalise(word);
+    final needle = _normalize(word);
     if (needle.isEmpty) return null;
 
     for (final set in sets) {
       for (final entry in await _labels(word, set.slug)) {
-        if (_normalise(entry['text'] as String?) != needle) continue;
+        if (_normalize(entry['text'] as String?) != needle) continue;
         final ref = _refFrom(entry);
         if (ref != null) return ref;
       }
@@ -297,6 +297,6 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     }
   }
 
-  static String _normalise(String? text) =>
+  static String _normalize(String? text) =>
       (text ?? '').trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
 }

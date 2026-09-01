@@ -39,7 +39,7 @@ class BundledSymbolPack implements SymbolPack {
 
   final AssetBundle _bundle;
 
-  /// Only packs whose licence permits commercial use are ever bundled, so this
+  /// Only packs whose license permits commercial use are ever bundled, so this
   /// is a property of being bundled rather than of any particular pack. A
   /// non-commercial pack that reached this class would be a distribution
   /// problem, not a configuration one.
@@ -70,7 +70,7 @@ class BundledSymbolPack implements SymbolPack {
       // minimum a pack has to provide. Generated packs use a nested form that
       // also carries which source set each symbol came from, because a pack
       // assembled from several sets owes a different attribution per symbol
-      // and losing that would breach the licences.
+      // and losing that would breach the licenses.
       final symbols = decoded['symbols'];
       final entries = symbols is Map ? symbols : decoded;
 
@@ -146,7 +146,7 @@ class BundledSymbolPack implements SymbolPack {
 /// All four permit commercial use. Nothing may be added to this list without
 /// that being true of it as well — see NOTICE.md.
 ///
-/// Licence identifiers for Mulberry and Tawasol are deliberately unversioned:
+/// License identifiers for Mulberry and Tawasol are deliberately unversioned:
 /// upstream states "CC BY-SA" without a version, and inventing one here would
 /// be worse than being vague.
 List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
@@ -156,7 +156,7 @@ List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
   // once, and none of them carried any assets, so every search against them
   // returned nothing while the credits screen implied the app carried four
   // symbol sets it did not. Their credits are per-symbol and travel in this
-  // pack's manifest, which is where the licences are satisfied.
+  // pack's manifest, which is where the licenses are satisfied.
   //
   // Adding one back means shipping its images and declaring the asset
   // directory in pubspec.yaml. A pack with no assets is not a pack.
