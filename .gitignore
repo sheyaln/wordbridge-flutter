@@ -37,3 +37,9 @@ crash.log
 /intake/intake
 
 # The intake service and its Terraform live in wordbridge-infra.
+
+# The requirements log and the project notes live in the parent directory,
+# outside version control. `docs/` documents the application; those record the
+# project. A stray copy here would go public with everything else.
+/REQUIREMENTS.md
+/NOTES.md
