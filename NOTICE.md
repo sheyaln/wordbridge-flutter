@@ -1,23 +1,25 @@
 # Notices and attribution
 
-wordbridge's own source code is MIT licensed — see [LICENSE](LICENSE).
+wordbridge's own source code is MIT licensed, see [LICENSE](LICENSE).
 
-That licence does **not** extend to the vocabulary and symbol content described
+That license does **not** extend to the vocabulary and symbol content described
 below. Read this before forking commercially.
 
 ---
 
 ## Vocabulary
 
-**Universal Core 36** — Center for Literacy and Disability Studies, University
+**Universal Core 36**, Center for Literacy and Disability Studies, University
 of North Carolina at Chapel Hill, via Project Core (<https://project-core.com>).
 
 Used as the word *selection* for the shipped starter vocabulary. The layout is
-independently designed; see [docs/starter-vocabulary.md](docs/starter-vocabulary.md).
+independently designed; see [docs/starter-vocabulary.md](docs/starter-vocabulary.md),
+which records every source the vocabulary draws on and how each level was
+assigned.
 
 > ⚠️ **Unresolved:** project-core.com states CC BY-SA 4.0 while
 > med.unc.edu states CC BY 4.0 for the same list. Both permit our use, but
-> BY-SA carries share-alike obligations on derivative content. Confirm with
+> BY-SA carries ShareAlike obligations on derivative content. Confirm with
 > CLDS in writing before a public release.
 
 ---
@@ -27,72 +29,74 @@ independently designed; see [docs/starter-vocabulary.md](docs/starter-vocabulary
 wordbridge never links a symbol pack directly; packs are loaded behind a
 `SymbolPack` interface so they can be swapped or removed wholesale.
 
-### Bundled — commercial use permitted
+### Bundled, commercial use permitted
 
 **One pack ships: `core`.** It is a single set of 274 pictures assembled from
 the sources below via Global Symbols, and its manifest carries the credit for
 each picture individually. The sources are **not** shipped as packs of their
-own — this app does not carry Mulberry, or OpenMoji, or any of them, in full.
+own. This app does not carry Mulberry, or OpenMoji, or any of them, in full.
 
-| Source of a `core` picture | Licence | Notes |
+| Source of a `core` picture | License | Notes |
 |---|---|---|
-| Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008–2017, Steve Lee 2018–. Upstream marks the set unmaintained. |
+| Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org>. Upstream marks the set unmaintained. |
 | Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee |
-| OpenMoji | CC BY-SA 4.0 | <https://openmoji.org> |
-| Tawasol Symbols | CC BY-SA 4.0 | Arabic-focused; Mada Center, Qatar |
+| OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> |
+| Tawasol Symbols | CC BY-SA 4.0 | © Mada, Qatar. Arabic focused. <http://tawasolsymbols.org> |
 
 Attribution for these must remain reachable from inside the app, and is: the
 Symbol credits screen reads the same manifest.
 
-> This table used to list four sets as bundled packs, and the app declared
-> them as such. None of them shipped any assets, so every search against them
-> returned nothing while the credits screen implied the app carried four symbol
-> libraries it did not (§4.36). The declarations are gone and this table now
-> says what the bundle actually contains. **A pack with no assets is not a
-> pack**; adding one back means shipping its images and declaring the asset
-> directory in `pubspec.yaml`.
+A pack with no assets is not a pack. Adding one of these sources back as a pack
+of its own means shipping its images and declaring the asset directory in
+`pubspec.yaml`, otherwise the credits screen claims a symbol library the app
+does not carry.
 
-> **Twemoji is no longer here.** It was listed as bundled and never was, and
-> nothing in `core` is drawn from it. Emoji come from the device's own font —
-> see below, where no glyph is redistributed at all.
+### Fetched on demand, commercial use permitted
 
-### The device's own emoji — **codepoints only, never glyphs**
+The **More pictures** pack reaches the same four CC BY-SA sets through the
+Global Symbols API (<https://globalsymbols.com>) so a caregiver adding a word
+does not have to wait for a release to get a picture for it. Images are cached
+in application documents. The attributions in the table above apply to them
+identically, and `GlobalSymbolsPack.attribution` carries all four plus the
+Global Symbols credit.
+
+### The device's own emoji, **codepoints only, never glyphs**
 
 The `system-emoji` pack offers the emoji the operating system can already
 draw. It bundles **no pictures**. What it stores is the codepoint sequence,
-which the app draws as text in whatever font the platform provides — the same
+which the app draws as text in whatever font the platform provides, the same
 thing every text field on the device does, and a redistribution of nothing.
+No emoji artwork set is bundled or redistributed by this project.
 
 > ⛔ **Apple Color Emoji and Segoe UI Emoji are proprietary fonts.** Their
-> glyph images may never be extracted, rasterised to files, bundled, or
+> glyph images may never be extracted, rasterized to files, bundled, or
 > shipped. Any change that renders one of these characters into an image
 > buffer and keeps the result has crossed that line, whatever it was for.
 
 The bundled part is the search index, because the OS exposes no searchable
 list of what it can draw:
 
-| Data | Licence | Notes |
+| Data | License | Notes |
 |---|---|---|
 | Unicode CLDR emoji annotations | Unicode-3.0 | Emoji names and search words. © Unicode, Inc. <https://www.unicode.org/license.txt> |
 | Unicode `emoji-test.txt` | Unicode-3.0 | Which sequences are emoji. Same terms. |
 
 Generated by `tools/fetch_emoji_index.dart` into
 `app/assets/symbols/system-emoji/manifest.json`, which carries the notice the
-licence requires and is read by the in-app symbol credits screen.
+license requires and is read by the symbol credits screen inside the app.
 
 A board using these renders differently on a different device, or after an OS
 update. That is inherent and is not a bug.
 
-### Optional downloads — **non-commercial only**
+### Optional downloads, **noncommercial only**
 
 **These are never bundled.** They are fetched at runtime only if a user
 chooses them, so the restriction attaches to that choice rather than to this
 project's distribution.
 
-| Pack | Licence |
+| Pack | License |
 |---|---|
 | ARASAAC | CC BY-NC-SA |
-| Sclera | CC BY-NC |
 
 ARASAAC attribution, required wherever its symbols appear:
 
@@ -101,16 +105,18 @@ ARASAAC attribution, required wherever its symbols appear:
 > Aragón (Spain)**.
 
 > ⚠️ **If you are forking wordbridge to sell it**, or bundling it on hardware
-> you sell, or putting it behind a paid support tier: ARASAAC and Sclera cannot
-> come with you. The `SymbolPack` boundary exists precisely so you can drop
+> you sell, or putting it behind a paid support tier: ARASAAC cannot come with
+> you. The `SymbolPack` boundary exists precisely so you can drop
 > them and ship the CC BY-SA packs instead. A CI check fails the build if
 > application code imports a specific pack directly, so this boundary stays
 > real rather than aspirational.
 
-### Never permitted
+### What may be added
 
-PCS, SymbolStix, Widgit, and Unity symbols are proprietary and must not be
-bundled, imported, or reproduced.
+A symbol set may be added only when its license permits redistribution, and it
+may be bundled only when that license also permits commercial use. A set
+licensed for use only inside the software of whoever publishes it is never
+bundled, imported, or reproduced here.
 
 ---
 
@@ -121,11 +127,11 @@ bundled, imported, or reproduced.
 is sent anywhere afterwards: synthesis is local, and the download is the one
 network call the feature makes.
 
-| Part | Licence |
+| Part | License |
 |---|---|
 | Kokoro-82M weights | Apache-2.0 |
 | `sherpa-onnx` runtime | Apache-2.0 |
-| espeak-ng data (phonemiser) | GPL-3.0-or-later, used as a separate data file |
+| espeak-ng data (phonemizer) | GPL-3.0-or-later, used as a separate data file |
 
 ### What could not be verified
 
@@ -135,37 +141,19 @@ generally forbid training on their output in their terms of service.
 
 **So the weights are offered under Apache-2.0 by people who may not have been
 in a position to offer them.** This project cannot resolve that: the training
-set is not published, and the licence upstream asserts is the only claim there
+set is not published, and the license upstream asserts is the only claim there
 is to go on.
 
-It is written down here for the same reason the symbol licences are. wordbridge
-enforces a symbol licence boundary in CI and publishes what it could not check;
+It is written down here for the same reason the symbol licenses are. wordbridge
+enforces a symbol license boundary in CI and publishes what it could not check;
 a voice does not get a lower standard than a picture. If you are forking
-wordbridge to sell it, this is the item to take advice on — it is a runtime
+wordbridge to sell it, this is the item to take advice on. It is a runtime
 download rather than something this project distributes, which is why the
 feature is built the way it is, but that is a shape of the problem rather than
 an answer to it.
 
-**The alternative, if that answer is not good enough for you:** StyleTTS 2 —
-which Kokoro is derived from — publishes LJSpeech and LibriTTS checkpoints,
+**The alternative, if that answer is not good enough for you:** StyleTTS 2,
+which Kokoro is derived from, publishes LJSpeech and LibriTTS checkpoints,
 LibriTTS being LibriVox public domain. `PublishedModel` in
 `features/speech/neural/voice_model.dart` names the release as one value so
 that swapping it is a value change rather than an edit in four places.
-
----
-
-## Trademarks
-
-**LAMP**, **LAMP Words for Life**, **Unity**, **Minspeak**, and **WordPower**
-are trademarks of PRC-Saltillo and Semantic Compaction Systems.
-**Core First** and **Snap** are trademarks of Tobii Dynavox. **Proloquo2Go**
-and **Crescendo** are trademarks of AssistiveWare.
-
-wordbridge is not affiliated with, endorsed by, or derived from any of them.
-Referring to them descriptively — as this document does — is not a claim of
-association.
-
-Their vocabulary layouts are proprietary content and are not reproduced here.
-Notably, `open-aac/aac-metrics` distributes reconstructions of several
-commercial board sets for research comparison; **do not seed a wordbridge
-vocabulary from them.**

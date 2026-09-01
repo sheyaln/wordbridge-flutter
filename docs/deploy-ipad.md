@@ -9,19 +9,8 @@ xcrun devicectl device install app --device "$DEVICE" build/ios/iphoneos/Runner.
 xcrun devicectl device process launch --device "$DEVICE" org.wordbridge.wordbridge
 ```
 
-Find `$DEVICE` — the CoreDevice UUID, **not** the hardware serial Flutter shows —
+Find `$DEVICE`: the CoreDevice UUID, **not** the hardware serial Flutter shows  
 with `xcrun devicectl list devices`.
-
-### The device this is tested on
-
-Haley's iPad, an iPad mini 5th generation:
-
-```sh
-DEVICE=17098DA6-61DE-5465-9EA0-34CE0782F3C9
-```
-
-Or `tools/deploy-ipad.sh`, which does the three steps above and refuses to
-carry on if the install did not actually land.
 
 ## Two traps, both hit on the first deploy
 
@@ -33,7 +22,7 @@ seconds.
 
 Cost: no hot reload. For iteration, prefer the macOS build (`flutter run -d
 macos`), which reloads normally, and use the iPad to verify the things only
-real hardware can tell you — audio under the ringer switch, touch target size
+real hardware can tell you: audio under the ringer switch, touch target size
 under an actual finger, switch-access hardware.
 
 ### A locked iPad refuses the launch, and it looks like a failed install
@@ -45,11 +34,11 @@ not, or could not be, unlocked").
 ```
 
 The install already succeeded; only the launch was refused. Unlock the iPad
-and run the launch again — there is nothing to rebuild:
+and run the launch again: there is nothing to rebuild:
 
 ```bash
 xcrun devicectl device process launch \
-  --device 17098DA6-61DE-5465-9EA0-34CE0782F3C9 \
+  --device "$DEVICE" \
   org.wordbridge.wordbridge
 ```
 
@@ -76,7 +65,7 @@ A **free** Apple ID is enough for personal-device deployment.
 3. Blue **Runner** project icon → **Runner** target (under TARGETS, not PROJECT)
    → **Signing & Capabilities**
 4. Tick **Automatically manage signing**, pick your team
-5. If provisioning fails, the bundle identifier is probably taken — change
+5. If provisioning fails, the bundle identifier is probably taken: change
    `PRODUCT_BUNDLE_IDENTIFIER` to something certainly yours
 
 First install only: on the iPad, **Settings → General → VPN & Device
@@ -84,7 +73,7 @@ Management** → your developer profile → **Trust**.
 
 > ⚠️ **Free personal-team builds stop working after 7 days.** The app refuses
 > to launch until it is redeployed. That is survivable while developing and
-> not survivable for someone who relies on the device to speak — if this goes
+> not survivable for someone who relies on the device to speak: if this goes
 > to a real user, get a paid account first.
 
 ## What to verify on hardware, not in a simulator
@@ -93,9 +82,9 @@ Management** → your developer profile → **Trust**.
   silent switch unless the audio session category is `playback`. This is set in
   `lib/features/speech/speech_engine.dart`, but a documented API is not a
   tested one, and a muted tablet means a user who cannot speak.
-- **Audio at distance, with background noise.** Parents of LAMP users rated the
-  app down for a decade over output being too quiet to hear from the back seat
-  of a car.
+- **Audio at distance, with background noise.** A voice that cannot be heard
+  across a room or from the back seat of a car is a voice its owner has to be
+  asked to repeat. Test it at distance, not held to your ear.
 - **Touch targets under a real finger**, not a mouse cursor.
 - **Nothing shifts between boards.** Tap a category, then home, and watch the
   bottom row.

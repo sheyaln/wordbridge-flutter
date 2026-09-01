@@ -1,7 +1,8 @@
 # Reporting
 
 How a crash, a bug or an idea gets from a tablet to us, and what may travel with
-it. See REQUIREMENTS.md §4.52 for why it is shaped this way.
+it. The reasoning behind its shape is recorded in the project requirements
+(§4.52), which are kept outside this repository.
 
 ## The rule
 
@@ -23,7 +24,7 @@ report that failed to send stays on screen marked unsent.
               "model": "iPad11,1", "locale": "en_GB" },
   "board":  { "rows": 7, "cols": 12, "level": 2, "engine": "neural" },
   "note":   "free text the reporter typed",
-  "detail": "scrubbed exception and stack — crash reports only",
+  "detail": "scrubbed exception and stack: crash reports only",
   "voice":  { /* only when voice measurement consent is on; see below */ }
 }
 ```
@@ -47,7 +48,7 @@ scrubbed.
 ### Scrubbing
 
 A stack trace is assembled from whatever threw, and this codebase throws messages
-that quote board and word names deliberately — `refusalToMoveRow` names the
+that quote board and word names deliberately: `refusalToMoveRow` names the
 board, `moveRow` rethrows it, `refusalToPin` names the word. So a trace is never
 trusted:
 
@@ -68,7 +69,7 @@ Authorization: Bearer <intake token>
 ```
 
 The token is compiled in with `--dart-define=WORDBRIDGE_INTAKE_TOKEN=…`. It is
-extractable from the binary and is not a security control — it is there so that
+extractable from the binary and is not a security control: it is there so that
 the endpoint is not trivially discoverable and abusable, and so that the token
 can be rotated without a store release breaking older builds if the server keeps
 accepting the previous one.
@@ -88,9 +89,9 @@ source.
 | `401` | Token rejected | The same message. Nothing about tokens |
 | `413` | Too large | "That report is too long to send." |
 | `429` | Rate limited | "Too many reports from here just now. Try later." |
-| anything else, or no reply | — | "It could not be sent." The report is kept |
+| anything else, or no reply |: | "It could not be sent." The report is kept |
 
-The server that implements this is in `intake/` — Go, deployed to Scaleway
+The server that implements this is in `intake/`: Go, deployed to Scaleway
 Serverless Containers with Object Storage and Transactional Email behind it.
 See `intake/README.md` for running and deploying it.
 
@@ -140,7 +141,7 @@ into a report they read before sending.
 
 ## Crashes
 
-`installFallbackBoard()` means a crash does not end the session — the user is
+`installFallbackBoard()` means a crash does not end the session: the user is
 still holding a tablet that still talks, and interrupting them to ask about a
 stack trace would be the wrong thing at the wrong moment.
 
