@@ -5,7 +5,7 @@ import 'dart:typed_data';
 /// mark make the end of a sentence rise?
 ///
 /// Autocorrelation over short windows. Not a speech-research pitch tracker and
-/// it does not need to be — what is being compared is two synthesised versions
+/// it does not need to be — what is being compared is two synthesized versions
 /// of the same words, on the same voice, so systematic error cancels.
 class Pitch {
   static const _minHz = 70.0;

@@ -16,7 +16,7 @@ void main() {
       expect(bottomEdge, closeTo(surface.height, 0.001));
     });
 
-    test('neighbours are separated by exactly one gutter', () {
+    test('neighbors are separated by exactly one gutter', () {
       final a = geometry.rectFor(0, 0);
       final b = geometry.rectFor(0, 1);
       expect(b.left - a.right, closeTo(geometry.gutter, 0.001));
@@ -41,7 +41,7 @@ void main() {
     test('the same coordinates always yield the same rect', () {
       // The property the whole project rests on: where a cell lands depends
       // only on its coordinates and the surface, never on what occupies it,
-      // how many neighbours exist, or what order anything was built in.
+      // how many neighbors exist, or what order anything was built in.
       const a = GridGeometry(rows: 7, cols: 12, size: surface);
       const b = GridGeometry(rows: 7, cols: 12, size: surface);
       expect(a.rectFor(3, 5), b.rectFor(3, 5));

@@ -56,7 +56,7 @@ if ! xcrun devicectl device process launch --device "$DEVICE" "$BUNDLE_ID"; then
 fi
 
 echo
-echo "Installed and launched. The board and every customisation on it are"
+echo "Installed and launched. The board and every customization on it are"
 echo "untouched: an upgrade never moves a cell."
 echo
 echo "Seed changes reach new profiles only. To see vocabulary this build adds,"

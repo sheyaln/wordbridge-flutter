@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:wordbridge/features/speech/neural/voice_model.dart';
 
-/// Serves [bytes], honouring a range request the way a release server does.
+/// Serves [bytes], honoring a range request the way a release server does.
 class _Server extends http.BaseClient {
   _Server(this.bytes, {this.ignoreRange = false, this.failAfter});
 

@@ -429,7 +429,7 @@ void main() {
         expect(nothingIsThatWord('food', [_result('food')]), isFalse);
       });
 
-      test('however it was capitalised or spaced', () {
+      test('however it was capitalized or spaced', () {
         expect(nothingIsThatWord('  Food ', [_result('food')]), isFalse);
       });
     });

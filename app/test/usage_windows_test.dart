@@ -471,7 +471,7 @@ void main() {
       );
     });
 
-    test('a partner modelling reaches no report', () async {
+    test('a partner modeling reaches no report', () async {
       await record('eat', source: UsageSource.partnerModel, utteranceId: 'u1');
 
       expect(await q.totalTaps('p1'), 0);

@@ -23,7 +23,7 @@ void main() {
         expect(
           applyMorpheme(pair.key, MorphemeKind.pastEd),
           pair.value,
-          reason: '"${pair.key}" would have been regularised',
+          reason: '"${pair.key}" would have been regularized',
         );
       }
     });
@@ -157,8 +157,8 @@ void main() {
     });
   });
 
-  group('capitalisation', () {
-    test('a capitalised word stays capitalised', () {
+  group('capitalization', () {
+    test('a capitalized word stays capitalized', () {
       expect(applyMorpheme('Maya', MorphemeKind.possessive), "Maya's");
     });
 

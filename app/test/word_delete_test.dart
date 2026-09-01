@@ -280,7 +280,7 @@ void main() {
       await teardownScreen(tester);
     });
 
-    testWidgets('cancelling goes back rather than stranding the caregiver', (
+    testWidgets('canceling goes back rather than stranding the caregiver', (
       tester,
     ) async {
       await placeAt(homeId, 0, 0, 'trampoline');
@@ -304,7 +304,7 @@ void main() {
       expect(
         held.cellId,
         (await cellOf(homeId, 0, 0)).id,
-        reason: 'cancelling moved the word anyway',
+        reason: 'canceling moved the word anyway',
       );
 
       await teardownScreen(tester);

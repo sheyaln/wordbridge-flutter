@@ -109,13 +109,13 @@ class KokoroSynthesizer {
   ///
   /// A bare word with nothing to end it comes back with a schwa stuck on the
   /// end — `look` as "look-uh", `wait` as "wait-uh" — and `like` comes back as
-  /// two syllables. The phonemiser reads an unpunctuated string as a fragment
+  /// two syllables. The phonemizer reads an unpunctuated string as a fragment
   /// that carries on, and voices the end of it accordingly. A full stop is how
   /// it is told the utterance is finished. Whole sentences already end in one,
   /// which is why they always sounded right and single words did not.
   ///
   /// A trailing comma or colon is replaced rather than added to: `look,.` is
-  /// not a string to hand a phonemiser.
+  /// not a string to hand a phonemizer.
   ///
   /// Applied here rather than at either call site, because the bake and the
   /// live path must give the model the same string — a cached word and a

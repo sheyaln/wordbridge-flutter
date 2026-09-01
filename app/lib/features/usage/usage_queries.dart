@@ -65,7 +65,7 @@ class UsageQueries {
   /// has to be considered before it can count toward a motor plan. A word
   /// taken from the prediction strip is not here: it was never reached for,
   /// and counting it would inflate the tap count a caregiver is shown before
-  /// moving a button. Neither is partner modelling — a partner demonstrating
+  /// moving a button. Neither is partner modeling — a partner demonstrating
   /// a word teaches the user, but it is not the user's own practice.
   static const practicedSources = [UsageSource.touch, UsageSource.switchAccess];
 
@@ -77,7 +77,7 @@ class UsageQueries {
   /// reached for, so it is no evidence about a location; the user still chose
   /// it and the device said it out loud, so it is language they produced.
   /// These figures reach funders as evidence of how much a person says, and
-  /// leaving the strip out understates that. Partner modelling is outside both
+  /// leaving the strip out understates that. Partner modeling is outside both
   /// — that is another person talking on the user's device.
   static const spokenSources = [
     UsageSource.touch,

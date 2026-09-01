@@ -117,7 +117,7 @@ void main() {
       },
     );
 
-    test('partner modelling does not count as the user\'s practice', () async {
+    test('partner modeling does not count as the user\'s practice', () async {
       final id = await placeAt(0, 0, 'eat');
       final button = await (db.select(
         db.buttons,

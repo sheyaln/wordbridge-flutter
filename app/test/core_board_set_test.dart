@@ -688,7 +688,7 @@ void main() {
     });
   });
 
-  group('related verbs stay neighbours', () {
+  group('related verbs stay neighbors', () {
     Future<Map<String, ({int row, int col})>> homePositions() async {
       final home = await (db.select(
         db.boards,
@@ -712,7 +712,7 @@ void main() {
         (a.row == b.row && (a.col - b.col).abs() == 1);
 
     test('opposites and relations share an edge', () async {
-      // Neighbouring locations are learned as a pair. Two positions that
+      // Neighboring locations are learned as a pair. Two positions that
       // happen to be far apart are learned twice.
       final p = await homePositions();
 
@@ -720,7 +720,7 @@ void main() {
         expect(
           adjacent(p[pair.$1]!, p[pair.$2]!),
           isTrue,
-          reason: '"${pair.$1}" and "${pair.$2}" are no longer neighbours',
+          reason: '"${pair.$1}" and "${pair.$2}" are no longer neighbors',
         );
       }
     });
@@ -801,7 +801,7 @@ void main() {
           adjacent(p[pair.$1]!, p[pair.$2]!),
           isTrue,
           reason:
-              '"${pair.$1}" and "${pair.$2}" are not neighbours on page two, '
+              '"${pair.$1}" and "${pair.$2}" are not neighbors on page two, '
               'so the band changed direction when it overflowed',
         );
         expect(p[pair.$1]!.row, p[pair.$2]!.row);

@@ -191,7 +191,7 @@ bool _isPinnedQuestion(
 ///
 /// The start of a word is what somebody types when they are looking for it, so
 /// a key that begins with what they typed outranks one that happens to contain
-/// it. Both the message and the vocalisation count as what the key says: they
+/// it. Both the message and the vocalization count as what the key says: they
 /// are the same string until a caregiver makes them differ, and after that both
 /// are on screen or in the air.
 int? _rank(Button button, String needle) {

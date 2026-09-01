@@ -57,7 +57,7 @@ class BundledSymbolPack implements SymbolPack {
 
   Future<Map<String, String>>? _manifest;
 
-  /// Memoised including the empty result, so a missing pack costs one failed
+  /// Memoized including the empty result, so a missing pack costs one failed
   /// asset lookup per launch rather than one per keystroke in the search box.
   Future<Map<String, String>> manifest() => _manifest ??= _loadManifest();
 

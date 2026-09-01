@@ -82,7 +82,7 @@ void main() {
 
       expect(
         labels,
-        containsAll(['medication', 'appointment', 'partner', 'patronised']),
+        containsAll(['medication', 'appointment', 'partner', 'patronized']),
       );
     });
 

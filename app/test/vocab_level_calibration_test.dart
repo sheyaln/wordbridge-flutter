@@ -365,7 +365,7 @@ void main() {
     );
   });
 
-  test('the preset extras are levelled like everything else', () {
+  test('the preset extras are leveled like everything else', () {
     // Every preset that receives extras starts at level 2, so extras left
     // wholly at level 1 look calibrated and have never been tested. What they
     // are for is the profile a caregiver has simplified back to level 1.

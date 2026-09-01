@@ -351,7 +351,7 @@ class NeuralSpeechEngine implements SpeechEngine {
       _recordFallback(spoken, 'took longer than ${deadline.inMilliseconds} ms');
       await saySomehow(spoken);
     } catch (e) {
-      // Anything else the model can do: a string it cannot phonemise, memory
+      // Anything else the model can do: a string it cannot phonemize, memory
       // it cannot have, or — the one that will actually happen — an engine
       // released out from under it, because backgrounding the app gives the
       // model's 833 MB back and a press can be in flight when it does.

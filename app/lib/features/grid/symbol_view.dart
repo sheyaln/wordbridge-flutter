@@ -130,7 +130,7 @@ class SymbolPicture extends StatelessWidget {
       // A glyph is text and is drawn as text, in whatever font the platform
       // supplies. That is the whole of the arrangement and it must stay that
       // way: the system emoji fonts are proprietary, so nothing here may ever
-      // rasterise one into an image — no capture, no cache, no file. The
+      // rasterize one into an image — no capture, no cache, no file. The
       // codepoint travels with the board; the picture never does.
       //
       // The size is only what the fit scales from, and `height: 1` drops the

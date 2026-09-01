@@ -341,7 +341,7 @@ void main() {
 
   test('no word is taken off the board by the upgrade', () async {
     // The stored level decides what is drawn from version 3 onward, and no
-    // earlier value expressed a decision anybody made. Levelling up reveals
+    // earlier value expressed a decision anybody made. Leveling up reveals
     // words; carrying the old value forward would hide "eat" from someone who
     // had learned where it was.
     final db = openUpgraded();

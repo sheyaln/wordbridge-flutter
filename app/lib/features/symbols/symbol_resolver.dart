@@ -78,7 +78,7 @@ class SymbolResolver {
     final resolved = await _resolve(ref)
         .timeout(budget, onTimeout: () => labelOnly(ref.label));
 
-    // Only successes are memoised. A miss usually means "queued for download",
+    // Only successes are memoized. A miss usually means "queued for download",
     // and caching it would hold the button at label-only until the next launch.
     if (resolved.image != null) _memo[ref.key] = resolved;
     return resolved;

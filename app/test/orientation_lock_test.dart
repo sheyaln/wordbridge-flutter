@@ -162,7 +162,7 @@ void main() {
   });
 
   test('the iPad build is allowed to refuse a rotation', () {
-    // Everything above passes whether or not the device honours any of it. On
+    // Everything above passes whether or not the device honors any of it. On
     // iPad an app that can share the screen must accept every orientation —
     // iOS ignores what it asks for and rotates it anyway — so without this key
     // the whole lock is inert on the one device it was written for, silently.

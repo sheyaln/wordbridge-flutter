@@ -2,13 +2,13 @@
 //
 // The pack draws emoji with whatever font the operating system provides, so
 // nothing here fetches, converts, or writes a picture — and nothing here ever
-// may. Apple Color Emoji and Segoe UI Emoji are proprietary: rasterising a
+// may. Apple Color Emoji and Segoe UI Emoji are proprietary: rasterizing a
 // glyph to a file would put their artwork in the repository. **This tool
 // writes codepoints and words, and no image byte of any kind.**
 //
 // What it does write is the part the OS does not expose: a list of which
 // emoji exist and what words find them. Unicode CLDR carries that, under the
-// Unicode licence, which permits redistribution with the notice kept — see
+// Unicode license, which permits redistribution with the notice kept — see
 // NOTICE.md.
 //
 //   dart run tools/fetch_emoji_index.dart
@@ -140,7 +140,7 @@ typedef _Annotation = ({String name, List<String> keywords});
 /// Every fully-qualified sequence in `emoji-test.txt`, in file order.
 ///
 /// Fully-qualified only, because that is the form with its variation
-/// selectors in place — the form a font is obliged to draw in colour rather
+/// selectors in place — the form a font is obliged to draw in color rather
 /// than as monochrome text.
 List<String> _fullyQualified(String source) {
   final out = <String>[];
@@ -203,7 +203,7 @@ Map<String, _Annotation> _annotations(String source) {
 }
 
 /// CLDR keys omit U+FE0F where emoji-test.txt carries it, so one side has to
-/// be normalised before the two can be joined.
+/// be normalized before the two can be joined.
 String _withoutVariationSelectors(String sequence) =>
     sequence.replaceAll('️', '');
 

@@ -9,7 +9,7 @@ import 'symbol_pack.dart';
 /// **Store the codepoint, never the picture.** Drawing an emoji character with
 /// the platform's font is displaying text and redistributes nothing, which is
 /// what makes this lawful. Apple Color Emoji and Segoe UI Emoji are
-/// proprietary: their glyphs may not be extracted, rasterised to files,
+/// proprietary: their glyphs may not be extracted, rasterized to files,
 /// bundled or shipped. So [resolve] answers with characters, never with a
 /// path, and no code in this pack or downstream of it may write an image
 /// derived from a system font. If a change here starts rendering into an image
@@ -67,7 +67,7 @@ class SystemEmojiPack implements GlyphSymbolPack {
 
   Future<Map<String, EmojiEntry>>? _index;
 
-  /// Memoised including the empty result, so a build without the asset costs
+  /// Memoized including the empty result, so a build without the asset costs
   /// one failed lookup per launch rather than one per keystroke.
   Future<Map<String, EmojiEntry>> index() => _index ??= _loadIndex();
 

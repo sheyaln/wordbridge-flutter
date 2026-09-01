@@ -403,7 +403,7 @@ void main() {
     test('and by what it speaks, where that differs', () async {
       // Both, because they are two different things on two different surfaces:
       // the message goes into the sentence somebody is reading, and the
-      // vocalisation is what the room hears.
+      // vocalization is what the room hears.
       final board = (await boardOffOf(vocab.rootBoardId!)).boardId;
       final id = await placeOn(board, label: 'polite', message: 'cheers mate');
       await (db.update(db.buttons)..where((b) => b.id.equals(id))).write(
@@ -415,7 +415,7 @@ void main() {
     });
 
     test('every surface a key has, in order of how sure the match is', () async {
-      // The label, the message the sentence gets, and the vocalisation the
+      // The label, the message the sentence gets, and the vocalization the
       // room hears are three places a word can live, and somebody looking for
       // it remembers any of them. A prefix is a better answer than a substring
       // wherever it turns up.

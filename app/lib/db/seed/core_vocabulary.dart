@@ -47,7 +47,7 @@
 /// costs to be without it, never how simple it looks: `toilet` and `emergency`
 /// are level 1 and `biscuit` is not. Level 1 is deliberately heavier on
 /// concrete nouns and social words than a core list alone would make it —
-/// published core lists under-emphasise the word types that dominate early
+/// published core lists under-emphasize the word types that dominate early
 /// expressive vocabulary (Laubscher & Light 2020).
 ///
 /// Level 1 is one vocabulary, not one board: a grid too small to draw all
@@ -213,7 +213,7 @@ final homeBands = <Band<SeedWord>>[
   ),
 
   // Opposites and near-relations sit side by side: want, need, like along one
-  // row, then go beside stop, get beside take, open beside close. Neighbouring
+  // row, then go beside stop, get beside take, open beside close. Neighboring
   // locations are learned as a pair; two positions that happen to be far apart
   // are learned twice.
   //
@@ -617,7 +617,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...nouns(['friend', 'teacher'], level: 2),
         ...nouns(['class', 'helper'], level: 3),
         ...nouns(['doctor', 'nurse'], level: 2),
-        ...nouns(['neighbour', 'driver', 'stranger'], level: 3),
+        ...nouns(['neighbor', 'driver', 'stranger'], level: 3),
       ],
     ),
 
@@ -994,7 +994,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     // Judgments rather than feelings — what a user says about a situation
     // somebody else is describing. Correcting a listener who got it wrong is
     // the job here: without these the only way to disagree is "no", which
-    // reads as refusal rather than correction. Opposites are neighbours.
+    // reads as refusal rather than correction. Opposites are neighbors.
     Band(
       name: 'right and wrong',
       shedRank: 3,

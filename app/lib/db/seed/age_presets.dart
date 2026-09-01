@@ -7,7 +7,7 @@
 ///
 /// Older presets include vocabulary that child presets do not, including
 /// profanity. That is not novelty. Autistic adults consistently report that
-/// commercial AAC feels infantilising, and censoring an adult's vocabulary
+/// commercial AAC feels infantilizing, and censoring an adult's vocabulary
 /// removes agency from someone who cannot easily route around the omission —
 /// a speaking adult can swear whenever they like, and nobody vets their word
 /// list. Every one of these words is disable-able, and disabling one hides it
@@ -287,7 +287,7 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         shedRank: 1,
         startsLine: false,
         items: [
-          ...adjectives(['frustrated', 'patronised', 'exhausted'], level: 2),
+          ...adjectives(['frustrated', 'patronized', 'exhausted'], level: 2),
           // The answer that closes a question without opening anything. The
           // hedges are elsewhere — "maybe" on the root board and the "not
           // sure" row on this one — and one word has one location.

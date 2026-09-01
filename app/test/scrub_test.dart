@@ -13,10 +13,10 @@ void main() {
     test('a board name a refusal quoted', () {
       // Real: refusalToMoveRow builds exactly this sentence.
       const thrown =
-          'Bad state: Row 3 of "Maya’s favourites" already holds 4 words.';
+          'Bad state: Row 3 of "Maya’s favorites" already holds 4 words.';
 
       final out = scrubbed(thrown);
-      expect(out, isNot(contains('favourites')));
+      expect(out, isNot(contains('favorites')));
       expect(out, contains('Bad state'), reason: 'the useful half went too');
       expect(out, contains(redacted));
     });
@@ -96,7 +96,7 @@ void main() {
       );
     });
 
-    test('and does not care about capitalisation', () {
+    test('and does not care about capitalization', () {
       expect(refusalToSend('near MAYA', names: ['maya']), isNotNull);
     });
 

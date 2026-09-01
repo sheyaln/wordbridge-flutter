@@ -502,7 +502,7 @@ void main() {
       );
     });
 
-    testWidgets('a partner modelling is not the user talking', (tester) async {
+    testWidgets('a partner modeling is not the user talking', (tester) async {
       final now = nowMs();
       await record(
         'i',

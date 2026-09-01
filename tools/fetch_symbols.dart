@@ -319,7 +319,7 @@ Future<_Hit?> _search(
     } on _RateLimited catch (e) {
       if (attempt == 3) rethrow;
       // Long waits, because the server has said in as many words that it is
-      // being asked too often. Honour what it asked for when it says.
+      // being asked too often. Honor what it asked for when it says.
       await Future<void>.delayed(
         e.retryAfter ?? Duration(seconds: 5 * (attempt + 1)),
       );
@@ -455,7 +455,7 @@ void _writeSymbol(File file, List<int> bytes, String extension) {
     // shipped.
     stderr.writeln(
       '\n  ! ${file.path} keeps a stylesheet that could not be resolved. '
-      'It will render without its colours.',
+      'It will render without its colors.',
     );
   }
 

@@ -52,7 +52,7 @@ void main() {
       expect(contractionFor(''), isNull);
     });
 
-    test('however it was capitalised or spaced', () {
+    test('however it was capitalized or spaced', () {
       expect(contractionFor('  Can '), "can't");
     });
 

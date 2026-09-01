@@ -21,7 +21,7 @@ import 'package:wordbridge/features/symbols/system_emoji_pack.dart';
 ///
 /// Two things are being protected here. The first is legal: the system emoji
 /// fonts are proprietary, so what this feature stores has to be the codepoint
-/// and never the drawing — no glyph may be extracted, rasterised or bundled.
+/// and never the drawing — no glyph may be extracted, rasterized or bundled.
 /// The second is §5's rule: emoji keywords are broad, so these matches may
 /// only ever be offered to somebody who is looking at them.
 void main() {
@@ -73,7 +73,7 @@ void main() {
         ['assets/symbols/system-emoji/manifest.json'],
         reason:
             'anything else under here would be a system font glyph that '
-            'had been rasterised and bundled, which the licenses forbid',
+            'had been rasterized and bundled, which the licenses forbid',
       );
     });
 
@@ -167,7 +167,7 @@ void main() {
       expect(await SystemEmojiPack().search('cat', limit: 0), isEmpty);
     });
 
-    test('the limit is honoured', () async {
+    test('the limit is honored', () async {
       expect(await SystemEmojiPack().search('face', limit: 5), hasLength(5));
     });
 

@@ -71,7 +71,7 @@ abstract interface class SymbolPack {
 /// anywhere they are stored, because they are not stored: the platform's own
 /// font renders them, exactly as it renders any other text. The system emoji
 /// fonts are proprietary, so **only the codepoint may ever be kept** —
-/// extracting, rasterising or bundling one of their glyphs would put somebody
+/// extracting, rasterizing or bundling one of their glyphs would put somebody
 /// else's artwork in this repository.
 ///
 /// Split out because two callers have to be able to tell such a pack apart:

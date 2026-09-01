@@ -3,7 +3,7 @@ import 'dart:convert';
 /// Open Board Format 0.1 value types — https://www.openboardformat.org/
 ///
 /// Parsing is deliberately forgiving and emission strict. Files in the wild
-/// use the numeric ids the spec forbids, omit optional keys, capitalise
+/// use the numeric ids the spec forbids, omit optional keys, capitalize
 /// `copyright_notice_url` inconsistently (the spec's own examples do both),
 /// and carry vendor `ext_` keys. Nothing we write should need that tolerance.
 const obfFormat = 'open-board-0.1';

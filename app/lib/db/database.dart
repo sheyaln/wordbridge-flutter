@@ -109,7 +109,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
       if (from < 3) {
         // Version 3 is the first in which the stored vocabulary level decides
         // what is drawn, so no earlier value expresses a decision anybody
-        // made. Levelling every existing profile up reveals words rather than
+        // made. Leveling every existing profile up reveals words rather than
         // removing them, which is the safe direction.
         await customStatement('UPDATE profiles SET vocab_level = 3');
       }

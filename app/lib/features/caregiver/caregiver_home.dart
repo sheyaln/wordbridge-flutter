@@ -463,7 +463,7 @@ class _RegionLabels extends StatelessWidget {
               .watch(),
       builder: (context, snapshot) {
         final boards = snapshot.data ?? const <Board>[];
-        final labelled = boards.any((b) => b.bandMap != null);
+        final labeled = boards.any((b) => b.bandMap != null);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -484,7 +484,7 @@ class _RegionLabels extends StatelessWidget {
                 onChanged();
               },
             ),
-            if (settings.regionLabels && boards.isNotEmpty && !labelled)
+            if (settings.regionLabels && boards.isNotEmpty && !labeled)
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Text(

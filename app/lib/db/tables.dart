@@ -48,7 +48,7 @@ enum CopulaKind { present, past }
 
 enum SymbolSource { bundled, downloaded, custom }
 
-/// Distinguishes the AAC user's own selections from a partner modelling on
+/// Distinguishes the AAC user's own selections from a partner modeling on
 /// their device. Conflating them makes every progress report wrong.
 ///
 /// [prediction] is separate from [touch] for a second reason: the remap

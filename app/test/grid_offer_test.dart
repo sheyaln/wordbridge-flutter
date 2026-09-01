@@ -99,7 +99,7 @@ void main() {
   });
 
   test('the fit check gives the same answer every time it is asked', () {
-    // It is memoised, and the setup page asks it for every icon size on every
+    // It is memoized, and the setup page asks it for every icon size on every
     // rebuild — including while a name is being typed.
     for (var i = 0; i < 3; i++) {
       expect(boardSetRefusal(rows: 4, cols: 6), isNotNull);

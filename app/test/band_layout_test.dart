@@ -20,7 +20,7 @@ Band<String> band(
   fill: fill,
 );
 
-Band<String> levelled(
+Band<String> leveled(
   String name,
   Map<String, int> words, {
   int shedRank = 100,
@@ -487,8 +487,8 @@ void main() {
         rows: 3,
         cols: 3,
         bands: [
-          levelled('mixed', {'core': 1, 'later': 2, 'much later': 3}),
-          levelled('other', {'core two': 1, 'later two': 2}),
+          leveled('mixed', {'core': 1, 'later': 2, 'much later': 3}),
+          leveled('other', {'core two': 1, 'later two': 2}),
         ],
       );
 
@@ -526,9 +526,9 @@ void main() {
         rows: 3,
         cols: 4,
         bands: [
-          levelled('pronouns', {'I': 1, 'you': 1, 'we': 2}, shedRank: 0),
-          levelled('verbs', {'want': 1, 'go': 1, 'turn': 2}, shedRank: 1),
-          levelled(
+          leveled('pronouns', {'I': 1, 'you': 1, 'we': 2}, shedRank: 0),
+          leveled('verbs', {'want': 1, 'go': 1, 'turn': 2}, shedRank: 1),
+          leveled(
             'negation',
             {'not': 1, 'good': 2},
             shedRank: 2,
@@ -556,8 +556,8 @@ void main() {
         rows: 4,
         cols: 4,
         bands: [
-          levelled('sparse', {'I': 1, 'you': 2}, shedRank: 0),
-          levelled('crowded', {
+          leveled('sparse', {'I': 1, 'you': 2}, shedRank: 0),
+          leveled('crowded', {
             'a': 1,
             'b': 1,
             'c': 2,
@@ -582,7 +582,7 @@ void main() {
         cols: 2,
         bands: [
           band('bulk', ['a', 'b', 'c'], shedRank: 0),
-          levelled('negation', {'not': 1}, shedRank: 9, essential: {'not'}),
+          leveled('negation', {'not': 1}, shedRank: 9, essential: {'not'}),
         ],
       );
 
@@ -595,7 +595,7 @@ void main() {
           rows: 2,
           cols: 2,
           bands: [
-            levelled(
+            leveled(
               'negation',
               {'not': 1, 'stop': 1},
               essential: {'not', 'stop'},

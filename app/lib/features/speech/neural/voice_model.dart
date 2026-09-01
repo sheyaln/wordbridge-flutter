@@ -12,7 +12,7 @@ import 'package:path_provider/path_provider.dart';
 ///
 /// A record of paths rather than a directory, because "the model is installed"
 /// has to mean all four arrived. A tablet that ran out of space between the
-/// 345 MB of weights and the phonemiser's data has a directory, a size, and no
+/// 345 MB of weights and the phonemizer's data has a directory, a size, and no
 /// voice — and it reports exactly the same way as a build that never worked,
 /// which is a day nobody gets back.
 class VoiceModelFiles {

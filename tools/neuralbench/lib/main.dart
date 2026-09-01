@@ -131,19 +131,19 @@ class _BenchState extends State<Bench> {
         wants('sweep') || wants('question') || wants('tap');
 
     var started = DateTime.now();
-    final synthesiser = KokoroSynthesiser(files);
+    final synthesizer = KokoroSynthesizer(files);
     if (needsModel) {
       // Loading. A blocking FFI call over 330 MB of weights, so it runs off
       // the main isolate — this is how long the board would otherwise have
       // frozen.
-      await synthesiser.load();
+      await synthesizer.load();
       _note(
         'model load + warm-up: '
         '${DateTime.now().difference(started).inMilliseconds} ms',
       );
     }
 
-    if (wants('question')) await _questionMark(synthesiser);
+    if (wants('question')) await _questionMark(synthesizer);
 
     // Live synthesis by utterance length, median of three, so one scheduling
     // accident does not become the shipped budget.
@@ -155,7 +155,7 @@ class _BenchState extends State<Bench> {
       final runs = <int>[];
       for (var run = 0; run < 3; run++) {
         started = DateTime.now();
-        await synthesiser.generate(text: text, sid: 1, speed: 1.0);
+        await synthesizer.generate(text: text, sid: 1, speed: 1.0);
         runs.add(DateTime.now().difference(started).inMilliseconds);
       }
       runs.sort();
@@ -177,23 +177,23 @@ class _BenchState extends State<Bench> {
     if (wants('tap')) {
       // Real-time factor, and what trimming the padding is worth.
       started = DateTime.now();
-      final raw = await synthesiser.generate(
+      final raw = await synthesizer.generate(
         text: 'I want to go outside please',
         sid: 1,
         speed: 1.0,
         trim: false,
       );
-      final synthesised = DateTime.now().difference(started);
-      final clip = await synthesiser.generate(
+      final synthesized = DateTime.now().difference(started);
+      final clip = await synthesizer.generate(
         text: 'I want to go outside please',
         sid: 1,
         speed: 1.0,
       );
       final audio = clipDuration(clip);
       _note(
-        'sentence: ${synthesised.inMilliseconds} ms for '
+        'sentence: ${synthesized.inMilliseconds} ms for '
         '${audio.inMilliseconds} ms of audio — RTF '
-        '${(synthesised.inMilliseconds / audio.inMilliseconds).toStringAsFixed(2)}',
+        '${(synthesized.inMilliseconds / audio.inMilliseconds).toStringAsFixed(2)}',
       );
       _note(
         'padding trimmed: ${clipDuration(raw).inMilliseconds} ms -> '
@@ -201,8 +201,8 @@ class _BenchState extends State<Bench> {
         '(${(100 - clip.pcm16.lengthInBytes / raw.pcm16.lengthInBytes * 100).round()}% off)',
       );
 
-      final short = await synthesiser.generate(text: 'I', sid: 1, trim: false);
-      _note('the word "I" synthesises to ${clipDuration(short).inMilliseconds} ms');
+      final short = await synthesizer.generate(text: 'I', sid: 1, trim: false);
+      _note('the word "I" synthesizes to ${clipDuration(short).inMilliseconds} ms');
 
       // The tap path, which is the one that must not have got slower.
       final store = await ClipStore.open(
@@ -242,7 +242,7 @@ class _BenchState extends State<Bench> {
       // works today. The audio differs — different voices say a word over
       // different lengths — so what is comparable is the gap between the call
       // and the sound, which is the part a person feels as lag.
-      final word = await synthesiser.generate(text: 'outside', sid: 1);
+      final word = await synthesizer.generate(text: 'outside', sid: 1);
       await store.write('word', word);
       final wordAudio = clipDuration(word).inMilliseconds;
 
@@ -277,7 +277,7 @@ class _BenchState extends State<Bench> {
       await store.close();
     }
 
-    synthesiser.dispose();
+    synthesizer.dispose();
 
     if (wants('install')) await _install(root);
   }
@@ -292,8 +292,8 @@ class _BenchState extends State<Bench> {
   ///
   /// The same words, on the same voice, with and without the mark. Systematic
   /// error in the pitch estimate cancels; what is left is the difference.
-  Future<void> _questionMark(KokoroSynthesiser synthesiser) async {
-    _note('--- does the mark carry tone? (loaded: ${synthesiser.isLoaded}) ---');
+  Future<void> _questionMark(KokoroSynthesizer synthesizer) async {
+    _note('--- does the mark carry tone? (loaded: ${synthesizer.isLoaded}) ---');
     _note('rise = mean f0 of the last 200 ms, minus the mean over the whole');
 
     const pairs = [
@@ -310,8 +310,8 @@ class _BenchState extends State<Bench> {
     var rose = 0;
     var fell = 0;
     for (final sentence in pairs) {
-      final flat = await synthesiser.generate(text: sentence, sid: 1);
-      final asked = await synthesiser.generate(text: '$sentence?', sid: 1);
+      final flat = await synthesizer.generate(text: sentence, sid: 1);
+      final asked = await synthesizer.generate(text: '$sentence?', sid: 1);
 
       final flatRise = _rise(flat);
       final askedRise = _rise(asked);

@@ -940,7 +940,7 @@ void main() {
 
       expect(
         words.keys,
-        containsAll(['frustrated', 'patronised', 'I disagree', 'talk to me']),
+        containsAll(['frustrated', 'patronized', 'I disagree', 'talk to me']),
         reason: 'the preset never reached the board that arrived late',
       );
     });

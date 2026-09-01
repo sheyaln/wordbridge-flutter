@@ -331,7 +331,7 @@ List<Band<SeedWord>> rootBandsFor(int rows) {
 /// caregiver is offered a grid and profile creation then throws.
 ///
 /// Answered by laying the boards out, because that is the only thing that
-/// knows. Memoised because the setup page asks it for every icon size on every
+/// knows. Memoized because the setup page asks it for every icon size on every
 /// rebuild, and the layout is a pure function of the grid.
 String? boardSetRefusal({required int rows, required int cols}) {
   final key = (rows, cols);
