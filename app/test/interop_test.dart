@@ -100,7 +100,7 @@ Future<Board> boardNamed(WordbridgeDatabase db, String name) =>
 
 /// A hand-written board exercising the corners of the spec: a numeric id, an
 /// `actions` array with no `action` fallback, a vocalization that differs from
-/// the label, an rgb colour, an unreferenced image, and null grid entries.
+/// the label, an rgb color, an unreferenced image, and null grid entries.
 const minimalObf = '''
 {
   "format": "open-board-0.1",
@@ -198,7 +198,7 @@ void main() {
       expect(
         notes,
         isEmpty,
-        reason: 'our own package should import without a single judgement call',
+        reason: 'our own package should import without a single judgment call',
       );
     });
 
@@ -341,7 +341,7 @@ void main() {
       expect(home.action, ButtonAction.home);
     });
 
-    test('the licence is carried across as readable text', () async {
+    test('the license is carried across as readable text', () async {
       final vocab = await (db.select(
         db.vocabularies,
       )..where((v) => v.id.equals(vocabId))).getSingle();
@@ -351,13 +351,13 @@ void main() {
       expect(vocab.sourceLicense, contains('creativecommons.org'));
     });
 
-    test('an undeclared licence is recorded as all rights reserved', () async {
+    test('an undeclared license is recorded as all rights reserved', () async {
       final id = await importObf(
         db,
         jsonEncode({
           'format': obfFormat,
           'id': 'x',
-          'name': 'no licence',
+          'name': 'no license',
           'buttons': [
             {'id': '1', 'label': 'hi'},
           ],
@@ -694,7 +694,7 @@ void main() {
         db.cells,
       )..where((c) => c.boardId.equals(small.id))).get();
 
-      expect(cells.length, 15, reason: 'every board is materialised at 3x5');
+      expect(cells.length, 15, reason: 'every board is materialized at 3x5');
       expect(cells.where((c) => c.state == CellState.occupied).length, 2);
     });
 

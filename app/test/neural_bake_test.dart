@@ -227,7 +227,7 @@ void main() {
     });
 
     test(
-      'a word that will not synthesise stops the job, not the app',
+      'a word that will not synthesize stops the job, not the app',
       () async {
         final bake = stubBake(store, failOn: 'c');
         await bake.job.start(['a', 'b', 'c', 'd']);
@@ -266,7 +266,7 @@ void main() {
   late BakeJob job;
   job = BakeJob(
     store,
-    synthesise: (word) async {
+    synthesize: (word) async {
       if (word == failOn) throw StateError('no phonemes for "$word"');
       made.add(word);
       if (pauseAfter != null && made.length >= pauseAfter) job.pause();

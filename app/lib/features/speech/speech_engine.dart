@@ -20,7 +20,7 @@ abstract interface class SpeechEngine {
   ///
   /// Separate from [speak] because it is the one place a wait was agreed to:
   /// §4.5 records a named exception for a profile that has opted into a voice
-  /// which has to synthesise, and the exception covers the bar's speak key and
+  /// which has to synthesize, and the exception covers the bar's speak key and
   /// nothing else. An engine with no such cost implements this as [speak].
   Future<void> speakUtterance(String text);
 
@@ -63,7 +63,7 @@ typedef VoiceOption = ({
   bool requiresNetwork,
 });
 
-/// Works around synthesisers announcing a lone capital letter by name.
+/// Works around synthesizers announcing a lone capital letter by name.
 ///
 /// Both iOS and Android read a single uppercase character as its letter name
 /// with a prefix — "I" becomes "capital I" — because in isolation it looks
@@ -71,10 +71,10 @@ typedef VoiceOption = ({
 /// name, which for "I" is exactly the correct pronunciation of the word.
 ///
 /// Only whole-utterance single letters are touched. Inside a sentence the
-/// synthesiser already has enough context ("I want more" reads correctly),
+/// synthesizer already has enough context ("I want more" reads correctly),
 /// and a spelling keyboard genuinely wants letter names, so it must not be
 /// routed through here.
-String normaliseForSpeech(String text) {
+String normalizeForSpeech(String text) {
   final trimmed = text.trim();
   if (trimmed.length == 1 && RegExp(r'^[A-Z]$').hasMatch(trimmed)) {
     return trimmed.toLowerCase();
@@ -104,7 +104,7 @@ class FlutterTtsEngine implements SpeechEngine {
 
   @override
   Future<void> speak(String text) async {
-    final spoken = normaliseForSpeech(text);
+    final spoken = normalizeForSpeech(text);
     if (spoken.isEmpty) return;
     // Newest selection wins. A user tapping quickly wants the current word,
     // not a queue draining words they have moved on from.
@@ -168,7 +168,7 @@ class FlutterTtsEngine implements SpeechEngine {
   /// The plugin's own scale puts ordinary speech at **0.5** on both platforms:
   /// iOS passes the number straight to `AVSpeechUtterance.rate`, whose default
   /// is 0.5 and whose maximum is 1.0, and the Android side doubles it before
-  /// handing it to a synthesiser whose normal is 1.0. Sending 1.0 for "normal
+  /// handing it to a synthesizer whose normal is 1.0. Sending 1.0 for "normal
   /// speed" therefore asks both of them for double, which is too fast to make
   /// any of the words out.
   static double engineRate(double rate) => (rate * 0.5).clamp(0.0, 1.0);

@@ -107,7 +107,7 @@ List<String> get namesToOffer => ({
   'school',
   'toys',
   'animals',
-  'colours',
+  'colors',
   'numbers',
   'time',
 }.toList()..sort());

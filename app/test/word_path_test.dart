@@ -78,7 +78,7 @@ void main() {
     String name = 'toys',
     String keyLabel = 'toys',
   }) async {
-    final made = await materialiseBoard(
+    final made = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: name,
@@ -294,7 +294,7 @@ void main() {
     });
 
     test('a word on a board nothing reaches', () async {
-      final orphan = await materialiseBoard(
+      final orphan = await materializeBoard(
         db,
         vocabularyId: vocabId,
         name: 'orphan',

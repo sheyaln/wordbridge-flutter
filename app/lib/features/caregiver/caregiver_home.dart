@@ -28,12 +28,13 @@ import '../symbols/symbol_resolver.dart';
 import '../talk/route_walk.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
-import '../symbols/symbol_credits.dart';
 import '../usage/usage_summary.dart';
 import '../reporting/crash_store.dart';
 import '../reporting/report_sender.dart';
+import 'about_screen.dart';
 import 'backups_screen.dart';
 import 'board_files_screen.dart';
+import 'symbol_packs_screen.dart';
 import 'reports_screen.dart';
 import 'voice_screen.dart';
 
@@ -94,7 +95,7 @@ class CaregiverHome extends StatefulWidget {
   ///
   /// Held by the talk screen rather than by a profile: it is a way of looking
   /// at a board, not a fact about a person, and it must not survive the app
-  /// being closed. Absent where nothing can honour it, and the switch is then
+  /// being closed. Absent where nothing can honor it, and the switch is then
   /// not offered rather than offered and inert.
   final bool viewAll;
   final ValueChanged<bool>? onViewAll;
@@ -158,6 +159,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           onViewAll: widget.onViewAll,
           crashes: widget.crashes,
           sender: widget.sender,
+          registry: widget.registry,
           onChanged: () => setState(() {}),
         ),
       },
@@ -260,7 +262,7 @@ class _Boards extends StatelessWidget {
 extension on _Boards {
   /// Creates an empty board.
   ///
-  /// Every location is materialised at once, so the board is a full grid of
+  /// Every location is materialized at once, so the board is a full grid of
   /// reserved cells from the moment it exists. Nothing has to shuffle when
   /// words are added to it later — which is the point of creating one rather
   /// than packing more into an existing board.
@@ -291,7 +293,7 @@ extension on _Boards {
 
     if (name == null || name.trim().isEmpty) return;
 
-    await materialiseBoard(
+    await materializeBoard(
       db,
       vocabularyId: vocabularyId,
       name: name.trim(),
@@ -640,12 +642,14 @@ class _Settings extends StatelessWidget {
     this.userName,
     this.crashes,
     this.sender,
+    this.registry,
   });
 
   final WordbridgeDatabase db;
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
+  final SymbolRegistry? registry;
   final BackupService backup;
   final BoardFileStore boards;
   final CrashStore? crashes;
@@ -918,7 +922,7 @@ class _Settings extends StatelessWidget {
       ),
     _Section(
       icon: Icons.touch_app_outlined,
-      title: 'Board behaviour',
+      title: 'Board behavior',
       description:
           'Returning home after a word, the pause after a page change, and '
           'the strips that label rows and show the route to a word',
@@ -1162,21 +1166,30 @@ class _Settings extends StatelessWidget {
         ),
       ),
     ),
+    // Only where a registry was supplied. A build without one has no packs to
+    // offer and the row would open onto nothing.
+    if (registry != null)
+      _Section(
+        icon: Icons.image_outlined,
+        title: 'Pictures',
+        description:
+            'Which picture sets this tablet may use, and which are downloaded',
+        opens: (context) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => SymbolPacksScreen(db: db, registry: registry!),
+          ),
+        ),
+      ),
+    // One screen of its own (§4.43a). What is on it is prose rather than
+    // controls, and the one thing there is to press on it opens the credits.
     _Section(
       icon: Icons.info_outline,
       title: 'About',
-      description: 'Symbol sets, their sources and their licences',
-      tiles: (context, onChanged) => [
-        ListTile(
-          leading: const Icon(Icons.image_outlined),
-          title: const Text('Symbol credits'),
-          subtitle: const Text('Who made the pictures, and their licences'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const SymbolCredits()),
-          ),
-        ),
-      ],
+      description:
+          'Version and license, how this app was built, and where the symbols '
+          'came from',
+      opens: (context) => Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const AboutScreen())),
     ),
   ];
 }

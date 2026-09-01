@@ -156,10 +156,9 @@ class _GridChangeScreenState extends State<GridChangeScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
-              'These two answers decide how many rows and columns there are, '
-              'so changing either one rebuilds every board. Almost every word '
-              'moves. Do this when the board no longer fits the person using '
-              'it, not to tidy it up.',
+              'Changing either one rebuilds every board, and almost every '
+              'word moves. Do this when the board no longer fits the person '
+              'using it, not to tidy it up.',
               style: TextStyle(fontSize: 13, height: 1.4),
             ),
           ),
@@ -219,8 +218,8 @@ class _GridChangeScreenState extends State<GridChangeScreen> {
             const Center(child: CircularProgressIndicator())
           else if (_unchanged)
             const Text(
-              'Nothing selected yet. Choose a different size or orientation '
-              'to see what changing it would cost.',
+              'Choose a different size or orientation to see what changing it '
+              'would cost.',
               style: TextStyle(color: Colors.black54),
             )
           else if (!choice.isUsable)
@@ -270,14 +269,14 @@ class _ImpactReport extends StatelessWidget {
             style: const TextStyle(fontSize: 14, height: 1.45),
           ),
         ),
-        if (impact.mostPractised.isNotEmpty) ...[
+        if (impact.mostPracticed.isNotEmpty) ...[
           const SizedBox(height: 20),
           Text(
-            'The most practised of them',
+            'The most practiced of them',
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          for (final word in impact.mostPractised)
+          for (final word in impact.mostPracticed)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Text(
@@ -290,14 +289,14 @@ class _ImpactReport extends StatelessWidget {
         const SizedBox(height: 16),
         // §4.26. Names are per line, and this re-lays every line.
         const Text(
-          'Any names you gave rows are dropped. Every row is laid out afresh, '
-          'so a name kept would end up over a row you did not name.',
+          'Any names you gave rows are dropped, because every row is laid out '
+          'afresh.',
           style: TextStyle(fontSize: 13, color: Colors.black54),
         ),
         const SizedBox(height: 8),
         const Text(
-          'The board as it is now is kept, not deleted. If this turns out to '
-          'be the wrong call, it can be put back exactly as it was.',
+          'The board as it is now is kept, not deleted, and can be put back '
+          'exactly as it was.',
           style: TextStyle(fontSize: 13, color: Colors.black54),
         ),
       ],

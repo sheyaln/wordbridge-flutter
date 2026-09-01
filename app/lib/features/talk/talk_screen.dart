@@ -143,7 +143,7 @@ class TalkScreenState extends State<TalkScreen> {
 
   /// Something is waiting on a voice.
   ///
-  /// Only ever true long enough to see under an engine that has to synthesise;
+  /// Only ever true long enough to see under an engine that has to synthesize;
   /// the platform engine returns before a frame is drawn, so the ring never
   /// appears for it.
   bool _speaking = false;
@@ -895,7 +895,7 @@ class TalkScreenState extends State<TalkScreen> {
     // The bar, not a tap — and the only call in the app that goes to
     // `speakUtterance`. §4.5's named exception to §5 non-negotiable 1 lives
     // here and nowhere else: one press, one wait, one sentence, for a profile
-    // that asked for a voice which has to be synthesised. Under an engine
+    // that asked for a voice which has to be synthesized. Under an engine
     // with no such cost this is the same call as any other.
     //
     // The ring goes up for the whole call rather than only for a synthesis,
@@ -1266,7 +1266,7 @@ class TalkScreenState extends State<TalkScreen> {
                                 resolver: widget.resolver,
                                 isAvailable: _isAvailable,
                                 viewAll: _viewAll,
-                                colourScheme: vocab.colourScheme,
+                                colorConvention: vocab.colorConvention,
                                 onSelect: _onSelect,
                                 pairHold: _entry.pairHold,
                                 onPairHold: _openCaregiver,
@@ -1398,7 +1398,7 @@ class _UtteranceBarView extends StatelessWidget {
                 onPressed: empty ? null : onSpeak,
                 busy: speaking,
                 size: 40,
-                colour: const Color(0xFF1B5E20),
+                color: const Color(0xFF1B5E20),
                 background: const Color(0xFFDCEDC8),
               ),
               const SizedBox(width: 4),
@@ -1411,19 +1411,19 @@ class _UtteranceBarView extends StatelessWidget {
               // Both marks behind one control, and it always opens. A button
               // that applied the last mark on a plain press would be one press
               // for a question and two for the other, decided by something the
-              // person cannot see — a key whose behaviour depends on history is
+              // person cannot see — a key whose behavior depends on history is
               // the one thing this board never has.
               _BarMenu(
                 // Both marks, because the control carries both. One of them
                 // would read as the key doing that one thing, and a person who
                 // wanted the other would have no reason to press it.
-                face: (colour) => Text(
+                face: (color) => Text(
                   '?!',
                   style: TextStyle(
                     fontSize: 27,
                     height: 1.1,
                     fontWeight: FontWeight.w600,
-                    color: colour,
+                    color: color,
                   ),
                 ),
                 tooltip: 'End the sentence',
@@ -1452,8 +1452,8 @@ class _UtteranceBarView extends StatelessWidget {
               // without the control changing shape under somebody who had
               // learned it. It has now joined it.
               _BarMenu<String>(
-                face: (colour) =>
-                    Icon(Icons.search_rounded, size: 30, color: colour),
+                face: (color) =>
+                    Icon(Icons.search_rounded, size: 30, color: color),
                 tooltip: 'Another way to a word',
                 items: const [
                   // The finder first. It answers "where is the word", which is
@@ -1532,10 +1532,10 @@ class _BarMenu<T> extends StatelessWidget {
     this.enabled = true,
   });
 
-  /// Drawn in the colour the control's state calls for, so a face made of
-  /// letters greys out with the rest of the bar rather than staying bright on a
+  /// Drawn in the color the control's state calls for, so a face made of
+  /// letters grays out with the rest of the bar rather than staying bright on a
   /// control that does nothing.
-  final Widget Function(Color colour) face;
+  final Widget Function(Color color) face;
   final String tooltip;
   final List<({T mark, String label, IconData icon})> items;
   final void Function(T) onChosen;
@@ -1588,7 +1588,7 @@ class _BarButton extends StatelessWidget {
     required this.onPressed,
     this.busy = false,
     this.size = 30,
-    this.colour = Colors.black54,
+    this.color = Colors.black54,
     this.background,
   });
 
@@ -1600,7 +1600,7 @@ class _BarButton extends StatelessWidget {
   /// where it sits. The target has to stay exactly where the finger left it.
   final bool busy;
   final double size;
-  final Color colour;
+  final Color color;
   final Color? background;
 
   @override
@@ -1625,13 +1625,13 @@ class _BarButton extends StatelessWidget {
                     height: size,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
-                      color: enabled ? colour : Colors.black12,
+                      color: enabled ? color : Colors.black12,
                     ),
                   )
                 : Icon(
                     icon,
                     size: size,
-                    color: enabled ? colour : Colors.black12,
+                    color: enabled ? color : Colors.black12,
                   ),
           ),
         ),
@@ -1707,9 +1707,9 @@ class _ViewAllStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colours = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
     return Material(
-      color: colours.tertiaryContainer,
+      color: colors.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
         child: Row(
@@ -1717,13 +1717,13 @@ class _ViewAllStrip extends StatelessWidget {
             Icon(
               Icons.visibility_outlined,
               size: 20,
-              color: colours.onTertiaryContainer,
+              color: colors.onTertiaryContainer,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'Showing every word, including hidden ones',
-                style: TextStyle(color: colours.onTertiaryContainer),
+                style: TextStyle(color: colors.onTertiaryContainer),
               ),
             ),
             TextButton(onPressed: onStop, child: const Text('Stop')),

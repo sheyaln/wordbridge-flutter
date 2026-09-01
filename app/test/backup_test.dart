@@ -15,7 +15,7 @@ import 'package:wordbridge/features/backup/snapshot.dart';
 ///
 /// The reported failure these are written against: an update flattens a
 /// child's board and the family finds that the backup they believed in did not
-/// carry the customisations. So the thing under test is not "a file was
+/// carry the customizations. So the thing under test is not "a file was
 /// written" — it is that every cell, every word, every hidden flag and every
 /// vocabulary level comes back identical, and that a restore which cannot do
 /// that leaves the board it was given alone.
@@ -70,9 +70,9 @@ void main() {
     'syncMeta': (await db.select(db.syncMeta).get()).toSet(),
   };
 
-  /// Customisations a caregiver would be devastated to lose, and history the
+  /// Customizations a caregiver would be devastated to lose, and history the
   /// remap warning is computed from.
-  Future<void> personalise() async {
+  Future<void> personalize() async {
     final hide = (await db.select(db.buttons).get()).firstWhere(
       (b) => !b.isSystem,
     );
@@ -249,7 +249,7 @@ void main() {
 
   group('restoring', () {
     test('puts every cell, word, hidden flag and level back', () async {
-      await personalise();
+      await personalize();
       final before = await everything();
 
       final snapshot = await take();
@@ -272,7 +272,7 @@ void main() {
     });
 
     test('brings back the things an export would have dropped', () async {
-      await personalise();
+      await personalize();
       final hidden = (await db.select(db.buttons).get()).firstWhere(
         (b) => b.hidden,
       );
@@ -339,7 +339,7 @@ void main() {
     });
 
     test('the log keeps working afterwards', () async {
-      await personalise();
+      await personalize();
       final snapshot = await take();
       await db.delete(db.usageEvents).go();
       await backup.restore(snapshot);
@@ -462,7 +462,7 @@ void main() {
       // A caregiver who picks the wrong file and then the right one. If the
       // failed attempt left the snapshot attached to the live connection, the
       // one that would have worked is refused too.
-      await personalise();
+      await personalize();
       final good = await take();
       final damaged = await take();
       editSnapshot(damaged, (handle) => handle.execute('DROP TABLE cells'));
@@ -504,7 +504,7 @@ void main() {
     test('is brought forward and restored', () async {
       // The case the feature exists for: the update that flattened the board
       // also moved the schema on, so the way back is an older file.
-      await personalise();
+      await personalize();
       final snapshot = await take();
       makeItOlder(snapshot);
 
@@ -599,14 +599,14 @@ void main() {
 
   group('restoring with a copy of what it replaces', () {
     test('takes the copy before it replaces anything', () async {
-      await personalise();
-      final personalised = await everything();
+      await personalize();
+      final personalized = await everything();
       final before = await take();
       await wreck();
 
       final result = await restoreKeepingACopy(backup, before);
       expect(result.restored, isTrue);
-      expect(await everything(), personalised);
+      expect(await everything(), personalized);
 
       // Two: the one restored from, and the copy of the wrecked board.
       final all = await backup.snapshots();
@@ -620,7 +620,7 @@ void main() {
 
       // And the one restored from is still there to go back to.
       expect((await backup.restore(before)).restored, isTrue);
-      expect(await everything(), personalised);
+      expect(await everything(), personalized);
     });
 
     test('spares the one being restored from', () async {
@@ -715,7 +715,7 @@ void main() {
       // opening of caregiver mode has to clear the first copy out of the way
       // — or it silently keeps handing back a board from an earlier session.
       expect((await backup.takeSessionSnapshot()).problem, isNull);
-      await personalise();
+      await personalize();
       expect((await backup.takeSessionSnapshot()).problem, isNull);
 
       final directory = Directory(p.join(documents.path, 'backups'));
@@ -756,7 +756,7 @@ void main() {
       await backup.takeSessionSnapshot();
 
       final before = await everything();
-      await personalise();
+      await personalize();
       expect(await everything(), isNot(before), reason: 'the premise');
 
       final session = await backup.sessionSnapshot();

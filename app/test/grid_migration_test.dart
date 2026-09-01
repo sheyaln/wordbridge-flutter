@@ -159,8 +159,8 @@ void main() {
       );
 
       expect(impact.totalTaps, greaterThanOrEqualTo(341));
-      expect(impact.mostPractised.first.label, 'turn');
-      expect(impact.mostPractised.first.taps, 341);
+      expect(impact.mostPracticed.first.label, 'turn');
+      expect(impact.mostPracticed.first.taps, 341);
       expect(impact.warningFor('Maya'), contains('Maya'));
       expect(impact.warningFor('Maya'), contains('${impact.totalTaps}'));
     });

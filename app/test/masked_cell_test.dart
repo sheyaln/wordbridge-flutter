@@ -62,7 +62,7 @@ void main() {
               vocabLevel: vocabLevel,
               showHidden: showHidden,
               isAvailable: isAvailable,
-              colourScheme: ColourScheme.modifiedFitzgerald,
+              colorConvention: ColorConvention.modifiedFitzgerald,
               onSelect: (p) {
                 if (p.button != null) spoken.add(p.button!.label);
               },

@@ -16,7 +16,9 @@ import 'features/reporting/crash_store.dart';
 import 'features/speech/neural/neural_engine.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/speech/voice_setup.dart';
+import 'features/symbols/arasaac_pack.dart';
 import 'features/symbols/bundled_pack.dart';
+import 'features/symbols/symbol_choices.dart';
 import 'features/symbols/global_symbols_pack.dart';
 import 'features/symbols/symbol_registry.dart';
 import 'features/symbols/symbol_resolver.dart';
@@ -40,7 +42,7 @@ SymbolResolver appSymbolResolver({
 /// Puts the fallback board behind every route a failure can take.
 ///
 /// §5 non-negotiable 6. Flutter's own answer to a widget that throws is a red
-/// box in debug and a grey one in release, which for a nonspeaking person is a
+/// box in debug and a gray one in release, which for a nonspeaking person is a
 /// tablet that has stopped talking. Installed before [runApp] so a throw while
 /// the first frame is being built is already covered.
 ///
@@ -265,9 +267,22 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   // and at no bundle cost, for the words nothing local covers. Ahead of the
   // fetching pack because a picture already on the device beats one that needs
   // a network to arrive.
+  //
+  // ARASAAC last, and off unless somebody says otherwise. It is the largest
+  // set by far and the one that covers the words a particular family adds,
+  // which is exactly the coverage a shipped pack cannot have. It is also
+  // CC BY-NC-SA, so the registry defaults it off from its license alone and
+  // only a deliberate answer in caregiver settings turns it on. Fetching it on
+  // a person's instruction is their choice; shipping it enabled would make it
+  // ours.
   late final _globalSymbols = GlobalSymbolsPack();
   late final _symbols = SymbolRegistry(
-    packs: [...bundledSymbolPacks(), SystemEmojiPack(), _globalSymbols],
+    packs: [
+      ...bundledSymbolPacks(),
+      SystemEmojiPack(),
+      _globalSymbols,
+      ArasaacPack(),
+    ],
   );
   late final _resolver = appSymbolResolver(db: _db, registry: _symbols);
 
@@ -288,6 +303,13 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     // After the snapshot, because this is the first query and therefore the
     // thing that opens the database.
     _logger = UsageLogger(_db, deviceId: await deviceIdFor(_db));
+
+    // Only answers somebody actually gave. A pack nobody has decided about
+    // stays on its license's default, which is what keeps a noncommercial set
+    // off until it is switched on deliberately.
+    for (final choice in (await loadSymbolChoices(_db)).entries) {
+      _symbols.setEnabled(choice.key, choice.value);
+    }
 
     return _profiles.resume();
   }

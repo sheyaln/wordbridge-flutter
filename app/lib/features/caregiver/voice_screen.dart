@@ -23,7 +23,7 @@ bool showsNeuralVoice(
 ///
 /// The platform engine directly, never the neural one wrapping it. A caregiver
 /// dragging the pitch dial with the neural voice on would otherwise hear a
-/// synthesised sentence that pitch does nothing to, and conclude the dial is
+/// synthesized sentence that pitch does nothing to, and conclude the dial is
 /// broken. It is not — it belongs to the other voice.
 SpeechEngine deviceVoiceEngine(SpeechEngine speech) =>
     speech is NeuralSpeechEngine ? speech.platform : speech;
@@ -238,10 +238,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
           if (neuralOn)
             const VoiceNote(
               'Speaks whenever the neural voice is not ready: a word not yet '
-              'synthesised, or a sentence that exceeds the wait allowed. Worth '
-              'setting even with the neural voice on, since this is what is '
-              'heard when it matters. Pitch applies to this voice only, as the '
-              'neural voices offer no pitch control.',
+              'synthesized, or a sentence that exceeds the wait allowed. Pitch '
+              'applies to this voice only.',
             ),
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
@@ -269,11 +267,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
             ),
           ),
           const VoiceNote(
-            'These four are what text to speech can produce. It offers rate, '
-            'pitch and volume only. Sarcasm needs a rise and fall across a '
-            'whole sentence and a whisper needs breath, and neither is '
-            'available to an app. Quiet is this voice turned down, named for '
-            'what you will actually hear.',
+            'Text to speech offers rate, pitch and volume only, so these four '
+            'are what it can produce. Quiet is this voice turned down, not a '
+            'whisper.',
           ),
 
           const VoiceHeader('Speed, pitch and volume'),
@@ -309,10 +305,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
             onSettled: _previewDevice,
           ),
           const VoiceNote(
-            'A tone multiplies these values, so the second figure is what the '
-            'voice is actually given. Volume here is a proportion of the '
-            'tablet volume and cannot exceed it. If this is not loud enough '
-            'across a room, raise the tablet volume as well.',
+            'A tone multiplies these values: the second figure is what the '
+            'voice is given. Volume is a proportion of the tablet volume, so '
+            'raise that too if this is not loud enough.',
           ),
 
           if (neural != null)
@@ -464,8 +459,7 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
               _hiddenNovelty == 0
                   ? 'This tablet offers none.'
                   : 'Robots, singing and cartoon characters. '
-                        '$_hiddenNovelty on this tablet, left out by default '
-                        'so the speaking voices are easier to compare.',
+                        '$_hiddenNovelty on this tablet, left out by default.',
             ),
             isThreeLine: _hiddenNovelty > 0,
             onChanged: (v) async {
@@ -474,9 +468,8 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
             },
           ),
           const VoiceNote(
-            'Only offline voices are listed. A voice that requires a network '
-            'connection is unavailable exactly when the tablet is furthest '
-            'from home.',
+            'Only offline voices are listed, so the board still speaks with '
+            'no signal.',
           ),
           const SizedBox(height: 32),
         ],
@@ -517,9 +510,8 @@ class _VoiceList extends StatelessWidget {
 
     if (voices.isEmpty) {
       return const VoiceNote(
-        'This tablet reports no offline voices for the board language. The '
-        'system voice is still used. Install a voice in the tablet speech '
-        'settings to choose one here.',
+        'No offline voices for the board language. The system voice is still '
+        'used. Install one in the tablet speech settings to choose it here.',
       );
     }
 
@@ -536,7 +528,7 @@ class _VoiceList extends StatelessWidget {
     );
 
     final groups = VoiceSetup.groupByGender(voices);
-    final unlabelled = !VoiceSetup.reportsGender(voices);
+    final unlabeled = !VoiceSetup.reportsGender(voices);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -576,11 +568,10 @@ class _VoiceList extends StatelessWidget {
             ],
           ),
         ),
-        if (unlabelled)
+        if (unlabeled)
           const VoiceNote(
             'This tablet does not report which voices are male and which are '
-            'female, so they are listed together. The names are the only '
-            'indication available.',
+            'female, so they are listed together.',
           ),
       ],
     );

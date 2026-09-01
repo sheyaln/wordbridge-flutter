@@ -881,7 +881,7 @@ class _BoardEditorState extends State<BoardEditor> {
                         rows: vocab.gridRows,
                         cols: vocab.gridCols,
                         cells: cells,
-                        colourScheme: vocab.colourScheme,
+                        colorConvention: vocab.colorConvention,
                         resolver: widget.resolver,
                         pickedUpButtonId: moving?.id,
                         onSelect: _onCellTapped,
@@ -961,7 +961,7 @@ class _EditorBoard extends StatelessWidget {
     required this.rows,
     required this.cols,
     required this.cells,
-    required this.colourScheme,
+    required this.colorConvention,
     required this.resolver,
     required this.pickedUpButtonId,
     required this.onSelect,
@@ -970,7 +970,7 @@ class _EditorBoard extends StatelessWidget {
   final int rows;
   final int cols;
   final List<PlacedCell> cells;
-  final ColourScheme colourScheme;
+  final ColorConvention colorConvention;
 
   /// Absent wherever pictures are not wanted; the board then reads as labels
   /// only and says nothing about which pictures are missing, because it does
@@ -993,7 +993,7 @@ class _EditorBoard extends StatelessWidget {
           ? _ReservedCell(onTap: () => onSelect(placed))
           : _WordCell(
               button: placed.button!,
-              colourScheme: colourScheme,
+              colorConvention: colorConvention,
               resolver: resolver,
               pickedUp: placed.button!.id == pickedUpButtonId,
               onTap: () => onSelect(placed),
@@ -1038,14 +1038,14 @@ class _ReservedCell extends StatelessWidget {
 class _WordCell extends StatefulWidget {
   const _WordCell({
     required this.button,
-    required this.colourScheme,
+    required this.colorConvention,
     required this.resolver,
     required this.pickedUp,
     required this.onTap,
   });
 
   final Button button;
-  final ColourScheme colourScheme;
+  final ColorConvention colorConvention;
   final SymbolResolver? resolver;
   final bool pickedUp;
   final VoidCallback onTap;
@@ -1151,7 +1151,7 @@ class _WordCellState extends State<_WordCell> {
     return Material(
       color: hidden
           ? _hiddenGround
-          : Fitzgerald.colourFor(widget.colourScheme, button.partOfSpeech),
+          : Fitzgerald.colorFor(widget.colorConvention, button.partOfSpeech),
       borderRadius: BorderRadius.circular(_radius),
       child: InkWell(
         onTap: widget.onTap,
@@ -1174,14 +1174,14 @@ class _WordCellState extends State<_WordCell> {
                   right: 2,
                   child: _Marker(
                     icon: Icons.add_photo_alternate_outlined,
-                    colour: _noPicture,
+                    color: _noPicture,
                   ),
                 ),
               if (_stillLooking)
                 const Positioned(
                   top: 2,
                   right: 2,
-                  child: _Marker(icon: Icons.more_horiz, colour: _resolving),
+                  child: _Marker(icon: Icons.more_horiz, color: _resolving),
                 ),
             ],
           ),
@@ -1214,16 +1214,16 @@ class _WordCellState extends State<_WordCell> {
 /// ones to fix reads a column of marks far faster than 84 captions, and the
 /// picture underneath stays fully visible while they do it.
 class _Marker extends StatelessWidget {
-  const _Marker({required this.icon, required this.colour});
+  const _Marker({required this.icon, required this.color});
 
   final IconData icon;
-  final Color colour;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       child: Icon(icon, size: 12, color: Colors.white),
     );
   }

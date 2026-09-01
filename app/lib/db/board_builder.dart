@@ -4,7 +4,7 @@ import 'database.dart';
 import 'ids.dart';
 import 'tables.dart';
 
-/// Creates a board and materialises every one of its grid locations.
+/// Creates a board and materializes every one of its grid locations.
 ///
 /// All `rows * cols` cells are inserted up front, in one transaction, so a
 /// location exists before anything occupies it. This is what makes positions
@@ -13,7 +13,7 @@ import 'tables.dart';
 ///
 /// Geometry comes from the vocabulary, never from the caller, because every
 /// board in a vocabulary must share dimensions for motor plans to hold.
-Future<String> materialiseBoard(
+Future<String> materializeBoard(
   WordbridgeDatabase db, {
   required String vocabularyId,
   required String name,

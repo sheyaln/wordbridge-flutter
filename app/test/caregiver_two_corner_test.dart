@@ -94,7 +94,7 @@ void main() {
     // A board of its own, with a key at each end of the bottom row, so the
     // test is not at the mercy of whether the shipped root board happens to
     // have a second page today.
-    boardId = await materialiseBoard(
+    boardId = await materializeBoard(
       db,
       vocabularyId: vocabularyId,
       name: 'scratch',
@@ -154,7 +154,7 @@ void main() {
                 cols: cols,
                 cells: cells,
                 vocabLevel: 3,
-                colourScheme: ColourScheme.modifiedFitzgerald,
+                colorConvention: ColorConvention.modifiedFitzgerald,
                 pairHold: pairHold,
                 onPairHold: pairHold == null ? null : () => opened.add(1),
                 onSelect: (placed) =>
@@ -418,7 +418,7 @@ void main() {
       expect((await store.read()).hold, CaregiverEntry.minimumHold);
     });
 
-    test('a value nothing recognises falls back rather than throwing', () async {
+    test('a value nothing recognizes falls back rather than throwing', () async {
       await db
           .into(db.appState)
           .insertOnConflictUpdate(

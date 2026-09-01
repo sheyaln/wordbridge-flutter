@@ -173,7 +173,7 @@ void main() {
       expect(
         await q.totalTaps('p1', window: const UsageWindow.calendarDays(1)),
         1,
-        reason: 'a figure labelled today cannot include last night',
+        reason: 'a figure labeled today cannot include last night',
       );
       expect(
         await q.numberOfDifferentWords(
@@ -481,7 +481,7 @@ void main() {
       expect((await q.historyForCell('c1')).taps, 0);
     });
 
-    test('a word a partner modelled is not quoted as the user\'s', () async {
+    test('a word a partner modeled is not quoted as the user\'s', () async {
       final now = nowMs();
       await record(
         'i',
@@ -511,7 +511,7 @@ void main() {
       );
     });
 
-    test('a word off the prediction strip is said, not practised', () async {
+    test('a word off the prediction strip is said, not practiced', () async {
       final now = nowMs();
       await record(
         'i',

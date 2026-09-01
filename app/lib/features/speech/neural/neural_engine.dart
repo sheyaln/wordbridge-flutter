@@ -25,8 +25,8 @@ typedef Fallback = ({DateTime at, String text, String reason});
 /// decided by which half of the board it came from:
 ///
 /// 1. **Cached neural audio.** The ordinary case, and *faster* than the
-///    platform engine because there is nothing to synthesise — a buffer that
-///    already exists against a synthesiser that has to start.
+///    platform engine because there is nothing to synthesize — a buffer that
+///    already exists against a synthesizer that has to start.
 /// 2. **Live neural synthesis**, under [SynthesisBudget], on both paths.
 /// 3. **The platform voice**, when the budget runs out. *A different voice* —
 ///    a real cost rather than a graceful degradation. A word that comes out in
@@ -45,7 +45,7 @@ typedef Fallback = ({DateTime at, String text, String reason});
 /// bounded by a number shown on the screen, which then speaks either way, is
 /// not that. What it costs is real and worth naming: until the bake catches
 /// up, a tapped word can take up to the budget before it is heard. It is
-/// self-clearing — every synthesised clip is filed as it is made, so the same
+/// self-clearing — every synthesized clip is filed as it is made, so the same
 /// word is a cache read next time.
 class NeuralSpeechEngine implements SpeechEngine {
   NeuralSpeechEngine(
@@ -53,12 +53,12 @@ class NeuralSpeechEngine implements SpeechEngine {
     VoiceModelStore? models,
     ClipPlayer? player,
     Future<Directory> Function()? documentsDirectory,
-    Future<AudioClip?> Function(String text)? synthesise,
+    Future<AudioClip?> Function(String text)? synthesize,
   }) : models = models ?? VoiceModelStore(),
        _player = player ?? ClipPlayer(),
        _documentsDirectory =
            documentsDirectory ?? getApplicationDocumentsDirectory,
-       _synthesiseOverride = synthesise;
+       _synthesizeOverride = synthesize;
 
   /// §4.4 as it already ships, and what rung 3 is.
   ///
@@ -74,9 +74,9 @@ class NeuralSpeechEngine implements SpeechEngine {
 
   /// Stands in for the model, so the ladder and its timeout can be exercised
   /// without 345 MB of weights and a device to run them on.
-  final Future<AudioClip?> Function(String text)? _synthesiseOverride;
+  final Future<AudioClip?> Function(String text)? _synthesizeOverride;
 
-  KokoroSynthesiser? _synthesiser;
+  KokoroSynthesizer? _synthesizer;
   ClipStore? _clips;
   BakeJob? _bake;
 
@@ -116,7 +116,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// Whether the model is in memory. False is the ordinary state: 833 MB
   /// resident is most of what a 3 GB tablet has spare, and the cache — which
   /// is the whole tap path — needs none of it.
-  bool get isModelLoaded => _synthesiser?.isLoaded ?? false;
+  bool get isModelLoaded => _synthesizer?.isLoaded ?? false;
 
   /// Every time this session had to use the platform voice.
   ///
@@ -133,10 +133,10 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// Switches the voice on or off for a profile, and puts it on the right pack.
   ///
   /// Cheap either way. Turning it on opens an index file; it does **not** load
-  /// the model, which is deferred until something actually needs to synthesise.
+  /// the model, which is deferred until something actually needs to synthesize.
   /// Turning it off gives the memory back and leaves the platform engine
   /// exactly as §4.4 configured it, which is what makes "turning it off
-  /// restores today's behaviour" true rather than approximately true.
+  /// restores today's behavior" true rather than approximately true.
   Future<void> useNeuralVoice({
     required bool enabled,
     String? voiceId,
@@ -182,18 +182,18 @@ class NeuralSpeechEngine implements SpeechEngine {
 
   /// Loads the model, once, when something needs it.
   ///
-  /// Deliberately not at session open. Most sessions never synthesise a thing
+  /// Deliberately not at session open. Most sessions never synthesize a thing
   /// — the cache answers them — and a communication device should not be
   /// carrying most of a gigabyte for a feature it is not using.
-  Future<KokoroSynthesiser?> loadModel() async {
+  Future<KokoroSynthesizer?> loadModel() async {
     if (!_on) return null;
-    final existing = _synthesiser;
+    final existing = _synthesizer;
     if (existing != null && existing.isLoaded) return existing;
 
     try {
-      final synthesiser = KokoroSynthesiser(await models.files());
-      await synthesiser.load();
-      return _synthesiser = synthesiser;
+      final synthesizer = KokoroSynthesizer(await models.files());
+      await synthesizer.load();
+      return _synthesizer = synthesizer;
     } catch (_) {
       // No model, or one that will not load. Every rung below this still
       // speaks, which is the point of having them.
@@ -207,8 +207,8 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// The cache is untouched: the board still speaks in the chosen voice with
   /// nothing loaded at all.
   Future<void> releaseModel() async {
-    _synthesiser?.dispose();
-    _synthesiser = null;
+    _synthesizer?.dispose();
+    _synthesizer = null;
   }
 
   Future<void> _release() async {
@@ -228,14 +228,14 @@ class NeuralSpeechEngine implements SpeechEngine {
     if (existing != null) return existing;
 
     final clips = _clips;
-    final synthesiser = await loadModel();
-    if (clips == null || synthesiser == null) return null;
+    final synthesizer = await loadModel();
+    if (clips == null || synthesizer == null) return null;
 
     return _bake = BakeJob(
       clips,
-      synthesise: (word) =>
-          synthesiser.generate(text: word, sid: _voice.sid, speed: _speed),
-      someoneIsWaiting: () => synthesiser.liveWaiting,
+      synthesize: (word) =>
+          synthesizer.generate(text: word, sid: _voice.sid, speed: _speed),
+      someoneIsWaiting: () => synthesizer.liveWaiting,
     );
   }
 
@@ -264,7 +264,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// underneath.
   @override
   Future<void> speak(String text) async {
-    final spoken = normaliseForSpeech(text);
+    final spoken = normalizeForSpeech(text);
     if (spoken.isEmpty) return;
 
     final mine = ++_generation;
@@ -287,7 +287,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// Says a whole sentence, and this is the one place a wait was agreed to.
   ///
   /// The exception in §4.5 is exact: one press, one wait, one sentence, for a
-  /// profile that switched a realistic voice on knowing what it costs. It is
+  /// profile that switched a realiztic voice on knowing what it costs. It is
   /// bounded by [budget], because an opted-in wait is a trade somebody chose
   /// and an *unbounded* wait is not a trade at all — nobody agrees to a number
   /// they were never shown.
@@ -298,7 +298,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// the count is kept and shown rather than inferred.
   @override
   Future<void> speakUtterance(String text) async {
-    final spoken = normaliseForSpeech(text);
+    final spoken = normalizeForSpeech(text);
     if (spoken.isEmpty) return;
 
     final mine = ++_generation;
@@ -334,7 +334,7 @@ class NeuralSpeechEngine implements SpeechEngine {
       // A model busy with the word before this one is a person waiting just
       // the same, and the clock they are watching does not know the
       // difference.
-      final clip = await _synthesise(spoken).timeout(deadline);
+      final clip = await _synthesize(spoken).timeout(deadline);
       if (mine != _generation) return;
       if (clip == null) {
         _recordFallback(spoken, 'the voice could not be loaded');
@@ -373,19 +373,19 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// choosing how somebody else will sound for the next several years, and the
   /// person it is for may not be able to say it is wrong.
   ///
-  /// Synthesised live, and slow — this is the private half of Pullin & Hennig's
+  /// Synthesized live, and slow — this is the private half of Pullin & Hennig's
   /// split, where a wait costs nobody a conversation. Changing which voice is
   /// previewed is free: the model takes the speaker as a generation parameter,
   /// so nothing is reloaded between one voice and the next.
   ///
   /// False where there was no model to ask.
   Future<bool> previewVoice(NeuralVoice voice, String text) async {
-    final synthesiser = await loadModel();
-    if (synthesiser == null) return false;
+    final synthesizer = await loadModel();
+    if (synthesizer == null) return false;
 
     final mine = ++_generation;
     try {
-      final clip = await synthesiser.generate(
+      final clip = await synthesizer.generate(
         text: text,
         sid: voice.sid,
         speed: _speed,
@@ -413,12 +413,12 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// between the fixed overhead and the per-word term — and a caregiver is
   /// waiting while it runs.
   Future<SynthesisBudget?> measureBudget() async {
-    final synthesiser = await loadModel();
-    if (synthesiser == null) return null;
+    final synthesizer = await loadModel();
+    if (synthesizer == null) return null;
 
     Future<Duration> time(String text) async {
       final started = DateTime.now();
-      await synthesiser.generate(
+      await synthesizer.generate(
         text: text,
         sid: _voice.sid,
         speed: _speed,
@@ -444,13 +444,13 @@ class NeuralSpeechEngine implements SpeechEngine {
     }
   }
 
-  Future<AudioClip?> _synthesise(String text) async {
-    final override = _synthesiseOverride;
+  Future<AudioClip?> _synthesize(String text) async {
+    final override = _synthesizeOverride;
     if (override != null) return override(text);
 
-    final synthesiser = await loadModel();
-    if (synthesiser == null) return null;
-    return synthesiser.generate(
+    final synthesizer = await loadModel();
+    if (synthesizer == null) return null;
+    return synthesizer.generate(
       text: text,
       sid: _voice.sid,
       speed: _speed,
@@ -460,7 +460,7 @@ class NeuralSpeechEngine implements SpeechEngine {
 
   /// Joins cached words into a phrase, or null if any of them is missing.
   ///
-  /// Only for the tap path. The bar synthesises live precisely because a
+  /// Only for the tap path. The bar synthesizes live precisely because a
   /// sentence assembled from separately cached words has no contour across it
   /// — every word arrives with the prosody it had standing alone. For a
   /// two-word repair that is a fair trade against changing voice; for a

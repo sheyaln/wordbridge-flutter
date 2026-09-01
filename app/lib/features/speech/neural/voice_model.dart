@@ -24,7 +24,7 @@ class VoiceModelFiles {
   File get voices => File(p.join(root.path, 'voices.bin'));
   File get tokens => File(p.join(root.path, 'tokens.txt'));
   Directory get espeakData => Directory(p.join(root.path, 'espeak-ng-data'));
-  File get licence => File(p.join(root.path, 'LICENSE'));
+  File get license => File(p.join(root.path, 'LICENSE'));
 
   /// Whether all four are here **and have something in them**.
   ///
@@ -167,7 +167,7 @@ class VoiceModelStore {
     return total;
   }
 
-  /// Removes the model and everything downloaded towards it.
+  /// Removes the model and everything downloaded toward it.
   ///
   /// Not the cache — that is the profile's baked words, which are worth
   /// keeping distinct: somebody freeing space may want the disk back without

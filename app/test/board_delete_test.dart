@@ -47,7 +47,7 @@ void main() {
   Future<Button> buttonById(String id) =>
       (db.select(db.buttons)..where((b) => b.id.equals(id))).getSingle();
 
-  Future<String> caregiverBoard(String name) => materialiseBoard(
+  Future<String> caregiverBoard(String name) => materializeBoard(
     db,
     vocabularyId: vocabId,
     name: name,

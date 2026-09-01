@@ -305,7 +305,7 @@ void main() {
 
     test('the time shown is the caregiver\'s, not UTC', () {
       // Stored in UTC so the filename sorts and survives a round trip through
-      // a file manager. Shown local, because a date they do not recognise is
+      // a file manager. Shown local, because a date they do not recognize is
       // one they cannot choose by.
       final at = DateTime.utc(2026, 8, 3, 14, 22);
       final local = at.toLocal();

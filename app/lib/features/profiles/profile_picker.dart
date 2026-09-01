@@ -55,7 +55,7 @@ class _ProfilePickerState extends State<ProfilePicker> {
       builder: (context) => AlertDialog(
         title: Text('Remove ${profile.displayName}?'),
         content: const Text(
-          'The board, its customisations and its history are kept, not '
+          'The board, its customizations and its history are kept, not '
           'destroyed. The profile stops appearing here, and it can be brought '
           'back.',
         ),

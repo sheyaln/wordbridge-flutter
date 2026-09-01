@@ -25,7 +25,7 @@ class GridSurface extends StatefulWidget {
     required this.cols,
     required this.cells,
     required this.vocabLevel,
-    required this.colourScheme,
+    required this.colorConvention,
     required this.onSelect,
     this.showHidden = false,
     this.viewAll = false,
@@ -61,7 +61,7 @@ class GridSurface extends StatefulWidget {
   /// never speaks; this makes them all visible, so all of them may.
   final bool viewAll;
 
-  final ColourScheme colourScheme;
+  final ColorConvention colorConvention;
   final void Function(PlacedCell) onSelect;
 
   /// Absent in tests and wherever pictures are not wanted; the grid then
@@ -131,7 +131,7 @@ class _GridSurfaceState extends State<GridSurface> {
       cellBuilder: (placed) => _Cell(
         placed: placed,
         vocabLevel: widget.vocabLevel,
-        colourScheme: widget.colourScheme,
+        colorConvention: widget.colorConvention,
         showHidden: widget.showHidden,
         viewAll: widget.viewAll,
         resolver: widget.resolver,
@@ -170,8 +170,8 @@ class _GridSurfaceState extends State<GridSurface> {
 
 /// The ring that says "this key, next".
 ///
-/// Two rings rather than one. A key's colour is its part of speech, so a single
-/// ring in any one colour is the colour of some other part of speech and
+/// Two rings rather than one. A key's color is its part of speech, so a single
+/// ring in any one color is the color of some other part of speech and
 /// disappears against the keys of that kind — a dark ring inside a light one
 /// reads on all of them.
 class _Pointer extends StatelessWidget {
@@ -198,7 +198,7 @@ class _Cell extends StatelessWidget {
   const _Cell({
     required this.placed,
     required this.vocabLevel,
-    required this.colourScheme,
+    required this.colorConvention,
     required this.showHidden,
     required this.viewAll,
     required this.resolver,
@@ -209,7 +209,7 @@ class _Cell extends StatelessWidget {
 
   final PlacedCell placed;
   final int vocabLevel;
-  final ColourScheme colourScheme;
+  final ColorConvention colorConvention;
   final bool showHidden;
   final bool viewAll;
   final SymbolResolver? resolver;
@@ -273,10 +273,10 @@ class _Cell extends StatelessWidget {
       return _MaskedCell(label: button.label, onTap: () => onSelect(placed));
     }
 
-    final colour = Fitzgerald.colourFor(colourScheme, button!.partOfSpeech);
+    final color = Fitzgerald.colorFor(colorConvention, button!.partOfSpeech);
 
     return Material(
-      color: colour,
+      color: color,
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         // Speaking on press rather than release: the gap between them is

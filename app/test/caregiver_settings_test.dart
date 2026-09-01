@@ -10,6 +10,7 @@ import 'package:wordbridge/db/seed/age_presets.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/features/backup/backup_service.dart';
 import 'package:wordbridge/features/backup/snapshot.dart';
+import 'package:wordbridge/features/caregiver/about_screen.dart';
 import 'package:wordbridge/features/caregiver/caregiver_home.dart';
 import 'package:wordbridge/features/interop/board_files.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
@@ -104,7 +105,7 @@ const _reachable = <String, List<String>>{
   // existed (§4.45). The list is behind "Which voice" now, and these are on
   // the screen the row opens.
   'Speech': ['Which voice', 'Tone', 'Speed', 'Pitch', 'Volume'],
-  'Board behaviour': [
+  'Board behavior': [
     'Return to the home board after each word',
     'Speak each word as it is selected',
     'Pause after the board changes',
@@ -132,6 +133,9 @@ const _reachable = <String, List<String>>{
   // the list is what says there is no page in between holding a row named
   // after the section that opened it.
   'Reports': ['Tell us something', 'Review and send'],
+  // One screen for the same reason: what is on it is prose, and the credits
+  // are the only thing on it there is to press. The disclaimer and the license
+  // are text rather than controls, and `what About has to say` owns those.
   'About': ['Symbol credits'],
 };
 
@@ -376,6 +380,44 @@ void main() {
     });
   });
 
+  group('what About has to say', () {
+    testWidgets('the disclaimer is one tap from the settings list', (
+      tester,
+    ) async {
+      // Written out here rather than read from the screen's own constant. A
+      // disclaimer no test states is one a refactor can reword to nothing
+      // while every test still passes.
+      await pumpSettings(tester, onSwitchProfile: (_) {});
+      await open(tester, 'About');
+
+      expect(
+        find.text(
+          'This app was developed with the assistance of generative AI.',
+        ),
+        findsOneWidget,
+        reason: 'nothing on About says how the app was built',
+      );
+
+      await back(tester);
+      await closeHome(tester);
+    });
+
+    testWidgets('and so is who made it, and what it may be used under', (
+      tester,
+    ) async {
+      await pumpSettings(tester, onSwitchProfile: (_) {});
+      await open(tester, 'About');
+
+      // The name through its constant, because who the project is credited to
+      // is a decision that may change. The disclaimer above is not.
+      expect(find.textContaining(AboutScreen.developer), findsOneWidget);
+      expect(find.textContaining('MIT license'), findsOneWidget);
+
+      await back(tester);
+      await closeHome(tester);
+    });
+  });
+
   group('a section with nothing on it', () {
     testWidgets('is not offered as a page that opens onto nothing', (
       tester,
@@ -389,9 +431,9 @@ void main() {
 
       // "How it behaves" survives on one control: view-all is a way of
       // looking at a board rather than a fact about a person, so it does not
-      // need a profile to honour it.
-      expect(find.text('Board behaviour'), findsOneWidget);
-      await open(tester, 'Board behaviour');
+      // need a profile to honor it.
+      expect(find.text('Board behavior'), findsOneWidget);
+      await open(tester, 'Board behavior');
       expect(find.text('Show every word, including hidden ones'), findsOne);
       expect(
         find.text('Go back to the home board after each word'),
@@ -438,7 +480,7 @@ void main() {
       tester,
     ) async {
       // A profile carries `neuralVoice` across builds, and this build has no
-      // neural engine to honour it. The row has to say what somebody will
+      // neural engine to honor it. The row has to say what somebody will
       // hear, which here is still the device's own voice.
       await settings.set('neuralVoice', true);
       await pumpSettings(tester);
@@ -478,7 +520,7 @@ void main() {
   group('a control moved on a section page', () {
     testWidgets('shows its new value without leaving the page', (tester) async {
       await pumpSettings(tester);
-      await open(tester, 'Board behaviour');
+      await open(tester, 'Board behavior');
 
       final auto = find.ancestor(
         of: find.text('Return to the home board after each word'),

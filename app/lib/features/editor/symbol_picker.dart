@@ -422,7 +422,7 @@ class _SymbolTile extends StatefulWidget {
   /// easier to read than a board assembled from four sets, and nobody can keep
   /// to a set they cannot identify.
   ///
-  /// It is also where the licence is actually useful to a person. Every
+  /// It is also where the license is actually useful to a person. Every
   /// bundled pack is CC BY-SA or CC BY and requires its credit to be reachable
   /// from inside the app; the credits screen satisfies that for the app, and
   /// this satisfies it at the moment somebody is choosing.

@@ -68,7 +68,7 @@ class ProfileSettings extends ChangeNotifier {
   /// The two answers the grid was derived from.
   ///
   /// Stored so the settings screen can show what was chosen rather than only
-  /// its consequence, and so changing one can be recognised as the deliberate,
+  /// its consequence, and so changing one can be recognized as the deliberate,
   /// expensive act it is. Nothing reads these to lay a board out — the board
   /// was laid out once, when the profile was made.
   BoardOrientation get orientation =>

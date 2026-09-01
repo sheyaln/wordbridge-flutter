@@ -93,7 +93,7 @@ class UsageLogger {
           boardId: boardId,
           cellId: cellId,
           buttonId: Value(buttonId),
-          // Denormalised deliberately: if the button is later relabelled or
+          // Denormalized deliberately: if the button is later relabeled or
           // moved, history must still say what was actually said at the time.
           labelSnapshot: label,
           action: action,

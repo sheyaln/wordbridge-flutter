@@ -24,7 +24,7 @@ Future<String> importObf(
 }) async {
   final log = notes ?? <String>[];
   final source = _Source(ObfBoard.parse(json));
-  return _materialise(
+  return _materialize(
     db,
     sources: [source],
     root: source,
@@ -51,7 +51,7 @@ Future<String> importObz(
   final rawBoards = <String, ArchiveFile>{};
   for (final file in archive.files) {
     if (!file.isFile) continue;
-    final name = _normalise(file.name);
+    final name = _normalize(file.name);
     if (p.url.basename(name) == 'manifest.json') {
       manifestFile ??= file;
     } else if (p.url.extension(name).toLowerCase() == '.obf') {
@@ -67,7 +67,7 @@ Future<String> importObz(
   // manifest are relative to the manifest, so rebase on wherever it landed.
   final base = manifestFile == null
       ? ''
-      : p.url.dirname(_normalise(manifestFile.name));
+      : p.url.dirname(_normalize(manifestFile.name));
   String rebase(String name) {
     if (base.isEmpty || base == '.') return name;
     return name.startsWith('$base/') ? name.substring(base.length + 1) : name;
@@ -93,7 +93,7 @@ Future<String> importObz(
       _Source(ObfBoard.parse(_text(boards[path]!)), path),
   ];
 
-  final rootPath = manifest?.root == null ? null : _normalise(manifest!.root!);
+  final rootPath = manifest?.root == null ? null : _normalize(manifest!.root!);
   var root = sources.first;
   for (final s in sources) {
     if (s.path == rootPath) root = s;
@@ -105,7 +105,7 @@ Future<String> importObz(
     );
   }
 
-  return _materialise(
+  return _materialize(
     db,
     sources: [root, ...sources.where((s) => s != root)],
     root: root,
@@ -137,7 +137,7 @@ String _vocabularyName(_Source root) =>
 
 String _text(ArchiveFile file) => utf8.decode(file.readBytes() ?? const []);
 
-String _normalise(String path) {
+String _normalize(String path) {
   var value = path.replaceAll(r'\', '/');
   while (value.startsWith('./')) {
     value = value.substring(2);
@@ -152,7 +152,7 @@ String _normalise(String path) {
 ///
 /// Boards are created before any button is placed because a `load_board` link
 /// may point at a board defined later in the package.
-Future<String> _materialise(
+Future<String> _materialize(
   WordbridgeDatabase db, {
   required List<_Source> sources,
   required _Source root,
@@ -201,15 +201,15 @@ Future<String> _materialise(
             locale: Value(root.obf.locale ?? 'en-US'),
             gridRows: rows,
             gridCols: cols,
-            colourScheme: Value(_colourScheme(root.obf)),
-            sourceLicense: Value(_licenceText(sources)),
+            colorConvention: Value(_colorConvention(root.obf)),
+            sourceLicense: Value(_licenseText(sources)),
             createdAt: ts,
             updatedAt: ts,
           ),
         );
 
     for (final source in sources) {
-      source.boardId = await materialiseBoard(
+      source.boardId = await materializeBoard(
         db,
         vocabularyId: vocabId,
         name: source.name,
@@ -231,7 +231,7 @@ Future<String> _materialise(
         for (var col = 0; col < line.length; col++) {
           final id = line[col];
           // A null entry is a location deliberately held open. The cell was
-          // materialised with the board and stays reserved.
+          // materialized with the board and stays reserved.
           if (id == null) continue;
 
           final button = byId[id];
@@ -358,9 +358,9 @@ class _LinkTable {
     if (link == null) return null;
     final path = link.path;
     if (path != null) {
-      final direct = _byPath[_normalise(path)];
+      final direct = _byPath[_normalize(path)];
       if (direct != null) return direct;
-      final base = _byBasename[p.url.basename(_normalise(path))];
+      final base = _byBasename[p.url.basename(_normalize(path))];
       if (base != null) return base;
     }
     final id = link.id;
@@ -489,7 +489,7 @@ class _Content {
       speakText: spoken == null || spoken == label ? null : spoken,
       action: action,
       targetBoardId: target,
-      // Colours are stored exactly as OBF writes them; the column mirrors the
+      // Colors are stored exactly as OBF writes them; the column mirrors the
       // format rather than the other way round.
       backgroundColor: button.backgroundColor,
       borderColor: button.borderColor,
@@ -556,7 +556,7 @@ const _systemActions = {
 /// Named actions win over `load_board`: a button that both links and declares
 /// `:home` is a home button that happens to name its destination.
 ///
-/// Everything unrecognised — including the `+letter` spelling actions, which
+/// Everything unrecognized — including the `+letter` spelling actions, which
 /// we have no keyboard for yet — falls through to speak, so the word is at
 /// least present and in the right place.
 ButtonAction _actionFor(ObfButton button) {
@@ -593,12 +593,12 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) {
   return null;
 }
 
-ColourScheme _colourScheme(ObfBoard board) =>
+ColorConvention _colorConvention(ObfBoard board) =>
     _enumByName(
-      ColourScheme.values,
-      readExt<String>(board.ext, WordbridgeExt.colourScheme),
+      ColorConvention.values,
+      readExt<String>(board.ext, WordbridgeExt.colorConvention),
     ) ??
-    ColourScheme.modifiedFitzgerald;
+    ColorConvention.modifiedFitzgerald;
 
 BoardKind _boardKind(_Source source, _Source root) {
   if (identical(source, root)) return BoardKind.root;
@@ -609,13 +609,13 @@ BoardKind _boardKind(_Source source, _Source root) {
       BoardKind.category;
 }
 
-/// The spec is explicit that an undeclared licence means all rights reserved,
+/// The spec is explicit that an undeclared license means all rights reserved,
 /// so say so rather than leaving the column null and implying it is free.
-String _licenceText(List<_Source> sources) {
+String _licenseText(List<_Source> sources) {
   final seen = <String>{};
   for (final source in sources) {
-    final licence = source.obf.license;
-    if (licence != null && !licence.isEmpty) seen.add(licence.readable);
+    final license = source.obf.license;
+    if (license != null && !license.isEmpty) seen.add(license.readable);
     final carried = readExt<String>(
       source.obf.ext,
       WordbridgeExt.sourceLicense,
@@ -623,7 +623,7 @@ String _licenceText(List<_Source> sources) {
     if (carried != null && carried.isNotEmpty) seen.add(carried);
   }
   return seen.isEmpty
-      ? 'No licence declared in the source file. Treat as all rights reserved.'
+      ? 'No license declared in the source file. Treat as all rights reserved.'
       : seen.join('\n');
 }
 
@@ -660,7 +660,7 @@ Future<void> _recordSystemCells(
   );
 }
 
-/// Leaves an audit row for every judgement call the import made.
+/// Leaves an audit row for every judgment call the import made.
 ///
 /// [enlarged] marks the one that touches the motor plan: boards that declared
 /// different grid sizes were all given the largest, so the geometry a board

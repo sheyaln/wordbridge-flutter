@@ -37,7 +37,7 @@ void main() {
             updatedAt: ts,
           ),
         );
-    boardId = await materialiseBoard(
+    boardId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: 'home',
@@ -570,7 +570,7 @@ void main() {
     });
 
     test('a picture on a key comes back off every copy of it', () async {
-      final other = await materialiseBoard(
+      final other = await materializeBoard(
         db,
         vocabularyId: vocabId,
         name: 'food',
@@ -767,7 +767,7 @@ void main() {
                 updatedAt: ts,
               ),
             );
-        final board = await materialiseBoard(
+        final board = await materializeBoard(
           disk,
           vocabularyId: vocab,
           name: 'home',

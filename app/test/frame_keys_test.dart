@@ -102,7 +102,7 @@ void main() {
 
     test('a pinned question, which is a word rather than a key', () async {
       // Ordinary vocabulary that happens to be pinned. It keeps its
-      // part-of-speech colour and stays editable — and it is still the same
+      // part-of-speech color and stays editable — and it is still the same
       // word at the same location on every board.
       final key = await onBoard('what', 'home');
       expect(await frameSiblings(db, key), isNotEmpty);

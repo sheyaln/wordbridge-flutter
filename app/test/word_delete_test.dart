@@ -41,13 +41,13 @@ void main() {
           ),
         );
 
-    homeId = await materialiseBoard(
+    homeId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: 'home',
       kind: BoardKind.root,
     );
-    foodId = await materialiseBoard(
+    foodId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: 'food',

@@ -23,7 +23,7 @@ void main() {
   // rootBundle needs a binding; the bundled-pack degradation test uses it.
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('licence gate', () {
+  group('license gate', () {
     test('a non-commercial pack is not searched until it is enabled', () async {
       final arasaac = _FakePack(
         id: 'arasaac',
@@ -134,7 +134,7 @@ void main() {
       expect(
         (await registry.search('water')).first.packId,
         'mulberry',
-        reason: 'a licence-clean local image should win over a download',
+        reason: 'a license-clean local image should win over a download',
       );
     });
 
@@ -521,7 +521,7 @@ void main() {
       return [...bundledSymbolPacks(), arasaac];
     }
 
-    test('every pack carries licence and attribution', () {
+    test('every pack carries license and attribution', () {
       for (final pack in everyPack()) {
         expect(pack.id.trim(), isNotEmpty);
         expect(pack.name.trim(), isNotEmpty, reason: pack.id);
@@ -529,7 +529,7 @@ void main() {
         expect(
           pack.attribution.trim(),
           isNotEmpty,
-          reason: 'every licence in use requires credit reachable in-app',
+          reason: 'every license in use requires credit reachable in-app',
         );
       }
     });
@@ -559,7 +559,7 @@ void main() {
     });
 
     test('the sets core is assembled from are still credited', () async {
-      // Dropping those four as packs must not drop their credit: the licences
+      // Dropping those four as packs must not drop their credit: the licenses
       // require it wherever the work appears, and the work still appears.
       final raw = await rootBundle.loadString(
         'assets/symbols/core/manifest.json',
@@ -602,7 +602,7 @@ void main() {
       expect(pack.license, contains('NC'));
     });
 
-    test('ARASAAC carries the credit its licence demands', () {
+    test('ARASAAC carries the credit its license demands', () {
       final pack = ArasaacPack();
       addTearDown(pack.dispose);
       final attribution = pack.attribution;
@@ -665,7 +665,7 @@ void main() {
     });
   });
 
-  group('ARASAAC behaviour', () {
+  group('ARASAAC behavior', () {
     late Directory documents;
 
     setUp(() async {
@@ -884,8 +884,8 @@ void main() {
     );
 
     test('EXIF is stripped', () {
-      final normalised = normaliseSymbolImage(_photoWithExif())!;
-      final stored = img.decodePng(normalised.bytes)!;
+      final normalized = normalizeSymbolImage(_photoWithExif())!;
+      final stored = img.decodePng(normalized.bytes)!;
 
       expect(
         stored.hasExif,
@@ -896,17 +896,17 @@ void main() {
     });
 
     test('the longest edge is clamped and small images are left alone', () {
-      final large = normaliseSymbolImage(_photoWithExif())!;
+      final large = normalizeSymbolImage(_photoWithExif())!;
       expect(large.width, customSymbolMaxEdge);
       expect(large.height, lessThan(customSymbolMaxEdge));
 
-      final small = normaliseSymbolImage(_solidImage(64, 48))!;
+      final small = normalizeSymbolImage(_solidImage(64, 48))!;
       expect(small.width, 64);
       expect(small.height, 48);
     });
 
     test('undecodable bytes yield null rather than an exception', () {
-      expect(normaliseSymbolImage(Uint8List.fromList([1, 2, 3])), isNull);
+      expect(normalizeSymbolImage(Uint8List.fromList([1, 2, 3])), isNull);
     });
 
     test(

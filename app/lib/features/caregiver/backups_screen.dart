@@ -182,21 +182,20 @@ class _BackupsScreenState extends State<BackupsScreen> {
                   title: Text(lastBackedUp(snapshots)),
                   subtitle: const Text(
                     'A backup is the whole board set: every word, picture and '
-                    'location, plus any usage recorded. One is taken '
-                    'automatically before every update.',
+                    'location, plus any usage recorded. One is taken before '
+                    'every update.',
                   ),
                   isThreeLine: true,
                 ),
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: Text(
-                    'Backups are saved on this tablet, in Files under '
-                    'wordbridge. Copy one to iCloud Drive or Google Drive from '
-                    'there. A backup that is only on the tablet does not '
-                    'survive losing the tablet.\n\n'
-                    'A backup includes any usage recorded, which is a record '
-                    'of one person\'s speech. Somewhere shared is somewhere '
-                    'other people can read it.',
+                    'Backups are saved in Files under wordbridge. Copy one to '
+                    'iCloud Drive or Google Drive from there: a backup only '
+                    'on the tablet does not survive losing the tablet.\n\n'
+                    'A backup includes any usage recorded, which is one '
+                    'person\'s speech. Somewhere shared is somewhere others '
+                    'can read it.',
                     style: TextStyle(fontSize: 13, height: 1.4),
                   ),
                 ),
@@ -215,8 +214,8 @@ class _BackupsScreenState extends State<BackupsScreen> {
                     title: const Text('Restore to when settings were opened'),
                     subtitle: Text(
                       'Undoes every change made since '
-                      '${snapshotWhen(session.takenAt)}. A copy of the board '
-                      'set as it is now is saved first, so this is reversible.',
+                      '${snapshotWhen(session.takenAt)}. A copy as it is now '
+                      'is saved first, so this is reversible.',
                     ),
                     isThreeLine: true,
                     trailing: const Icon(Icons.chevron_right),
@@ -236,10 +235,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
                 if (snapshots.isEmpty)
                   const ListTile(
                     title: Text('No backups yet'),
-                    subtitle: Text(
-                      'One will be taken before the next update, and you can '
-                      'take one now.',
-                    ),
+                    subtitle: Text('One will be taken before the next update.'),
                   ),
                 for (final snapshot in snapshots)
                   ListTile(
@@ -314,9 +310,9 @@ Future<BoardSize> describeBoard(WordbridgeDatabase db) async {
 
 /// What putting the board back costs, said before it happens.
 ///
-/// Deliberately shorter than [restoreWarning]. A caregiver reaching for this
-/// is undoing their own last few minutes, not choosing between dates, and the
-/// thing they need told is that it goes back to what they walked in on.
+/// A caregiver reaching for this is undoing their own last few minutes rather
+/// than choosing between dates, so the point it makes is that the board goes
+/// back to what they walked in on.
 String sessionRestoreWarning({
   required BoardSize board,
   required Snapshot session,
@@ -324,10 +320,9 @@ String sessionRestoreWarning({
   final words = board.words == 1 ? '1 word' : '${board.words} words';
   final boards = board.boards == 1 ? '1 board' : '${board.boards} boards';
 
-  return 'The board set goes back to how it stood at '
+  return 'The board set, $words across $boards, goes back to how it stood at '
       '${snapshotWhen(session.takenAt)}, when settings were opened. Anything '
-      'added, moved or hidden since then goes with it. This board set is '
-      '$words across $boards.\n\n'
+      'added, moved or hidden since then goes with it.\n\n'
       'A copy as it is now is saved first, so this is reversible.';
 }
 
@@ -344,6 +339,5 @@ String restoreWarning({required BoardSize board, required Snapshot snapshot}) {
   return 'The board set on this tablet, $words across $boards, will be '
       'replaced by the one from ${snapshotWhen(snapshot.takenAt)}. Anything '
       'added, moved or hidden since then goes with it.\n\n'
-      'A copy of the board set as it is now is saved first, so this is '
-      'reversible.';
+      'A copy as it is now is saved first, so this is reversible.';
 }

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../db/tables.dart';
 
-/// Part-of-speech colour coding.
+/// Part-of-speech color coding.
 ///
 /// Two conventions are in clinical use and practitioners are split between
 /// them. The literature is consistent that *which* scheme a user learns
 /// matters far less than that it never changes under them, so the scheme is
 /// stored per vocabulary rather than hardcoded.
 ///
-/// Colours are muted rather than saturated: they must carry black label text
+/// Colors are muted rather than saturated: they must carry black label text
 /// at readable contrast, and a wall of fully saturated cells is a real source
 /// of visual overwhelm for users who report sensory sensitivity.
 abstract final class Fitzgerald {
@@ -49,10 +49,10 @@ abstract final class Fitzgerald {
 
   static const _systemCell = Color(0xFFCFD8DC);
 
-  static Color colourFor(ColourScheme scheme, PartOfSpeech? pos) {
+  static Color colorFor(ColorConvention scheme, PartOfSpeech? pos) {
     if (pos == null) return _systemCell;
     final map = switch (scheme) {
-      ColourScheme.goossens => goossens,
+      ColorConvention.goossens => goossens,
       _ => modified,
     };
     return map[pos] ?? modified[PartOfSpeech.other]!;

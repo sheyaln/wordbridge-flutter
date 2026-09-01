@@ -107,9 +107,9 @@ const _irregularPast = <String, String>{
   'mean': 'meant',
   'deal': 'dealt',
   'burn': 'burnt',
-  'learn': 'learnt',
+  'learn': 'learned',
   'smell': 'smelt',
-  'spell': 'spelt',
+  'spell': 'spelled',
   'spill': 'spilt',
   'spoil': 'spoilt',
   'cost': 'cost',
@@ -457,7 +457,7 @@ bool grammarHelperApplies({
 /// licenses another one. "to" is what licenses it: "I want **to** go".
 ///
 /// Off by default, because a board that changes shape as you build a sentence
-/// is harder to learn than one that does not, and that trade is a judgement
+/// is harder to learn than one that does not, and that trade is a judgment
 /// about a particular person rather than a fact about English.
 bool verbIsOfferable({
   required PartOfSpeech? pos,

@@ -94,7 +94,7 @@ class RemapService {
   /// `GridMigration`.
   static const practiceWindow = UsageWindow.rollingDays(90);
 
-  /// What a user has practised at this location.
+  /// What a user has practiced at this location.
   Future<RemapImpact> impactOfMoving(String buttonId) async {
     final button = await (_db.select(
       _db.buttons,

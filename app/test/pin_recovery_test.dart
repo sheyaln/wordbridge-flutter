@@ -115,7 +115,7 @@ void main() {
   });
 
   group('a reset leaves the rest of the device alone', () {
-    // Counts and content both. A reset that quietly relabelled a button or
+    // Counts and content both. A reset that quietly relabeled a button or
     // moved it would pass a count check and still have destroyed the thing
     // the PIN was guarding.
     Future<int> count(String table) async {
@@ -422,7 +422,7 @@ void main() {
 
     testWidgets('a locked-out caregiver can still reach it', (tester) async {
       // The case the whole path exists for: five wrong guesses is usually the
-      // moment somebody realises they do not remember it at all.
+      // moment somebody realizes they do not remember it at all.
       await auth.setPin('1234');
       for (var i = 0; i < PinAuth.maxAttempts; i++) {
         await auth.verify('0000');

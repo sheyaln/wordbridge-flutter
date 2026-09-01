@@ -247,7 +247,7 @@ void main() {
       expect(
         find.text('9'),
         findsNothing,
-        reason: 'a figure labelled today cannot still be the weekly one',
+        reason: 'a figure labeled today cannot still be the weekly one',
       );
       expect(find.text('4'), findsWidgets);
       expect(find.text('3'), findsWidgets);

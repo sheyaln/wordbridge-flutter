@@ -54,7 +54,7 @@ class FakeSpeech implements SpeechEngine {
 /// fake clock never grants, and the workaround (alternating `runAsync` with
 /// `pump`) deadlocks against the widget's own scheduling.
 ///
-/// The behaviours below are covered elsewhere and none of them is unverified:
+/// The behaviors below are covered elsewhere and none of them is unverified:
 /// board seeding and the pinned system row and question column in
 /// `core_board_set_test.dart`, position stability in
 /// `motor_plan_invariant_test.dart`, exact pixel placement in

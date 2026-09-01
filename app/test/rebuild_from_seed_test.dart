@@ -11,7 +11,7 @@ import 'package:wordbridge/features/editor/rebuild_from_seed.dart';
 
 /// Getting a change to the shipped vocabulary onto a board already built.
 ///
-/// A board set is materialised once and nothing re-runs it, so a word removed
+/// A board set is materialized once and nothing re-runs it, so a word removed
 /// from the seed goes on sitting in the pinned column of a board that was
 /// built before the change. That is the right rule for somebody who has
 /// learned a layout and the wrong one while the layout is still being drawn.

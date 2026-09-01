@@ -66,7 +66,7 @@ void main() {
             updatedAt: ts,
           ),
         );
-    boardId = await materialiseBoard(
+    boardId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: 'home',
@@ -338,7 +338,7 @@ void main() {
                 cols: 3,
                 cells: cells,
                 vocabLevel: 1,
-                colourScheme: ColourScheme.modifiedFitzgerald,
+                colorConvention: ColorConvention.modifiedFitzgerald,
                 resolver: resolver,
                 onSelect: onSelect ?? (_) {},
               ),
@@ -617,7 +617,7 @@ void main() {
     testWidgets('a search result says which pack drew it', (tester) async {
       // A search puts several packs' answers to one word side by side, and
       // choosing between house styles nobody can name is how a board ends up
-      // assembled from four sets. The licences also require the credit to be
+      // assembled from four sets. The licenses also require the credit to be
       // reachable from inside the app, and this is where it is useful.
       final button = await place(0, 0, 'water');
 

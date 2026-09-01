@@ -1,10 +1,10 @@
 /// The shipped vocabulary, as bands rather than coordinates.
 ///
-/// Independently designed. Word selection comes from Project Core's Universal
-/// Core 36 (Center for Literacy and Disability Studies, UNC-Chapel Hill);
-/// ordering follows the Fitzgerald Key's left-to-right sentence arrangement,
-/// first published in 1926 and in the public domain. No commercial vocabulary
-/// layout was consulted or reproduced. See docs/starter-vocabulary.md.
+/// Every word comes from one of two places: the Universal Core 36 published by
+/// the Center for Literacy and Disability Studies at UNC Chapel Hill, or the
+/// editorial judgment recorded in docs/starter-vocabulary.md, which says which
+/// is which word by word. Ordering follows the Fitzgerald Key's left to right
+/// sentence arrangement, first published in 1926 and in the public domain.
 ///
 /// Nothing here names a row or a column. Bands declare what belongs together
 /// and in what order; [layOutBands] turns that into coordinates for whatever
@@ -142,11 +142,11 @@ List<BandItem<SeedWord>> phrases(
 
 /// A digit to read and a word to say.
 ///
-/// The numeral is quicker to recognise and the word is what a listener needs
+/// The numeral is quicker to recognize and the word is what a listener needs
 /// to hear, so these are the first ordinary vocabulary where the label and the
-/// spoken text are deliberately different. Coloured as determiners because
+/// spoken text are deliberately different. Colored as determiners because
 /// that is the work they do — `three` quantifies exactly as `some` and `more`
-/// do, and sharing their colour is what says so.
+/// do, and sharing their color is what says so.
 BandItem<SeedWord> _numeral(String digit, String spoken, {int level = 2}) =>
     BandItem((
       label: digit,
@@ -398,8 +398,18 @@ final homeBands = <Band<SeedWord>>[
 
   // What to say to somebody who does not know what they are looking at: a
   // stranger reads a pause as absence, and starts talking to whoever is
-  // standing next to the user. `this` points at the tablet already in their
-  // hands, so the sentence is true whatever anybody calls the thing.
+  // standing next to the user. Saying the voice is a computer's answers both
+  // halves of what they are working out — why the wait, and who is speaking —
+  // and the sentence names no object, so it holds whatever anybody calls the
+  // device and reads the same off a paper backup board.
+  //
+  // "computer voice" rather than the formal terms, and rather than
+  // "computer generated". A sentence said aloud to a bus driver is not a
+  // funding form: "speech generating device" sounds like a diagnosis being
+  // read out, "synthetic voice" hands over a category instead of a reason, and
+  // "generated" is a word a listener does not need. Length is not free either.
+  // A label is set on one line and scaled down to its cell, so each extra word
+  // is drawn at the cost of the ones already there.
   //
   // "please wait" is deliberately not part of it. `wait` is on this board at
   // level 1 and marked essential; a phrase that repeated it would buy a second
@@ -414,7 +424,7 @@ final homeBands = <Band<SeedWord>>[
     name: 'introduction',
     startsLine: false,
     tailOnly: true,
-    items: phrases(['I use this to talk'], pageRank: 40),
+    items: phrases(['I use a computer voice to talk'], pageRank: 40),
   ),
 ];
 
@@ -507,7 +517,7 @@ const categoryNames = [
 /// Word class is the coarse grouping. Strips run top to bottom in Fitzgerald
 /// order — whole utterances, verbs, nouns, object pronouns, adjectives,
 /// adverbs — so a class occupies a contiguous block of rows and therefore a
-/// contiguous block of colour, which is what the evidence measured: arranging
+/// contiguous block of color, which is what the evidence measured: arranging
 /// by word class made children significantly faster at building multi-symbol
 /// messages (Thistle & Wilkinson 2017), and using position to cue grammatical
 /// category cut fixations on irrelevant symbols (Wilkinson, Gilmore & Qian
@@ -551,7 +561,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 0,
       // "sorry" is the fifth of the set and the one a person is asked for
       // most often. Level 1: a board that can greet and thank but not
-      // apologise leaves somebody without the word for the situation they are
+      // apologize leaves somebody without the word for the situation they are
       // most likely to be put on the spot in.
       items: phrases([
         'hello',
@@ -958,7 +968,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     ),
 
     // The second row of feelings, immediately under the first, so the two read
-    // as one region of the board in one colour. "safe" and "ready" close it:
+    // as one region of the board in one color. "safe" and "ready" close it:
     // both answer "how are you", which is what this row is for.
     Band(
       name: 'more feelings',
@@ -981,7 +991,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       ],
     ),
 
-    // Judgements rather than feelings — what a user says about a situation
+    // Judgments rather than feelings — what a user says about a situation
     // somebody else is describing. Correcting a listener who got it wrong is
     // the job here: without these the only way to disagree is "no", which
     // reads as refusal rather than correction. Opposites are neighbours.
@@ -1104,7 +1114,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
 
     // Answers to "where" that are not a place: adverbs, not nouns, because
     // "upstairs's" and "away is" are what coding them as nouns produced.
-    // Adverb also keeps them clear of the preposition colour, which the
+    // Adverb also keeps them clear of the preposition color, which the
     // modified scheme shares with social. "far" and "near" close the row —
     // adjectives, but the same question, and a row of their own would cost the
     // caregiver reserve below it.
@@ -1446,7 +1456,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
   //
   // The rows run in Fitzgerald order like every other category — whole
   // utterances, then nouns, then the words that modify them — so a class holds
-  // a contiguous block of rows and therefore of colour.
+  // a contiguous block of rows and therefore of color.
   //
   // "before" and "after" are deliberately absent: they are on `numbers`, in
   // `in order`, where they mean sequence. Putting them here as well would give
@@ -1539,7 +1549,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     ),
 
     // The three-word frame the rest of the board hangs off, and the one a
-    // school day is actually organised around.
+    // school day is actually organized around.
     Band(
       name: 'today',
       shedRank: 1,

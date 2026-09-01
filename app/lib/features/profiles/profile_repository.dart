@@ -57,7 +57,7 @@ class ProfileRepository {
 
   /// Creates a profile and builds its board set at the chosen grid.
   ///
-  /// The vocabulary is materialised once, here, from the answers given at
+  /// The vocabulary is materialized once, here, from the answers given at
   /// setup. Nothing recomputes it afterwards unless a person deliberately
   /// changes one of those answers.
   ///

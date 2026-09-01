@@ -32,7 +32,7 @@ enum PreMigrationOutcome {
 
   /// Not a database this app wrote, or not readable. Nothing was copied, and
   /// nothing here is going to guess at what it is.
-  unrecognised,
+  unrecognized,
 
   /// A migration was due and a snapshot was taken first.
   snapshotTaken,
@@ -76,7 +76,7 @@ Future<PreMigrationResult> snapshotBeforeMigration({
 
     final onDisk = await snapshotSchemaVersion(file);
     if (onDisk == null) {
-      return (outcome: PreMigrationOutcome.unrecognised, attempt: null);
+      return (outcome: PreMigrationOutcome.unrecognized, attempt: null);
     }
 
     // Newer than this app is not a migration either — drift will refuse to

@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 /// A copy of the board as it stood at one moment, sitting on this tablet.
 ///
 /// It never leaves the device. There is no upload, no account, and no
-/// synchronisation anywhere in this feature — the usage log inside a snapshot
+/// synchronization anywhere in this feature — the usage log inside a snapshot
 /// is a record of a disabled person's private speech, and the only place it is
 /// safe is the tablet it was said on. A caregiver who wants a copy elsewhere
 /// has to move the file themselves, deliberately.

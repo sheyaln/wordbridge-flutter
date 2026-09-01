@@ -71,7 +71,7 @@ void main() {
     test('the same order every time', () async {
       // Two words seen equally often must not trade places between rebuilds.
       // A list that reshuffles under a finger is the failure this whole app
-      // is organised to avoid.
+      // is organized to avoid.
       final p = predictor();
       await p.learn(['I', 'go']);
       await p.learn(['I', 'like']);

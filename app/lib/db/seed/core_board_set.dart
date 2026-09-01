@@ -595,7 +595,7 @@ Future<List<String>> _buildPagedBoards(
 
   final boardIds = <String>[];
   for (var index = 0; index < pages.length; index++) {
-    final boardId = await materialiseBoard(
+    final boardId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: pageName(name, index),
@@ -684,7 +684,7 @@ Future<void> addFixedKeys(
   }
 
   // Questions first: they are ordinary vocabulary that happens to be pinned,
-  // not controls, so they keep their part-of-speech colour and stay editable
+  // not controls, so they keep their part-of-speech color and stay editable
   // like any other word.
   final questionCol = cols - 1;
   for (var i = 0; i < questions.length; i++) {

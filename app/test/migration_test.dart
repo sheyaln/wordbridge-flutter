@@ -9,7 +9,7 @@ import 'package:wordbridge/features/profiles/profile_settings.dart';
 /// Upgrading a device that someone already relies on.
 ///
 /// A board set is user data. An upgrade may add a column or a table; it may
-/// never move a cell, drop a customisation, or take a word off a board that
+/// never move a cell, drop a customization, or take a word off a board that
 /// has been learned. These build a database at each shipped schema version and
 /// open it with the current code to prove that holds.
 void main() {
@@ -41,7 +41,7 @@ void main() {
         grid_cols INTEGER NOT NULL,
         root_board_id TEXT NULL,
         system_cell_map TEXT NOT NULL DEFAULT '{}',
-        colour_scheme TEXT NOT NULL DEFAULT 'modifiedFitzgerald',
+        color_convention TEXT NOT NULL DEFAULT 'modifiedFitzgerald',
         is_template INTEGER NOT NULL DEFAULT 0,
         source_license TEXT NULL,
         motor_plan_locked INTEGER NOT NULL DEFAULT 1,
@@ -186,7 +186,7 @@ void main() {
   }
 
   /// One profile, one board, one word at a location, one recorded tap — the
-  /// smallest thing that is recognisably somebody's board.
+  /// smallest thing that is recognizably somebody's board.
   void seedV1(Database raw) {
     raw.execute(
       "INSERT INTO profiles (id, display_name, active_vocabulary_id, "
@@ -265,7 +265,7 @@ void main() {
     expect(buttons.single.cellId, 'c1');
   });
 
-  test('customisations survive the upgrade', () async {
+  test('customizations survive the upgrade', () async {
     final db = openUpgraded();
     addTearDown(db.close);
 
@@ -318,7 +318,7 @@ void main() {
     () async {
       // Both strips take their height from the grid, so arriving at a default
       // would shorten every button on a board somebody has already learned. The
-      // upgrade writes the current behaviour down instead, which is what lets
+      // upgrade writes the current behavior down instead, which is what lets
       // the getters default to on for everyone who comes after.
       final db = openUpgraded();
       addTearDown(db.close);

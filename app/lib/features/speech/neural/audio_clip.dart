@@ -4,7 +4,7 @@ import 'dart:typed_data';
 /// A piece of speech this app owns the samples of.
 ///
 /// The distinction from platform speech is the whole point: these are bytes,
-/// not a call into somebody else's synthesiser, so they can be stored, played
+/// not a call into somebody else's synthesizer, so they can be stored, played
 /// again identically, and made louder than the tablet's own maximum.
 ///
 /// Signed 16-bit, little-endian, one channel. Sixteen bits rather than the

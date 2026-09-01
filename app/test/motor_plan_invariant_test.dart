@@ -58,7 +58,7 @@ void main() {
           ),
         );
 
-    homeBoardId = await materialiseBoard(
+    homeBoardId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: 'home',
@@ -68,7 +68,7 @@ void main() {
 
   tearDown(() async => db.close());
 
-  group('cell materialisation', () {
+  group('cell materialization', () {
     test('creates every grid location up front', () async {
       final count = await db.cells.count().getSingle();
       expect(count, 7 * 12);
@@ -239,7 +239,7 @@ void main() {
 
       // 2. Add category boards and populate them.
       for (final name in ['food', 'actions', 'describe']) {
-        final boardId = await materialiseBoard(
+        final boardId = await materializeBoard(
           db,
           vocabularyId: vocabId,
           name: name,

@@ -42,7 +42,7 @@ class _Broken extends StatelessWidget {
 
 /// §5 non-negotiable 6: a crash never leaves a user with nothing.
 ///
-/// What Flutter does by default is a red box in debug and a grey one in
+/// What Flutter does by default is a red box in debug and a gray one in
 /// release. For a nonspeaking person that is a tablet that has stopped talking,
 /// and there is no way for them to say so.
 void main() {

@@ -351,7 +351,7 @@ void main() {
 
     test('questions stay ordinary vocabulary, not controls', () async {
       // Pinned is a placement decision. Treating them as system buttons would
-      // strip their colour coding and lock a caregiver out of editing them.
+      // strip their color coding and lock a caregiver out of editing them.
       final what = await (db.select(
         db.buttons,
       )..where((b) => b.label.equals('what'))).get();
@@ -523,7 +523,7 @@ void main() {
         reason: 'a strip of the doing board was never placed',
       );
       // One fewer since `cook` moved to `food` (§4.42). Arithmetic, not
-      // behaviour: a word leaving the shipped board moves this number and
+      // behavior: a word leaving the shipped board moves this number and
       // nothing else.
       expect(labels, hasLength(47));
     });

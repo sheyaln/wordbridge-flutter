@@ -133,7 +133,7 @@ void main() {
     });
 
     test('a board a caregiver made has no regions to name', () async {
-      final id = await materialiseBoard(
+      final id = await materializeBoard(
         db,
         vocabularyId: vocabularyId,
         name: 'brekfist',
@@ -249,7 +249,7 @@ void main() {
       }
     }
 
-    testWidgets('nothing is labelled until a caregiver asks', (tester) async {
+    testWidgets('nothing is labeled until a caregiver asks', (tester) async {
       await pump(tester);
       expect(find.byType(RegionLabelStrip), findsNothing);
     });
@@ -315,7 +315,7 @@ void main() {
       await settings.set('regionLabels', true);
       await pump(tester);
 
-      final labelled = tester.getSize(find.byKey(const ValueKey('0:0')));
+      final labeled = tester.getSize(find.byKey(const ValueKey('0:0')));
 
       await settings.set('regionLabels', false);
       for (var i = 0; i < 8; i++) {
@@ -327,10 +327,10 @@ void main() {
       expect(find.byType(RegionLabelStrip), findsNothing);
       expect(
         plain.height,
-        greaterThan(labelled.height),
+        greaterThan(labeled.height),
         reason: 'the strip costs grid height and has to give it back',
       );
-      expect(plain.width, labelled.width);
+      expect(plain.width, labeled.width);
     });
   });
 }

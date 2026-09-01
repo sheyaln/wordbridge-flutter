@@ -1,6 +1,6 @@
 /// Rebuilding a profile's boards from the vocabulary the app currently ships.
 ///
-/// A board set is materialised once, at profile creation, and nothing re-runs
+/// A board set is materialized once, at profile creation, and nothing re-runs
 /// it. That is right for somebody who has learned a layout and wrong while the
 /// layout is still being designed: a change to the seed reaches new profiles
 /// and leaves the device it was tested on drawing the old board.

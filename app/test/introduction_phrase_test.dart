@@ -10,13 +10,15 @@ import 'package:wordbridge/features/grid/region_labels.dart';
 /// A stranger reads a pause as absence and starts talking to whoever is
 /// standing next to the user. This is the one press that answers them, and it
 /// belongs on the root board because the situation it is for arrives without
-/// warning and from anywhere.
+/// warning and from anywhere. It says where the voice comes from as well as
+/// why the wait, because a voice arriving from a tablet is the other half of
+/// what a listener is working out.
 ///
 /// What makes it affordable is where it ranks, not how short it is. The root
 /// board is exactly full at the shipped iPad grid, so a new band costs a line
 /// wherever it goes; ranking it last means the line it costs is its own.
 void main() {
-  const introduction = 'I use this to talk';
+  const introduction = 'I use a computer voice to talk';
 
   /// Everything the root board declares apart from the new band, which is what
   /// shipped before it existed.
@@ -58,7 +60,7 @@ void main() {
 
     test('is a whole utterance, so nothing may inflect it', () {
       // Coded as a noun it would take the endings, and the board would offer
-      // "+'s" after it and say "I use this to talk's".
+      // "+'s" after it and say "I use a computer voice to talk's".
       final item = homeBands
           .expand((b) => b.items)
           .firstWhere((i) => i.value.label == introduction);
@@ -77,6 +79,19 @@ void main() {
           .firstWhere((i) => i.value.label == introduction);
 
       expect(item.value.message, introduction);
+    });
+
+    test('names where the voice is coming from', () {
+      // The half a listener cannot work out from the pause. A sentence that
+      // accounts for the wait and not for the voice leaves them deciding for
+      // themselves who is speaking, which is the mistake this exists to stop.
+      expect(introduction.toLowerCase(), contains('computer voice'));
+    });
+
+    test('and carries no dash or hyphen, between words or inside one', () {
+      // §4.50, which is why the voice is a computer voice here and not a
+      // computer-generated one.
+      expect(introduction, isNot(matches(RegExp(r'[-\u2010-\u2015]'))));
     });
 
     test('is level 2, because level 1 is the Universal Core 36 exactly', () {

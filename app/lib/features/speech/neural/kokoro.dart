@@ -20,8 +20,8 @@ import 'voice_model.dart';
 /// shared **by address** rather than rebuilt inside it: a second copy of a
 /// 330 MB model does not fit beside the first on a 3 GB tablet, which is the
 /// device this is for. `OfflineTts.fromPtr` is public for exactly this.
-class KokoroSynthesiser {
-  KokoroSynthesiser(this.files);
+class KokoroSynthesizer {
+  KokoroSynthesizer(this.files);
 
   final VoiceModelFiles files;
 
@@ -126,7 +126,7 @@ class KokoroSynthesiser {
     return RegExp(r'[.!?…]$').hasMatch(trimmed) ? trimmed : '$trimmed.';
   }
 
-  /// Synthesises [text], trimmed and ready to store or play.
+  /// Synthesizes [text], trimmed and ready to store or play.
   ///
   /// [live] marks a person waiting, which is what [liveWaiting] reports to the
   /// bake. It changes nothing else: the queue is first come, first served, and

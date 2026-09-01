@@ -65,7 +65,7 @@ class RegionLabelStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colour = Theme.of(context).colorScheme.primary;
+    final color = Theme.of(context).colorScheme.primary;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -88,7 +88,7 @@ class RegionLabelStrip extends StatelessWidget {
                 rect: _rectFor(geometry, band, constraints),
                 child: _Label(
                   text: band.name,
-                  colour: colour,
+                  color: color,
                   onTap: onTap == null ? null : () => onTap!(band.first),
                   // Down the side, the strip is as narrow as a label is tall,
                   // so the word has to run along the row rather than across
@@ -123,19 +123,19 @@ class RegionLabelStrip extends StatelessWidget {
 class _Label extends StatelessWidget {
   const _Label({
     required this.text,
-    required this.colour,
+    required this.color,
     required this.quarterTurns,
     this.onTap,
   });
 
   final String text;
-  final Color colour;
+  final Color color;
   final int quarterTurns;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final edge = BorderSide(color: colour.withValues(alpha: 0.4));
+    final edge = BorderSide(color: color.withValues(alpha: 0.4));
 
     final label = Padding(
       padding: quarterTurns == 0
@@ -160,7 +160,7 @@ class _Label extends StatelessWidget {
                 height: 1.15,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.6,
-                color: colour,
+                color: color,
               ),
             ),
           ),

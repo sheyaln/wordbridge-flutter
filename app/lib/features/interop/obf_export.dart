@@ -149,7 +149,7 @@ Future<ObfBoard> _toObf(
     ext: {
       WordbridgeExt.boardKind: board.kind.name,
       WordbridgeExt.vocabularyName: vocabulary.name,
-      WordbridgeExt.colourScheme: vocabulary.colourScheme.name,
+      WordbridgeExt.colorConvention: vocabulary.colorConvention.name,
       WordbridgeExt.sourceLicense: ?vocabulary.sourceLicense,
     },
   );

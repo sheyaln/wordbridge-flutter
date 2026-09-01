@@ -243,7 +243,7 @@ void main() {
 
       final result = await check();
 
-      expect(result.outcome, PreMigrationOutcome.unrecognised);
+      expect(result.outcome, PreMigrationOutcome.unrecognized);
       expect(await snapshotFiles(), isEmpty);
     });
 

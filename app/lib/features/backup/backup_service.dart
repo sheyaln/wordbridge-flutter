@@ -112,7 +112,7 @@ class BackupService {
   /// and letting that exploration push a week-old backup out of the ring would
   /// trade the thing they might need for the thing they probably will not.
   ///
-  /// Named so that [snapshotTakenAt] does not recognise it, which is what
+  /// Named so that [snapshotTakenAt] does not recognize it, which is what
   /// keeps it out of [snapshots] and out of the prune. It is a way back from
   /// this session, not a date in a list of dates.
   static const sessionFileName = 'wordbridge-session.db';

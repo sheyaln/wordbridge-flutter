@@ -98,7 +98,7 @@ class _PinGateState extends State<PinGate> {
   /// Reachable during a lockout on purpose.
   ///
   /// A caregiver who has just burned five attempts is exactly the one who has
-  /// realised they do not remember it, and waiting out a timer tells them
+  /// realized they do not remember it, and waiting out a timer tells them
   /// nothing they do not already know. Nothing here shortens a guess: the
   /// credential is destroyed rather than revealed, and the cost of arriving
   /// here is a five-second hold and a typed word every single time.
@@ -154,8 +154,7 @@ class _PinGateState extends State<PinGate> {
               const SizedBox(height: 8),
               Text(
                 _justReset
-                    ? 'The old PIN is cleared. Nothing else changed. Set a new '
-                          'one now. Caregiver mode stays shut until you do. '
+                    ? 'The old PIN is cleared and nothing else changed. '
                           '4 to 6 digits.'
                     : 'This keeps the board editor out of reach during '
                           'everyday use. 4 to 6 digits.',
@@ -325,8 +324,7 @@ class _HoldToResetState extends State<_HoldToReset>
             const SizedBox(height: 4),
             const Text(
               'Press and hold this line for five seconds to clear the PIN and '
-              'set a new one. The board, the buttons, the voice settings and '
-              'the usage log are not touched.',
+              'set a new one. Nothing else is touched.',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.black54,
@@ -390,15 +388,13 @@ class _TypeToConfirmResetState extends State<_TypeToConfirmReset> {
         children: [
           const Text(
             'This clears the PIN and nothing else. The board, the buttons, the '
-            'voice settings, the profiles and the usage log stay exactly as '
-            'they are. You set a new PIN straight after.',
+            'voice settings, the profiles and the usage log stay as they are.',
             style: TextStyle(fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 12),
           const Text(
             'Anyone holding this device can do this. The PIN keeps the editor '
-            'out of everyday reach; it is not a lock against an adult with the '
-            'tablet in their hands.',
+            'out of everyday reach; it is not a lock.',
             style: TextStyle(fontSize: 13, height: 1.4, color: Colors.black54),
           ),
           const SizedBox(height: 16),

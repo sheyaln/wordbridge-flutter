@@ -33,7 +33,7 @@ enum FallbackReason {
   /// Synthesis threw.
   failed,
 
-  /// A reason this version does not recognise. Reaching the intake at all is
+  /// A reason this version does not recognize. Reaching the intake at all is
   /// the finding: it means the engine grew a case this did not.
   other;
 

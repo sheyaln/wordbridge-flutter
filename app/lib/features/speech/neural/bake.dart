@@ -7,7 +7,7 @@ import 'clip_store.dart';
 
 enum BakeState { idle, running, waiting, paused, done, failed }
 
-/// Synthesises the whole board, in the background, over about half an hour.
+/// Synthesizes the whole board, in the background, over about half an hour.
 ///
 /// **Not a modal progress bar.** At 1.3 s a word and 1231 words a bake is
 /// twenty-seven minutes on the floor device, and nobody sits through that
@@ -26,7 +26,7 @@ enum BakeState { idle, running, waiting, paused, done, failed }
 class BakeJob extends ChangeNotifier {
   BakeJob(
     this._store, {
-    required this.synthesise,
+    required this.synthesize,
     required this.someoneIsWaiting,
   });
 
@@ -34,7 +34,7 @@ class BakeJob extends ChangeNotifier {
 
   /// Making one clip. Supplied rather than reached for, so this file knows
   /// nothing about which model is behind it or which voice it is making.
-  final Future<AudioClip> Function(String word) synthesise;
+  final Future<AudioClip> Function(String word) synthesize;
 
   /// Whether somebody is waiting on the engine right now.
   ///
@@ -117,7 +117,7 @@ class BakeJob extends ChangeNotifier {
     return _loop = _run();
   }
 
-  /// Stops after the word in flight. A blocking FFI call cannot be cancelled,
+  /// Stops after the word in flight. A blocking FFI call cannot be canceled,
   /// so "paused" means "no further words", never "stopped mid-word".
   void pause() {
     if (!isRunning) return;
@@ -168,7 +168,7 @@ class BakeJob extends ChangeNotifier {
   /// Makes one clip and files it.
   @protected
   Future<void> makeOne(String word) async =>
-      _store.write(word, await synthesise(word));
+      _store.write(word, await synthesize(word));
 
   @override
   void dispose() {

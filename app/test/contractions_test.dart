@@ -148,7 +148,7 @@ void main() {
   group('taking it back', () {
     test('deleting the contraction removes the whole pair', () {
       // Both words became one entry, so one backspace takes both. That is the
-      // honest behaviour: what is on the screen is one word.
+      // honest behavior: what is on the screen is one word.
       bar.add('I', pos: PartOfSpeech.pronoun);
       bar.add('can', pos: PartOfSpeech.verb);
       bar.contract('not');

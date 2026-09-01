@@ -52,7 +52,7 @@ void main() {
             updatedAt: ts,
           ),
         );
-    boardId = await materialiseBoard(
+    boardId = await materializeBoard(
       db,
       vocabularyId: vocabId,
       name: 'home',

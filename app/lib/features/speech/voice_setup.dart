@@ -169,7 +169,7 @@ class VoiceSetup {
     return groups;
   }
 
-  /// Whether the device labelled any of these voices male or female.
+  /// Whether the device labeled any of these voices male or female.
   ///
   /// False on Android, and on an iOS build that reports "unspecified"
   /// throughout. The screen says so rather than leaving a caregiver looking for
@@ -225,7 +225,7 @@ class VoiceSetup {
   /// The word for a voice's quality, or null where there is nothing to say.
   ///
   /// Only the grades that mean "this one sounds better" are named. "default"
-  /// and anything unrecognised get no marker, because a label nobody can act on
+  /// and anything unrecognized get no marker, because a label nobody can act on
   /// is just noise on the row.
   static String? qualityLabel(String? quality) =>
       switch (quality?.trim().toLowerCase()) {

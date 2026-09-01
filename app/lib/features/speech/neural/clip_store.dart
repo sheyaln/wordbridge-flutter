@@ -60,7 +60,7 @@ class ClipStore {
   static const _headerPrefix = '#wordbridge-clips 1 ';
 
   /// The clips already made, so the bake knows what is left rather than
-  /// synthesising 1231 words to discover it has them.
+  /// synthesizing 1231 words to discover it has them.
   Iterable<String> get texts => _entries.keys;
 
   int get count => _entries.length;

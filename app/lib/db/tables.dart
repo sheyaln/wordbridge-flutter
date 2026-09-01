@@ -83,10 +83,10 @@ enum PartOfSpeech {
   other,
 }
 
-/// Which part-of-speech-to-colour convention a vocabulary uses. Clinicians are
+/// Which part of speech to color convention a vocabulary uses. Clinicians are
 /// split between these and the literature is consistent that internal
 /// consistency matters far more than which scheme is chosen.
-enum ColourScheme { modifiedFitzgerald, goossens, custom }
+enum ColorConvention { modifiedFitzgerald, goossens, custom }
 
 enum BoardKind { root, category, system }
 
@@ -147,7 +147,10 @@ class Vocabularies extends Table with _Timestamps {
   /// JSON: {"home": [6, 0], "back": [6, 1], ...}
   TextColumn get systemCellMap => text().withDefault(const Constant('{}'))();
 
-  TextColumn get colourScheme => textEnum<ColourScheme>().withDefault(
+  /// Renamed from `color_scheme` at schema 8. The values are the enum's own
+  /// names and none of them changed, so the migration is the column and
+  /// nothing else.
+  TextColumn get colorConvention => textEnum<ColorConvention>().withDefault(
     const Constant('modifiedFitzgerald'),
   )();
 
@@ -201,7 +204,7 @@ class Boards extends Table with _Timestamps {
 
 /// The motor-plan anchor, and the reason this schema exists.
 ///
-/// Every location on every board is materialised at board creation and its id
+/// Every location on every board is materialized at board creation and its id
 /// is permanent — never reused, never deleted. Positions are therefore stored
 /// rather than derived from an ordered list of buttons; a derived layout
 /// silently relocates every subsequent word whenever one is inserted or
@@ -317,7 +320,7 @@ class UsageEvents extends Table {
   TextColumn get vocabularyId => text()();
   TextColumn get boardId => text()();
 
-  /// The location. Survives the word being relabelled or moved away.
+  /// The location. Survives the word being relabeled or moved away.
   TextColumn get cellId => text()();
 
   TextColumn get buttonId => text().nullable()();

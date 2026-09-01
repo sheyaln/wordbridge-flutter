@@ -100,7 +100,7 @@ void main() {
   group('what a person is offered to choose from', () {
     test('search returns near misses, because a person is looking', () async {
       // The looser half of the same source. A caregiver deciding a picture of
-      // a cup means "drink" is judgement, which is what they are for.
+      // a cup means "drink" is judgment, which is what they are for.
       final pack = packReturning([
         (text: 'Ball', id: 1),
         (text: 'Balloon', id: 2),
@@ -257,7 +257,7 @@ void main() {
     });
   });
 
-  group('the licence boundary', () {
+  group('the license boundary', () {
     test('only commercially clean sets are reachable', () {
       // ARASAAC and Sclera are CC BY-NC and belong behind their own opt-in
       // pack. This one may be bundled, sold, or shipped on hardware.
@@ -287,7 +287,7 @@ void main() {
       }
     });
 
-    test('attribution names every set, as the licence requires', () {
+    test('attribution names every set, as the license requires', () {
       final pack = GlobalSymbolsPack(
         client: MockClient((_) async {
           return http.Response('[]', 200);

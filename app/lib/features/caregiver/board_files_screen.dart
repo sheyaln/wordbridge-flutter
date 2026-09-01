@@ -72,9 +72,8 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
     final agreed = await _confirm(
       title: 'Import "${file.name}"?',
       body:
-          'It arrives as a new profile, so nothing on this board set moves '
-          'and the tablet keeps speaking exactly as it does now. Switch to it '
-          'from Profile when you want to see it.',
+          'It arrives as a new profile, so nothing on this board set moves. '
+          'Switch to it from Profile when you want to see it.',
       action: 'Import',
     );
     if (!agreed) return;
@@ -173,9 +172,8 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
             leading: const Icon(Icons.ios_share),
             title: const Text('Export this board set'),
             subtitle: const Text(
-              'One .obz file holding every board, its words, its symbols and '
-              'the links between them. Find it in Files under wordbridge, '
-              'boards, to mail it or copy it to iCloud Drive or Google Drive.',
+              'One .obz file with every board, its words, symbols and links. '
+              'Find it in Files under wordbridge, boards.',
             ),
             isThreeLine: true,
             trailing: FilledButton(
@@ -196,9 +194,8 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
-                'None yet. Anything exported appears in this list, as does '
-                'any .obf or .obz file placed in Files under wordbridge, '
-                'boards.',
+                'None yet. Anything exported appears here, as does any .obf '
+                'or .obz file placed in Files under wordbridge, boards.',
               ),
             )
           else
@@ -246,18 +243,18 @@ class _NotABackup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colours = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colours.tertiaryContainer,
+        color: colors.tertiaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, color: colours.onTertiaryContainer),
+          Icon(Icons.info_outline, color: colors.onTertiaryContainer),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -266,17 +263,17 @@ class _NotABackup extends StatelessWidget {
                 Text(
                   'This is not a backup',
                   style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(color: colours.onTertiaryContainer),
+                      ?.copyWith(color: colors.onTertiaryContainer),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'An exported file carries words, symbols and links. It does '
-                  'not carry which locations are reserved, the vocabulary '
-                  'level, what is hidden, or any usage recorded. Use Backups '
-                  'to keep a board set safe. Use this to move one to another '
-                  'program or another person.',
+                  'not carry reserved locations, the vocabulary level, what '
+                  'is hidden, or any usage recorded. Use Backups to keep a '
+                  'board set safe; use this to move one to another program '
+                  'or person.',
                   style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(color: colours.onTertiaryContainer),
+                      ?.copyWith(color: colors.onTertiaryContainer),
                 ),
               ],
             ),

@@ -73,7 +73,7 @@ class GridChoice {
 
   bool get isUsable => refusal == null;
 
-  /// How many words this grid can hold across every board it materialises.
+  /// How many words this grid can hold across every board it materializes.
   int get locationsPerBoard => rows * cols;
 
   /// Works out the grid for a chosen orientation and icon size.
@@ -111,8 +111,8 @@ class GridChoice {
     final refusal = boardSetRefusal(rows: rows, cols: cols) == null
         ? null
         : '${iconSize.label} icons in ${orientation.label.toLowerCase()} '
-              'leave room for only ${rows}x$cols, which is too small to hold '
-              'the keys and the words every board needs to reach.';
+              'leave room for only ${rows}x$cols, too small for the keys and '
+              'words every board needs.';
 
     return GridChoice(
       orientation: orientation,
@@ -136,7 +136,7 @@ class GridChoice {
   ///
   /// The outer gutters are not charged against the target, so a cell can come
   /// out up to a gutter under it — about a pixel at tablet sizes, against a
-  /// target that is itself a judgement call rather than a measured threshold.
+  /// target that is itself a judgment call rather than a measured threshold.
   /// Charging them would cost a whole row or column on a dozen real device and
   /// icon-size combinations, and a row of vocabulary is worth more than a
   /// pixel of button. `grid_choice_test` allows exactly that tolerance.

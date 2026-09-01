@@ -18,7 +18,7 @@ typedef CellHistory = ({int taps, int days, DateTime? firstUsed});
 /// Stepped by date rather than by a twenty-four hour duration, because a local
 /// day is 23 or 25 hours long across a daylight-saving change and an axis built
 /// from durations stops landing on the midnights that day buckets are keyed by.
-/// Out-of-range day numbers normalise, so month and year ends need no case of
+/// Out-of-range day numbers normalize, so month and year ends need no case of
 /// their own.
 List<DateTime> calendarDaysEnding(DateTime today, int days) => [
   for (var i = days - 1; i >= 0; i--)
@@ -39,7 +39,7 @@ int calendarDaysBetween(DateTime from, DateTime to) {
 /// How far back a figure looks, resolved to an epoch cutoff when the query runs.
 ///
 /// The two kinds answer different questions and a figure has to carry the one
-/// it was labelled with. "Today" ends at the last local midnight whatever the
+/// it was labeled with. "Today" ends at the last local midnight whatever the
 /// hour, so a number shown under that word never quietly includes yesterday
 /// evening — these numbers reach funding letters.
 class UsageWindow {
@@ -62,17 +62,17 @@ class UsageQueries {
   /// Answers "did the user go to this location" — the motor-plan question.
   ///
   /// An allowlist rather than a list of exclusions, so a source added later
-  /// has to be considered before it can count towards a motor plan. A word
+  /// has to be considered before it can count toward a motor plan. A word
   /// taken from the prediction strip is not here: it was never reached for,
   /// and counting it would inflate the tap count a caregiver is shown before
   /// moving a button. Neither is partner modelling — a partner demonstrating
   /// a word teaches the user, but it is not the user's own practice.
-  static const practisedSources = [UsageSource.touch, UsageSource.switchAccess];
+  static const practicedSources = [UsageSource.touch, UsageSource.switchAccess];
 
   /// Answers "what language did the user produce" — every figure and every
   /// sentence on a report.
   ///
-  /// The prediction strip counts here and not in [practisedSources] because
+  /// The prediction strip counts here and not in [practicedSources] because
   /// those are two questions, not two wordings of one. A strip word was never
   /// reached for, so it is no evidence about a location; the user still chose
   /// it and the device said it out loud, so it is language they produced.
@@ -89,7 +89,7 @@ class UsageQueries {
   ///
   /// This is what makes a remap warning honest rather than alarmist: the
   /// question is not "has this word been used" but "has this *position* been
-  /// practised", which is what a motor plan actually is.
+  /// practiced", which is what a motor plan actually is.
   Future<CellHistory> historyForCell(
     String cellId, {
     UsageWindow window = const UsageWindow.rollingDays(90),
@@ -101,7 +101,7 @@ class UsageQueries {
               (e) =>
                   e.cellId.equals(cellId) &
                   e.occurredAt.isBiggerOrEqualValue(since) &
-                  e.source.isInValues(practisedSources),
+                  e.source.isInValues(practicedSources),
             ))
             .get();
 

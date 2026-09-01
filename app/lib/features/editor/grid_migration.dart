@@ -15,7 +15,7 @@
 ///
 /// **It is reversible.** [apply] builds a *new* vocabulary and points the
 /// profile at it. The old board set is untouched — every location, every
-/// customisation, every recorded tap — so [revert] is a single write.
+/// customization, every recorded tap — so [revert] is a single write.
 library;
 
 import 'package:drift/drift.dart';
@@ -41,7 +41,7 @@ class MigrationImpact {
     required this.leaving,
     required this.customWords,
     required this.totalTaps,
-    required this.mostPractised,
+    required this.mostPracticed,
     required this.trackingOff,
   });
 
@@ -75,7 +75,7 @@ class MigrationImpact {
   /// counts start when it was built.
   final int totalTaps;
 
-  final List<({String label, int taps, String from, String to})> mostPractised;
+  final List<({String label, int taps, String from, String to})> mostPracticed;
 
   /// Usage tracking is off, so the tap counts are all zero and the warning
   /// cannot say what the change costs. Worth saying out loud rather than
@@ -157,7 +157,7 @@ class GridMigration {
     var customWords = 0;
     var totalTaps = 0;
 
-    final practised = <({String label, int taps, String from, String to})>[];
+    final practiced = <({String label, int taps, String from, String to})>[];
 
     for (final board in current.entries) {
       final base = _baseName(board.key);
@@ -184,7 +184,7 @@ class GridMigration {
         totalTaps += taps;
 
         if (taps > 0) {
-          practised.add((
+          practiced.add((
             label: word.key,
             taps: taps,
             from: 'row ${now.row + 1}, column ${now.col + 1}',
@@ -196,7 +196,7 @@ class GridMigration {
       }
     }
 
-    practised.sort((a, b) => b.taps.compareTo(a.taps));
+    practiced.sort((a, b) => b.taps.compareTo(a.taps));
 
     return MigrationImpact(
       fromRows: vocab.gridRows,
@@ -208,7 +208,7 @@ class GridMigration {
       leaving: leaving,
       customWords: customWords,
       totalTaps: totalTaps,
-      mostPractised: practised.take(8).toList(),
+      mostPracticed: practiced.take(8).toList(),
       trackingOff: !trackingEnabled,
     );
   }
@@ -592,7 +592,7 @@ class GridMigration {
       ..addColumns([count])
       ..where(
         db.usageEvents.cellId.equals(cellId) &
-            db.usageEvents.source.isInValues(UsageQueries.practisedSources),
+            db.usageEvents.source.isInValues(UsageQueries.practicedSources),
       );
 
     return (await query.getSingle()).read(count) ?? 0;

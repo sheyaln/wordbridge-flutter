@@ -108,8 +108,7 @@ class BoardDeleteImpact {
       if (taps == 0) {
         buffer.write(
           'Nothing has been recorded at those locations in the last '
-          '$windowDays days, so this is about as cheap as removing a board '
-          'gets. ',
+          '$windowDays days. ',
         );
       } else {
         buffer.write(
@@ -127,14 +126,13 @@ class BoardDeleteImpact {
         '$keys ${keys == 1 ? 'key opens' : 'keys open'} this board. '
         '${keys == 1 ? 'It stays' : 'They stay'} where '
         '${keys == 1 ? 'it is' : 'they are'} and '
-        '${keys == 1 ? 'stops' : 'stop'} doing anything, because a location '
-        'somebody has learned must never be handed to something else. ',
+        '${keys == 1 ? 'stops' : 'stop'} doing anything. ',
       );
     }
 
     buffer.write(
       'Nothing is destroyed. The board is marked deleted and every recorded '
-      'tap stays, so what was done here is still answerable afterwards.',
+      'tap stays.',
     );
 
     return buffer.toString();
@@ -145,7 +143,7 @@ class BoardDeletion {
   /// How far back the tap count looks.
   ///
   /// The same window a single word's move uses, because a caregiver reading
-  /// both in one sitting is entitled to assume two numbers labelled the same
+  /// both in one sitting is entitled to assume two numbers labeled the same
   /// way were measured the same way.
   static const practiceWindow = RemapService.practiceWindow;
 
@@ -341,8 +339,7 @@ class BoardDeletion {
     if (board.kind == BoardKind.root || vocabulary.rootBoardId == board.id) {
       return (
         BoardDeleteRefusal.homeBoard,
-        '"${board.name}" is the home board. Every word starts from here and '
-            'the home key returns to it from everywhere, so it cannot be removed.',
+        '"${board.name}" is the home board, so it cannot be removed.',
       );
     }
 
@@ -358,11 +355,9 @@ class BoardDeletion {
     if (frame != null && frame.categories.any((c) => c.boardId == board.id)) {
       return (
         BoardDeleteRefusal.onTheCategoryWheel,
-        '"${board.name}" has a place on the category wheel. The keys along the '
-            'bottom row are a window onto a fixed list, so taking a name out of it '
-            'changes which board every key after it opens, relocating what a '
-            'learned key does, without a single button moving. Empty it instead: '
-            'the board stays where the keys expect it and the words on it go.',
+        '"${board.name}" has a place on the category wheel. Removing it would '
+            'change which board every key after it opens. Empty it instead: the '
+            'board stays and the words on it go.',
       );
     }
 
@@ -371,8 +366,7 @@ class BoardDeletion {
       return (
         BoardDeleteRefusal.openedByAFixedKey,
         '"${board.name}" is opened by "${fixed.first.label}", which holds the '
-            'same coordinates on every board. Removing it would leave that key in '
-            'place with nothing behind it. Empty the board instead.',
+            'same coordinates on every board. Empty the board instead.',
       );
     }
 
@@ -396,7 +390,7 @@ class BoardDeletion {
               (e) =>
                   e.cellId.isIn(cellIds) &
                   e.occurredAt.isBiggerOrEqualValue(practiceWindow.cutoffMs()) &
-                  e.source.isInValues(UsageQueries.practisedSources),
+                  e.source.isInValues(UsageQueries.practicedSources),
             ))
             .get();
 

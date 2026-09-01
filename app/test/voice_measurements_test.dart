@@ -33,8 +33,8 @@ void main() {
     test('and anything else is "other", never passed through', () {
       // The whole point. `'the voice failed: $e'` is assembled from a thrown
       // object, and a thrown object can quote a word, a path or a filename —
-      // so a reason this version does not recognise is reported as
-      // unrecognised rather than forwarded and hoped about.
+      // so a reason this version does not recognize is reported as
+      // unrecognized rather than forwarded and hoped about.
       expect(
         classifyFallback('exploded while saying "I want the toilet"'),
         FallbackReason.other,

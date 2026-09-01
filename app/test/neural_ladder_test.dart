@@ -78,13 +78,13 @@ void main() {
   Future<Directory> where() async => documents;
 
   NeuralSpeechEngine engineWith({
-    Future<AudioClip?> Function(String text)? synthesise,
+    Future<AudioClip?> Function(String text)? synthesize,
   }) => NeuralSpeechEngine(
     platform,
     documentsDirectory: where,
     player: ClipPlayer(channel: channel),
     models: VoiceModelStore(documentsDirectory: where),
-    synthesise: synthesise,
+    synthesize: synthesize,
   );
 
   Future<ClipStore> packFor(String voiceId, double speed) => ClipStore.open(
@@ -109,7 +109,7 @@ void main() {
       expect(platform.spoken, isEmpty, reason: 'the platform must not speak');
     });
 
-    test('a lone capital I is normalised before it is looked up', () async {
+    test('a lone capital I is normalized before it is looked up', () async {
       // The word every AAC user needs most. The cache is keyed on what the
       // engine would have been asked to say, so both halves have to agree.
       final pack = await packFor('af_bella', 1.0);
@@ -162,8 +162,8 @@ void main() {
       'an unbaked word speaks in the platform voice without waiting',
       () async {
         final engine = engineWith(
-          synthesise: (_) async {
-            fail('the tap path must never synthesise');
+          synthesize: (_) async {
+            fail('the tap path must never synthesize');
           },
         );
         await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
@@ -194,7 +194,7 @@ void main() {
     });
 
     test('the count is kept per sentence, with the reason', () async {
-      final engine = engineWith(synthesise: (_) async => null);
+      final engine = engineWith(synthesize: (_) async => null);
       await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
       await engine.speakUtterance('I want to go outside');
 
@@ -207,7 +207,7 @@ void main() {
   group('rung 2 — live synthesis, under the budget', () {
     test('a sentence inside the budget speaks in the chosen voice', () async {
       final engine = engineWith(
-        synthesise: (text) async {
+        synthesize: (text) async {
           await Future<void>.delayed(const Duration(milliseconds: 20));
           return clipOf(300);
         },
@@ -226,11 +226,11 @@ void main() {
     });
 
     test(
-      'what was synthesised is kept, so the next press is instant',
+      'what was synthesized is kept, so the next press is instant',
       () async {
         var calls = 0;
         final engine = engineWith(
-          synthesise: (_) async {
+          synthesize: (_) async {
             calls++;
             return clipOf(300);
           },
@@ -247,7 +247,7 @@ void main() {
 
     test('a sentence past the budget falls back rather than hanging', () async {
       final engine = engineWith(
-        synthesise: (_) async {
+        synthesize: (_) async {
           await Future<void>.delayed(const Duration(seconds: 5));
           return clipOf(300);
         },
@@ -269,7 +269,7 @@ void main() {
       // would say the sentence a second time in a different voice — and the
       // user cannot easily take back either of them.
       final completer = Completer<AudioClip?>();
-      final engine = engineWith(synthesise: (_) => completer.future);
+      final engine = engineWith(synthesize: (_) => completer.future);
       await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
       engine.budget = const SynthesisBudget(
         base: Duration(milliseconds: 30),
@@ -288,7 +288,7 @@ void main() {
     test('a newer press wins, and the older one goes quiet', () async {
       final first = Completer<AudioClip?>();
       final engine = engineWith(
-        synthesise: (text) async =>
+        synthesize: (text) async =>
             text == 'the first sentence' ? first.future : clipOf(120),
       );
       await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
@@ -313,11 +313,11 @@ void main() {
     });
 
     test(
-      'a press superseded before it synthesises says nothing at all',
+      'a press superseded before it synthesizes says nothing at all',
       () async {
         // Two taps in the same event-loop turn. The older one is dropped where
         // it stands rather than being allowed to speak over the newer.
-        final engine = engineWith(synthesise: (_) async => clipOf(120));
+        final engine = engineWith(synthesize: (_) async => clipOf(120));
         await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
 
         final first = engine.speakUtterance('the first sentence');
@@ -336,7 +336,7 @@ void main() {
         // be in flight when it does. What must never happen is silence: nobody
         // in the room can see a sentence that was not spoken by anything.
         final engine = engineWith(
-          synthesise: (_) async =>
+          synthesize: (_) async =>
               throw StateError('The neural voice model is not loaded.'),
         );
         await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
@@ -350,7 +350,7 @@ void main() {
 
     test('a string the model cannot make anything of still speaks', () async {
       final engine = engineWith(
-        synthesise: (_) async => throw ArgumentError('no phonemes'),
+        synthesize: (_) async => throw ArgumentError('no phonemes'),
       );
       await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
 
@@ -365,7 +365,7 @@ void main() {
       // enough for twenty words and a two-word answer hangs; tight enough for
       // two and the longest, most deliberate sentences never arrive.
       final engine = engineWith(
-        synthesise: (text) async {
+        synthesize: (text) async {
           await Future<void>.delayed(
             Duration(milliseconds: 30 * SynthesisBudget.wordsIn(text)),
           );

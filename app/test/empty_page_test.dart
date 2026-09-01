@@ -53,7 +53,7 @@ class _SilentSpeech implements SpeechEngine {
 /// same keys they left from.
 ///
 /// The user this costs is the one who cannot say the board has stopped
-/// answering. They press "more words", nothing they recognise appears, and the
+/// answering. They press "more words", nothing they recognize appears, and the
 /// next word they say comes off whichever page they are still standing on.
 void main() {
   const rows = 7;

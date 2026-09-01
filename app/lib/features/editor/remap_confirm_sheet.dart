@@ -5,10 +5,10 @@ import 'remap.dart';
 
 /// Shown before a word is moved.
 ///
-/// The entire product argument lives in this sheet. LAMP's answer to a risky
-/// edit is to put it behind a locked file; Proloquo's is to forbid it. Ours is
-/// to say what it costs, in the user's own recorded practice, and let the
-/// person who actually knows them decide.
+/// The whole argument for this app lives in this sheet. Moving a learned word
+/// is a real cost and it is not ours to refuse: what this does is say what the
+/// cost is, in the user's own recorded practice, and leave the decision with
+/// the person who actually knows them.
 ///
 /// So the tone matters: this is information, not a scolding. The caregiver
 /// moving a word usually has a good reason, and the sheet should read like a

@@ -52,8 +52,8 @@ typedef WordPath = ({
 /// Where a word is, and how to get to it.
 ///
 /// Matches on what the key reads and on what it says, because those differ and
-/// either one is what somebody remembers. A key labelled `juice` that speaks
-/// `I want juice` answers to both words, and one labelled `I want a drink`
+/// either one is what somebody remembers. A key labeled `juice` that speaks
+/// `I want juice` answers to both words, and one labeled `I want a drink`
 /// answers to `drink`.
 ///
 /// Ranked so that a key whose label starts with the query comes before one that

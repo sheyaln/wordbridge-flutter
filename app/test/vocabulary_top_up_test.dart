@@ -538,7 +538,7 @@ void main() {
       );
       // The board's own verbs and the `how` adverbs §4.42 added to it, plus
       // the six question words every board carries in its pinned column.
-      // Arithmetic, not behaviour: a word added to the shipped vocabulary
+      // Arithmetic, not behavior: a word added to the shipped vocabulary
       // moves this number and nothing else.
       expect(words.keys, hasLength(53 + 6));
       expect(

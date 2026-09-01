@@ -449,7 +449,7 @@ void main() {
     test('1.0 asks the engine for its ordinary speaking rate', () {
       // The plugin's own scale puts normal speech at 0.5 on both platforms —
       // iOS passes the number to AVSpeechUtterance.rate, whose default is 0.5,
-      // and Android doubles it before a synthesiser whose normal is 1.0.
+      // and Android doubles it before a synthesizer whose normal is 1.0.
       // Sending 1.0 for "normal" therefore asks both for double speed, which
       // is far too fast to make out.
       expect(FlutterTtsEngine.engineRate(1.0), 0.5);
@@ -810,7 +810,7 @@ void main() {
     group('which engine the device dials are heard through', () {
       test('the platform engine, not the neural one wrapping it', () {
         // Otherwise dragging pitch with the neural voice on plays a
-        // synthesised sentence that pitch does nothing to, and the dial reads
+        // synthesized sentence that pitch does nothing to, and the dial reads
         // as broken. It is not — it belongs to the other voice.
         final platform = _RecordingEngine();
         expect(deviceVoiceEngine(NeuralSpeechEngine(platform)), same(platform));

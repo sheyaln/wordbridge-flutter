@@ -183,7 +183,7 @@ class Band<T> {
   final bool tailOnly;
 }
 
-/// A word that did not fit, still labelled with where it came from.
+/// A word that did not fit, still labeled with where it came from.
 ///
 /// The band name travels with it so a band split across two pages keeps its
 /// identity — a hidden band must not become half visible just because it

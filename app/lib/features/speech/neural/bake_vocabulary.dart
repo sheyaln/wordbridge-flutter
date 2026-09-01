@@ -36,7 +36,7 @@ Future<List<String>> bakeVocabulary(
   final seen = <String>{};
 
   void take(String? text, int level) {
-    final spoken = normaliseForSpeech(text ?? '');
+    final spoken = normalizeForSpeech(text ?? '');
     if (spoken.isEmpty) return;
     if (!seen.add(spoken)) return;
     bare.add((text: spoken, level: level));
@@ -69,7 +69,7 @@ Future<List<String>> bakeVocabulary(
   final inflected = <_Word>[];
   for (final button in buttons) {
     if (button.action != ButtonAction.speak) continue;
-    final word = normaliseForSpeech(button.speakText ?? button.message);
+    final word = normalizeForSpeech(button.speakText ?? button.message);
     if (word.isEmpty) continue;
 
     for (final kind in MorphemeKind.values) {

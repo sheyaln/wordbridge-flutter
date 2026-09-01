@@ -73,7 +73,7 @@ void main() {
         ['assets/symbols/system-emoji/manifest.json'],
         reason:
             'anything else under here would be a system font glyph that '
-            'had been rasterised and bundled, which the licences forbid',
+            'had been rasterised and bundled, which the licenses forbid',
       );
     });
 
@@ -233,7 +233,7 @@ void main() {
       }
     });
 
-    test('credits Unicode CLDR, which its licence requires', () async {
+    test('credits Unicode CLDR, which its license requires', () async {
       final decoded = json.decode(
         await rootBundle.loadString(SystemEmojiPack.indexKey),
       ) as Map<String, dynamic>;
@@ -248,7 +248,7 @@ void main() {
         const SymbolCredits().packs,
         contains(SystemEmojiPack.packId),
         reason:
-            'the Unicode licence asks for its notice to travel with the '
+            'the Unicode license asks for its notice to travel with the '
             'data, and in an app that means a screen somebody can open',
       );
     });

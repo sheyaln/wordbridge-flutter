@@ -11,7 +11,7 @@
 /// more than ours.
 ///
 /// A whole category that shipped since the board set was built arrives the same
-/// way. A new board is the safest addition there is: it materialises beside the
+/// way. A new board is the safest addition there is: it materializes beside the
 /// others and costs one system-row column that was empty, so every key already
 /// on the row keeps opening what it always opened.
 library;
@@ -235,7 +235,7 @@ typedef _NewCategories = ({
 
 /// Gives a board set a category board that shipped after it was built.
 ///
-/// Everything here is an addition. The board materialises at the grid the
+/// Everything here is an addition. The board materializes at the grid the
 /// vocabulary already declares — every board in a set shares one geometry or
 /// the motor plan does not hold — and its words page exactly as they would on
 /// a new profile of the same size. The only thing written to a board that
@@ -316,7 +316,7 @@ Future<_NewCategories> _addMissingCategories(
 
     final pageIds = <String>[];
     for (var page = 0; page < pages.length; page++) {
-      final boardId = await materialiseBoard(
+      final boardId = await materializeBoard(
         db,
         vocabularyId: vocab.id,
         name: pageName(category, page),

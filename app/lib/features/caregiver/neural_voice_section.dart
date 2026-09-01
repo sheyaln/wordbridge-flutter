@@ -21,7 +21,7 @@ import 'voice_screen.dart';
 /// A section rather than a screen of its own, because "which voice speaks" is
 /// one question and it used to be asked on two pages that did not mention each
 /// other. It sits **below** the device voice under [VoiceScreen], and is
-/// labelled pre-alpha where it sits: this is the experiment, and a screen that
+/// labeled pre-alpha where it sits: this is the experiment, and a screen that
 /// opened on it read as though the experiment were the arrangement.
 class NeuralVoiceSection extends StatefulWidget {
   const NeuralVoiceSection({
@@ -117,9 +117,9 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     final agreed = await _confirm(
       title: 'Delete the downloaded voice?',
       body:
-          'This frees ${_megabytes(_onDisk)} and the board returns to the '
-          'device voice. Words already synthesised are kept, so downloading '
-          'again will not mean synthesising them again.',
+          'Frees ${_megabytes(_onDisk)} and the board returns to the device '
+          'voice. Words already synthesized are kept, so downloading again '
+          'does not mean making them again.',
       action: 'Delete',
     );
     if (!agreed) return;
@@ -155,10 +155,10 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
       final agreed = await _confirm(
         title: 'Change to ${voice.name}?',
         body:
-            'The $baked words already made are in the old voice, so they have '
-            'to be synthesised again, about '
+            'The $baked words already made are in the old voice and have to '
+            'be synthesized again, about '
             '${_bakeMinutes(_words?.length ?? 0)} in the background. Until '
-            'then, words that are not ready speak in the device voice.',
+            'then, anything not ready speaks in the device voice.',
         action: 'Change',
       );
       if (!agreed) return;
@@ -290,11 +290,9 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Text(
-            'A neural voice runs on this tablet. It sounds closer to a human '
-            'speaker than text to speech, and it does not sound like every '
-            'other AAC user.\n\n'
-            'One download and no account. It runs entirely on the tablet, so '
-            'it works the same with no signal.',
+            'Sounds closer to a human speaker than text to speech. One '
+            'download, no account, and it runs entirely on the tablet, so it '
+            'works with no signal.',
           ),
         ),
 
@@ -324,20 +322,17 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
                   title: const Text('Device voice'),
                   subtitle: Text(
                     _settings.voiceName == null
-                        ? 'Text to speech, configured above. Used unless a '
-                              'neural voice is selected.'
-                        : '${_settings.voiceName}, configured above. Used '
-                              'unless a neural voice is selected.',
+                        ? 'Text to speech, configured above.'
+                        : '${_settings.voiceName}, configured above.',
                   ),
-                  isThreeLine: true,
                 ),
                 RadioListTile<bool>(
                   value: true,
                   title: const Text('Neural voice, early access'),
                   subtitle: Text(
                     '${neuralVoiceById(_settings.neuralVoiceId).name}. Words '
-                    'synthesised in advance play instantly. Anything else is '
-                    'synthesised on selection.',
+                    'synthesized in advance play instantly. Anything else is '
+                    'synthesized on selection.',
                   ),
                   isThreeLine: true,
                 ),
@@ -391,11 +386,10 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
             title: Text('${_settings.synthesisBudget}'),
             subtitle: Text(
               _settings.synthesisBudgetMeasured
-                  ? 'Measured on this tablet. Anything not synthesised in '
-                        'advance is synthesised on selection, falling back to '
-                        'the device voice only if it exceeds this.'
+                  ? 'Measured on this tablet. Anything slower than this falls '
+                        'back to the device voice.'
                   : 'A safe default for the slowest supported tablet. Measure '
-                        'to get this tablet\'s own figure, usually lower.',
+                        'for this tablet\'s own figure, usually lower.',
             ),
             isThreeLine: true,
             trailing: FilledButton.tonal(
@@ -457,8 +451,8 @@ class _VoicePickerState extends State<_VoicePicker> {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Select the speaker to hear a voice. It takes a second or two, '
-              'as the sentence is synthesised while you listen.',
+              'Select the speaker to hear a voice. It takes a second or two '
+              'to synthesize.',
             ),
           ),
           RadioGroup<String>(
@@ -492,8 +486,8 @@ class _VoicePickerState extends State<_VoicePicker> {
             ),
           ),
           const VoiceNote(
-            'Rate applies to these voices. Pitch does not, as they offer no '
-            'pitch control, so it affects the device voice only.',
+            'Rate applies to these voices. Pitch does not: it affects the '
+            'device voice only.',
           ),
           const SizedBox(height: 32),
         ],
@@ -513,18 +507,18 @@ class _PreAlpha extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colours = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colours.tertiaryContainer,
+        color: colors.tertiaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.science_outlined, color: colours.onTertiaryContainer),
+          Icon(Icons.science_outlined, color: colors.onTertiaryContainer),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -533,16 +527,15 @@ class _PreAlpha extends StatelessWidget {
                 Text(
                   'Early access. It may not sound correct',
                   style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(color: colours.onTertiaryContainer),
+                      ?.copyWith(color: colors.onTertiaryContainer),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Words can be mispronounced, and the question mark key does '
                   'not give this voice a rising intonation. Turning it off '
-                  'restores text to speech exactly as it was, immediately, '
-                  'with nothing to undo.',
+                  'restores text to speech immediately.',
                   style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(color: colours.onTertiaryContainer),
+                      ?.copyWith(color: colors.onTertiaryContainer),
                 ),
               ],
             ),
@@ -626,7 +619,7 @@ class _ModelTile extends StatelessWidget {
         running?.detail ??
             '${_megabytes(published.downloadBytes)} to download, '
                 '${_megabytes(published.installedBytes)} once unpacked. Best '
-                'over wifi. You can delete it at any time.',
+                'over wifi.',
       ),
       isThreeLine: true,
       trailing: FilledButton(
@@ -665,7 +658,7 @@ class _BakeTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListTile(
-          title: Text('$done of $total words synthesised'),
+          title: Text('$done of $total words synthesized'),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -674,11 +667,11 @@ class _BakeTile extends StatelessWidget {
               const SizedBox(height: 6),
               Text(switch (running?.state) {
                 BakeState.running =>
-                  'Synthesising now. The board still works: this pauses for '
-                      'each word spoken and resumes immediately after.',
+                  'Synthesizing now. The board still works, pausing for each '
+                      'word spoken.',
                 BakeState.waiting =>
-                  'Paused while the board is in use. It carries on a few '
-                      'seconds after the last word.',
+                  'Paused while the board is in use. Carries on a few seconds '
+                      'after the last word.',
                 BakeState.paused => 'Stopped. Nothing made so far is lost.',
                 BakeState.done => 'Every word is ready.',
                 BakeState.failed =>
@@ -737,7 +730,7 @@ class _FallbackTile extends StatelessWidget {
         ListTile(
           title: Text('$count since the app started'),
           subtitle: const Text(
-            'If this happens often, finish synthesising the words rather than '
+            'If this happens often, finish synthesizing the words rather than '
             'allowing a longer wait.',
           ),
           isThreeLine: true,

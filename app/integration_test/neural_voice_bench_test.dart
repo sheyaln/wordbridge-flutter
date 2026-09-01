@@ -41,13 +41,13 @@ void main() {
       reason: 'the model has to be installed before this can measure it',
     );
 
-    final synthesiser = KokoroSynthesiser(files);
+    final synthesizer = KokoroSynthesizer(files);
 
     await tester.runAsync(() async {
       // 1. Loading. Blocking FFI over 330 MB of weights, so it runs off the
       //    main isolate — this is how long a board would have frozen for.
       var started = DateTime.now();
-      await synthesiser.load();
+      await synthesizer.load();
       final loaded = DateTime.now().difference(started);
       note('model load + warm-up: ${loaded.inMilliseconds} ms');
 
@@ -66,7 +66,7 @@ void main() {
         final runs = <int>[];
         for (var run = 0; run < 3; run++) {
           started = DateTime.now();
-          await synthesiser.generate(text: text, sid: 1, speed: 1.0);
+          await synthesizer.generate(text: text, sid: 1, speed: 1.0);
           runs.add(DateTime.now().difference(started).inMilliseconds);
         }
         runs.sort();
@@ -86,17 +86,17 @@ void main() {
 
       // 4. Real-time factor, and what the padding costs.
       started = DateTime.now();
-      final clip = await synthesiser.generate(
+      final clip = await synthesizer.generate(
         text: 'I want to go outside please',
         sid: 1,
         speed: 1.0,
       );
-      final synthesised = DateTime.now().difference(started);
+      final synthesized = DateTime.now().difference(started);
       final audio = clipDuration(clip);
       note(
-        'sentence: ${synthesised.inMilliseconds} ms for '
+        'sentence: ${synthesized.inMilliseconds} ms for '
         '${audio.inMilliseconds} ms of audio — '
-        'RTF ${(synthesised.inMilliseconds / audio.inMilliseconds).toStringAsFixed(2)}',
+        'RTF ${(synthesized.inMilliseconds / audio.inMilliseconds).toStringAsFixed(2)}',
       );
 
       // 5. The tap path, which is the one that must not have got slower.
@@ -158,7 +158,7 @@ void main() {
 
       await store.delete();
       await store.close();
-      synthesiser.dispose();
+      synthesizer.dispose();
 
       await File(p.join(documents.path, 'neural-bench.txt'))
           .writeAsString(report.toString());

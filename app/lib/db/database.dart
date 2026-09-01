@@ -154,7 +154,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
 /// Settings live as JSON on the profile row, so a new key is normally absent
 /// and its getter decides. That is fine for a setting nothing can see, and
 /// wrong for one that changes the size of every button: a getter defaulting to
-/// on would reach every board already in use. Writing the current behaviour
+/// on would reach every board already in use. Writing the current behavior
 /// down leaves those boards as they are, and leaves the choice with a
 /// caregiver.
 Future<void> _recordStripsAsOff(WordbridgeDatabase db) async {

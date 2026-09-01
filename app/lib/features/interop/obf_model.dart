@@ -23,7 +23,14 @@ abstract final class WordbridgeExt {
   static const morphemeKind = '${prefix}morpheme_kind';
   static const boardKind = '${prefix}board_kind';
   static const vocabularyName = '${prefix}vocabulary_name';
-  static const colourScheme = '${prefix}colour_scheme';
+  static const colorConvention = '${prefix}color_scheme';
+
+  /// What this key was called before the codebase moved to American spelling.
+  ///
+  /// Written by every export up to that point, so it is still on somebody's
+  /// tablet and in whatever they mailed to a colleague. The writer moved; the
+  /// reader accepts both, because a file does not rewrite itself and a board
+  /// that will not import is a board somebody has lost.
   static const sourceLicense = '${prefix}source_license';
 
   /// Actions OBF does not define. The spec's guidance for those is `:ext_`
@@ -51,7 +58,7 @@ Map<String, Object?> _asMap(Object? v) => v is Map
 List<Object?> _asList(Object? v) => v is List ? v : const <Object?>[];
 
 /// Ids are specified as strings, but numeric ids are common enough that the
-/// spec has a section apologising for them.
+/// spec has a section apologizing for them.
 String? _asId(Object? v) => v?.toString();
 
 String? _asString(Object? v) => switch (v) {
@@ -129,7 +136,7 @@ class ObfLicense {
       if (authorName != null) 'by $authorName',
       if (authorEmail != null) '<$authorEmail>',
       ?authorUrl,
-      if (copyrightNoticeUrl != null) 'licence: $copyrightNoticeUrl',
+      if (copyrightNoticeUrl != null) 'license: $copyrightNoticeUrl',
       if (sourceUrl != null) 'source: $sourceUrl',
     ];
     return parts.join(', ');
