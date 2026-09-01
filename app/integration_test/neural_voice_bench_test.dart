@@ -54,15 +54,15 @@ void main() {
       // 2. Live synthesis, by utterance length. The sweep the timeout is
       //    fitted from: median of three, so one slow scheduling accident does
       //    not become the shipped budget.
-      const unit = 'the cat sat on the mat and then it went outside again today';
+      const unit =
+          'the cat sat on the mat and then it went outside again today';
       final words = unit.split(' ');
       final lengths = [1, 2, 3, 5, 8, 12, 16, 24];
       final measured = <int, int>{};
 
       for (final n in lengths) {
-        final text = [
-          for (var i = 0; i < n; i++) words[i % words.length],
-        ].join(' ');
+        final text = [for (var i = 0; i < n; i++) words[i % words.length]]
+            .join(' ');
         final runs = <int>[];
         for (var run = 0; run < 3; run++) {
           started = DateTime.now();
@@ -160,9 +160,8 @@ void main() {
       await store.close();
       synthesiser.dispose();
 
-      await File(
-        p.join(documents.path, 'neural-bench.txt'),
-      ).writeAsString(report.toString());
+      await File(p.join(documents.path, 'neural-bench.txt'))
+          .writeAsString(report.toString());
     });
   }, timeout: const Timeout(Duration(minutes: 15)));
 }
