@@ -3620,6 +3620,112 @@ rather than words**, and §4.7 says every feature is toggleable per profile.
 That is now a real body of settings and the caregiver screen will need
 organising rather than another switch appended to it.
 
+### 4.53 The intake, and the pipeline behind it — delivered
+
+Requested: *"Let's do the intake. Would love a pipeline of user → intake server
+→ storage → email notification. I like Go, but I'm curious about a Dart Frog
+server. I'm open to using GCP or Scaleway cloud."*
+
+§4.52 shipped the app half and left it inert: a build with no
+`WORDBRIDGE_INTAKE_URL` says so on the screen and sends nothing. This is the
+other half.
+
+**Go, not Dart Frog.** Dart Frog is a reasonable framework and the appeal is
+obvious — one `report.dart`, shared by both sides. That appeal is backwards
+here. The payload carries a `schema` field *because* an old build must keep
+working against a newer server, which is an argument for loose coupling
+between the two, not for a shared type that makes them move together. What is
+left after that is a JSON document, validated and stored, and the language
+question becomes an operational one: a static binary with no runtime, booting
+in milliseconds, is what scale to zero wants, and it is a safer decade-long bet
+than a single-vendor Dart backend framework for something nobody will be
+watching.
+
+**Scaleway, not GCP.** Two reasons, in order. Data residency: an EU-only
+provider makes both the privacy policy and any future conversation with a
+school materially easier for an app used by disabled children, and §11 says
+that conversation is the hard part of this project rather than the code. And
+expertise: this has to still be running in three years, and it is far likelier
+to be if it sits on the platform its operator already knows. GCP would also
+need a third party for email regardless.
+
+The service itself is S3 and SMTP, so it stays portable. Cloud Run, GCS and
+SendGrid would be a Terraform swap rather than a rewrite, and that is on
+purpose: the deploy layer is the replaceable part.
+
+**Object storage, not a database.** Reports are documents, not relational
+data, and the realistic volume is single digits a week. One JSON object per
+report is durable, needs no migrations, costs nothing at rest and cannot be
+left unpatched. A managed database would be an always-on bill and a thing to
+maintain in exchange for queries nobody is running yet. If aggregation ever
+matters, the bucket can be pulled and queried locally.
+
+**Stored before it is acknowledged.** The order is store, then notify, then
+answer 202. Email failing does not fail the request — the report is already
+safe — but storage failing must, because the app tells a caregiver "sent" on a
+202 and that must never be a lie. A report the app still holds is recoverable;
+one it believes it delivered is gone.
+
+Lives in `intake/` in this repo rather than its own, so the wire format and the
+thing that parses it cannot drift.
+
+#### The one decision worth arguing with
+
+**The server does not model the payload.** It unmarshals the handful of fields
+it reasons about — schema, kind, note, device, board — validates those, and
+stores *the bytes that arrived*, byte for byte. It never re-encodes.
+
+The tempting alternative is a struct that mirrors `report.dart` exactly, which
+would be tidier and would be wrong: the app owns the wire format and will add
+to it, and a server that wrote back only what it had been taught would silently
+drop the new field until somebody redeployed it. Then every app release needs a
+server release, which is the coupling the schema number exists to prevent.
+`TestParseReportKeepsFieldsItDoesNotKnow` and `TestStoresExactlyWhatArrived`
+hold that line.
+
+#### What is refused, and what is merely logged
+
+| | |
+|---|---|
+| Unknown schema, unknown kind, not JSON | `400` — the app says "update the app" |
+| Wrong or missing token | `401`, with no detail. Not a place to learn about tokens |
+| Over 64 KB | `413`, capped **while reading**, never on the declared length |
+| Too many from one address | `429` |
+| Storage failed | `503` — the app keeps the report and offers it again |
+| Mail failed | Logged. The report is already safe |
+
+#### What it will not do
+
+- **Follow a redirect** (the client refuses, so an intake cannot be repointed).
+- **Write an address down.** The limiter holds one in memory for as long as it
+  needs and drops it when it goes quiet. It dies with the instance.
+- **Set a cookie**, or anything else that would tie two reports together.
+- **Read a report back.** The container's credentials are write only, so a
+  compromised container cannot enumerate what other people have sent.
+
+#### Testing
+
+Go's own tooling, plus the project's mutation habit. Five mutations, four
+killed and one survivor worth having: deleting `http.MaxBytesReader` left every
+test passing, because the `len(body)` check afterwards still returned 413. It
+returned it *after buffering the whole body into a container with a fixed
+memory limit* — so the cap was decorative and anybody could have streamed
+gigabytes at it. `TestAnEnormousBodyIsNotBufferedBeforeItIsRefused` counts what
+was actually read and now separates the two.
+
+The others killed: reading the leftmost `X-Forwarded-For` entry instead of the
+rightmost (which would have let anyone change their own identity per request
+and walk around the limiter), a token bucket with no ceiling, a prefix
+comparison for the token, and notify before store.
+
+Verified against the real binary as well as in tests: healthz 200, no token
+401, unknown schema 400, GET 405, and a valid report with an unreachable bucket
+**503** — the one that matters, because a 202 there would tell a caregiver
+their report was sent when it was lost.
+
+CI runs it as a separate job. It shares nothing with the app but the wire
+format, and a Flutter toolchain failing should not hide a broken server.
+
 ### 4.52 Reporting, voice measurement, and a store listing — delivered
 
 Requested: *"Send crash reports, send bug reports, or send feature requests. We

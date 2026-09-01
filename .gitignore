@@ -22,3 +22,16 @@ build/
 
 # Local tooling
 .claude/
+
+# Terraform working directories and state. The lock file IS committed: it pins
+# provider versions, and an intake that must still deploy in two years wants
+# the same provider it was written against.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# The intake binary, when someone builds it in place.
+/intake/intake

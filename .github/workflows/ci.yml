@@ -50,3 +50,31 @@ jobs:
       - name: Symbol pack licence boundary
         working-directory: .
         run: ./tools/check_symbol_boundary.sh
+
+  # The report intake (§4.53). Its own job rather than a step in the one above:
+  # it shares nothing with the app but the wire format, and a Flutter toolchain
+  # failing should not hide a broken server or the other way round.
+  intake:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: intake
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: intake/go.sum
+
+      - name: Format
+        run: test -z "$(gofmt -l .)" || { gofmt -d .; exit 1; }
+
+      - run: go vet ./...
+
+      - run: go test -race ./...
+
+      # The image is what actually gets deployed, so a Dockerfile that no
+      # longer builds should fail here rather than at a deploy.
+      - name: Build the image
+        run: docker build -t wordbridge-intake:ci .

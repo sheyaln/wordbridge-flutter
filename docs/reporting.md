@@ -90,6 +90,10 @@ source.
 | `429` | Rate limited | "Too many reports from here just now. Try later." |
 | anything else, or no reply | — | "It could not be sent." The report is kept |
 
+The server that implements this is in `intake/` — Go, deployed to Scaleway
+Serverless Containers with Object Storage and Transactional Email behind it.
+See `intake/README.md` for running and deploying it.
+
 ### What the server must do
 
 - Reject bodies over **64 KB**.
