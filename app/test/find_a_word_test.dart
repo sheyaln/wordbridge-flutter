@@ -753,7 +753,7 @@ void main() {
     });
 
     /// §4.47. Watching a route is not learning it, so the ring can wait.
-    group('when the ring waits to be pressed', () {
+    group('when the highlighted key waits to be pressed', () {
       setUp(() async => settings.set('walkMode', WalkMode.waits.name));
 
       testWidgets('the board does not move on its own', (tester) async {

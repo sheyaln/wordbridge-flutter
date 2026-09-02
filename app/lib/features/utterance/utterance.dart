@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../db/tables.dart';
 import 'contractions.dart';
 import 'morphology.dart';
+import 'numbers.dart';
 
 /// One word in the sentence, and what it was.
 ///
@@ -107,6 +108,37 @@ class UtteranceBar extends ChangeNotifier {
     );
     notifyListeners();
     return contracted;
+  }
+
+  /// Joins a numeral onto the numeral already at the end, and returns what to
+  /// say — or null where there is nothing to join (§4.74).
+  ///
+  /// The bar keeps the digits, so `1` then `2` reads `12`, and what is spoken
+  /// is the number: *twelve*. Two keys, any number, which is why the numbers
+  /// board can stop at ten without a person's vocabulary stopping there.
+  ///
+  /// Returns null rather than joining when the run would pass
+  /// [maxJoinedDigits]: past four digits this is more likely somebody pressing
+  /// keys than somebody saying a number, and the next press starts a new one.
+  String? joinNumber(String digits) {
+    if (!isNumeral(digits) || _entries.isEmpty) return null;
+
+    final previous = _entries.last;
+    if (!isNumeral(previous.text)) return null;
+
+    final joined = previous.text + digits.trim();
+    if (joined.length > maxJoinedDigits) return null;
+
+    _entries[_entries.length - 1] = (
+      text: joined,
+      pos: previous.pos,
+      // Inflected, so a word ending pressed afterwards does not try to build
+      // "12ed" out of it.
+      inflected: true,
+      subjectFollows: false,
+    );
+    notifyListeners();
+    return numberInWords(int.parse(joined));
   }
 
   /// Adds a word, and returns the word before it if adding this one corrected

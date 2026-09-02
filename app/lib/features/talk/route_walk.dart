@@ -26,8 +26,12 @@ enum WalkMode {
   /// The board goes through the route itself, a beat on each key.
   presses('The board presses the keys'),
 
-  /// The ring waits over each key until that key is pressed.
-  waits('The ring waits to be pressed');
+  /// The key to press next is highlighted, and waits there until it is.
+  ///
+  /// "Ring" is what the code calls the thing it draws; it is not a word
+  /// anybody reading this screen has been given. The option says what a person
+  /// sees — a key, highlighted — in the same terms as the option beside it.
+  waits('The highlighted key waits to be pressed');
 
   const WalkMode(this.label);
 

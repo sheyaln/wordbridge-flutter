@@ -804,11 +804,18 @@ class TalkScreenState extends State<TalkScreen> {
         final contracted = _contracts
             ? _utterance.contract(button.message)
             : null;
-        final repaired = contracted != null
+        // A numeral landing on a numeral becomes one number rather than two
+        // words, and what is said is that number (§4.74). Keyed on the label,
+        // which is the digit, because digits concatenate and words do not.
+        final joined = contracted == null && _joinsNumbers
+            ? _utterance.joinNumber(button.label)
+            : null;
+        final collapsed = contracted ?? joined;
+        final repaired = collapsed != null
             ? null
             : _utterance.add(button.message, pos: button.partOfSpeech);
         _markReached(button.label);
-        await _sayWord(contracted ?? _withRepair(repaired, button));
+        await _sayWord(collapsed ?? _withRepair(repaired, button));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
             _currentBoardId = _rootBoardId;
@@ -1097,6 +1104,9 @@ class TalkScreenState extends State<TalkScreen> {
   /// Whether "can" and "not" are spoken as "can't" (§4.42).
   bool get _contracts => widget.settings?.contractions ?? true;
 
+  /// Whether `1` then `2` is twelve (§4.74).
+  bool get _joinsNumbers => widget.settings?.joinNumbers ?? false;
+
   /// Inflects the last word, or appends an agreeing form of "to be".
   ///
   /// Two different operations behind one action, because they are two ways of
@@ -1145,9 +1155,7 @@ class TalkScreenState extends State<TalkScreen> {
     );
 
     if (button.action == ButtonAction.clear ||
-        button.action == ButtonAction.speakBar) {
-      widget.logger.endUtterance();
-    }
+        button.action == ButtonAction.speakBar) {}
   }
 
   Future<void> _openCaregiver() async {
@@ -1479,18 +1487,7 @@ class _UtteranceBarView extends StatelessWidget {
                 child: GestureDetector(
                   onTap: empty ? null : onSpeak,
                   behavior: HitTestBehavior.opaque,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      utterance.text,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  child: _SentenceStrip(text: utterance.text),
                 ),
               ),
 
@@ -1510,6 +1507,75 @@ class _UtteranceBarView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The sentence, scrollable once it outgrows the bar (§4.75).
+///
+/// It used to be one line with an ellipsis, so a sentence past the width of
+/// the bar lost its beginning with no way to see it. That is the wrong end to
+/// lose: a person building "I want to go to the shop with mum" can see the
+/// last three words and not what they were about.
+///
+/// **The end stays in view.** The newest word is the one being checked — every
+/// word speaks as it is tapped, and the bar is where somebody confirms what
+/// they heard — so this scrolls itself to the end whenever the sentence grows.
+/// Left aligned when it fits, which is where it has always been.
+///
+/// A tap still speaks. The scroll view claims drags and the gesture detector
+/// above it claims taps, so the ordinary press is unchanged and the scroll is
+/// there for the sentence that has run past the edge.
+class _SentenceStrip extends StatefulWidget {
+  const _SentenceStrip({required this.text});
+
+  final String text;
+
+  @override
+  State<_SentenceStrip> createState() => _SentenceStripState();
+}
+
+class _SentenceStripState extends State<_SentenceStrip> {
+  final _scroll = ScrollController();
+
+  @override
+  void didUpdateWidget(_SentenceStrip old) {
+    super.didUpdateWidget(old);
+    if (old.text != widget.text) _toTheEnd();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// After the frame that lays the new text out, because until then the extent
+  /// is the old sentence's and jumping to it lands short.
+  void _toTheEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: _scroll,
+      scrollDirection: Axis.horizontal,
+      // Room to flick past the last word, so the newest one is not pinned
+      // against the edge of the bar where it is hardest to read.
+      padding: const EdgeInsets.only(right: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          widget.text,
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w500),
+          maxLines: 1,
+          softWrap: false,
+        ),
+      ),
     );
   }
 }
