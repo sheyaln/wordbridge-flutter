@@ -21,7 +21,7 @@ import 'voice_screen.dart';
 /// A section rather than a screen of its own, because "which voice speaks" is
 /// one question and it used to be asked on two pages that did not mention each
 /// other. It sits **below** the device voice under [VoiceScreen], and is
-/// labeled pre-alpha where it sits: this is the experiment, and a screen that
+/// labeled early access where it sits: this is the experiment, and a screen that
 /// opened on it read as though the experiment were the arrangement.
 class NeuralVoiceSection extends StatefulWidget {
   const NeuralVoiceSection({
@@ -290,9 +290,8 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Text(
-            'Sounds closer to a human speaker than text to speech. One '
-            'download, no account, and it runs entirely on the tablet, so it '
-            'works with no signal.',
+            'Sounds closer to a human speaker than text to speech. It runs on '
+            'the tablet, so it works offline.',
           ),
         ),
 

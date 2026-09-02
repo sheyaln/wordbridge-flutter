@@ -147,15 +147,6 @@ class _SymbolCreditsState extends State<SymbolCredits> {
                   height: 1.5,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Photos you add yourself stay yours and are never uploaded.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  height: 1.5,
-                ),
-              ),
             ],
           );
         },

@@ -154,8 +154,7 @@ class _PinGateState extends State<PinGate> {
               const SizedBox(height: 8),
               Text(
                 _justReset
-                    ? 'The old PIN is cleared and nothing else changed. '
-                          '4 to 6 digits.'
+                    ? 'The old PIN is cleared. Set a new one, 4 to 6 digits.'
                     : 'This keeps the board editor out of reach during '
                           'everyday use. 4 to 6 digits.',
                 style: const TextStyle(fontSize: 13, color: Colors.black54),
@@ -324,7 +323,7 @@ class _HoldToResetState extends State<_HoldToReset>
             const SizedBox(height: 4),
             const Text(
               'Press and hold this line for five seconds to clear the PIN and '
-              'set a new one. Nothing else is touched.',
+              'set a new one.',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.black54,
@@ -387,8 +386,7 @@ class _TypeToConfirmResetState extends State<_TypeToConfirmReset> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'This clears the PIN and nothing else. The board, the buttons, the '
-            'voice settings, the profiles and the usage log stay as they are.',
+            'Clears the PIN so you can set a new one.',
             style: TextStyle(fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 12),

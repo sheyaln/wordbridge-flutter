@@ -66,8 +66,8 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 const Text(
-                  'wordbridge is written by $developer. It is free, and open '
-                  'source under the MIT license. That license covers the app. '
+                  'wordbridge is written by $developer. It is open source '
+                  'under the MIT license. That license covers the app. '
                   'The symbols on the buttons keep their own.',
                   style: _body,
                 ),
