@@ -1,4 +1,4 @@
-package org.wordbridge.wordbridge
+package com.sheyaln.aac
 
 import android.media.AudioAttributes
 import android.media.AudioFormat

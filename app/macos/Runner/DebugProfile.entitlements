@@ -6,7 +6,7 @@
 	     reach it without this, and every write fails with -34018. -->
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)org.wordbridge.wordbridge</string>
+		<string>$(AppIdentifierPrefix)com.sheyaln.aac</string>
 	</array>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>

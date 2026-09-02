@@ -1,4 +1,4 @@
-package org.wordbridge.wordbridge
+package com.sheyaln.aac
 
 import android.os.Build
 import io.flutter.plugin.common.BinaryMessenger

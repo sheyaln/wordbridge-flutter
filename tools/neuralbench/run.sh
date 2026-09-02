@@ -10,7 +10,7 @@
 # section needs it, which is three minutes saved on the ones that do not.
 #
 # Separate bundle id — org.wordbridge.neuralbench. It never touches
-# org.wordbridge.wordbridge, whose data container is a board somebody speaks
+# com.sheyaln.aac, whose data container is a board somebody speaks
 # with, and which a reinstall under the wrong build flavour empties.
 set -euo pipefail
 

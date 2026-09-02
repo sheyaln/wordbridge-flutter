@@ -1,4 +1,4 @@
-package org.wordbridge.wordbridge
+package com.sheyaln.aac
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

@@ -6,7 +6,7 @@
 set -euo pipefail
 
 DEVICE="${DEVICE:-17098DA6-61DE-5465-9EA0-34CE0782F3C9}"
-BUNDLE_ID=org.wordbridge.wordbridge
+BUNDLE_ID=com.sheyaln.aac
 
 cd "$(dirname "$0")/../app"
 

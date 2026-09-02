@@ -1,7 +1,7 @@
 // neuralbench — times wordbridge's neural voice on the tablet it is for.
 //
 // Separate app, separate bundle id: org.wordbridge.neuralbench. It never
-// touches org.wordbridge.wordbridge, whose data container is a board somebody
+// touches com.sheyaln.aac, whose data container is a board somebody
 // speaks with — and which a reinstall under the wrong build flavour empties.
 //
 // Everything timed here is imported from the app rather than copied, so what

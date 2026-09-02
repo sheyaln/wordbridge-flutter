@@ -6,7 +6,7 @@
 cd app
 flutter build ios --release
 xcrun devicectl device install app --device "$DEVICE" build/ios/iphoneos/Runner.app
-xcrun devicectl device process launch --device "$DEVICE" org.wordbridge.wordbridge
+xcrun devicectl device process launch --device "$DEVICE" com.sheyaln.aac
 ```
 
 Find `$DEVICE`: the CoreDevice UUID, **not** the hardware serial Flutter shows  
@@ -29,7 +29,7 @@ under an actual finger, switch-access hardware.
 
 ```
 The request was denied by service delegate (SBMainWorkspace) for reason:
-Locked ("Unable to launch org.wordbridge.wordbridge because the device was
+Locked ("Unable to launch com.sheyaln.aac because the device was
 not, or could not be, unlocked").
 ```
 
@@ -39,7 +39,7 @@ and run the launch again: there is nothing to rebuild:
 ```bash
 xcrun devicectl device process launch \
   --device "$DEVICE" \
-  org.wordbridge.wordbridge
+  com.sheyaln.aac
 ```
 
 The launch stays the proof the build arrived, because `devicectl` has been
