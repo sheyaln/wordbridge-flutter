@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
@@ -8,6 +6,7 @@ import '../reporting/crash_store.dart';
 import '../reporting/device_facts.dart';
 import '../reporting/report.dart';
 import '../reporting/report_sender.dart';
+import '../reporting/report_summary.dart';
 import '../reporting/scrub.dart';
 import '../reporting/voice_measurements.dart';
 import '../speech/neural/neural_engine.dart';
@@ -17,8 +16,7 @@ import '../speech/speech_engine.dart';
 ///
 /// **Nothing on this screen happens on its own.** There is no queue, no retry
 /// and no background upload. A report leaves because somebody read what was in
-/// it and pressed send, and what they read is the payload itself rather than a
-/// summary of it.
+/// it and pressed send, and what they read is every field of it, labeled.
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({
     super.key,
@@ -64,9 +62,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   late final ReportSender _sender = widget.sender ?? ReportSender();
 
   final _note = TextEditingController();
+  final _scroll = ScrollController();
   ReportKind _kind = ReportKind.bug;
   List<CrashRecord> _waiting = const [];
-  String? _outcome;
+  SendOutcome? _outcome;
   bool _busy = false;
 
   @override
@@ -78,6 +77,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void dispose() {
     _note.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -132,10 +132,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final refusal = refusalToSend(payload['detail'] as String?, names: _names);
     if (refusal != null) {
       if (mounted) {
-        setState(() {
-          _busy = false;
-          _outcome = refusal;
-        });
+        _finish((sent: false, reference: null, problem: refusal));
       }
       return;
     }
@@ -148,13 +145,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
     await _load();
 
     if (!mounted) return;
+    _finish(outcome);
+  }
+
+  /// Puts the result on the screen, and the screen where the result is.
+  ///
+  /// Send is the last thing in the list, so on a short tablet the answer to
+  /// pressing it lands below the fold. Scrolled after the frame that builds it,
+  /// because until then the list does not know it grew.
+  void _finish(SendOutcome outcome) {
     setState(() {
       _busy = false;
-      _outcome = outcome.sent
-          ? outcome.reference == null
-                ? 'Sent. Thank you.'
-                : 'Sent. Reference ${outcome.reference}.'
-          : outcome.problem;
+      _outcome = outcome;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
     });
   }
 
@@ -163,9 +174,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Reports')),
       body: ListView(
+        controller: _scroll,
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          const _NothingLeavesOnItsOwn(),
+          const _WhatThisIsFor(),
           if (!_sender.configured) const _NoIntake(),
           if (_waiting.isNotEmpty) ...[
             const _Heading('Faults this tablet caught'),
@@ -216,11 +228,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: const Text('Review and send'),
             ),
           ),
-          if (_outcome != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(_outcome!, style: const TextStyle(fontSize: 14)),
-            ),
+          if (_outcome != null) _Outcome(outcome: _outcome!),
         ],
       ),
     );
@@ -258,20 +266,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 }
 
-/// What is on the screen before anything else is.
-class _NothingLeavesOnItsOwn extends StatelessWidget {
-  const _NothingLeavesOnItsOwn();
+/// What the screen is for, in the one line it takes to say it.
+///
+/// The contents of a report used to be described here, in the abstract, before
+/// a report existed. The review sheet now lists every field of the real one
+/// under "What will be sent", which is the same information at the moment it
+/// can actually be acted on. Saying it twice made the first telling a promise
+/// and the second one the proof, and only the proof is worth keeping.
+class _WhatThisIsFor extends StatelessWidget {
+  const _WhatThisIsFor();
 
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.all(16),
     child: Text(
-      'wordbridge never sends anything on its own. A report leaves this '
-      'tablet only when you press send, and you see everything in it first.\n\n'
-      'A report carries the app version, this tablet’s model and system '
-      'version, the grid size and vocabulary level, and what you write. It '
-      'never carries a name, a word from the board, or anything that has been '
-      'said.',
+      'Tell us something is wrong or missing, and send faults this tablet '
+      'caught. You read every report before it goes.',
       style: TextStyle(fontSize: 14, height: 1.45),
     ),
   );
@@ -364,6 +374,78 @@ String whenItHappened(DateTime at, {DateTime? now}) {
   return since.inDays == 1 ? 'Yesterday' : '${since.inDays} days ago';
 }
 
+/// The heading over the result of pressing send.
+String outcomeTitle(SendOutcome outcome) =>
+    outcome.sent ? 'Report sent' : 'Not sent';
+
+/// What the result says underneath.
+///
+/// The reference is the whole point of the sent case: a report nobody can
+/// quote afterwards is one they have to take on trust.
+String outcomeMessage(SendOutcome outcome) {
+  if (!outcome.sent) return outcome.problem ?? ReportSender.couldNotReach;
+
+  final reference = outcome.reference;
+  return reference == null
+      ? 'Thank you.'
+      : 'Reference $reference. Quote it if you get in touch about this report.';
+}
+
+/// What pressing send did, where the person who pressed it is looking.
+class _Outcome extends StatelessWidget {
+  const _Outcome({required this.outcome});
+
+  final SendOutcome outcome;
+
+  @override
+  Widget build(BuildContext context) {
+    final sent = outcome.sent;
+    final tint = sent ? Colors.green : Colors.amber;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tint.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: tint.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            sent ? Icons.check_circle_outline : Icons.error_outline,
+            size: 20,
+            color: tint.shade800,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  outcomeTitle(outcome),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Selectable so the reference can be copied into whatever the
+                // caregiver writes to us in.
+                SelectableText(
+                  outcomeMessage(outcome),
+                  style: const TextStyle(fontSize: 14, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Payload extends StatelessWidget {
   const _Payload({required this.text});
 
@@ -384,7 +466,7 @@ class _Payload extends StatelessWidget {
   );
 }
 
-/// The report, exactly as it would be sent, before it is.
+/// Everything the report carries, before it carries it anywhere.
 class _Review extends StatelessWidget {
   const _Review({required this.payload});
 
@@ -406,7 +488,7 @@ class _Review extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Text(
-            'This is the whole report. Nothing else goes with it.',
+            'What will be sent',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
@@ -415,9 +497,8 @@ class _Review extends StatelessWidget {
             controller: controller,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              _Payload(
-                text: const JsonEncoder.withIndent('  ').convert(payload),
-              ),
+              for (final section in reportSections(payload))
+                _Section(section: section),
             ],
           ),
         ),
@@ -436,6 +517,63 @@ class _Review extends StatelessWidget {
                 child: const Text('Send this'),
               ),
             ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// One group of the report, under its heading.
+class _Section extends StatelessWidget {
+  const _Section({required this.section});
+
+  final ReportSection section;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          section.title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const Divider(height: 12),
+        for (final line in section.lines) _Line(line: line),
+      ],
+    ),
+  );
+}
+
+class _Line extends StatelessWidget {
+  const _Line({required this.line});
+
+  final ReportLine line;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 150,
+          child: Text(
+            line.label,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            line.value,
+            style: const TextStyle(fontSize: 14, height: 1.35),
           ),
         ),
       ],

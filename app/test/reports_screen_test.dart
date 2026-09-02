@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,18 +62,49 @@ void main() {
   CrashRecord fault(String detail) =>
       (id: 'one.json', at: DateTime.now(), detail: detail);
 
+  /// Writes a note and opens the sheet that shows what would be sent.
+  Future<void> review(
+    WidgetTester tester, {
+    String note = 'the finder is slow',
+  }) async {
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), note);
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Review and send'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review and send'));
+    await tester.pumpAndSettle();
+  }
+
+  /// Only what the sheet says. The screen underneath carries some of the same
+  /// words, in the field labels a report is written in.
+  Finder inTheSheet(Finder matching) => find.descendant(
+    of: find.byType(DraggableScrollableSheet),
+    matching: matching,
+  );
+
   group('what the screen says before anything else', () {
-    testWidgets('that nothing is sent on its own', (tester) async {
+    testWidgets('what the screen is for', (tester) async {
       await open(tester);
       expect(
-        find.textContaining('never sends anything on its own'),
+        find.textContaining('Tell us something is wrong or missing'),
         findsOneWidget,
       );
     });
 
-    testWidgets('and what a report does and does not carry', (tester) async {
+    // What a report carries is no longer described here in the abstract. The
+    // review sheet lists every field of the real one, which is the same
+    // information where it can be acted on, and `every field in words` below
+    // is what holds that. This asserts the description did not come back:
+    // stated twice, the first telling is a promise and only the second is
+    // evidence.
+    testWidgets('and does not promise it in the abstract first', (
+      tester,
+    ) async {
       await open(tester);
-      expect(find.textContaining('never carries a name'), findsOneWidget);
+      expect(find.textContaining('never carries'), findsNothing);
+      expect(find.textContaining('never sends'), findsNothing);
     });
 
     testWidgets('a build with no intake says so rather than pretending', (
@@ -156,30 +189,43 @@ void main() {
   });
 
   group('review', () {
-    testWidgets('shows the payload itself before anything is sent', (
-      tester,
-    ) async {
+    testWidgets('says what the sheet is', (tester) async {
       await open(tester);
-      await tester.enterText(find.byType(TextField), 'the finder is slow');
-      await tester.pump();
+      await review(tester);
 
-      await tester.ensureVisible(find.text('Review and send'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Review and send'));
-      await tester.pumpAndSettle();
+      expect(find.text('What will be sent'), findsOneWidget);
+    });
 
-      // The whole report, as JSON, not a description of it.
-      final shown = tester
-          .widget<SelectableText>(find.byType(SelectableText))
-          .data!;
+    testWidgets('shows every field of the report, in words', (tester) async {
+      await open(tester);
+      await review(tester);
 
-      expect(shown, contains('"schema": 1'));
-      expect(shown, contains('the finder is slow'));
-      expect(shown, contains('"rows": 7'));
-      expect(shown, contains('"model": "iPad11,1"'));
+      // Grouped and labeled, and all of it: this is where consent is given, so
+      // a field missing from the sheet is a field nobody agreed to.
+      expect(inTheSheet(find.text('Kind')), findsOneWidget);
+      expect(inTheSheet(find.text('Something is wrong')), findsOneWidget);
+      expect(inTheSheet(find.text('the finder is slow')), findsOneWidget);
+      expect(inTheSheet(find.text('0.1.0')), findsOneWidget);
+      expect(inTheSheet(find.text('iPad11,1')), findsOneWidget);
 
-      // And what it is not: no name, and nothing from the board.
-      expect(shown, isNot(contains('Maya')));
+      await tester.scrollUntilVisible(
+        inTheSheet(find.text('7 rows by 12 columns')),
+        120,
+        scrollable: inTheSheet(find.byType(Scrollable)).first,
+      );
+      expect(inTheSheet(find.text('7 rows by 12 columns')), findsOneWidget);
+      expect(inTheSheet(find.text('Vocabulary level')), findsOneWidget);
+    });
+
+    testWidgets('and none of it as JSON', (tester) async {
+      await open(tester);
+      await review(tester);
+
+      expect(inTheSheet(find.textContaining('{')), findsNothing);
+      expect(inTheSheet(find.textContaining('"schema"')), findsNothing);
+
+      // And what a report never carries, however it is laid out.
+      expect(inTheSheet(find.textContaining('Maya')), findsNothing);
     });
 
     testWidgets('and backing out sends nothing', (tester) async {
@@ -212,7 +258,98 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(sent, 1);
-      expect(find.textContaining('Sent'), findsOneWidget);
+      expect(find.text('Report sent'), findsOneWidget);
+    });
+  });
+
+  group('once it has gone', () {
+    Future<void> send(WidgetTester tester) async {
+      await review(tester, note: 'the finder is slow');
+      await tester.tap(find.text('Send this'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the screen says so', (tester) async {
+      await open(tester, client: _Answering(body: '{"reference":"WB-7QK2"}'));
+      await send(tester);
+
+      expect(find.text('Report sent'), findsOneWidget);
+    });
+
+    testWidgets('and gives back the reference to quote', (tester) async {
+      // A report nobody can refer to afterwards is one they have to trust went
+      // somewhere.
+      await open(tester, client: _Answering(body: '{"reference":"WB-7QK2"}'));
+      await send(tester);
+
+      expect(find.textContaining('WB-7QK2'), findsOneWidget);
+    });
+
+    testWidgets('or thanks them where the intake gave no reference', (
+      tester,
+    ) async {
+      await open(tester, client: _Answering());
+      await send(tester);
+
+      expect(find.text('Report sent'), findsOneWidget);
+      expect(find.text('Thank you.'), findsOneWidget);
+    });
+
+    testWidgets('the note is cleared, so the same report is not sent twice', (
+      tester,
+    ) async {
+      await open(tester, client: _Answering());
+      await send(tester);
+
+      expect(find.text('the finder is slow'), findsNothing);
+    });
+
+    testWidgets('and the confirmation is on the screen of a short tablet', (
+      tester,
+    ) async {
+      // Send is the last thing in the list, so on a short tablet the answer to
+      // pressing it lands below the fold and reads as nothing having happened.
+      tester.view.physicalSize = const Size(800, 460);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await open(tester, client: _Answering());
+      await send(tester);
+
+      expect(find.text('Report sent'), findsOneWidget);
+      expect(tester.getRect(find.text('Report sent')).bottom, lessThan(460));
+    });
+  });
+
+  group('when it did not go', () {
+    testWidgets('it says so rather than thanking anybody', (tester) async {
+      await open(tester, client: _Answering(status: 500));
+      await review(tester, note: 'the finder is slow');
+      await tester.tap(find.text('Send this'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Not sent'), findsOneWidget);
+      expect(find.text('Report sent'), findsNothing);
+      expect(find.textContaining('could not be sent'), findsOneWidget);
+    });
+
+    testWidgets('and the report is still there to try again with', (
+      tester,
+    ) async {
+      await open(tester, client: _Answering(status: 500));
+      await review(tester, note: 'the finder is slow');
+      await tester.tap(find.text('Send this'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('the finder is slow'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Review and send'),
+            )
+            .onPressed,
+        isNotNull,
+      );
     });
   });
 
@@ -338,6 +475,20 @@ class _Never extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async =>
       throw StateError('nothing on this screen may reach the network');
+}
+
+/// An intake that answers, so what the screen says afterwards can be read.
+class _Answering extends http.BaseClient {
+  _Answering({this.status = 202, this.body = ''});
+
+  final int status;
+  final String body;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    await request.finalize().toBytes();
+    return http.StreamedResponse(Stream.value(utf8.encode(body)), status);
+  }
 }
 
 class _Counting extends http.BaseClient {
