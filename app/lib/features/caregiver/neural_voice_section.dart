@@ -141,6 +141,31 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     if (mounted) setState(() => _bake = null);
     widget.onChanged();
     await _refresh();
+
+    // Asked here rather than at setup, because at setup this voice is off and
+    // a question about measurements from a feature nobody has turned on is a
+    // question about nothing (§4.59). Asked once: `hasAnswered` separates
+    // "never saw it" from "said no", so declining is not re-asked every time
+    // the voice is switched back on.
+    if (on && mounted && !_settings.hasAnswered('voiceMeasurements')) {
+      await _askAboutMeasurements();
+    }
+  }
+
+  Future<void> _askAboutMeasurements() async {
+    final agreed = await _confirm(
+      title: 'Send how this voice performs?',
+      body:
+          'Timings, which voice, and how often the device voice had to step '
+          'in. Never what was said.\n\n'
+          'It is what tells us whether this voice is fast enough on a tablet '
+          'like yours. Changeable at any time, here or under Reports.',
+      action: 'Send them',
+      dismiss: 'Not now',
+    );
+    // Written either way, so a no is a stored answer rather than an absence
+    // that gets asked about again.
+    await _set('voiceMeasurements', agreed);
   }
 
   /// Changing the voice makes every clip in the cache wrong, not stale.
@@ -248,10 +273,14 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// [dismiss] names the other answer where "Cancel" would be wrong. A
+  /// question offering Cancel reads as one that can be escaped without
+  /// answering, and this one is answered either way.
   Future<bool> _confirm({
     required String title,
     required String body,
     required String action,
+    String dismiss = 'Cancel',
   }) async {
     final agreed = await showDialog<bool>(
       context: context,
@@ -261,7 +290,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(dismiss),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -291,8 +320,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Text(
-            'Sounds closer to a human speaker than text to speech. It runs on '
-            'the tablet, so it works offline.',
+            'Sounds closer to a human speaker than text to speech.',
           ),
         ),
 
@@ -540,9 +568,8 @@ class _PreAlpha extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Words can be mispronounced, and the question mark key does '
-                  'not give this voice a rising intonation. Turning it off '
-                  'restores text to speech immediately.',
+                  'Words may be mispronounced, and statements may lack '
+                  'appropriate intonation.',
                   style: Theme.of(context).textTheme.bodyMedium
                       ?.copyWith(color: colors.onTertiaryContainer),
                 ),

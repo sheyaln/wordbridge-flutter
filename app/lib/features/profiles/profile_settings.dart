@@ -334,6 +334,15 @@ class ProfileSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether somebody has actually answered this, as opposed to a getter
+  /// having supplied its default.
+  ///
+  /// "Nobody was asked" and "somebody said no" read identically through a
+  /// getter with a fallback, and only one of them is a reason not to ask. A
+  /// question that cannot tell them apart either nags somebody who already
+  /// declined or never reaches somebody who never saw it.
+  bool hasAnswered(String key) => _values.containsKey(key);
+
   Future<void> set(String key, Object? value) async {
     _values = {..._values, key: value};
     notifyListeners();
