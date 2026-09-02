@@ -80,7 +80,7 @@ class ReportSender {
   static const tooLong = 'That report is too long to send. Shorten it.';
   static const couldNotReach =
       'It could not be sent. The report is still here, so you can try again '
-      'when this tablet is online.';
+      'when this device is online.';
 }
 
 /// Why a response means the report did not arrive, or null where it did.

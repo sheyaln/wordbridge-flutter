@@ -47,6 +47,10 @@ Future<CrashFlushResult> flushCaughtFaults({
       device: device,
       board: board,
       detail: record.detail,
+      // The store has always known this. Until §4.67 the payload had nowhere
+      // to put it, so every flushed crash arrived stamped only with the moment
+      // somebody happened to relaunch the app.
+      occurredAt: record.at,
     );
 
     // The same last check the reports screen makes before the network. A

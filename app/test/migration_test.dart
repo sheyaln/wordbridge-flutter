@@ -234,7 +234,7 @@ void main() {
     // Forces the upgrade to run.
     await db.select(db.profiles).get();
 
-    expect(db.schemaVersion, 7);
+    expect(db.schemaVersion, 8);
   });
 
   test('and the column added at 7 is there and empty', () async {
@@ -286,7 +286,25 @@ void main() {
     final events = await db.select(db.usageEvents).get();
     expect(events, hasLength(1));
     expect(events.single.cellId, 'c1');
-    expect(events.single.labelSnapshot, 'eat');
+  });
+
+  test('and the words it used to carry do not', () async {
+    // §4.71. The count is the thing worth keeping; the word that was said is
+    // not. A device that has been recording since version 1 has the sentences
+    // somebody spoke sitting in this table, and schema 8 takes them out rather
+    // than merely stopping the writing of new ones.
+    final db = openUpgraded();
+    addTearDown(db.close);
+
+    final columns = await db
+        .customSelect('PRAGMA table_info(usage_events)')
+        .get();
+    final names = {for (final row in columns) row.read<String>('name')};
+
+    expect(names, contains('cell_id'));
+    expect(names, isNot(contains('label_snapshot')));
+    expect(names, isNot(contains('utterance_id')));
+    expect(names, isNot(contains('session_id')));
   });
 
   test('the new columns and tables arrive', () async {

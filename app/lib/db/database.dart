@@ -58,7 +58,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,10 +78,9 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         'CREATE INDEX usage_profile_time '
         'ON usage_events (profile_id, occurred_at)',
       );
-      await customStatement(
-        'CREATE INDEX usage_profile_label '
-        'ON usage_events (profile_id, label_snapshot)',
-      );
+      // No index on the word: there is no word (§4.71). What is asked of this
+      // table is how often a location was selected, and the index below is
+      // what answers it.
       // Powers the remap impact warning.
       await customStatement(
         'CREATE INDEX usage_cell_time '
@@ -125,6 +124,22 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         // has nothing to name their regions from and simply does not label
         // them. Rebuilding a board set fills it in.
         await m.addColumn(boards, boards.bandMap);
+      }
+
+      if (from < 8) {
+        // §4.71. The usage log stops being a transcript.
+        //
+        // Dropping the columns is the point, not a side effect: a device that
+        // has been recording since version 1 is carrying the words somebody
+        // said and the sentences they said them in, and a change that stopped
+        // writing them while leaving months of them on disk would be a change
+        // of policy rather than of fact. The counts survive; what was said
+        // does not.
+        //
+        // `alterTable` recreates and copies, which is how SQLite drops a
+        // column, so the rows land in the new shape with the old values gone.
+        await customStatement('DROP INDEX IF EXISTS usage_profile_label');
+        await m.alterTable(TableMigration(usageEvents));
       }
 
       if (from < 7) {

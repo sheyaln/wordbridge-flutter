@@ -63,6 +63,16 @@ Map<String, Object?> reportPayload({
   required BoardFacts board,
   String? detail,
   Map<String, Object?>? voice,
+
+  /// When the fault happened, for a crash that is being sent later.
+  ///
+  /// A crash is recorded at the moment it happens and sent on the next healthy
+  /// launch, so the two can be a fortnight apart. Without this the arrival time
+  /// is the only time anybody has, and a backlog emptying all at once is
+  /// indistinguishable from a device failing over and over right now — which is
+  /// what §4.67 was, and it took reading object timestamps out of storage to
+  /// tell which.
+  DateTime? occurredAt,
 }) => {
   'schema': reportSchema,
   'kind': kind.wire,
@@ -79,6 +89,7 @@ Map<String, Object?> reportPayload({
     'level': board.level,
     'engine': board.engine,
   },
+  'occurredAt': ?occurredAt?.toUtc().toIso8601String(),
   'note': note.trim(),
   if (detail != null) 'detail': scrubbed(detail),
   'voice': ?voice,

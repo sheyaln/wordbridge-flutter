@@ -32,6 +32,7 @@ List<ReportSection> reportSections(Map<String, Object?> payload) {
   }
 
   final kind = rest.remove('kind');
+  final occurredAt = rest.remove('occurredAt');
   final note = rest.remove('note');
   final detail = rest.remove('detail');
   final schema = rest.remove('schema');
@@ -42,6 +43,10 @@ List<ReportSection> reportSections(Map<String, Object?> payload) {
 
   section('Report', [
     if (kind != null) (label: 'Kind', value: _kindTitle('$kind')),
+    // Only a crash carries one: a report somebody is writing is happening now,
+    // and one this device caught may have been waiting since a launch two
+    // weeks ago (§4.67).
+    if (occurredAt != null) (label: 'When', value: _when('$occurredAt')),
     if (note is String && note.trim().isNotEmpty)
       (label: 'What you wrote', value: note.trim()),
     if (detail != null)
@@ -55,7 +60,7 @@ List<ReportSection> reportSections(Map<String, Object?> payload) {
     ..._leftover(app),
   ]);
 
-  section('Tablet', [
+  section('Device', [
     ?_line(device, 'platform', 'System'),
     ?_line(device, 'os', 'System version'),
     ?_line(device, 'model', 'Model'),
@@ -123,6 +128,33 @@ String labelFor(String key) {
       .toLowerCase();
   if (words.isEmpty) return key;
   return words[0].toUpperCase() + words.substring(1);
+}
+
+/// An ISO timestamp in the words somebody reads, in their own timezone.
+///
+/// Local, because the question being answered is "was this today", and stored
+/// UTC so the answer does not depend on where the device was.
+String _when(String iso) {
+  final at = DateTime.tryParse(iso);
+  if (at == null) return iso;
+  final local = at.toLocal();
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${local.day} ${months[local.month - 1]} ${local.year}, '
+      '${two(local.hour)}:${two(local.minute)}';
 }
 
 String _readable(Object? value) => switch (value) {

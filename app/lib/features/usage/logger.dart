@@ -47,20 +47,8 @@ class UsageLogger {
   /// thrown at the user.
   int droppedEvents = 0;
 
-  String _sessionId = newId();
-  int _lastActivityAt = 0;
-  String? _utteranceId;
-
   static const _flushInterval = Duration(seconds: 2);
   static const _flushThreshold = 25;
-
-  /// A gap this long means the next selection starts a new session.
-  static const _sessionGap = Duration(minutes: 5);
-
-  String get sessionId => _sessionId;
-
-  /// Starts a new utterance. Called when the bar is spoken or cleared.
-  void endUtterance() => _utteranceId = null;
 
   void log({
     required String profileId,
@@ -76,15 +64,10 @@ class UsageLogger {
 
     try {
       final now = nowMs();
-      if (now - _lastActivityAt > _sessionGap.inMilliseconds) {
-        _sessionId = newId();
-      }
-      _lastActivityAt = now;
-
-      if (action == ButtonAction.speak) {
-        _utteranceId ??= newId();
-      }
-
+      // No label, no utterance, no session (§4.71). Those three are what turn
+      // a list of taps back into the sentences somebody said, and this table
+      // exists to answer one question — how often this word has been reached
+      // for where it currently sits — which needs none of them.
       _pending.add(
         UsageEventsCompanion.insert(
           deviceId: deviceId,
@@ -93,13 +76,8 @@ class UsageLogger {
           boardId: boardId,
           cellId: cellId,
           buttonId: Value(buttonId),
-          // Denormalized deliberately: if the button is later relabeled or
-          // moved, history must still say what was actually said at the time.
-          labelSnapshot: label,
           action: action,
           source: source,
-          sessionId: _sessionId,
-          utteranceId: Value(_utteranceId),
           occurredAt: now,
         ),
       );

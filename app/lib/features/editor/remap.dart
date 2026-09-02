@@ -113,6 +113,7 @@ class RemapService {
 
     final history = await _usage.historyForCell(
       button.cellId!,
+      occupantId: button.id,
       window: practiceWindow,
     );
     return (

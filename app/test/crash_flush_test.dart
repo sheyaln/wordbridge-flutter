@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:wordbridge/features/reporting/crash_flush.dart';
 import 'package:wordbridge/features/reporting/crash_store.dart';
+import 'package:wordbridge/features/reporting/report.dart';
 import 'package:wordbridge/features/reporting/report_sender.dart';
 
 /// Sending what crashed last time, which is what the crash toggle governs.
@@ -231,5 +232,48 @@ void main() {
     );
 
     expect(result, (attempted: 0, sent: 0));
+  });
+
+  test('and it says when the fault happened, not when it was sent', () async {
+    // §4.67. A crash is recorded on one launch and sent on a later one, so
+    // these two can be a fortnight apart. Without the recorded time in the
+    // payload, a backlog emptying all at once and a device failing over and
+    // over are the same thing in an inbox — and telling them apart meant
+    // reading object timestamps out of storage.
+    final store = storeIn(documents);
+    final happened = DateTime.utc(2026, 8, 20, 11, 4);
+    await store.record(
+      StateError('long ago'),
+      StackTrace.current,
+      at: happened,
+    );
+
+    final s = senderThat();
+    await flushCaughtFaults(
+      store: store,
+      sender: s.sender,
+      enabled: true,
+      board: board,
+    );
+
+    expect(s.sent.single['occurredAt'], happened.toIso8601String());
+  });
+
+  test('a report nobody recorded a time for does not invent one', () async {
+    // A field that is present and wrong is worse than one that is absent: the
+    // reader has no way to know it was made up.
+    final payload = reportPayload(
+      kind: ReportKind.bug,
+      note: 'it stopped talking',
+      device: (
+        platform: 'ios',
+        osVersion: '18.5',
+        model: 'iPad11,1',
+        locale: 'en_US',
+      ),
+      board: board,
+    );
+
+    expect(payload.containsKey('occurredAt'), isFalse);
   });
 }

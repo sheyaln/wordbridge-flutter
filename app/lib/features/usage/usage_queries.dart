@@ -90,8 +90,26 @@ class UsageQueries {
   /// This is what makes a remap warning honest rather than alarmist: the
   /// question is not "has this word been used" but "has this *position* been
   /// practiced", which is what a motor plan actually is.
+  /// [occupantId] scopes the count to the word that is in the cell now (§4.71).
+  ///
+  /// The sentence this number ends up in is *this word has been reached for
+  /// here this often*, and a count carried over from whatever used to sit in
+  /// the location makes that sentence false. A location does not accumulate a
+  /// lifetime of taps across every word that has ever held it.
+  ///
+  /// Null counts everything in the cell, which is only what a caller with no
+  /// occupant to name can mean.
+  /// Forgets a location's counts, because the word in it changed (§4.71).
+  ///
+  /// Filtering by occupant alone would leave the old counts on disk answering
+  /// a question nobody may ask again, which is the same mistake as keeping the
+  /// transcript. A count that has stopped being true is deleted.
+  Future<int> forgetCell(String cellId) =>
+      (_db.delete(_db.usageEvents)..where((e) => e.cellId.equals(cellId))).go();
+
   Future<CellHistory> historyForCell(
     String cellId, {
+    String? occupantId,
     UsageWindow window = const UsageWindow.rollingDays(90),
   }) async {
     final since = window.cutoffMs();
@@ -101,7 +119,10 @@ class UsageQueries {
               (e) =>
                   e.cellId.equals(cellId) &
                   e.occurredAt.isBiggerOrEqualValue(since) &
-                  e.source.isInValues(practicedSources),
+                  e.source.isInValues(practicedSources) &
+                  (occupantId == null
+                      ? const Constant(true)
+                      : e.buttonId.equals(occupantId)),
             ))
             .get();
 
@@ -124,135 +145,6 @@ class UsageQueries {
       days: days,
       firstUsed: DateTime.fromMillisecondsSinceEpoch(first),
     );
-  }
-
-  Future<List<WordCount>> mostUsedWords(
-    String profileId, {
-    UsageWindow window = const UsageWindow.rollingDays(7),
-    int limit = 50,
-  }) async {
-    final count = _db.usageEvents.id.count();
-    final query = _db.selectOnly(_db.usageEvents)
-      ..addColumns([_db.usageEvents.labelSnapshot, count])
-      ..where(
-        _db.usageEvents.profileId.equals(profileId) &
-            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
-            _db.usageEvents.action.equalsValue(ButtonAction.speak) &
-            _db.usageEvents.source.isInValues(spokenSources),
-      )
-      ..groupBy([_db.usageEvents.labelSnapshot])
-      ..orderBy([OrderingTerm.desc(count)])
-      ..limit(limit);
-
-    return (await query.get())
-        .map(
-          (r) => (
-            label: r.read(_db.usageEvents.labelSnapshot)!,
-            count: r.read(count)!,
-          ),
-        )
-        .toList();
-  }
-
-  /// Distinct words used — the metric SLPs track for vocabulary growth, and
-  /// the one that goes into funding paperwork.
-  Future<int> numberOfDifferentWords(
-    String profileId, {
-    UsageWindow window = const UsageWindow.rollingDays(7),
-  }) async {
-    final distinct = _db.usageEvents.labelSnapshot.count(distinct: true);
-    final query = _db.selectOnly(_db.usageEvents)
-      ..addColumns([distinct])
-      ..where(
-        _db.usageEvents.profileId.equals(profileId) &
-            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
-            _db.usageEvents.action.equalsValue(ButtonAction.speak) &
-            _db.usageEvents.source.isInValues(spokenSources),
-      );
-
-    return (await query.getSingle()).read(distinct) ?? 0;
-  }
-
-  /// One entry per calendar day, oldest first, days with nothing recorded
-  /// included as zero.
-  Future<List<DayCount>> activityByDay(String profileId, {int days = 7}) async {
-    final axis = calendarDaysEnding(DateTime.now(), days);
-
-    final rows =
-        await (_db.select(_db.usageEvents)..where(
-              (e) =>
-                  e.profileId.equals(profileId) &
-                  e.occurredAt.isBiggerOrEqualValue(
-                    axis.first.millisecondsSinceEpoch,
-                  ) &
-                  e.source.isInValues(spokenSources),
-            ))
-            .get();
-
-    final buckets = <DateTime, int>{};
-    for (final r in rows) {
-      final d = DateTime.fromMillisecondsSinceEpoch(r.occurredAt);
-      final key = DateTime(d.year, d.month, d.day);
-      buckets[key] = (buckets[key] ?? 0) + 1;
-    }
-
-    return [for (final day in axis) (day: day, count: buckets[day] ?? 0)];
-  }
-
-  /// Sentences the user actually built, most recent first.
-  ///
-  /// Usually the most meaningful thing a parent sees — a list of what their
-  /// child said, rather than a statistic about it. Sits under the same window
-  /// as the counts, so the sentences and the figures above them describe one
-  /// stretch of time.
-  ///
-  /// The newest [limit] utterances are picked first and then read whole. A
-  /// sentence is many rows, so capping the rows and grouping whatever comes
-  /// back cuts the start off the oldest sentence, and a sentence carried over
-  /// the start of the window loses the words said before it. Half a sentence
-  /// is a misquote, so the window decides which sentences to show and never
-  /// how much of one to show.
-  Future<List<Utterance>> recentUtterances(
-    String profileId, {
-    UsageWindow window = const UsageWindow.rollingDays(7),
-    int limit = 25,
-  }) async {
-    final lastWord = _db.usageEvents.occurredAt.max();
-    final inWindow = _db.selectOnly(_db.usageEvents)
-      ..addColumns([_db.usageEvents.utteranceId])
-      ..where(
-        _db.usageEvents.profileId.equals(profileId) &
-            _db.usageEvents.utteranceId.isNotNull() &
-            _db.usageEvents.occurredAt.isBiggerOrEqualValue(window.cutoffMs()) &
-            _db.usageEvents.action.equalsValue(ButtonAction.speak) &
-            _db.usageEvents.source.isInValues(spokenSources),
-      )
-      ..groupBy([_db.usageEvents.utteranceId])
-      ..orderBy([OrderingTerm.desc(lastWord)])
-      ..limit(limit);
-
-    final rows =
-        await (_db.select(_db.usageEvents)..where(
-              (e) =>
-                  e.profileId.equals(profileId) &
-                  e.utteranceId.isInQuery(inWindow) &
-                  e.action.equalsValue(ButtonAction.speak) &
-                  e.source.isInValues(spokenSources),
-            ))
-            .get();
-
-    final grouped = <String, List<UsageEvent>>{};
-    for (final r in rows) {
-      grouped.putIfAbsent(r.utteranceId!, () => []).add(r);
-    }
-
-    return grouped.values.map((events) {
-      events.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
-      return (
-        text: events.map((e) => e.labelSnapshot).join(' '),
-        at: DateTime.fromMillisecondsSinceEpoch(events.last.occurredAt),
-      );
-    }).toList()..sort((a, b) => b.at.compareTo(a.at));
   }
 
   Future<int> totalTaps(

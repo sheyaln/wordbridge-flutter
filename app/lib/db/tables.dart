@@ -312,6 +312,17 @@ class Symbols extends Table {
 
 /// Append-only. Integer key rather than UUID because merging two logs is
 /// concatenation, not reconciliation.
+/// How often a location was selected, and nothing else (§4.71).
+///
+/// **Deliberately not a transcript.** This carried the word each tap said, the
+/// utterance it belonged to and the sitting it happened in — enough to
+/// reconstruct somebody's conversations, sitting in a file on a device other
+/// people pick up, about a person who may not be able to object.
+///
+/// What it is for is one sentence in the editor: *this location has 341 taps
+/// in the last 90 days, moving it will cost that*. A count against a cell
+/// answers that. The word does not, the order does not, and the grouping into
+/// sentences never did.
 class UsageEvents extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -325,15 +336,12 @@ class UsageEvents extends Table {
 
   TextColumn get buttonId => text().nullable()();
 
-  /// What the button said at the time. Without this, editing a button would
-  /// retroactively rewrite history and the caregiver's data would be a lie.
-  TextColumn get labelSnapshot => text()();
-
   TextColumn get action => textEnum<ButtonAction>()();
-  TextColumn get source => textEnum<UsageSource>()();
 
-  TextColumn get sessionId => text()();
-  TextColumn get utteranceId => text().nullable()();
+  /// Whose selection it was. Kept because a word taken from the prediction
+  /// strip was never reached for, and counting it would inflate the one number
+  /// this table exists to report.
+  TextColumn get source => textEnum<UsageSource>()();
 
   IntColumn get occurredAt => integer()();
 }
