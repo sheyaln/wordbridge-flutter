@@ -73,15 +73,26 @@ class SymbolRegistry extends ChangeNotifier {
   ///
   /// Packs are queried concurrently, and one that fails or hangs contributes
   /// nothing rather than emptying the drawer for the others.
+  ///
+  /// [packId] narrows it to one set, for somebody comparing what each one has
+  /// for a word. **It does not reach a disabled pack.** Naming one explicitly
+  /// is the obvious way around the rule this class exists for — a pack that is
+  /// off is not searched, and asking for it by name returns nothing rather
+  /// than an exception, because the caller that would hit this is a filter
+  /// holding a pack somebody has just switched off.
   Future<List<SymbolRef>> search(
     String query, {
     String locale = 'en',
     int limit = 24,
+    String? packId,
   }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty || limit <= 0) return const [];
 
-    final targets = enabledPacks;
+    final targets = packId == null
+        ? enabledPacks
+        : enabledPacks.where((p) => p.id == packId).toList(growable: false);
+    if (targets.isEmpty) return const [];
     final answers = await Future.wait([
       for (final pack in targets) _searchOne(pack, trimmed, locale, limit),
     ]);

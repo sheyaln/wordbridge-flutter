@@ -15,6 +15,7 @@ import 'features/profiles/profile_setup.dart';
 import 'features/reporting/crash_flush.dart';
 import 'features/reporting/crash_store.dart';
 import 'features/reporting/report_sender.dart';
+import 'features/speech/neural/bake_vocabulary.dart';
 import 'features/speech/neural/neural_engine.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/speech/voice_setup.dart';
@@ -224,6 +225,49 @@ Future<VoidCallback> openSession(
 
   settings.addListener(reapply);
   return () => settings.removeListener(reapply);
+}
+
+/// Picks the bake up where the last session left it, without being asked.
+///
+/// §4.62. A bake was started by a button on a settings screen and by nothing
+/// else, so a caregiver who switched the voice on, watched it work for a
+/// minute and closed the app came back to a board that fell back on every word
+/// it had not reached — with no reason on screen to think anything was wrong.
+///
+/// **The cheap question is asked first.** The pack is an open index, so
+/// [NeuralSpeechEngine.needsBaking] answers "is there anything left" without
+/// touching the model. Only where there is does this load 833 MB, which is
+/// what keeps a fully baked profile as cheap to open as it is today.
+Future<void> resumeBaking(
+  SpeechEngine speech,
+  ProfileSettings settings,
+  WordbridgeDatabase db,
+  String vocabularyId,
+) async {
+  if (speech is! NeuralSpeechEngine || !settings.neuralVoice) return;
+
+  try {
+    final words = await bakeVocabulary(db, vocabularyId);
+    if (!speech.needsBaking(words)) return;
+
+    // Before the bake, because it is the bake this governs: unmeasured, the
+    // budget is the floor device's number, and every word on this tablet waits
+    // three times longer than it needs to before the device voice takes over.
+    if (!settings.synthesisBudgetMeasured) {
+      final measured = await speech.measureBudget();
+      if (measured != null) {
+        await settings.setSynthesisBudget(measured);
+        speech.budget = measured;
+      }
+    }
+
+    final job = await speech.bakeJob();
+    if (job == null) return;
+    unawaited(job.start(words));
+  } catch (_) {
+    // A bake that will not start is a board speaking in the device voice,
+    // which is §4.4 and is a product. A session that will not start is not.
+  }
 }
 
 /// Puts the profile's recorded answer about usage onto the logger.
@@ -528,6 +572,22 @@ class _SessionState extends State<_Session> {
     widget.db,
     widget.profile.id,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    // After the settings are on the engine, because whether there is a bake to
+    // resume is a question about the pack the voice was just put on.
+    final vocabularyId = widget.profile.activeVocabularyId;
+    if (vocabularyId != null) {
+      unawaited(
+        _loaded.then(
+          (_) =>
+              resumeBaking(widget.speech, _settings, widget.db, vocabularyId),
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {

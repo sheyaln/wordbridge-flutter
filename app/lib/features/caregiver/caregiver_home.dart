@@ -29,12 +29,12 @@ import '../symbols/symbol_resolver.dart';
 import '../talk/route_walk.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
-import '../usage/usage_summary.dart';
 import '../reporting/crash_store.dart';
 import '../reporting/report_sender.dart';
 import 'about_screen.dart';
 import 'backups_screen.dart';
 import 'board_files_screen.dart';
+import 'picture_browser.dart';
 import 'symbol_packs_screen.dart';
 import 'telemetry_switches.dart';
 import 'reports_screen.dart';
@@ -141,11 +141,6 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           resolver: widget.resolver,
           userName: widget.userName,
         ),
-        1 => UsageSummary(
-          db: widget.db,
-          profileId: widget.profileId,
-          logger: widget.logger,
-        ),
         _ => _Settings(
           db: widget.db,
           vocabularyId: widget.vocabularyId,
@@ -162,15 +157,19 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           crashes: widget.crashes,
           sender: widget.sender,
           registry: widget.registry,
+          resolver: widget.resolver,
           onChanged: () => setState(() {}),
         ),
       },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
+        // No Use tab (§4.71). What it showed — recent sentences, most used
+        // words, a day chart — was one person's speech rendered for somebody
+        // else to read. The counts still exist, for the one sentence in the
+        // editor that says what moving a word will cost.
         destinations: const [
           NavigationDestination(icon: Icon(Icons.grid_view), label: 'Boards'),
-          NavigationDestination(icon: Icon(Icons.insights), label: 'Use'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
@@ -474,11 +473,9 @@ class _RegionLabels extends StatelessWidget {
               value: settings.regionLabels,
               title: const Text('Label each row'),
               subtitle: const Text(
-                'A strip beside the grid names each run of locations: who, '
-                'doing, where, asking. The board groups words by their job and '
-                'nothing on the grid says so, which is the first thing anyone '
-                'teaching it has to explain. The strip takes its space from '
-                'the grid, so buttons are slightly shorter while it is on.',
+                'Add a strip beside the grid naming each run of locations: '
+                'who, doing, where, asking. Buttons are slightly shorter '
+                'while it is on.',
               ),
               isThreeLine: true,
               onChanged: (v) async {
@@ -516,13 +513,12 @@ class _WalkMode extends StatelessWidget {
 
   static const _descriptions = {
     WalkMode.presses:
-        'The board follows the route itself, about a second on each key, and '
-        'stops on the word without speaking it. Fastest way to show a '
-        'communication partner where a word lives.',
+        'The board presses each key on the route itself, about a second on '
+        'each, and stops on the word.',
+    // TODO: Make this configurable, not just a second unilaterially
     WalkMode.waits:
-        'The ring waits over each key until it is selected, then moves to the '
-        'next. Slower, and the movement is made rather than watched, which is '
-        'the one that builds a motor plan.',
+        'each key is highlighted until it is selected, then the next key '
+        'is highlighted',
   };
 
   @override
@@ -534,9 +530,8 @@ class _WalkMode extends StatelessWidget {
           leading: Icon(Icons.travel_explore_outlined),
           title: Text('After choosing a word in Find a word'),
           subtitle: Text(
-            'Either way the board follows the same route and stops on the word '
-            'without speaking it. The selection that speaks it is always '
-            'theirs.',
+            'Whether the board walks the route itself, or waits for each key '
+            'to be selected. Neither speaks the word.',
           ),
           isThreeLine: true,
         ),
@@ -573,12 +568,10 @@ class _CopulaMode extends StatelessWidget {
   static const _descriptions = {
     CopulaMode.toggle:
         'The key gives "is". Selecting it again gives "are", then "am", each '
-        'spoken as it arrives and each replacing the last. To ask "are you '
-        'ok?", select it twice.',
+        'replacing the last. To ask "are you ok?", select it twice.',
     CopulaMode.agree:
         'The key gives "is" and corrects it once the subject arrives, so "is" '
-        'then "you" becomes "are you", spoken again as a pair. Fewer '
-        'selections, but the first word is heard before it is right.',
+        'then "you" becomes "are you".',
   };
 
   @override
@@ -590,9 +583,8 @@ class _CopulaMode extends StatelessWidget {
           leading: Icon(Icons.change_history_outlined),
           title: Text('Choosing between am, is and are'),
           subtitle: Text(
-            'Both options agree with a subject already in the sentence, so '
-            '"I" gives "am" either way. They differ when a question puts the '
-            'verb first, as in "are you ok?".',
+            'How the key decides which one to use. Both give "am" after "I"; '
+            'they differ when a question puts the verb first.',
           ),
           isThreeLine: true,
         ),
@@ -645,6 +637,7 @@ class _Settings extends StatelessWidget {
     this.crashes,
     this.sender,
     this.registry,
+    this.resolver,
   });
 
   final WordbridgeDatabase db;
@@ -652,6 +645,11 @@ class _Settings extends StatelessWidget {
   final String profileId;
   final UsageLogger logger;
   final SymbolRegistry? registry;
+
+  /// Turns a search result into a picture. Only the browser needs it here, and
+  /// without one that screen lists words rather than pictures, so the row is
+  /// not offered.
+  final SymbolResolver? resolver;
   final BackupService backup;
   final BoardFileStore boards;
   final CrashStore? crashes;
@@ -770,9 +768,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.people_outline,
       title: 'Profile',
-      description:
-          'Who this board set belongs to, the vocabulary level it draws, and '
-          'words added by newer versions of the app',
+      description: 'Who this device is set up for',
       tiles: (context, onChanged) => [
         if (onSwitchProfile != null)
           ListTile(
@@ -806,14 +802,14 @@ class _Settings extends StatelessWidget {
       _Section(
         icon: Icons.record_voice_over_outlined,
         title: 'Speech',
-        description: 'Which voice speaks, and its rate, pitch and volume',
+        description: 'How the device sounds when it talks',
         // A profile can carry `neuralVoice` on a build that has no neural
         // engine — the setting outlives the binary. The row names the voice
         // that is actually speaking, which in that case is the device's.
         state:
             settings!.neuralVoice &&
                 showsNeuralVoice(speech!, db: db, vocabularyId: vocabularyId)
-            ? 'Neural voice, early access · '
+            ? 'Neural voice· '
                   '${neuralVoiceById(settings!.neuralVoiceId).name}'
             : '${settings!.voiceName ?? 'The device\'s own voice'} · '
                   '${settings!.tone.label}',
@@ -828,9 +824,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.grid_on_outlined,
       title: 'Board',
-      description:
-          'Button size, orientation, and rebuilding the board set from the '
-          'vocabulary this version ships',
+      description: 'The size and shape of the grid',
       state: settings == null
           ? null
           : '${settings!.iconSize.label} icons, '
@@ -868,9 +862,8 @@ class _Settings extends StatelessWidget {
           leading: const Icon(Icons.restart_alt),
           title: const Text('Rebuild from shipped vocabulary'),
           subtitle: const Text(
-            'Builds a new board set at the same grid size from the vocabulary '
-            'this version ships. Words you added are discarded, and every '
-            'word lands where this version places it.',
+            'Build a new board set at the same grid size from the vocabulary '
+            'this version ships. Words you added are discarded.',
           ),
           isThreeLine: true,
           trailing: const Icon(Icons.chevron_right),
@@ -896,30 +889,49 @@ class _Settings extends StatelessWidget {
       _Section(
         icon: Icons.image_outlined,
         title: 'Pictures',
-        description:
-            'Which picture sets this tablet may use, and which are downloaded',
-        opens: (context) => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => SymbolPacksScreen(db: db, registry: registry!),
+        description: 'Where the pictures on the buttons come from',
+        tiles: (context, onChanged) => [
+          ListTile(
+            leading: const Icon(Icons.collections_outlined),
+            title: const Text('Picture sets'),
+            subtitle: const Text('Which sets this device may draw from'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SymbolPacksScreen(db: db, registry: registry!),
+              ),
+            ),
           ),
-        ),
+          // Only where something can resolve a picture. A browser that can
+          // search but not draw is a page of words.
+          if (resolver != null)
+            ListTile(
+              leading: const Icon(Icons.image_search_outlined),
+              title: const Text('Browse pictures'),
+              subtitle: const Text('Search the sets without changing a button'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      PictureBrowser(registry: registry!, resolver: resolver!),
+                ),
+              ),
+            ),
+        ],
       ),
     _Section(
       icon: Icons.touch_app_outlined,
       title: 'Board behavior',
-      description:
-          'Returning home after a word, the pause after a page change, and '
-          'the strips that label rows and show the route to a word',
+      description: 'How the app behaves during daily use',
       tiles: (context, onChanged) => [
         if (settings != null)
           SwitchListTile(
             value: settings!.autoReturn,
             title: const Text('Return to the home board after each word'),
             subtitle: const Text(
-              'On, every word costs the same movements every time, because '
-              'each starts from the same place. Off suits someone building a '
-              'long sentence from one category, who would otherwise pay the '
-              'trip back for every word.',
+              'When enabled, the board will return to the home page after a word '
+              'is selected. When disabled, the board will remain on the same '
+              'page after a word is selected',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -932,11 +944,9 @@ class _Settings extends StatelessWidget {
             value: settings!.speakEachWord,
             title: const Text('Speak each word as it is selected'),
             subtitle: const Text(
-              'On, every key speaks as it is selected and the finished '
-              'sentence is spoken again when sent. Off, the board stays silent '
-              'until the sentence is sent, which suits a classroom or a '
-              'waiting room where hearing each word aloud gets in the way. The '
-              'sentence key speaks either way.',
+              'When enabled, every key speaks as it is selected. '
+              'When disabled, the device will only speak when the utterance bar '
+              'is tapped.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -951,13 +961,8 @@ class _Settings extends StatelessWidget {
             value: settings!.breadcrumbs,
             title: const Text('Show the route to each word'),
             subtitle: const Text(
-              'A strip along the bottom lists the keys pressed to reach the '
-              'current word, in order, so a communication partner can read the '
-              'route and repeat it. Reaching "dizzy" shows '
-              'home › body › more words › dizzy. It stays until the next word '
-              'is started. The strip takes its space from the grid, so buttons '
-              'are slightly shorter while it is on, and turning it off '
-              'restores them exactly.',
+              'Add a strip at the bottom of the screen that shows the steps '
+              'taken to reach a given word when it is selected.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -974,38 +979,40 @@ class _Settings extends StatelessWidget {
           ),
         if (settings != null)
           _WalkMode(settings: settings!, onChanged: onChanged),
-        if (onViewAll != null)
-          SwitchListTile(
-            value: viewAll,
-            title: const Text('Show every word, including hidden ones'),
-            subtitle: const Text(
-              'Draws the whole board set, including words above this '
-              'profile\'s vocabulary level and words that have been hidden. '
-              'The board displays a banner while this is on, and closing the '
-              'app turns it off.',
-            ),
-            isThreeLine: true,
-            onChanged: (v) {
-              onViewAll!(v);
-              onChanged();
-            },
-          ),
+        // TODO: Commented out until we confirm that strong language will not
+        // appear on a child's profile
+        //
+        // if (onViewAll != null)
+        //   SwitchListTile(
+        //     value: viewAll,
+        //     title: const Text('Show every word, including hidden ones'),
+        //     subtitle: const Text(
+        //       'Draws the whole board set, including words above this '
+        //       'profile\'s vocabulary level and words that have been hidden. '
+        //       'The board displays a banner while this is on, and closing the '
+        //       'app turns it off.',
+        //     ),
+        //     isThreeLine: true,
+        //     onChanged: (v) {
+        //       onViewAll!(v);
+        //       onChanged();
+        //     },
+        //   ),
       ],
     ),
     _Section(
       icon: Icons.spellcheck,
       title: 'Grammar',
-      description:
-          'Word endings, how am, is and are are chosen, and word prediction',
+      description: 'How words change as a sentence is built',
       tiles: (context, onChanged) => [
         if (settings != null)
           SwitchListTile(
             value: settings!.contextualGrammar,
             title: const Text('Show word endings only where they apply'),
             subtitle: const Text(
-              'On, "+ed" appears once there is a verb to attach it to and is '
-              'hidden otherwise, always returning to the same location. Off '
-              'keeps every key visible at all times.',
+              'When enabled, an ending appears once there is a word to '
+              'attach it to, always in the same location. When disabled, '
+              'every ending stays visible.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -1018,14 +1025,27 @@ class _Settings extends StatelessWidget {
             value: settings!.contractions,
             title: const Text('Contract not with the word before it'),
             subtitle: const Text(
-              'On, "can" then "not" is spoken as "can\'t", in the same way "a" '
-              'becomes "an" before a vowel. Off, both words are spoken as '
-              'selected, which suits teaching them separately. No key moves '
+              'When enabled, "can" then "not" is spoken as "can\'t". When '
+              'disabled, both words are spoken as selected. No key moves '
               'either way.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
               await settings!.set('contractions', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
+          SwitchListTile(
+            value: settings!.joinNumbers,
+            title: const Text('Read numbers next to each other as one number'),
+            subtitle: const Text(
+              'When enabled, 1 then 2 is spoken as "twelve". When disabled, '
+              'they are spoken as "one two". No key moves either way.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('joinNumbers', v);
               onChanged();
             },
           ),
@@ -1036,9 +1056,9 @@ class _Settings extends StatelessWidget {
             value: settings!.filterVerbs,
             title: const Text('Hide other verbs after a verb'),
             subtitle: const Text(
-              'After "I want", the other verbs are hidden until "to" or a '
-              'modal makes a second verb possible. Less clutter mid sentence, '
-              'at the cost of a board that changes shape while in use.',
+              'When enabled, the other verbs are hidden after a verb until '
+              '"to" or a modal makes a second one possible. When disabled, '
+              'every verb stays visible.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -1051,11 +1071,9 @@ class _Settings extends StatelessWidget {
             value: settings!.prediction,
             title: const Text('Word prediction'),
             subtitle: const Text(
-              'A strip above the board offers likely next words, learned from '
-              'this profile\'s own sentences. It never rearranges the board. '
-              'The strip takes its space from the grid, so buttons are '
-              'slightly shorter while it is on. Turning it off restores them '
-              'exactly and discards what was learned.',
+              'Add a strip above the board offering likely next words, '
+              'learned from this profile\'s own sentences. No key moves, and '
+              'buttons are slightly shorter while it is on.',
             ),
             isThreeLine: true,
             onChanged: (v) async {
@@ -1068,10 +1086,7 @@ class _Settings extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.restart_alt),
             title: const Text('Reset word prediction'),
-            subtitle: const Text(
-              'Discards every word pair learned so far. Worth doing after a '
-              'period where somebody else was using the tablet.',
-            ),
+            subtitle: const Text('Discard every word pair learned so far.'),
             onTap: () async {
               await forgetPredictions(db, profileId);
               if (!context.mounted) return;
@@ -1086,23 +1101,20 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.lock_outline,
       title: 'Access to settings',
-      description:
-          'The gesture that opens this screen, and how long it is held',
+      description: 'How this screen is reached',
       tiles: (context, onChanged) => [_CaregiverEntryTile(db: db)],
     ),
     _Section(
       icon: Icons.insights_outlined,
       title: 'Usage tracking',
-      description:
-          'Whether selections are recorded, so the editor can report how much '
-          'practice a location has had',
+      description: 'What this device records about how it is used',
       state: logger.enabled ? 'On' : 'Off',
       tiles: (context, onChanged) => [
         SwitchListTile(
           value: logger.enabled,
           title: const Text('Track usage'),
           subtitle: const Text(
-            'Records which locations are selected, on this tablet.',
+            'Records which locations are selected, on this device.',
           ),
           onChanged: settings == null
               ? null
@@ -1132,9 +1144,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.history,
       title: 'Backups',
-      description:
-          'Full copies of this board set, and restoring one. A copy is taken '
-          'automatically when an update changes how the board is stored.',
+      description: 'Keeping and restoring copies of this board set',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BackupsScreen(db: db, backup: backup),
@@ -1147,9 +1157,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.swap_horiz,
       title: 'Import and export',
-      description:
-          'Open Board Format files, for moving a board set between programs. '
-          'Not a backup.',
+      description: 'Moving a board set to and from other programs',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BoardFilesScreen(
@@ -1168,9 +1176,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.outgoing_mail,
       title: 'Reports',
-      description:
-          'Tell us something is wrong or missing, and what this tablet sends '
-          'on its own',
+      description: 'Telling us when something is wrong',
       state: settings == null
           ? null
           : switch ((settings!.crashReports, settings!.voiceMeasurements)) {
@@ -1182,7 +1188,8 @@ class _Settings extends StatelessWidget {
         CrashReportSwitch(settings: settings, onChanged: onChanged),
         VoiceMeasurementSwitch(
           settings: settings,
-          available: speech is NeuralSpeechEngine,
+          available:
+              speech is NeuralSpeechEngine && (settings?.neuralVoice ?? false),
           onChanged: onChanged,
         ),
         const Divider(),
@@ -1191,7 +1198,7 @@ class _Settings extends StatelessWidget {
           title: const Text('Write a report'),
           subtitle: const Text(
             'Tell us something is wrong or missing, and send faults this '
-            'tablet caught',
+            'device caught',
           ),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -1215,9 +1222,7 @@ class _Settings extends StatelessWidget {
     _Section(
       icon: Icons.info_outline,
       title: 'About',
-      description:
-          'Version and license, how this app was built, and where the symbols '
-          'came from',
+      description: 'This version of the app, and its credits',
       opens: (context) => Navigator.of(context)
           .push(MaterialPageRoute<void>(builder: (_) => const AboutScreen())),
     ),
@@ -1313,7 +1318,7 @@ class _CaregiverEntryTileState extends State<_CaregiverEntryTile> {
                       'own also works, at '
                       '${CaregiverEntry.oneHandedFallback.inSeconds} seconds. '
                       'That route cannot be turned off: two corners requires '
-                      'two hands, and whoever picks this tablet up next may '
+                      'two hands, and whoever picks this device up next may '
                       'not have them, including you on a day you are holding '
                       'something else.'
                 : 'One finger, one corner. Slower than the two corner hold and '
@@ -1472,8 +1477,7 @@ class _StrongLanguage extends StatelessWidget {
           value: settings.profanity,
           title: const Text('Include strong language'),
           subtitle: const Text(
-            'Off hides these words in place. Turning it back on shows them in '
-            'the same locations.',
+            'Toggles whether strong language should be shown or not',
           ),
           isThreeLine: true,
           onChanged: (v) async {

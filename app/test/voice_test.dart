@@ -832,7 +832,7 @@ void main() {
       });
 
       test('and what happens when nobody has chosen', () {
-        expect(deviceVoiceLine(null, 'en-GB'), 'Whatever this tablet uses');
+        expect(deviceVoiceLine(null, 'en-GB'), 'Whatever this device uses');
       });
     });
 
@@ -952,7 +952,7 @@ void main() {
       // is covered. A caregiver who comes back to a row still naming the old
       // voice has no way to tell whether the choice took.
       await open(tester);
-      expect(find.text('Whatever this tablet uses'), findsOneWidget);
+      expect(find.text('Whatever this device uses'), findsOneWidget);
 
       await tester.tap(find.text('Which voice'));
       await settle(tester);
@@ -961,7 +961,7 @@ void main() {
       await tester.pageBack();
       await settle(tester);
 
-      expect(find.text('Whatever this tablet uses'), findsNothing);
+      expect(find.text('Whatever this device uses'), findsNothing);
       expect(find.text('Serena · en-GB'), findsOneWidget);
     });
   });

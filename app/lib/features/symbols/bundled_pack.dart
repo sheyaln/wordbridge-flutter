@@ -64,6 +64,13 @@ class BundledSymbolPack implements AssembledSymbolPack {
   /// so it answers null before the first search rather than blocking on a load.
   final Map<String, String> _sources = {};
 
+  /// Each upstream set's own credit line, keyed by set name.
+  ///
+  /// The pack's `attribution` names all four at once, which is right on a
+  /// credits screen and wrong beside a single picture: it would tell somebody
+  /// looking at one drawing who made the other three (§4.72).
+  final Map<String, String> _credits = {};
+
   /// Memoized including the empty result, so a missing pack costs one failed
   /// asset lookup per launch rather than one per keystroke in the search box.
   Future<Map<String, String>> manifest() => _manifest ??= _loadManifest();
@@ -96,6 +103,18 @@ class BundledSymbolPack implements AssembledSymbolPack {
           if (value['set'] is String) _sources[word] = value['set'] as String;
         }
       }
+
+      // Each upstream set's own credit, which the credits screen already reads
+      // out of this file. Kept here too so one picture can be credited to the
+      // people who actually drew it (§4.72).
+      final attributions = decoded['attributions'];
+      if (attributions is Map) {
+        for (final entry in attributions.entries) {
+          if (entry.key is String && entry.value is String) {
+            _credits[entry.key as String] = entry.value as String;
+          }
+        }
+      }
       return files;
     } catch (_) {
       return const {};
@@ -105,6 +124,12 @@ class BundledSymbolPack implements AssembledSymbolPack {
   @override
   String? sourceOf(SymbolRef ref) =>
       ref.packId == id ? _sources[ref.label.toLowerCase().trim()] : null;
+
+  @override
+  String? creditFor(SymbolRef ref) {
+    final set = sourceOf(ref);
+    return set == null ? null : _credits[set];
+  }
 
   @override
   Future<List<SymbolRef>> search(

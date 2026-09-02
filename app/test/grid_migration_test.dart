@@ -101,10 +101,8 @@ void main() {
               vocabularyId: vocabId,
               boardId: 'b',
               cellId: button.cellId!,
-              labelSnapshot: label,
               action: ButtonAction.speak,
               source: UsageSource.touch,
-              sessionId: 's',
               occurredAt: nowMs(),
             ),
           );

@@ -20,8 +20,8 @@ import '../grid/grid_geometry.dart';
 
 /// Chosen, never sensed. The app locks to it.
 enum BoardOrientation {
-  landscape('Landscape', 'The tablet is used on its side.'),
-  portrait('Portrait', 'The tablet is used upright.');
+  landscape('Landscape', 'The device is used on its side.'),
+  portrait('Portrait', 'The device is used upright.');
 
   const BoardOrientation(this.label, this.description);
 

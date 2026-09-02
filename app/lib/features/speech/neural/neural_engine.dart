@@ -219,6 +219,18 @@ class NeuralSpeechEngine implements SpeechEngine {
     _clips = null;
   }
 
+  /// Whether any of [words] is still missing from this voice's pack.
+  ///
+  /// Asked before [bakeJob], and the reason it exists: the pack is an open
+  /// index and answering this costs nothing, where making the job loads 833 MB
+  /// of weights. A session opening onto a board that is already fully baked
+  /// must not pay that to discover there is nothing to do.
+  bool needsBaking(Iterable<String> words) {
+    final clips = _clips;
+    if (!_on || clips == null) return false;
+    return words.any((word) => !clips.contains(word));
+  }
+
   /// The job that fills this profile's pack, made on demand.
   ///
   /// Null where the model will not load. A bake with nothing to bake with is
@@ -228,8 +240,23 @@ class NeuralSpeechEngine implements SpeechEngine {
     if (existing != null) return existing;
 
     final clips = _clips;
+    if (clips == null) return null;
+
+    // The same stand-in the ladder uses, for the same reason: a bake is the
+    // other thing worth exercising without 345 MB of weights and a device to
+    // run them on. Nothing is waiting on an engine that is not there.
+    final override = _synthesizeOverride;
+    if (override != null) {
+      return _bake = BakeJob(
+        clips,
+        synthesize: (word) async =>
+            await override(word) ?? (pcm16: Uint8List(0), sampleRate: 24000),
+        someoneIsWaiting: () => false,
+      );
+    }
+
     final synthesizer = await loadModel();
-    if (clips == null || synthesizer == null) return null;
+    if (synthesizer == null) return null;
 
     return _bake = BakeJob(
       clips,

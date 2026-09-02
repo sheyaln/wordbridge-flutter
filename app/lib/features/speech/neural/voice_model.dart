@@ -186,6 +186,25 @@ class VoiceModelStore {
     }
   }
 
+  /// The install running right now, if one is.
+  ///
+  /// Broadcast, and owned here rather than by whoever asked for it. A screen
+  /// listening to an `async*` generator *is* that generator's only reason to
+  /// run: cancelling the subscription ends it at the next `yield`, unwinding
+  /// through the socket's `finally`. So a caregiver leaving the screen killed
+  /// a 305 MB download that the same screen had told them was safe to leave.
+  Stream<ModelProgress>? _running;
+
+  /// The last thing the running install said.
+  ///
+  /// A broadcast stream tells a late listener nothing about what it missed,
+  /// and a screen coming back to a download in progress has to be able to draw
+  /// the bar it left.
+  ModelProgress? get installProgress => _installProgress;
+  ModelProgress? _installProgress;
+
+  bool get isInstalling => _running != null;
+
   /// Downloads and installs, reporting as it goes.
   ///
   /// **Resumable, and it has to be.** Three hundred megabytes over a domestic
@@ -196,7 +215,35 @@ class VoiceModelStore {
   /// the household this feature is for.
   ///
   /// Partial bytes are kept on failure for the same reason.
-  Stream<ModelProgress> install() async* {
+  ///
+  /// Asking twice while one is running hands back the one already going, so a
+  /// screen rebuilt or reopened cannot start a second download onto the same
+  /// partial file.
+  Stream<ModelProgress> install() {
+    final running = _running;
+    if (running != null) return running;
+
+    final updates = StreamController<ModelProgress>.broadcast();
+    final stream = _running = updates.stream;
+
+    // Deliberately not awaited and deliberately not tied to a listener. The
+    // work is the store's from here; the stream is only how it is watched.
+    unawaited(() async {
+      try {
+        await for (final progress in _install()) {
+          _installProgress = progress;
+          updates.add(progress);
+        }
+      } finally {
+        _running = null;
+        await updates.close();
+      }
+    }());
+
+    return stream;
+  }
+
+  Stream<ModelProgress> _install() async* {
     final root = await _root();
     root.createSync(recursive: true);
     final archive = File(p.join(root.path, 'model.tar.bz2.part'));

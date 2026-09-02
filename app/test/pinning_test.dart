@@ -375,4 +375,95 @@ void main() {
       expect(said, isNot(contains('1 locations')));
     });
   });
+
+  /// §4.66. The pinned column holds two different kinds of thing and the
+  /// editor could not tell them apart, so it offered the pinned copy of a word
+  /// the chance to be pinned.
+  group('telling a pinned copy from a word that lives there', () {
+    test('a copy knows it is one', () async {
+      final vocabulary = await seed(rows: 10);
+      final eat = await word(vocabulary, 'eat');
+      await pinWord(db, eat);
+
+      final copy = (await inPinnedColumn(vocabulary, 'eat')).first;
+      expect(await livesInPinnedColumn(db, copy), isTrue, reason: 'premise');
+      expect(await isPinnedCopy(db, copy), isTrue);
+    });
+
+    test(
+      'a question word does not, because it has no home elsewhere',
+      () async {
+        // Unpinning this would be a deletion wearing the word unpin, which is
+        // the whole reason the two cases have to be separable.
+        final vocabulary = await seed();
+        final what = (await inPinnedColumn(vocabulary, 'what')).first;
+
+        expect(await livesInPinnedColumn(db, what), isTrue, reason: 'premise');
+        expect(await isPinnedCopy(db, what), isFalse);
+      },
+    );
+
+    test('and the original of a pinned word is not a copy either', () async {
+      // It lives on a category board. The copy is the thing in the column.
+      final vocabulary = await seed(rows: 10);
+      final eat = await word(vocabulary, 'eat');
+      await pinWord(db, eat);
+
+      expect(await isPinnedCopy(db, eat), isFalse);
+    });
+
+    test('a word that was never pinned is not a copy', () async {
+      final vocabulary = await seed(rows: 10);
+      expect(await isPinnedCopy(db, await word(vocabulary, 'eat')), isFalse);
+    });
+
+    test('a system key is never a copy', () async {
+      final vocabulary = await seed();
+      final home =
+          await (db.select(db.buttons)
+                ..where((b) => b.vocabularyId.equals(vocabulary.id))
+                ..where((b) => b.isSystem.equals(true)))
+              .get();
+
+      expect(await isPinnedCopy(db, home.first), isFalse);
+    });
+  });
+
+  group('unpinning from the copy', () {
+    test('the copy knows which row it is on', () async {
+      final vocabulary = await seed(rows: 10);
+      final eat = await word(vocabulary, 'eat');
+      await pinWord(db, eat);
+
+      final copy = (await inPinnedColumn(vocabulary, 'eat')).first;
+      expect(await rowInPinnedColumn(db, copy), await pinnedRowOf(db, eat));
+    });
+
+    test('and a word outside the column is on no row of it', () async {
+      final vocabulary = await seed(rows: 10);
+      expect(
+        await rowInPinnedColumn(db, await word(vocabulary, 'eat')),
+        isNull,
+      );
+    });
+
+    test('so unpinning works from either end', () async {
+      // The copy is where somebody looks to get rid of it. Before §4.66 the
+      // only way was to find the original on whatever board it lives on.
+      final vocabulary = await seed(rows: 10);
+      final eat = await word(vocabulary, 'eat');
+      await pinWord(db, eat);
+
+      final copy = (await inPinnedColumn(vocabulary, 'eat')).first;
+      final row = await rowInPinnedColumn(db, copy);
+      expect(row, isNotNull, reason: 'premise');
+
+      await unpinWord(db, vocabulary: vocabulary, row: row!);
+
+      expect(await inPinnedColumn(vocabulary, 'eat'), isEmpty);
+      // And the word itself is untouched, which is what makes it safe.
+      final still = await word(vocabulary, 'eat');
+      expect(still.cellId, eat.cellId);
+    });
+  });
 }

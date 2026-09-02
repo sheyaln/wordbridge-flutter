@@ -258,10 +258,20 @@ class _BoardEditorState extends State<BoardEditor> {
 
   Future<void> _showActions(Button button) async {
     final impact = await _remap.impactOfMoving(button.id);
-    // Read once, here: whether this word already has a second route to itself
-    // decides whether the sheet offers to give it one or to take it away.
-    final pinned =
-        button.isSystem || await livesInPinnedColumn(widget.db, button)
+
+    // Three cases, not two (§4.66). A button in the pinned column is either a
+    // pin of a word that lives elsewhere — where unpinning is the safe thing
+    // and the obvious place to ask for it — or a word that lives only there,
+    // where neither offer is true. Collapsing both into "no pin" offered the
+    // pinned copy the chance to be pinned.
+    final copy = await isPinnedCopy(widget.db, button);
+    final onlyHere =
+        !button.isSystem &&
+        !copy &&
+        await livesInPinnedColumn(widget.db, button);
+    final pinned = copy
+        ? await rowInPinnedColumn(widget.db, button)
+        : button.isSystem || onlyHere
         ? null
         : await pinnedRowOf(widget.db, button);
     if (!mounted) return;
@@ -365,9 +375,25 @@ class _BoardEditorState extends State<BoardEditor> {
                   );
                 },
               ),
+              // A word that lives only in the pinned column is neither
+              // pinnable nor unpinnable, and says which rather than offering
+              // an action that refuses after it is tapped.
+              if (onlyHere)
+                ListTile(
+                  leading: const Icon(Icons.push_pin),
+                  title: const Text('Already on every board'),
+                  subtitle: Text(
+                    '"${button.label}" lives in the pinned column and nowhere '
+                    'else, so it is reachable from every board already. It '
+                    'cannot be unpinned, because there is no other location '
+                    'for it to fall back to.',
+                  ),
+                  isThreeLine: true,
+                  enabled: false,
+                )
               // Offered whether or not it can be done, and refused with the
               // reason. §4.15's argument again.
-              if (pinned == null)
+              else if (pinned == null)
                 ListTile(
                   leading: const Icon(Icons.push_pin_outlined),
                   title: const Text('Reach this from every board'),

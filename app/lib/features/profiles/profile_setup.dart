@@ -90,6 +90,20 @@ class _ProfileSetupState extends State<ProfileSetup> {
   /// four gestures on one tablet and none of them reliable.
   CaregiverGesture _gesture = CaregiverGesture.cornerHold;
 
+  /// How long that gesture is held for.
+  ///
+  /// Adjustable here rather than only in caregiver settings, which are behind
+  /// the gesture being configured: a caregiver who finds two seconds too easy
+  /// to trigger by accident, or too hard to hold, had to get through the door
+  /// to change the door.
+  Duration _hold = CaregiverEntry.defaultCornerHold;
+
+  /// The range in caregiver settings, and the same reasoning: a hold nobody
+  /// wants to sit through at one end, one nobody produces by resting a hand at
+  /// the other.
+  static const _shortestHold = 1;
+  static const _longestHold = 20;
+
   AgeBand get _band => AgeBand.forBirthDate(_birthDate);
 
   @override
@@ -135,8 +149,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
 
     try {
       if (widget.isFirstRun) {
-        await CaregiverEntryStore(widget.db)
-            .write(const CaregiverEntry.standard().withGesture(_gesture));
+        await CaregiverEntryStore(widget.db).write(
+          const CaregiverEntry.standard().withGesture(_gesture).withHold(_hold),
+        );
       }
 
       final profile = await ProfileRepository(widget.db).create(
@@ -227,9 +242,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
           _Chip(label: _band.label, description: _band.description),
 
           _Section(
-            title: 'How is the tablet held?',
+            title: 'How is the device held?',
             note:
-                'The board locks to this, so rotating the tablet never '
+                'The board locks to this, so rotating the device never '
                 'rearranges it.',
             child: Row(
               children: [
@@ -308,7 +323,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
             _Section(
               title: 'Access to settings',
               note:
-                  'Set once for this tablet, not per profile. The board '
+                  'Set once for this device, not per profile. The board '
                   'carries no settings button, so this is the way in.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -320,13 +335,41 @@ class _ProfileSetupState extends State<ProfileSetup> {
                         title: option.label,
                         subtitle: option.description,
                         selected: _gesture == option,
-                        onTap: () => setState(() => _gesture = option),
+                        // Each gesture has its own sensible length, and
+                        // switching between them is choosing a gesture rather
+                        // than carrying a number across.
+                        onTap: () => setState(() {
+                          _gesture = option;
+                          _hold = const CaregiverEntry.standard()
+                              .withGesture(option)
+                              .hold;
+                        }),
                       ),
                     ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Held for ${_hold.inSeconds} seconds'),
+                    subtitle: Slider(
+                      value: _hold.inSeconds.toDouble().clamp(
+                        _shortestHold.toDouble(),
+                        _longestHold.toDouble(),
+                      ),
+                      min: _shortestHold.toDouble(),
+                      max: _longestHold.toDouble(),
+                      divisions: _longestHold - _shortestHold,
+                      label: '${_hold.inSeconds}s',
+                      onChanged: (value) => setState(
+                        () => _hold = Duration(seconds: value.round()),
+                      ),
+                    ),
+                  ),
                   if (_gesture == CaregiverGesture.twoCorners)
-                    const _Note(
-                      'Holding one corner also works, at fifteen seconds '
-                      'rather than two, whatever you choose here.',
+                    _Note(
+                      'Holding one corner on its own also works, at '
+                      '${CaregiverEntry.oneHandedFallback.inSeconds} seconds '
+                      'rather than ${_hold.inSeconds}. That route cannot be '
+                      'turned off: two corners needs two hands, and whoever '
+                      'picks this device up next may not have them.',
                     ),
                 ],
               ),
@@ -344,7 +387,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
             title: 'Usage tracking',
             note:
                 'A record of which locations are selected, kept on this '
-                'tablet. You can turn it off or delete it at any time.',
+                'device. You can turn it off or delete it at any time.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -382,7 +425,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
                 _OptionCard(
                   title: 'Send crash reports',
                   subtitle:
-                      'The version, the tablet model, the grid size and what '
+                      'The version, the device model, the grid size and what '
                       'went wrong. Never a board word or a name.',
                   selected: _crashReports,
                   onTap: () => setState(() => _crashReports = true),
@@ -391,7 +434,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
                 _OptionCard(
                   title: 'Do not send crash reports',
                   subtitle:
-                      'Faults are still recorded on the tablet, and can be '
+                      'Faults are still recorded on the device, and can be '
                       'sent by hand from Reports.',
                   selected: !_crashReports,
                   onTap: () => setState(() => _crashReports = false),

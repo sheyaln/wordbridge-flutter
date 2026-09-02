@@ -215,6 +215,13 @@ class ProfileSettings extends ChangeNotifier {
   /// existed, because it changes what is spoken and never where anything is.
   bool get contractions => _values['contractions'] as bool? ?? true;
 
+  /// Whether two numerals in a row are one number (§4.74).
+  ///
+  /// Off by default, which is today's behavior: somebody counting two things
+  /// presses `1` then `2` and means *one two*. Joining is the choice, made by
+  /// a caregiver who knows which the person at the tablet is doing.
+  bool get joinNumbers => _values['joinNumbers'] as bool? ?? false;
+
   /// Who presses the keys on the way to a word the finder found (§4.47).
   ///
   /// The board does, by default — which is what shipped, and the mode a
@@ -333,15 +340,6 @@ class ProfileSettings extends ChangeNotifier {
     _loaded = true;
     notifyListeners();
   }
-
-  /// Whether somebody has actually answered this, as opposed to a getter
-  /// having supplied its default.
-  ///
-  /// "Nobody was asked" and "somebody said no" read identically through a
-  /// getter with a fallback, and only one of them is a reason not to ask. A
-  /// question that cannot tell them apart either nags somebody who already
-  /// declined or never reaches somebody who never saw it.
-  bool hasAnswered(String key) => _values.containsKey(key);
 
   Future<void> set(String key, Object? value) async {
     _values = {..._values, key: value};

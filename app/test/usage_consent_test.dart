@@ -86,41 +86,6 @@ void main() {
       expect(ProfileSettings.usageTrackingForNewProfiles, isTrue);
     });
 
-    test('an unanswered question is distinguishable from a no', () async {
-      // The neural voice asks about measurements the first time it is switched
-      // on, and must not ask again if somebody declined. A getter with a
-      // default reports false for both, so the ask reads `hasAnswered`.
-      final id = await makeProfile();
-      final settings = ProfileSettings(db, id);
-      await settings.load();
-
-      expect(settings.voiceMeasurements, isFalse);
-      expect(
-        settings.hasAnswered('voiceMeasurements'),
-        isFalse,
-        reason: 'nobody has been asked yet',
-      );
-
-      await settings.set('voiceMeasurements', false);
-      expect(settings.voiceMeasurements, isFalse);
-      expect(
-        settings.hasAnswered('voiceMeasurements'),
-        isTrue,
-        reason: 'a no is an answer, and must not be asked about again',
-      );
-    });
-
-    test('and survives a reload, so the next launch does not ask', () async {
-      final id = await makeProfile();
-      final settings = ProfileSettings(db, id);
-      await settings.load();
-      await settings.set('voiceMeasurements', false);
-
-      final reopened = ProfileSettings(db, id);
-      await reopened.load();
-      expect(reopened.hasAnswered('voiceMeasurements'), isTrue);
-    });
-
     test('a no is still a no, and survives being reloaded', () async {
       // The point of the default moving: it must not be able to overwrite an
       // answer somebody gave. Off is a stored value, not an absent one.

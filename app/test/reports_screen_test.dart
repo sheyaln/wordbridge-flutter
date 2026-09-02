@@ -118,12 +118,12 @@ void main() {
   group('faults this tablet caught', () {
     testWidgets('are not shown when there are none', (tester) async {
       await open(tester);
-      expect(find.text('Faults this tablet caught'), findsNothing);
+      expect(find.text('Faults this device caught'), findsNothing);
     });
 
     testWidgets('are listed, and marked unsent', (tester) async {
       await open(tester, waiting: [fault('Bad state: no route')]);
-      expect(find.text('Faults this tablet caught'), findsOneWidget);
+      expect(find.text('Faults this device caught'), findsOneWidget);
       expect(find.text('Not sent'), findsOneWidget);
     });
 
@@ -145,7 +145,7 @@ void main() {
       await tester.tap(find.text('Discard'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Faults this tablet caught'), findsNothing);
+      expect(find.text('Faults this device caught'), findsNothing);
     });
   });
 

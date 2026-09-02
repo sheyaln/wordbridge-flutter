@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../profiles/profile_settings.dart';
+import 'telemetry_switches.dart';
 import '../reporting/crash_store.dart';
 import '../reporting/device_facts.dart';
 import '../reporting/report.dart';
@@ -180,7 +181,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const _WhatThisIsFor(),
           if (!_sender.configured) const _NoIntake(),
           if (_waiting.isNotEmpty) ...[
-            const _Heading('Faults this tablet caught'),
+            const _Heading('Faults this device caught'),
             for (final record in _waiting)
               _CrashTile(
                 record: record,
@@ -218,7 +219,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
           ),
-          if (widget.speech is NeuralSpeechEngine) _voiceConsent(),
+          // Hidden outright where the build has no neural voice at all, and
+          // shown inert where it has one that is switched off. Settings makes
+          // the opposite call and shows it either way — that page is an
+          // inventory of what the app can do, and this one is a message
+          // somebody is writing.
+          if (widget.speech is NeuralSpeechEngine)
+            VoiceMeasurementSwitch(
+              settings: widget.settings,
+              available: _neuralVoiceIsOn,
+              onChanged: () => setState(() {}),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: FilledButton(
@@ -234,23 +245,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _voiceConsent() {
-    final on = widget.settings?.voiceMeasurements ?? false;
-    return SwitchListTile(
-      value: on,
-      title: const Text('Include how the neural voice is performing'),
-      subtitle: const Text(
-        'Timings, which voice, and how often it fell back to the device '
-        'voice. Never what was said.',
-      ),
-      onChanged: widget.settings == null
-          ? null
-          : (v) async {
-              await widget.settings!.set('voiceMeasurements', v);
-              if (mounted) setState(() {});
-            },
-    );
-  }
+  /// Whether anything is producing neural timings right now.
+  ///
+  /// Both halves: an engine that can, and a profile that asked for it. A build
+  /// with the neural voice compiled in but switched off has nothing to send,
+  /// and a switch offering to send it is the defect §4.59 is about.
+  bool get _neuralVoiceIsOn =>
+      widget.speech is NeuralSpeechEngine &&
+      (widget.settings?.neuralVoice ?? false);
 
   Future<void> _review() async {
     final payload = await _payload();
@@ -280,7 +282,7 @@ class _WhatThisIsFor extends StatelessWidget {
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.all(16),
     child: Text(
-      'Tell us something is wrong or missing, and send faults this tablet '
+      'Tell us something is wrong or missing, and send faults this device '
       'caught. You read every report before it goes.',
       style: TextStyle(fontSize: 14, height: 1.45),
     ),

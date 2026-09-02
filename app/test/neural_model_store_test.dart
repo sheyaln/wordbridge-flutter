@@ -11,7 +11,7 @@ import 'package:wordbridge/features/speech/neural/voice_model.dart';
 
 /// Serves [bytes], honoring a range request the way a release server does.
 class _Server extends http.BaseClient {
-  _Server(this.bytes, {this.ignoreRange = false, this.failAfter});
+  _Server(this.bytes, {this.ignoreRange = false, this.failAfter, this.gate});
 
   final Uint8List bytes;
 
@@ -21,6 +21,13 @@ class _Server extends http.BaseClient {
   /// Cuts the connection partway, which is what a tablet leaving the house
   /// does to a 305 MB download.
   final int? failAfter;
+
+  /// Held open partway through the body, so a test can act on a download that
+  /// is genuinely in flight rather than on one that raced it.
+  final Future<void>? gate;
+
+  /// Completes once the first piece is out and the gate is all that is left.
+  final holding = Completer<void>();
 
   final requestedRanges = <String?>[];
 
@@ -41,8 +48,23 @@ class _Server extends http.BaseClient {
       truncated = true;
     }
 
+    final held = gate;
+    Stream<List<int>> pieces() async* {
+      if (held == null || body.length < 2) {
+        yield body;
+        if (!holding.isCompleted) holding.complete();
+        return;
+      }
+      // One byte, then a wait somebody else ends. Whatever the test does next
+      // happens with the socket open and the file half written.
+      yield body.sublist(0, 1);
+      if (!holding.isCompleted) holding.complete();
+      await held;
+      yield body.sublist(1);
+    }
+
     return http.StreamedResponse(
-      Stream<List<int>>.fromIterable([body]),
+      pieces(),
       range != null && !ignoreRange ? 206 : 200,
       contentLength: truncated ? null : body.length,
     );
@@ -306,4 +328,96 @@ void main() {
       );
     },
   );
+
+  /// §4.62. The download belongs to the store, not to whoever is watching it.
+  ///
+  /// `install()` used to be an `async*` generator, which meant the screen
+  /// listening to it *was* its reason to run: cancelling that subscription
+  /// ended the generator at its next `yield` and closed the socket on the way
+  /// out. So leaving the screen abandoned 305 MB — under a tile that had said
+  /// it was safe to leave.
+  group('an install nobody is watching', () {
+    test('carries on after the only listener goes away', () async {
+      final release = Completer<void>();
+      final server = _Server(archiveOf(scratch), gate: release.future);
+      final store = storeServing(server);
+
+      final subscription = store.install().listen(null);
+
+      // Held open with one byte written, which is where a caregiver backs out
+      // of the screen.
+      await server.holding.future;
+      expect(store.isInstalling, isTrue, reason: 'the premise');
+
+      await subscription.cancel();
+      expect(
+        store.isInstalling,
+        isTrue,
+        reason: 'cancelling a watcher must not end the download',
+      );
+
+      // Nothing is listening from here. If the work were the listener's, this
+      // is where 305 MB would be silently dropped.
+      release.complete();
+      while (store.isInstalling) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      expect(await store.isInstalled(), isTrue);
+      expect(store.installProgress?.phase, ModelPhase.installed);
+    });
+
+    test('is handed back rather than started twice', () async {
+      // Two downloads appending to one partial file interleave their bytes
+      // into an archive that can never verify — and the second 305 MB is spent
+      // producing it.
+      final release = Completer<void>();
+      final server = _Server(archiveOf(scratch), gate: release.future);
+      final store = storeServing(server);
+
+      final first = store.install();
+      await server.holding.future;
+      final second = store.install();
+      expect(identical(first, second), isTrue);
+
+      release.complete();
+      await second.drain<void>();
+
+      expect(await store.isInstalled(), isTrue);
+      expect(
+        server.requestedRanges,
+        hasLength(1),
+        reason: 'one download, however many times it was asked for',
+      );
+    });
+
+    test('remembers where it got to, for a screen coming back', () async {
+      // A broadcast stream tells a late listener nothing about what it missed,
+      // and a caregiver returning to a download in progress has to see the bar
+      // where they left it rather than an offer to start again.
+      final release = Completer<void>();
+      final server = _Server(archiveOf(scratch), gate: release.future);
+      final store = storeServing(server);
+
+      expect(store.isInstalling, isFalse);
+      expect(store.installProgress, isNull);
+
+      final subscription = store.install().listen(null);
+      await server.holding.future;
+      // Reported, not merely sent.
+      while (store.installProgress == null) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      expect(store.installProgress!.phase, ModelPhase.downloading);
+      expect(store.installProgress!.bytes, greaterThan(0));
+
+      await subscription.cancel();
+      release.complete();
+      while (store.isInstalling) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(store.isInstalling, isFalse);
+    });
+  });
 }

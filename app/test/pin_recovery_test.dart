@@ -173,10 +173,8 @@ void main() {
               vocabularyId: vocabularyId,
               boardId: 'b1',
               cellId: 'c1',
-              labelSnapshot: 'more',
               action: ButtonAction.speak,
               source: UsageSource.touch,
-              sessionId: 's1',
               occurredAt: ts,
             ),
           );

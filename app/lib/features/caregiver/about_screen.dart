@@ -16,9 +16,9 @@ import '../symbols/symbol_credits.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  /// The name the commit history carries. One value, so crediting the project
-  /// differently is a single change rather than an edit in three places.
-  static const developer = 'sheyaln';
+  /// The people, not the account. The commit history carries a handle; a
+  /// caregiver deciding whether to trust this with a child is owed names.
+  static const developer = 'Shey Al and Haley Dalrymple';
 
   /// Said plainly, and not softened by anything around it. A caregiver, a
   /// teacher or a therapist is entitled to know how the thing was built before
@@ -27,17 +27,26 @@ class AboutScreen extends StatelessWidget {
   static const disclaimer =
       'This app was developed with the assistance of generative AI.';
 
-  /// What that does and does not cover, said only as far as the repository can
-  /// support it. `docs/starter-vocabulary.md` records the core list and its
-  /// source, and is equally explicit that most of the remaining words are
-  /// judgment rather than evidence. Both halves are stated here for the same
-  /// reason they are stated there.
+  /// Where the core list came from, credited as its publisher asks.
+  ///
+  /// The paragraph this replaced also said which of the *other* words are
+  /// research and which are judgment. True, and it belongs in
+  /// `starter-vocabulary.md` where the derivation actually is — a credit line
+  /// is for saying who to credit.
   static const vocabulary =
-      'The starter vocabulary is documented. Its core is the Universal Core '
-      '36, published by the Center for Literacy and Disability Studies at the '
-      'University of North Carolina at Chapel Hill, and the project records '
-      'which of the other words come from published research and which are '
-      'editorial judgment.';
+      'Universal Core 36, by Center for Literacy and Disability Studies, '
+      'University of North Carolina';
+
+  /// Where the board's arrangement comes from.
+  ///
+  /// The colors and the left to right sentence order are not this project's
+  /// invention: they are the Modified Fitzgerald Key, which descends from a
+  /// scheme Edith Fitzgerald built for deaf education in the 1920s and which
+  /// most of the AAC field has used since. `lib/theme/fitzgerald.dart` carries
+  /// the same attribution beside the colors themselves.
+  static const layout =
+      'Modified Fitzgerald Key, after Edith Fitzgerald, for the colors and '
+      'the left to right sentence order';
 
   static const _body = TextStyle(height: 1.5);
 
@@ -65,16 +74,12 @@ class AboutScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: Colors.black54),
                 ),
                 const SizedBox(height: 28),
-                const Text(
-                  'Wordbridge AAC is written by $developer. It is open source '
-                  'under the MIT license. That license covers the app. '
-                  'The symbols on the buttons keep their own.',
-                  style: _body,
-                ),
-                const SizedBox(height: 20),
+                const _Fact('Developed by', developer),
+                const _Fact('License', 'MIT'),
+                const _Fact('Core vocabulary', vocabulary),
+                const _Fact('Home board layout', layout),
+                const SizedBox(height: 16),
                 const Text(disclaimer, style: _body),
-                const SizedBox(height: 12),
-                const Text(vocabulary, style: _body),
               ],
             ),
           ),
@@ -92,4 +97,30 @@ class AboutScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One labelled fact, in the shape somebody scans rather than reads.
+class _Fact extends StatelessWidget {
+  const _Fact(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+        ),
+        Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+      ],
+    ),
+  );
 }

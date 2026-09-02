@@ -108,11 +108,14 @@ void main() {
   });
 
   group('what the switch tells a caregiver', () {
-    test('a noncommercial pack says so, and says what it rules out', () {
-      final text = subtitleFor(ArasaacPack());
-
-      expect(text, contains('noncommercial'));
-      expect(text, contains('sold'));
+    test('a noncommercial pack says so', () {
+      // The license term itself, which is what a caregiver deciding needs to
+      // see. It used to spell out the consequence as well — "leave this off if
+      // the app will be sold" — and that sentence went when the settings text
+      // was cut back to plain statements of what each option does. What still
+      // guards the licensing is the default: these packs arrive off, and CI
+      // fails a build that bundles one.
+      expect(subtitleFor(ArasaacPack()), contains('noncommercial'));
     });
 
     test('a pack that permits commercial use does not say that', () {

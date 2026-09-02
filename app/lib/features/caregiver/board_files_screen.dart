@@ -183,7 +183,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
           ),
 
           const Divider(height: 32),
-          const _Header('Files on this tablet'),
+          const _Header('Files on this device'),
 
           if (files == null)
             const Padding(

@@ -12,6 +12,8 @@ import 'package:wordbridge/features/backup/backup_service.dart';
 import 'package:wordbridge/features/backup/snapshot.dart';
 import 'package:wordbridge/features/caregiver/about_screen.dart';
 import 'package:wordbridge/features/caregiver/caregiver_home.dart';
+import 'package:wordbridge/features/symbols/symbol_registry.dart';
+import 'package:wordbridge/features/symbols/symbol_resolver.dart';
 import 'package:wordbridge/features/interop/board_files.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/reporting/crash_store.dart';
@@ -109,7 +111,6 @@ const _reachable = <String, List<String>>{
     'Show the route to each word',
     'Label each row',
     'After choosing a word in Find a word',
-    'Show every word, including hidden ones',
   ],
   'Grammar': [
     'Show word endings only where they apply',
@@ -130,7 +131,7 @@ const _reachable = <String, List<String>>{
   // the list opens it: what has to stay reachable is the control, not the hop.
   'Backups': ['Back up now'],
   // §4.41 part 3. The readers and writers existed and nothing called them.
-  'Import and export': ['Export this board set', 'Files on this tablet'],
+  'Import and export': ['Export this board set', 'Files on this device'],
   // §4.52, and one screen on the same reasoning as backups: the row opens it.
   // These two are on the reports screen itself, so finding them one tap from
   // the list is what says there is no page in between holding a row named
@@ -141,7 +142,7 @@ const _reachable = <String, List<String>>{
   // one level down with it.
   'Reports': [
     'Send crash reports',
-    'Send how the neural voice is performing',
+    'Send info about how the neural voice is performing',
     'Write a report',
   ],
   // One screen for the same reason: what is on it is prose, and the credits
@@ -220,6 +221,8 @@ void main() {
     WidgetTester tester, {
     bool withSettings = true,
     bool withSpeech = true,
+    SymbolRegistry? registry,
+    SymbolResolver? resolver,
     void Function(dynamic)? onSwitchProfile,
   }) async {
     tester.view.physicalSize = const Size(1200, 4000);
@@ -238,6 +241,8 @@ void main() {
           backup: _NoBackups(db),
           boards: _NoBoardFiles(db),
           crashes: _NoCrashes(),
+          registry: registry,
+          resolver: resolver,
           userName: 'Maya',
           onSwitchProfile: onSwitchProfile,
           onViewAll: (_) {},
@@ -422,7 +427,7 @@ void main() {
       // The name through its constant, because who the project is credited to
       // is a decision that may change. The disclaimer above is not.
       expect(find.textContaining(AboutScreen.developer), findsOneWidget);
-      expect(find.textContaining('MIT license'), findsOneWidget);
+      expect(find.text('MIT'), findsOneWidget);
 
       await back(tester);
       await closeHome(tester);
@@ -440,17 +445,12 @@ void main() {
       expect(find.text('Speech'), findsNothing);
       expect(find.text('Grammar'), findsNothing);
 
-      // "How it behaves" survives on one control: view-all is a way of
-      // looking at a board rather than a fact about a person, so it does not
-      // need a profile to honor it.
-      expect(find.text('Board behavior'), findsOneWidget);
-      await open(tester, 'Board behavior');
-      expect(find.text('Show every word, including hidden ones'), findsOne);
-      expect(
-        find.text('Go back to the home board after each word'),
-        findsNothing,
-      );
-      await back(tester);
+      // Board behavior used to survive on one control — view-all was a way of
+      // looking at a board rather than a fact about a person, so it needed no
+      // profile to honor it. That switch is commented out pending the decision
+      // about strong language on a child's profile, and with it gone every
+      // control in the section needs a profile, so the section goes too.
+      expect(find.text('Board behavior'), findsNothing);
 
       // The rest still stand on their own.
       expect(find.text('Profile'), findsOneWidget);
@@ -643,6 +643,42 @@ void main() {
         reason: 'the caregiver screen was left over somebody else\'s board',
       );
 
+      await closeHome(tester);
+    });
+  });
+
+  /// §4.65. Pictures went from a section that opened one screen to a page with
+  /// two rows on it, and the second one is only useful where something can
+  /// turn a search result into a picture.
+  group('the pictures section', () {
+    SymbolRegistry emptyRegistry() => SymbolRegistry();
+
+    testWidgets('holds the sets and the browser', (tester) async {
+      final registry = emptyRegistry();
+      await pumpSettings(
+        tester,
+        registry: registry,
+        resolver: SymbolResolver(registry: registry),
+      );
+
+      await open(tester, 'Pictures');
+      expect(find.text('Picture sets'), findsOneWidget);
+      expect(find.text('Browse pictures'), findsOneWidget);
+      await back(tester);
+      await closeHome(tester);
+    });
+
+    testWidgets('and does not offer a browser that cannot draw', (
+      tester,
+    ) async {
+      // Without a resolver every tile in the browser is a word, which is a
+      // page of text under a row promising pictures.
+      await pumpSettings(tester, registry: emptyRegistry());
+
+      await open(tester, 'Pictures');
+      expect(find.text('Picture sets'), findsOneWidget);
+      expect(find.text('Browse pictures'), findsNothing);
+      await back(tester);
       await closeHome(tester);
     });
   });

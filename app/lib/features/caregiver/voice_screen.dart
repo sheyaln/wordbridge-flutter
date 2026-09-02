@@ -31,7 +31,7 @@ SpeechEngine deviceVoiceEngine(SpeechEngine speech) =>
 /// What the device-voice row says, so the list does not have to be opened to
 /// find out which voice is set.
 String deviceVoiceLine(String? name, String? locale) {
-  if (name == null) return 'Whatever this tablet uses';
+  if (name == null) return 'Whatever this device uses';
   return locale == null ? name : '$name · $locale';
 }
 
@@ -236,11 +236,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
           // though the experiment were the arrangement.
           const VoiceHeader('Device voice'),
           if (neuralOn)
-            const VoiceNote(
-              'Speaks whenever the neural voice is not ready: a word not yet '
-              'synthesized, or a sentence that exceeds the wait allowed. Pitch '
-              'applies to this voice only.',
-            ),
+            const VoiceNote('The text to speech voice used by this device.'),
           ListTile(
             leading: const Icon(Icons.record_voice_over_outlined),
             title: const Text('Which voice'),
@@ -266,11 +262,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
               ],
             ),
           ),
-          const VoiceNote(
-            'Text to speech offers rate, pitch and volume only, so these four '
-            'are what it can produce. Quiet is this voice turned down, not a '
-            'whisper.',
-          ),
+          const VoiceNote('The tone the device voice speaks in.'),
 
           const VoiceHeader('Speed, pitch and volume'),
           _Dial(
@@ -304,11 +296,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
             onChanged: (v) => _set('speechVolume', v),
             onSettled: _previewDevice,
           ),
-          const VoiceNote(
-            'A tone multiplies these values: the second figure is what the '
-            'voice is given. Volume is a proportion of the tablet volume, so '
-            'raise that too if this is not loud enough.',
-          ),
+          const VoiceNote('Volume is a proportion of the device volume.'),
 
           if (neural != null)
             NeuralVoiceSection(
@@ -457,9 +445,9 @@ class _DeviceVoicePickerState extends State<_DeviceVoicePicker> {
             title: const Text('Include the joke voices'),
             subtitle: Text(
               _hiddenNovelty == 0
-                  ? 'This tablet offers none.'
+                  ? 'This device offers none.'
                   : 'Robots, singing and cartoon characters. '
-                        '$_hiddenNovelty on this tablet, left out by default.',
+                        '$_hiddenNovelty on this device, left out by default.',
             ),
             isThreeLine: _hiddenNovelty > 0,
             onChanged: (v) async {
@@ -511,7 +499,7 @@ class _VoiceList extends StatelessWidget {
     if (voices.isEmpty) {
       return const VoiceNote(
         'No offline voices for the board language. The system voice is still '
-        'used. Install one in the tablet speech settings to choose it here.',
+        'used. Install one in the device speech settings to choose it here.',
       );
     }
 
@@ -540,7 +528,7 @@ class _VoiceList extends StatelessWidget {
             children: [
               const RadioListTile<String?>(
                 value: null,
-                title: Text('Whatever the tablet uses'),
+                title: Text('Whatever the device uses'),
               ),
               for (final group in groups) ...[
                 if (group.heading case final heading?) _GroupHeader(heading),
@@ -570,7 +558,7 @@ class _VoiceList extends StatelessWidget {
         ),
         if (unlabeled)
           const VoiceNote(
-            'This tablet does not report which voices are male and which are '
+            'This device does not report which voices are male and which are '
             'female, so they are listed together.',
           ),
       ],

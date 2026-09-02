@@ -139,6 +139,65 @@ Future<bool> livesInPinnedColumn(WordbridgeDatabase db, Button button) async {
   return cell != null && cell.col == pinnedColumn(vocabulary);
 }
 
+/// Whether this button is a pin of a word that lives somewhere else.
+///
+/// [livesInPinnedColumn] cannot answer this on its own, and the difference is
+/// the whole of §4.66. Question words are **not** system buttons — the seed
+/// places them as ordinary vocabulary that happens to be pinned — so both a
+/// question word and a pinned copy sit in the pinned column, and both answer
+/// true to living there.
+///
+/// They want opposite things. Unpinning `where` would take away the only route
+/// to it, which is a deletion wearing the word unpin. Unpinning a copy of
+/// `eat` gives a reserved location back and leaves `eat` exactly where it has
+/// always been. What separates them is whether the word exists outside this
+/// column at all.
+Future<bool> isPinnedCopy(WordbridgeDatabase db, Button button) async {
+  if (button.isSystem) return false;
+  if (!await livesInPinnedColumn(db, button)) return false;
+
+  final vocabulary = await (db.select(
+    db.vocabularies,
+  )..where((v) => v.id.equals(button.vocabularyId))).getSingleOrNull();
+  if (vocabulary == null) return false;
+
+  final col = pinnedColumn(vocabulary);
+  final elsewhere =
+      await (db.select(db.buttons).join([
+            innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+          ])..where(
+            db.buttons.vocabularyId.equals(vocabulary.id) &
+                db.buttons.deletedAt.isNull() &
+                db.buttons.label.equals(button.label) &
+                db.buttons.isSystem.equals(false) &
+                db.cells.col.equals(col).not(),
+          ))
+          .get();
+
+  return elsewhere.isNotEmpty;
+}
+
+/// Which row of the pinned column this button occupies, or null if it is not
+/// in that column at all.
+///
+/// Unpinning from the copy acts on the copy's own row rather than on a row
+/// looked up from the original, so it works from either end of the pin.
+Future<int?> rowInPinnedColumn(WordbridgeDatabase db, Button button) async {
+  final cellId = button.cellId;
+  if (cellId == null) return null;
+
+  final vocabulary = await (db.select(
+    db.vocabularies,
+  )..where((v) => v.id.equals(button.vocabularyId))).getSingleOrNull();
+  if (vocabulary == null) return null;
+
+  final cell = await (db.select(
+    db.cells,
+  )..where((c) => c.id.equals(cellId))).getSingleOrNull();
+  if (cell == null || cell.col != pinnedColumn(vocabulary)) return null;
+  return cell.row;
+}
+
 /// Where this word's pinned copy sits, or null if it has none.
 ///
 /// Matched on the label in the pinned column, which is what makes them the

@@ -56,7 +56,7 @@ class _ProfilePickerState extends State<ProfilePicker> {
         title: Text('Remove ${profile.displayName}?'),
         content: const Text(
           'The board, its customizations and its history are kept on this '
-          'tablet, not destroyed. The profile stops appearing here, and '
+          'device, not destroyed. The profile stops appearing here, and '
           'restoring a backup taken before now is the way back to it.',
         ),
         actions: [

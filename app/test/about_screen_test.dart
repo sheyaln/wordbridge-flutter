@@ -32,11 +32,17 @@ void main() {
   ) async {
     await pumpAbout(tester);
 
-    // The claim the disclaimer raises and has to answer. Both halves, because
-    // `docs/starter-vocabulary.md` makes both: a published core list, and most
-    // of the rest recorded as judgment rather than as evidence.
+    // The claim the disclaimer raises and has to answer: the core list is
+    // published by somebody, and this says who.
+    //
+    // It used to add that most of the *other* words are editorial judgment,
+    // which is true and belongs in `starter-vocabulary.md` where the
+    // derivation is. A credit line says who to credit.
     expect(find.textContaining('Universal Core 36'), findsOneWidget);
-    expect(find.textContaining('editorial judgment'), findsOneWidget);
+    expect(
+      find.textContaining('Center for Literacy and Disability Studies'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('names who wrote it and what it may be used under', (
@@ -44,8 +50,10 @@ void main() {
   ) async {
     await pumpAbout(tester);
 
+    // The people, not the account name the commits carry.
     expect(find.textContaining(AboutScreen.developer), findsOneWidget);
-    expect(find.textContaining('MIT license'), findsOneWidget);
+    expect(AboutScreen.developer, contains('Haley'));
+    expect(find.text('MIT'), findsOneWidget);
   });
 
   testWidgets('reads its version from the constants a report carries', (
@@ -91,5 +99,14 @@ void main() {
         reason: '"$data" carries a dash or a hyphen',
       );
     }
+  });
+
+  testWidgets('and credits the layout it did not invent', (tester) async {
+    // The colors and the left to right sentence order are the Modified
+    // Fitzgerald Key. `lib/theme/fitzgerald.dart` has said so beside the
+    // colors since they were written; the screen a caregiver reads did not.
+    await pumpAbout(tester);
+
+    expect(find.textContaining('Fitzgerald'), findsOneWidget);
   });
 }

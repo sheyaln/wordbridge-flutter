@@ -32,9 +32,9 @@ class CrashReportSwitch extends StatelessWidget {
       title: const Text('Send crash reports'),
       isThreeLine: true,
       subtitle: const Text(
-        'If the app stops working, what went wrong is sent the next time it '
-        'opens. It carries the version, the tablet model and the grid size. '
-        'Never a board word or a name.',
+        'Sends us what went wrong the next time the app opens. Carries the '
+        'version, the device model and the grid size, never a board word or '
+        'a name.',
       ),
       onChanged: settings == null
           ? null
@@ -75,11 +75,12 @@ class VoiceMeasurementSwitch extends StatelessWidget {
     return SwitchListTile(
       value: on,
       isThreeLine: true,
-      title: const Text('Send how the neural voice is performing'),
+      title: const Text('Send info about how the neural voice is performing'),
       subtitle: Text(
         available
-            ? 'Timings, which voice, and how often it fell back to the device '
-                  'voice. Never what was said.'
+            ? 'Sends us metrics about how well this voice performs on a '
+                  'device like yours. You can change this at any time by '
+                  'going to Settings › Reports.'
             : 'Turn the neural voice on to send timings from it.',
       ),
       onChanged: settings == null || !available

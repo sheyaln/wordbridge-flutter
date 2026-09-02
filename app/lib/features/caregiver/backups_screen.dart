@@ -193,8 +193,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
                   child: Text(
                     'Backups are saved in Files under Wordbridge AAC. Copy '
                     'one to iCloud Drive or Google Drive from there: a backup '
-                    'only '
-                    'on the tablet does not survive losing the tablet.\n\n'
+                    'only on the device does not survive losing the device.\n\n'
                     'A backup includes any usage recorded, which is one '
                     'person\'s speech. Somewhere shared is somewhere others '
                     'can read it.',
@@ -341,7 +340,7 @@ String restoreWarning({required BoardSize board, required Snapshot snapshot}) {
   final words = board.words == 1 ? '1 word' : '${board.words} words';
   final boards = board.boards == 1 ? '1 board' : '${board.boards} boards';
 
-  return 'The board set on this tablet, $words across $boards, will be '
+  return 'The board set on this device, $words across $boards, will be '
       'replaced by the one from ${snapshotWhen(snapshot.takenAt)}. Anything '
       'added, moved or hidden since then goes with it.\n\n'
       'A copy as it is now is saved first, so this is reversible.';

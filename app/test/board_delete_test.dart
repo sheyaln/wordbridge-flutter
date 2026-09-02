@@ -124,10 +124,8 @@ void main() {
               boardId: cell.boardId,
               cellId: cell.id,
               buttonId: Value(buttonId),
-              labelSnapshot: button.label,
               action: ButtonAction.speak,
               source: UsageSource.touch,
-              sessionId: 's1',
               occurredAt: DateTime.now()
                   .subtract(Duration(days: agedDays + (i % days), hours: 1))
                   .millisecondsSinceEpoch,

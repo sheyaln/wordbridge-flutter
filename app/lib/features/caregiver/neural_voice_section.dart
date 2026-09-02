@@ -63,13 +63,19 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
   @override
   void initState() {
     super.initState();
+    // A download already running is the store's, so this reattaches to it and
+    // draws the bar where it got to rather than offering to start again.
+    if (_speech.models.isInstalling) {
+      _progress = _speech.models.installProgress;
+      _watchInstall();
+    }
     unawaited(_refresh());
   }
 
   @override
   void dispose() {
-    // The install keeps running: 305 MB is not something to throw away because
-    // somebody backed out of a screen. It is the store's, not this widget's.
+    // Only stops watching. The install belongs to the store, and 305 MB is not
+    // thrown away because somebody backed out of a screen.
     _install?.cancel();
     _bake?.removeListener(_onBake);
     super.dispose();
@@ -104,14 +110,34 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
 
   Future<void> _startInstall() async {
     setState(() => _progress = null);
+    _watchInstall();
+  }
+
+  /// Starts the install, or attaches to the one already running.
+  ///
+  /// The store decides which: asking twice hands back the same work rather
+  /// than starting a second download onto the same partial file.
+  void _watchInstall() {
     _install?.cancel();
     _install = _speech.models.install().listen((p) {
       if (!mounted) return;
       setState(() => _progress = p);
-      if (p.phase == ModelPhase.installed || p.phase == ModelPhase.failed) {
+      if (p.phase == ModelPhase.installed) {
+        unawaited(_afterInstall());
+      } else if (p.phase == ModelPhase.failed) {
         unawaited(_refresh());
       }
     });
+  }
+
+  /// A voice that has finished downloading has nothing left to wait for.
+  ///
+  /// Somebody who switched the voice on before the download existed asked for
+  /// this to happen; making them come back and press two more buttons is how
+  /// §4.62 describes the whole of this feature.
+  Future<void> _afterInstall() async {
+    await _refresh();
+    if (mounted && _settings.neuralVoice) await _getGoing();
   }
 
   Future<void> _deleteModel() async {
@@ -142,30 +168,28 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     widget.onChanged();
     await _refresh();
 
-    // Asked here rather than at setup, because at setup this voice is off and
-    // a question about measurements from a feature nobody has turned on is a
-    // question about nothing (§4.59). Asked once: `hasAnswered` separates
-    // "never saw it" from "said no", so declining is not re-asked every time
-    // the voice is switched back on.
-    if (on && mounted && !_settings.hasAnswered('voiceMeasurements')) {
-      await _askAboutMeasurements();
-    }
+    if (on && mounted) await _getGoing();
   }
 
-  Future<void> _askAboutMeasurements() async {
-    final agreed = await _confirm(
-      title: 'Send how this voice performs?',
-      body:
-          'Timings, which voice, and how often the device voice had to step '
-          'in. Never what was said.\n\n'
-          'It is what tells us whether this voice is fast enough on a tablet '
-          'like yours. Changeable at any time, here or under Reports.',
-      action: 'Send them',
-      dismiss: 'Not now',
-    );
-    // Written either way, so a no is a stored answer rather than an absence
-    // that gets asked about again.
-    await _set('voiceMeasurements', agreed);
+  /// Measures this tablet, then starts filling the pack — without being asked.
+  ///
+  /// §4.62. Both of these were buttons on this screen, which meant a caregiver
+  /// who switched the voice on and walked away got a board that fell back on
+  /// every word indefinitely, with nothing on it to suggest why.
+  ///
+  /// The measurement goes first because the bake is what it governs: until
+  /// this tablet has its own figure, the budget is the floor device's, and
+  /// every word is given three times longer than it needs before the device
+  /// voice takes over.
+  Future<void> _getGoing() async {
+    if (!_installed) return;
+
+    if (!_settings.synthesisBudgetMeasured) await _measure();
+    if (!mounted) return;
+
+    final words = _words ?? const <String>[];
+    if (!_speech.needsBaking(words)) return;
+    await _startBake();
   }
 
   /// Changing the voice makes every clip in the cache wrong, not stale.
@@ -200,6 +224,10 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     if (mounted) setState(() => _bake = null);
     widget.onChanged();
     await _refresh();
+
+    // The new voice's pack is empty, so this is the same situation as
+    // switching the voice on and gets the same answer.
+    if (mounted) await _getGoing();
   }
 
   /// The voices, on a page of their own.
@@ -264,7 +292,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     await _settings.setSynthesisBudget(budget);
     _speech.budget = budget;
     if (mounted) setState(() {});
-    _say('This tablet: $budget.');
+    _say('This device: $budget.');
   }
 
   void _say(String message) {
@@ -315,19 +343,17 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const VoiceHeader('Neural voice, early access'),
+        const VoiceHeader('Neural voice'),
         const _PreAlpha(),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text(
-            'Sounds closer to a human speaker than text to speech.',
-          ),
+          child: Text('Sounds closer to a human speaker than text to speech.'),
         ),
 
         if (!_speech.canPlay)
           const ListTile(
             leading: Icon(Icons.error_outline),
-            title: Text('This tablet cannot play a neural voice'),
+            title: Text('This device cannot play a neural voice'),
             subtitle: Text('The board continues to use text to speech.'),
           ),
 
@@ -356,7 +382,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
                 ),
                 RadioListTile<bool>(
                   value: true,
-                  title: const Text('Neural voice, early access'),
+                  title: const Text('Neural voice'),
                   subtitle: Text(
                     '${neuralVoiceById(_settings.neuralVoiceId).name}. Words '
                     'synthesized in advance play instantly. Anything else is '
@@ -423,10 +449,10 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
             title: Text('${_settings.synthesisBudget}'),
             subtitle: Text(
               _settings.synthesisBudgetMeasured
-                  ? 'Measured on this tablet. Anything slower than this falls '
+                  ? 'Measured on this device. Anything slower than this falls '
                         'back to the device voice.'
-                  : 'A safe default for the slowest supported tablet. Measure '
-                        'for this tablet\'s own figure, usually lower.',
+                  : 'A safe default for the slowest supported device. Measure '
+                        'for this device\'s own figure, usually lower.',
             ),
             isThreeLine: true,
             trailing: FilledButton.tonal(
@@ -568,7 +594,7 @@ class _PreAlpha extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Words may be mispronounced, and statements may lack '
+                  'Words may be mispronounced, and sentences may lack '
                   'appropriate intonation.',
                   style: Theme.of(context).textTheme.bodyMedium
                       ?.copyWith(color: colors.onTertiaryContainer),
@@ -609,7 +635,7 @@ class _ModelTile extends StatelessWidget {
       return ListTile(
         leading: const Icon(Icons.check_circle_outline),
         title: const Text('Downloaded'),
-        subtitle: Text('${_megabytes(onDisk)} on this tablet.'),
+        subtitle: Text('${_megabytes(onDisk)} on this device.'),
         trailing: TextButton(onPressed: onDelete, child: const Text('Delete')),
       );
     }
@@ -636,7 +662,7 @@ class _ModelTile extends StatelessWidget {
             Text(
               '${_megabytes(running.bytes)} of '
               '${_megabytes(running.totalBytes)}'
-              '${running.phase == ModelPhase.downloading ? '. Safe to close the app' : ''}',
+              '${running.phase == ModelPhase.downloading ? '. Continues if you leave this screen' : ''}',
             ),
           ],
         ),
@@ -735,7 +761,7 @@ class _BakeTile extends StatelessWidget {
               else if (done < total)
                 FilledButton(
                   onPressed: busy == null ? onStart : null,
-                  child: Text(done == 0 ? 'Make the words' : 'Carry on'),
+                  child: Text(done == 0 ? 'Make the words' : 'Continue'),
                 ),
             ],
           ),
@@ -755,8 +781,7 @@ class _FallbackTile extends StatelessWidget {
   Widget build(BuildContext context) {
     if (count == 0) {
       return const ListTile(
-        title: Text('None since the app started'),
-        subtitle: Text('Everything so far came out in the chosen voice.'),
+        title: Text('The neural voice has not timed out yet'),
       );
     }
 

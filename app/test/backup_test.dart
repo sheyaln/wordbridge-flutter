@@ -94,10 +94,8 @@ void main() {
             vocabularyId: vocabId,
             boardId: cell.boardId,
             cellId: cell.id,
-            labelSnapshot: 'want',
             action: ButtonAction.speak,
             source: UsageSource.touch,
-            sessionId: 'session',
             occurredAt: 1000,
           ),
         );
@@ -354,10 +352,8 @@ void main() {
               vocabularyId: vocabId,
               boardId: cell.boardId,
               cellId: cell.id,
-              labelSnapshot: 'more',
               action: ButtonAction.speak,
               source: UsageSource.touch,
-              sessionId: 'session',
               occurredAt: 2000,
             ),
           );

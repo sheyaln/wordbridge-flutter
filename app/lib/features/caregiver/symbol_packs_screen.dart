@@ -48,7 +48,7 @@ class _SymbolPacksScreenState extends State<SymbolPacksScreen> {
             padding: EdgeInsets.all(16),
             child: Text(
               'Pictures that come with the app are always available. The rest '
-              'are downloaded when a word needs one, and kept on the tablet '
+              'are downloaded when a word needs one, and kept on the device '
               'afterwards.',
               style: TextStyle(fontSize: 14, height: 1.45),
             ),
@@ -79,9 +79,8 @@ String subtitleFor(SymbolPack pack) {
     return 'Comes with the app. Always available, and works offline.';
   }
   if (pack.allowsCommercialUse) {
-    return 'Downloaded when a word needs a picture.';
+    return 'Show results from this pack in picture search.';
   }
-  return 'Downloaded when a word needs a picture. Licensed for noncommercial '
-      'use only, so leave this off if the app will be sold, or installed on '
-      'tablets that are.';
+  return 'Show results from this pack in picture search. Licensed for '
+      'noncommercial use only.';
 }

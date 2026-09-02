@@ -458,6 +458,10 @@ class _AssembledPack implements AssembledSymbolPack {
   }) async => const [];
 
   @override
+  String? creditFor(SymbolRef ref) =>
+      sourceOf(ref) == null ? null : 'Drawn by ${sourceOf(ref)}';
+
+  @override
   Future<String?> resolve(SymbolRef ref) async => null;
 }
 
