@@ -1154,6 +1154,9 @@ class _FakeDownloadPack implements DownloadingSymbolPack {
   final _controller = StreamController<SymbolRef>.broadcast();
 
   @override
+  bool failedFor(SymbolRef ref) => false;
+
+  @override
   Stream<SymbolRef> get available => _controller.stream;
 
   void announce(SymbolRef ref) => _controller.add(ref);

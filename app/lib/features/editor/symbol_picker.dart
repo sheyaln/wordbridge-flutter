@@ -378,10 +378,7 @@ class _SymbolPickerState extends State<SymbolPicker> {
                       itemBuilder: (context, i) => _SymbolTile(
                         ref: _results[i],
                         resolver: widget.resolver,
-                        packName: symbolOrigin(
-                          widget.registry.packFor(_results[i].packId),
-                          _results[i],
-                        ),
+                        pack: widget.registry.packFor(_results[i].packId),
                         onTap: () => _assignFromPack(_results[i]),
                       ),
                     ),
@@ -407,6 +404,53 @@ class _SymbolPickerState extends State<SymbolPicker> {
 /// Waiting for something else to rebuild the sheet would leave a caregiver
 /// choosing between words, and the whole reason to open this screen is to
 /// choose between pictures.
+/// What a tile in the picker can be showing, when it is not showing a picture.
+///
+/// A blank tile is three different facts wearing one face: the picture is on
+/// its way, the picture is not coming, or there is no picture to have. Only the
+/// first is worth waiting for and only the second is worth reporting, so a
+/// person choosing between results has to be able to tell them apart.
+enum SymbolTileState {
+  /// The picture is drawn.
+  showing,
+
+  /// Being fetched, or queued behind a fetch. Worth waiting for.
+  looking,
+
+  /// The pack offers this symbol and the fetch has been given up on. The result
+  /// stays listed on purpose: the picture exists, this device just cannot get
+  /// it, and hiding it would misreport an outage as an empty catalog.
+  unavailable,
+
+  /// Nothing to draw and nothing on its way.
+  none,
+}
+
+/// Which of those a tile is in.
+///
+/// Extracted so the distinction can be tested without building a sheet, and
+/// because getting it wrong is invisible: every one of these renders as a word
+/// on a tile, so a wrong answer looks exactly like a right one.
+SymbolTileState symbolTileState({
+  required bool hasImage,
+  required bool pending,
+  required SymbolPack? pack,
+  required SymbolRef ref,
+}) {
+  if (hasImage) return SymbolTileState.showing;
+  if (pending) return SymbolTileState.looking;
+
+  if (pack is DownloadingSymbolPack) {
+    return pack.failedFor(ref)
+        ? SymbolTileState.unavailable
+        : SymbolTileState.looking;
+  }
+
+  // A pack that ships its images has already answered: there is no later
+  // arrival to wait for.
+  return SymbolTileState.none;
+}
+
 /// Where a picture came from, in the fewest words that identify it again.
 ///
 /// The bundled pack is assembled from four upstream sets, so its own name says
@@ -432,9 +476,15 @@ class _SymbolTile extends StatefulWidget {
   const _SymbolTile({
     required this.ref,
     required this.resolver,
-    required this.packName,
+    required this.pack,
     required this.onTap,
   });
+
+  /// The pack this result came from, or null where it is no longer registered.
+  ///
+  /// The pack rather than its name, because the tile also has to ask it whether
+  /// a picture that has not arrived is still coming.
+  final SymbolPack? pack;
 
   /// Which set this drawing came from.
   ///
@@ -447,9 +497,6 @@ class _SymbolTile extends StatefulWidget {
   /// It is also where the license is actually useful to a person. Every
   /// bundled pack is CC BY-SA or CC BY and requires its credit to be reachable
   /// from inside the app; the credits screen satisfies that for the app, and
-  /// this satisfies it at the moment somebody is choosing.
-  final String? packName;
-
   final SymbolRef ref;
   final SymbolResolver resolver;
   final VoidCallback onTap;
@@ -460,6 +507,10 @@ class _SymbolTile extends StatefulWidget {
 
 class _SymbolTileState extends State<_SymbolTile> {
   SymbolImage? _image;
+
+  /// True while a resolution is outstanding, which is what separates a
+  /// picture on its way from one that is not coming.
+  bool _pending = false;
 
   /// Which resolution the picture on screen belongs to.
   int _generation = 0;
@@ -500,19 +551,29 @@ class _SymbolTileState extends State<_SymbolTile> {
   /// row showing its word, not a sheet that fails to open.
   Future<void> _resolve() async {
     final generation = ++_generation;
+    if (mounted) setState(() => _pending = true);
+
     final resolved = await widget.resolver.resolve(widget.ref);
 
     // A resolution can land after the row has moved on to another result, and
     // only the most recent one may draw.
     if (!mounted || generation != _generation) return;
-    setState(() => _image = resolved.image);
+    setState(() {
+      _image = resolved.image;
+      _pending = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final image = _image;
-
-    final packName = widget.packName;
+    final packName = symbolOrigin(widget.pack, widget.ref);
+    final state = symbolTileState(
+      hasImage: image != null,
+      pending: _pending,
+      pack: widget.pack,
+      ref: widget.ref,
+    );
 
     return InkWell(
       onTap: widget.onTap,
@@ -550,6 +611,26 @@ class _SymbolTileState extends State<_SymbolTile> {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 10),
+              ),
+            // Why there is a word here and not a picture. Listed either way:
+            // the picture exists, and a device that cannot fetch it today is
+            // an outage to report rather than a catalog to shorten.
+            if (state != SymbolTileState.showing)
+              Text(
+                switch (state) {
+                  SymbolTileState.looking => 'Loading',
+                  SymbolTileState.unavailable => 'Did not load',
+                  _ => 'No picture',
+                },
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: state == SymbolTileState.unavailable
+                      ? const Color(0xFFB3261E)
+                      : Colors.black45,
+                ),
               ),
             if (packName != null)
               Text(

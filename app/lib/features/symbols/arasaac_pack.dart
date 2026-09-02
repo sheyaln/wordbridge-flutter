@@ -154,6 +154,9 @@ class ArasaacPack implements DownloadingSymbolPack {
     return null;
   }
 
+  @override
+  bool failedFor(SymbolRef ref) => _failed.contains(ref.externalId);
+
   void clearFailures() => _failed.clear();
 
   @override

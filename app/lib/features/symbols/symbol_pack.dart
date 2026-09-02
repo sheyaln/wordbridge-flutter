@@ -109,5 +109,15 @@ abstract interface class DownloadingSymbolPack implements SymbolPack {
   /// screen can pick it up instead of polling.
   Stream<SymbolRef> get available;
 
+  /// Whether fetching this symbol has already been tried and given up on.
+  ///
+  /// A tile with no picture is either one still on its way or one that is not
+  /// coming, and those look identical while being opposite facts. Somebody
+  /// choosing a picture needs to know which, because only one of them is worth
+  /// waiting for.
+  ///
+  /// Synchronous, and false where the pack has no opinion yet.
+  bool failedFor(SymbolRef ref);
+
   Future<void> dispose();
 }

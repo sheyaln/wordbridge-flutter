@@ -173,6 +173,46 @@ void main() {
     );
   });
 
+  testWidgets('a picture that is not coming says so, and stays listed', (
+    tester,
+  ) async {
+    // The pack still offers it. This device cannot fetch it today, which is an
+    // outage worth reporting rather than a reason to shorten the catalog: a
+    // result silently dropped reads as "no such picture exists".
+    final pack = _QueueingPack(file: picture, refs: const [ref, other])
+      ..failures.add(ref.key);
+    addTearDown(pack.dispose);
+    await pumpPicker(tester, pack);
+
+    expect(
+      find.text('tap water'),
+      findsOneWidget,
+      reason:
+          'a picture that failed to download is still a picture that exists',
+    );
+    expect(find.text('Did not load'), findsOneWidget);
+
+    // The one that has not failed is still worth waiting for, and must not be
+    // tarred by its neighbour.
+    expect(find.text('still water'), findsOneWidget);
+    expect(find.text('Loading'), findsOneWidget);
+  });
+
+  testWidgets('a picture that arrives stops explaining itself', (tester) async {
+    final pack = _QueueingPack(file: picture, refs: const [ref]);
+    addTearDown(pack.dispose);
+    await pumpPicker(tester, pack);
+
+    expect(find.text('Loading'), findsOneWidget);
+
+    pack.land(ref);
+    await settle(tester);
+
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('Loading'), findsNothing);
+    expect(find.text('Did not load'), findsNothing);
+  });
+
   testWidgets('a closed sheet stops resolving', (tester) async {
     final pack = _QueueingPack(file: picture, refs: const [ref]);
     addTearDown(pack.dispose);
@@ -210,6 +250,12 @@ class _QueueingPack implements DownloadingSymbolPack {
   final _landed = <String>{};
 
   int resolveCalls = 0;
+
+  /// Set to mark a symbol as given up on, so the tile can say so.
+  final failures = <String>{};
+
+  @override
+  bool failedFor(SymbolRef ref) => failures.contains(ref.key);
 
   @override
   String get id => 'testpack';

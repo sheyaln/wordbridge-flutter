@@ -23,6 +23,7 @@ import 'package:wordbridge/features/symbols/symbol_resolver.dart';
 /// 7x12 board costs 84 taps.
 void main() {
   _originTests();
+  _tileStateTests();
 
   late WordbridgeDatabase db;
   late Directory documents;
@@ -499,6 +500,139 @@ void _originTests() {
 
     test('no pack, nothing to say', () {
       expect(symbolOrigin(null, ref('woman', 'woman.svg')), isNull);
+    });
+  });
+}
+
+/// A downloading pack that can be told a fetch has been given up on.
+class _DownloadingPack implements DownloadingSymbolPack {
+  _DownloadingPack({this.failed = const {}});
+
+  /// Refs, by key, whose fetch has been abandoned.
+  final Set<String> failed;
+
+  @override
+  String get id => 'globalsymbols';
+
+  @override
+  String get name => 'Global Symbols';
+
+  @override
+  String get license => 'CC-BY-SA-4.0';
+
+  @override
+  String get attribution => 'Global Symbols.';
+
+  @override
+  bool get allowsCommercialUse => true;
+
+  @override
+  bool get isBundled => false;
+
+  @override
+  Stream<SymbolRef> get available => const Stream.empty();
+
+  @override
+  bool failedFor(SymbolRef ref) => failed.contains(ref.key);
+
+  @override
+  Future<List<SymbolRef>> search(
+    String query, {
+    String locale = 'en',
+    int limit = 24,
+  }) async => const [];
+
+  @override
+  Future<String?> resolve(SymbolRef ref) async => null;
+
+  @override
+  Future<void> dispose() async {}
+}
+
+void _tileStateTests() {
+  group('why a tile is showing a word', () {
+    const ref = (packId: 'globalsymbols', externalId: '2462', label: 'woman');
+
+    test('a picture that is drawn is just drawn', () {
+      expect(
+        symbolTileState(
+          hasImage: true,
+          pending: false,
+          pack: _DownloadingPack(),
+          ref: ref,
+        ),
+        SymbolTileState.showing,
+      );
+    });
+
+    test('a resolution still running is worth waiting for', () {
+      expect(
+        symbolTileState(
+          hasImage: false,
+          pending: true,
+          pack: _DownloadingPack(),
+          ref: ref,
+        ),
+        SymbolTileState.looking,
+      );
+    });
+
+    test('a download not yet attempted is still coming', () {
+      // Resolution only queues a fetch, so an empty answer from a downloading
+      // pack is the normal first state and not a failure.
+      expect(
+        symbolTileState(
+          hasImage: false,
+          pending: false,
+          pack: _DownloadingPack(),
+          ref: ref,
+        ),
+        SymbolTileState.looking,
+      );
+    });
+
+    test('a download given up on says so rather than waiting for ever', () {
+      expect(
+        symbolTileState(
+          hasImage: false,
+          pending: false,
+          pack: _DownloadingPack(failed: {ref.key}),
+          ref: ref,
+        ),
+        SymbolTileState.unavailable,
+      );
+    });
+
+    test('one symbol failing says nothing about another', () {
+      expect(
+        symbolTileState(
+          hasImage: false,
+          pending: false,
+          pack: _DownloadingPack(failed: {'globalsymbols/9999'}),
+          ref: ref,
+        ),
+        SymbolTileState.looking,
+      );
+    });
+
+    test('a bundled pack has already answered, so nothing is coming', () {
+      // Its images ship with the app. An empty answer is final.
+      expect(
+        symbolTileState(
+          hasImage: false,
+          pending: false,
+          pack: _FakePack(),
+          ref: ref,
+        ),
+        SymbolTileState.none,
+      );
+    });
+
+    test('no pack at all is nothing coming', () {
+      expect(
+        symbolTileState(hasImage: false, pending: false, pack: null, ref: ref),
+        SymbolTileState.none,
+      );
     });
   });
 }

@@ -197,6 +197,9 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     return file.exists();
   }
 
+  @override
+  bool failedFor(SymbolRef ref) => _failed.contains(ref.externalId);
+
   void clearFailures() => _failed.clear();
 
   @override

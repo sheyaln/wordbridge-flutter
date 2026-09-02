@@ -884,6 +884,9 @@ class _LatePack implements DownloadingSymbolPack {
   }
 
   @override
+  bool failedFor(SymbolRef ref) => false;
+
+  @override
   Stream<SymbolRef> get available => _available.stream;
 
   @override
