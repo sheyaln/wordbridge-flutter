@@ -253,16 +253,26 @@ class ProfileSettings extends ChangeNotifier {
   /// person's speech and consent to that is theirs. Switching profile switches
   /// this with it.
   ///
-  /// **Off unless somebody said yes** (§7). A usage log is a complete
-  /// transcript of a disabled person's private conversation, and it is not
-  /// something to arrive at by a default.
-  bool get usageTracking => _values['usageTracking'] as bool? ?? false;
+  /// **On, and asked about at setup** (§7). A usage log is a complete
+  /// transcript of a disabled person's private conversation, so the question
+  /// is put plainly on the setup screen with both answers spelled out rather
+  /// than buried in a settings list nobody opens.
+  ///
+  /// It is on by default because the editor's one real safeguard reads from
+  /// it: without a log, "moving this word will cost 341 taps of practice" has
+  /// no number in it, and the warning that makes a displacing edit visible
+  /// degrades to a shrug. A profile that predates the question keeps its
+  /// stored answer either way.
+  ///
+  /// The recording never leaves the tablet. What is defaulted on is keeping a
+  /// local record, not sending one anywhere.
+  bool get usageTracking => _values['usageTracking'] as bool? ?? true;
 
   /// What a profile created without an answer is given.
   ///
   /// Named so that setup and this getter cannot drift into disagreeing about
   /// what "not asked" means.
-  static const usageTrackingForNewProfiles = false;
+  static const usageTrackingForNewProfiles = true;
 
   /// Whether a report may carry how the neural voice is performing (§4.52).
   ///

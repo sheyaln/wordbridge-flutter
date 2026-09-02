@@ -75,7 +75,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
   bool? _profanity;
   int? _vocabLevel;
 
-  /// Off until somebody says yes, which is what §7 means by opt-in.
+  /// On unless somebody says otherwise, and asked at setup either way (§7).
   bool _usageTracking = ProfileSettings.usageTrackingForNewProfiles;
   bool _creating = false;
 

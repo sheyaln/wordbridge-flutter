@@ -1100,7 +1100,7 @@ class _Settings extends StatelessWidget {
           value: logger.enabled,
           title: const Text('Track usage'),
           subtitle: const Text(
-            'Records which locations are selected. Off by default.',
+            'Records which locations are selected, on this tablet.',
           ),
           onChanged: settings == null
               ? null

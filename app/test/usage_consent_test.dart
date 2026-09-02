@@ -26,16 +26,25 @@ void main() {
 
   tearDown(() async => db.close());
 
+  /// Omits the argument entirely when nothing is said, so "nobody answered"
+  /// exercises the repository's own default rather than a default this helper
+  /// invented. It passed `?? false` once, which made the test that claimed to
+  /// check the default actually check that an explicit no is stored — true,
+  /// but not the thing it was named for.
   Future<String> makeProfile({bool? usageTracking}) async {
-    final profile = await ProfileRepository(db).create(
-      displayName: 'Maya',
-      grid: GridChoice.derive(
-        screen: const Size(2048, 1536),
-        orientation: BoardOrientation.landscape,
-        iconSize: IconSize.medium,
-      ),
-      usageTracking: usageTracking ?? false,
+    final grid = GridChoice.derive(
+      screen: const Size(2048, 1536),
+      orientation: BoardOrientation.landscape,
+      iconSize: IconSize.medium,
     );
+    final repository = ProfileRepository(db);
+    final profile = usageTracking == null
+        ? await repository.create(displayName: 'Maya', grid: grid)
+        : await repository.create(
+            displayName: 'Maya',
+            grid: grid,
+            usageTracking: usageTracking,
+          );
     return profile.id;
   }
 
@@ -63,13 +72,33 @@ void main() {
       expect(settings.usageTracking, isTrue);
     });
 
-    test('nothing said means off', () async {
+    test('nothing said means on, and setup agrees', () async {
+      // The default and the getter have to answer alike. They were separate
+      // constants once, and a profile could be created tracking while the
+      // getter reported it off.
       final id = await makeProfile();
       final settings = ProfileSettings(db, id);
       await settings.load();
 
+      expect(settings.usageTracking, isTrue);
+      expect(ProfileSettings.usageTrackingForNewProfiles, isTrue);
+    });
+
+    test('a no is still a no, and survives being reloaded', () async {
+      // The point of the default moving: it must not be able to overwrite an
+      // answer somebody gave. Off is a stored value, not an absent one.
+      final id = await makeProfile(usageTracking: false);
+      final settings = ProfileSettings(db, id);
+      await settings.load();
       expect(settings.usageTracking, isFalse);
-      expect(ProfileSettings.usageTrackingForNewProfiles, isFalse);
+
+      final reloaded = ProfileSettings(db, id);
+      await reloaded.load();
+      expect(
+        reloaded.usageTracking,
+        isFalse,
+        reason: 'a stored no must beat the default on every load',
+      );
     });
   });
 
