@@ -28,8 +28,26 @@ flutter pub get
 # whole class.
 dart run build_runner build --delete-conflicting-outputs
 
+# Where a report goes, compiled in. Without these the Reports screen builds
+# but has nowhere to send anything, and says so rather than pretending. Kept in
+# the environment because the token is a real credential and this file is
+# committed; it lives in wordbridge-infra/terraform/terraform.tfvars.
+#
+#   export WORDBRIDGE_INTAKE_URL=https://…/v1/reports
+#   export WORDBRIDGE_INTAKE_TOKEN=$(perl -ne \
+#     'print $1 if /^\s*intake_token\s*=\s*"([^"]+)"/' \
+#     ../../wordbridge-infra/terraform/terraform.tfvars)
+DEFINES=()
+if [ -n "${WORDBRIDGE_INTAKE_URL:-}" ] && [ -n "${WORDBRIDGE_INTAKE_TOKEN:-}" ]; then
+  DEFINES+=(--dart-define=WORDBRIDGE_INTAKE_URL="$WORDBRIDGE_INTAKE_URL")
+  DEFINES+=(--dart-define=WORDBRIDGE_INTAKE_TOKEN="$WORDBRIDGE_INTAKE_TOKEN")
+  echo "Reports will send to $WORDBRIDGE_INTAKE_URL"
+else
+  echo "No intake configured: Reports will build, collect, and refuse to send." >&2
+fi
+
 echo "Building release…"
-flutter build ios --release
+flutter build ios --release "${DEFINES[@]}"
 
 echo "Installing…"
 # devicectl has been seen to drop the connection mid-install and still exit 0,
