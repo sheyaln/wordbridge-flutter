@@ -378,9 +378,10 @@ class _SymbolPickerState extends State<SymbolPicker> {
                       itemBuilder: (context, i) => _SymbolTile(
                         ref: _results[i],
                         resolver: widget.resolver,
-                        packName: widget.registry
-                            .packFor(_results[i].packId)
-                            ?.name,
+                        packName: symbolOrigin(
+                          widget.registry.packFor(_results[i].packId),
+                          _results[i],
+                        ),
                         onTap: () => _assignFromPack(_results[i]),
                       ),
                     ),
@@ -406,6 +407,27 @@ class _SymbolPickerState extends State<SymbolPicker> {
 /// Waiting for something else to rebuild the sheet would leave a caregiver
 /// choosing between words, and the whole reason to open this screen is to
 /// choose between pictures.
+/// Where a picture came from, in the fewest words that identify it again.
+///
+/// The bundled pack is assembled from four upstream sets, so its own name says
+/// nothing useful: every tile read "wordbridge core symbols" whatever set drew
+/// it. Where the set is known it is shown instead, because that plus the label
+/// above it is what somebody needs to ask for a different picture by name.
+///
+/// Numbered packs keep their id, which is the only stable handle those sets
+/// have and the one they use themselves.
+String? symbolOrigin(SymbolPack? pack, SymbolRef ref) {
+  if (pack == null) return null;
+
+  final source = pack is AssembledSymbolPack ? pack.sourceOf(ref) : null;
+  if (source != null) return source;
+
+  // A numeric external id is an upstream catalog number, worth showing. A
+  // filename is not: it repeats the label with an extension on the end.
+  final numbered = int.tryParse(ref.externalId) != null;
+  return numbered ? '${pack.name} ${ref.externalId}' : pack.name;
+}
+
 class _SymbolTile extends StatefulWidget {
   const _SymbolTile({
     required this.ref,
@@ -503,15 +525,28 @@ class _SymbolTileState extends State<_SymbolTile> {
         child: Column(
           children: [
             Expanded(
+              // A placeholder rather than the word, because the word is now
+              // printed under every tile: drawing it here too showed it twice
+              // on the tiles whose picture had not arrived.
               child: image == null
-                  ? Center(
-                      child: Text(
-                        widget.ref.label,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 11),
+                  ? const Center(
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 20,
+                        color: Colors.black26,
                       ),
                     )
                   : SymbolPicture(image),
+            ),
+            // The picture's own name, above where it came from. Two tiles from
+            // different sets are otherwise identical on screen, and a person
+            // who wants a different one has no way to say which they mean.
+            Text(
+              widget.ref.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10),
             ),
             if (packName != null)
               Text(

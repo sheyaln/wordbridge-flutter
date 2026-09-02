@@ -10,6 +10,7 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/ids.dart';
 import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/editor/board_editor.dart';
+import 'package:wordbridge/features/editor/symbol_picker.dart';
 import 'package:wordbridge/features/symbols/symbol_pack.dart';
 import 'package:wordbridge/features/symbols/symbol_registry.dart';
 import 'package:wordbridge/features/symbols/symbol_resolver.dart';
@@ -21,6 +22,8 @@ import 'package:wordbridge/features/symbols/symbol_resolver.dart';
 /// no picture at all — otherwise answering "which of these look wrong?" on a
 /// 7x12 board costs 84 taps.
 void main() {
+  _originTests();
+
   late WordbridgeDatabase db;
   late Directory documents;
   late String vocabId;
@@ -416,4 +419,86 @@ class _FakePack implements SymbolPack {
     if (throws) throw StateError('broken');
     return Future.value(images[ref.label]);
   }
+}
+
+/// A pack that knows which upstream set each symbol came from.
+class _AssembledPack implements AssembledSymbolPack {
+  _AssembledPack(this.sources);
+
+  /// Word to the set that drew it.
+  final Map<String, String> sources;
+
+  @override
+  String get id => 'core';
+
+  @override
+  String get name => 'wordbridge core symbols';
+
+  @override
+  String get license => 'CC-BY-SA-4.0';
+
+  @override
+  String get attribution => 'Assembled.';
+
+  @override
+  bool get allowsCommercialUse => true;
+
+  @override
+  bool get isBundled => true;
+
+  @override
+  String? sourceOf(SymbolRef ref) => sources[ref.label];
+
+  @override
+  Future<List<SymbolRef>> search(
+    String query, {
+    String locale = 'en',
+    int limit = 24,
+  }) async => const [];
+
+  @override
+  Future<String?> resolve(SymbolRef ref) async => null;
+}
+
+void _originTests() {
+  group('naming where a picture came from', () {
+    SymbolRef ref(String label, String external) =>
+        (packId: 'core', externalId: external, label: label);
+
+    test('an assembled pack names the set, not itself', () {
+      // "wordbridge core symbols" is true of all four sets and distinguishes
+      // none of them, which is what made a replacement impossible to ask for.
+      final pack = _AssembledPack({'woman': 'tawasol', 'all': 'mulberry'});
+
+      expect(symbolOrigin(pack, ref('woman', 'woman.svg')), 'tawasol');
+      expect(symbolOrigin(pack, ref('all', 'all.svg')), 'mulberry');
+    });
+
+    test('falls back to the pack when the set is unknown', () {
+      expect(
+        symbolOrigin(_AssembledPack(const {}), ref('woman', 'woman.svg')),
+        'wordbridge core symbols',
+      );
+    });
+
+    test('a numbered pack keeps its catalog number', () {
+      // The only stable handle those sets have, and what they call themselves.
+      expect(
+        symbolOrigin(_FakePack(), (
+          packId: 'core',
+          externalId: '2462',
+          label: 'woman',
+        )),
+        'core 2462',
+      );
+    });
+
+    test('a filename is not shown, because it repeats the label', () {
+      expect(symbolOrigin(_FakePack(), ref('woman', 'woman.svg')), 'core');
+    });
+
+    test('no pack, nothing to say', () {
+      expect(symbolOrigin(null, ref('woman', 'woman.svg')), isNull);
+    });
+  });
 }

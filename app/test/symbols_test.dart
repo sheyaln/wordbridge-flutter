@@ -440,6 +440,78 @@ void main() {
       expect(await pack.search('water'), isEmpty);
     });
 
+    group('which set a symbol came from', () {
+      // The core pack is four upstream sets behind one name. The manifest
+      // records the set per symbol; the loader used to drop it, which left
+      // every tile reading the same thing and no way to name one afterwards.
+      SymbolRef refFor(String word, String file) =>
+          (packId: 'mulberry', externalId: file, label: word);
+
+      test('survives the manifest load', () async {
+        final pack = _bundledWith({
+          'assets/symbols/mulberry/manifest.json': json.encode({
+            'symbols': {
+              'water': {'file': 'water.png', 'set': 'tawasol'},
+              'more': {'file': 'more.png', 'set': 'openmoji'},
+            },
+          }),
+          'assets/symbols/mulberry/water.png': 'png',
+          'assets/symbols/mulberry/more.png': 'png',
+        });
+        await pack.manifest();
+
+        expect(pack.sourceOf(refFor('water', 'water.png')), 'tawasol');
+        expect(pack.sourceOf(refFor('more', 'more.png')), 'openmoji');
+      });
+
+      test('is null for a flat manifest, which records no set', () async {
+        final pack = _bundledWith({
+          'assets/symbols/mulberry/manifest.json': json.encode({
+            'water': 'water.png',
+          }),
+          'assets/symbols/mulberry/water.png': 'png',
+        });
+        await pack.manifest();
+
+        expect(pack.sourceOf(refFor('water', 'water.png')), isNull);
+      });
+
+      test('is null before anything has been searched', () {
+        // Read while a tile builds, so it answers rather than blocking. A
+        // wrong answer here would be a caption naming the wrong license.
+        final pack = _bundledWith({
+          'assets/symbols/mulberry/manifest.json': json.encode({
+            'symbols': {
+              'water': {'file': 'water.png', 'set': 'tawasol'},
+            },
+          }),
+        });
+
+        expect(pack.sourceOf(refFor('water', 'water.png')), isNull);
+      });
+
+      test('refuses a ref belonging to another pack', () async {
+        final pack = _bundledWith({
+          'assets/symbols/mulberry/manifest.json': json.encode({
+            'symbols': {
+              'water': {'file': 'water.png', 'set': 'tawasol'},
+            },
+          }),
+          'assets/symbols/mulberry/water.png': 'png',
+        });
+        await pack.manifest();
+
+        expect(
+          pack.sourceOf((
+            packId: 'arasaac',
+            externalId: 'water.png',
+            label: 'water',
+          )),
+          isNull,
+        );
+      });
+    });
+
     test('ignores manifest entries that are not keyword to filename', () async {
       final pack = _bundledWith({
         'assets/symbols/mulberry/manifest.json': json.encode({

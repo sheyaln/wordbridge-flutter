@@ -65,6 +65,24 @@ abstract interface class SymbolPack {
   Future<String?> resolve(SymbolRef ref);
 }
 
+/// A pack assembled from several upstream sets, which therefore knows which
+/// one each individual symbol came from.
+///
+/// Separate from [SymbolPack] rather than a method on it, because most packs
+/// are their own source and answering the question is meaningless for them.
+///
+/// It matters twice. A pack drawn from several sets owes a different
+/// attribution per symbol, and a person choosing between two otherwise
+/// identical tiles has no way to tell them apart, or to name one afterwards to
+/// ask for it to be replaced.
+abstract interface class AssembledSymbolPack implements SymbolPack {
+  /// The upstream set this symbol came from, or null when it is not known.
+  ///
+  /// Synchronous and best effort: it is read while a tile is being built, so
+  /// it answers null rather than waiting on a manifest that has not loaded.
+  String? sourceOf(SymbolRef ref);
+}
+
 /// A pack whose pictures the device draws for itself.
 ///
 /// [SymbolPack.resolve] answers with the characters to draw rather than with

@@ -151,12 +151,26 @@ void main() {
     await settle(tester);
 
     expect(find.byType(Image), findsOneWidget);
+
+    // Every tile prints its word now, so the absence of a word no longer says
+    // anything about whether a picture arrived. Asserted against the tiles
+    // themselves instead, which is what the claim was always about: the
+    // picture belongs to the result that landed and to no other.
+    Finder tileFor(String label) =>
+        find.ancestor(of: find.text(label), matching: find.byType(InkWell));
+
+    expect(find.text('tap water'), findsOneWidget);
+    expect(find.text('still water'), findsOneWidget);
     expect(
-      find.text('tap water'),
+      find.descendant(of: tileFor('still water'), matching: find.byType(Image)),
       findsOneWidget,
+      reason: 'the picture belongs to the result that landed',
+    );
+    expect(
+      find.descendant(of: tileFor('tap water'), matching: find.byType(Image)),
+      findsNothing,
       reason: 'a symbol that has not arrived cannot borrow another one',
     );
-    expect(find.text('still water'), findsNothing);
   });
 
   testWidgets('a closed sheet stops resolving', (tester) async {

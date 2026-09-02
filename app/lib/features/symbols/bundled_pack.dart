@@ -16,7 +16,7 @@ import 'symbol_pack.dart';
 /// yet, a truncated manifest, an image the manifest names but the build did
 /// not ship — all of them produce label-only buttons, which are usable. An
 /// exception on the render path produces a device that cannot speak.
-class BundledSymbolPack implements SymbolPack {
+class BundledSymbolPack implements AssembledSymbolPack {
   BundledSymbolPack({
     required this.id,
     required this.name,
@@ -57,6 +57,13 @@ class BundledSymbolPack implements SymbolPack {
 
   Future<Map<String, String>>? _manifest;
 
+  /// Which upstream set each word's picture came from, by word.
+  ///
+  /// Filled by the same pass that reads the manifest, and empty until then.
+  /// [sourceOf] is synchronous because it is read while a tile is being built,
+  /// so it answers null before the first search rather than blocking on a load.
+  final Map<String, String> _sources = {};
+
   /// Memoized including the empty result, so a missing pack costs one failed
   /// asset lookup per launch rather than one per keystroke in the search box.
   Future<Map<String, String>> manifest() => _manifest ??= _loadManifest();
@@ -74,19 +81,30 @@ class BundledSymbolPack implements SymbolPack {
       final symbols = decoded['symbols'];
       final entries = symbols is Map ? symbols : decoded;
 
-      return {
-        for (final entry in entries.entries)
-          if (entry.key is String)
-            if (entry.value is String)
-              (entry.key as String).toLowerCase().trim(): entry.value as String
-            else if (entry.value is Map && entry.value['file'] is String)
-              (entry.key as String).toLowerCase().trim():
-                  entry.value['file'] as String,
-      };
+      final files = <String, String>{};
+      for (final entry in entries.entries) {
+        if (entry.key is! String) continue;
+        final word = (entry.key as String).toLowerCase().trim();
+        final value = entry.value;
+
+        if (value is String) {
+          files[word] = value;
+        } else if (value is Map && value['file'] is String) {
+          files[word] = value['file'] as String;
+          // The nested form's whole reason for existing. Dropping it here is
+          // what left four sets indistinguishable behind one pack name.
+          if (value['set'] is String) _sources[word] = value['set'] as String;
+        }
+      }
+      return files;
     } catch (_) {
       return const {};
     }
   }
+
+  @override
+  String? sourceOf(SymbolRef ref) =>
+      ref.packId == id ? _sources[ref.label.toLowerCase().trim()] : null;
 
   @override
   Future<List<SymbolRef>> search(
