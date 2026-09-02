@@ -90,12 +90,3 @@ attribution, hence the credits screen and [NOTICE.md](NOTICE.md). Two further
 sets are noncommercial and are never bundled: they are optional downloads, so
 the restriction attaches to a user's choice rather than to what ships here. A CI
 check enforces the boundary. See [Symbol packs](docs/symbol-packs.md).
-
-## Docs
-
-| | |
-|---|---|
-| [Architecture decisions](docs/adr/) | Start at [ADR 0001](docs/adr/0001-project-thesis.md) |
-| [Starter vocabulary](docs/starter-vocabulary.md) | Where every shipped word came from |
-| [Symbol packs](docs/symbol-packs.md) | The sets and their licenses |
-| [Reporting](docs/reporting.md) | How a crash or an idea reaches us |
