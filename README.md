@@ -1,7 +1,7 @@
 # wordbridge
 
-A free, open source communication app for people who do not speak. Runs on a
-tablet, shows a grid of words and pictures, speaks whatever is pressed.
+A free, open source AAC app. Runs on a tablet, shows a grid of words and
+pictures, speaks whatever is pressed.
 
 **Early access.** Runs on one iPad, not in any app store. Do not put it on a
 device somebody depends on.
@@ -48,21 +48,6 @@ database problem never costs somebody a word.
 Everything needed is on the device. Bytes leave because a person read a report
 and pressed send. Usage tracking is off until somebody turns it on.
 
-## Shipped
-
-Fixed grid with stored positions · Universal Core 36 plus ~330 fringe words ·
-grid size chosen at setup · automatic paging · pinned question column and system
-row · four bundled symbol sets plus your own photos · automatic picture lookup ·
-word endings and irregular verbs · subject agreeing copula and articles · word
-prediction in its own strip · breadcrumb trail · offline on device speech with
-voice, tone, speed, pitch, volume · profiles · caregiver mode behind a two
-corner hold and PIN · board editor · usage tracking with caregiver summary ·
-Open Board Format import and export · versioned backups in Files.
-
-Not yet: cloud sync, eye gaze, head tracking, visual scene displays, message
-banking. Scanning and switch access are parked until somebody who uses them can
-be consulted.
-
 ## Build
 
 Flutter stable, currently 3.47 with Dart 3.13.
@@ -86,7 +71,4 @@ Deploying: [Deploying to an iPad](docs/deploy-ipad.md).
 Code is MIT, see [LICENSE](LICENSE).
 
 Symbol sets carry their own terms. Bundled sets permit commercial use with
-attribution, hence the credits screen and [NOTICE.md](NOTICE.md). Two further
-sets are noncommercial and are never bundled: they are optional downloads, so
-the restriction attaches to a user's choice rather than to what ships here. A CI
-check enforces the boundary. See [Symbol packs](docs/symbol-packs.md).
+attribution. Optional downloadable sets are available for noncommercial use.
