@@ -22,6 +22,21 @@ extension SymbolRefKey on SymbolRef {
 /// a caregiver auditing a picture the user is not looking at.
 const boardSymbolPackIds = ['core'];
 
+/// A second symbol to draw where the chosen one has not arrived (§4.73).
+///
+/// One entry, and it earns itself. The `more categories` key is a handpicked
+/// pictogram from a pack that fetches its images, so on a device that has
+/// never had a network — or has just been set up — that key would show its
+/// words indefinitely while the four keys beside it drew fine. The fallback is
+/// an emoji, which is a glyph the platform already has and cannot fail to
+/// fetch.
+///
+/// Keyed by symbol id rather than by word, because what has failed is a
+/// particular picture and not the button's whole claim to have one. The moment
+/// the fetch lands the chosen picture wins again: nothing here is written to
+/// the button, so this never becomes the answer.
+const symbolFallbacks = {'frame-53182': 'frame-1f504'};
+
 /// A source of symbols.
 ///
 /// Application code depends on this interface and never on a concrete pack.
@@ -81,6 +96,14 @@ abstract interface class AssembledSymbolPack implements SymbolPack {
   /// Synchronous and best effort: it is read while a tile is being built, so
   /// it answers null rather than waiting on a manifest that has not loaded.
   String? sourceOf(SymbolRef ref);
+
+  /// The credit for the set [ref] came from, rather than for the whole pack.
+  ///
+  /// A pack assembled from four upstream sets has an `attribution` that names
+  /// all four. Beside one picture that is not a credit, it is a list — and it
+  /// tells somebody looking at a Mulberry drawing who made the OpenMoji ones
+  /// (§4.72).
+  String? creditFor(SymbolRef ref);
 }
 
 /// A pack whose pictures the device draws for itself.

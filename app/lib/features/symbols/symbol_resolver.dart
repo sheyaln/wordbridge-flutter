@@ -233,15 +233,31 @@ class SymbolResolver {
     return pack.isBundled ? SymbolImageKind.asset : SymbolImageKind.file;
   }
 
-  Future<ResolvedSymbol> _resolveChosen(String symbolId, String label) async {
+  Future<ResolvedSymbol> _resolveChosen(
+    String symbolId,
+    String label, {
+    bool allowFallback = true,
+  }) async {
     final db = this.db;
     if (db == null) return labelOnly(label);
+
+    /// The second picture, tried once and never recursively: a fallback whose
+    /// own fallback failed is a button drawing nothing, which is what the word
+    /// underneath is already for.
+    Future<ResolvedSymbol> orFallback(ResolvedSymbol resolved) async {
+      if (resolved.image != null || !allowFallback) return resolved;
+      final second = symbolFallbacks[symbolId];
+      if (second == null) return resolved;
+      return _resolveChosen(second, label, allowFallback: false);
+    }
 
     try {
       final row = await (db.select(
         db.symbols,
       )..where((s) => s.id.equals(symbolId))).getSingleOrNull();
-      if (row == null || row.deletedAt != null) return labelOnly(label);
+      if (row == null || row.deletedAt != null) {
+        return await orFallback(labelOnly(label));
+      }
 
       // A symbol owned by a pack goes through that pack even though the row
       // carries a path of its own: a pack switched off has to stop drawing,
@@ -254,15 +270,19 @@ class SymbolResolver {
           externalId: externalId,
           label: row.label,
         ));
-        return (label: label, image: resolved.image);
+        return await orFallback((label: label, image: resolved.image));
       }
 
       // Everything else is a file this device owns, a caregiver's photograph
       // above all. A photograph whose file has gone leaves the word doing the
       // work rather than a gap where a picture used to be.
       final uri = row.localUri;
-      if (uri == null || uri.isEmpty) return labelOnly(label);
-      if (!await File(uri).exists()) return labelOnly(label);
+      if (uri == null || uri.isEmpty) {
+        return await orFallback(labelOnly(label));
+      }
+      if (!await File(uri).exists()) {
+        return await orFallback(labelOnly(label));
+      }
 
       return (label: label, image: (kind: SymbolImageKind.file, uri: uri));
     } catch (_) {

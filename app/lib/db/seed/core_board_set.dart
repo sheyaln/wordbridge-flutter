@@ -10,6 +10,8 @@ import 'age_presets.dart';
 import 'band_layout.dart';
 import 'core_vocabulary.dart';
 import '../../features/grid/region_labels.dart';
+import '../../features/symbols/symbol_pack.dart';
+import '../../features/symbols/system_emoji_pack.dart';
 
 /// Builds the shipped vocabulary at whatever grid size was chosen.
 ///
@@ -644,6 +646,7 @@ Future<void> _placeAll(
       partOfSpeech: p.value.pos,
       vocabLevel: p.level,
       hidden: hiddenBands.contains(p.band),
+      symbolId: await wordSymbol(db, p.value.label),
     );
   }
 }
@@ -680,6 +683,7 @@ Future<void> addFixedKeys(
       action: action,
       targetBoardId: target,
       isSystem: true,
+      symbolId: await frameKeySymbol(db, label),
     );
   }
 
@@ -747,6 +751,141 @@ Future<void> addFixedKeys(
       target: pageForward,
     );
   }
+}
+
+/// The emoji each fixed key draws, and the symbol row that carries it (§4.69).
+///
+/// These keys had no picture at all. The talk grid resolves a bare word
+/// through [boardSymbolPackIds], which is the curated pack alone, and that pack
+/// has no entry for `home`, `back`, `more categories` or a paging key — so they
+/// rendered as their words while every ordinary word beside them had a drawing.
+///
+/// **A chosen symbol rather than a wider fallback.** A button carrying a
+/// `symbolId` resolves through `resolveChosen`, which never consults the pack
+/// list, so these get exactly the picture named here. Adding the emoji pack to
+/// the board's fallback instead would let *every* bare word take an emoji
+/// picked by keyword match, unwatched, on a board somebody is talking on.
+///
+/// A glyph, not an image: the codepoint travels with the board and the platform
+/// draws it in its own font. Nothing is ever rasterized — those fonts are
+/// proprietary, and no cache, capture or file of one may exist here.
+const frameKeyEmoji = {
+  'home': (SystemEmojiPack.packId, '1f3e0', 'house'),
+  'back': (SystemEmojiPack.packId, '1f519', 'back arrow'),
+  // Handpicked from the downloading pack rather than the emoji font. It is the
+  // one of these with no emoji worth the name — a cycling arrow says "again",
+  // not "more of these" — so it is fetched like any other picture, and until
+  // it lands the key shows its words, as any unfetched picture does.
+  cycleCategoriesLabel: ('globalsymbols', '53182', 'categories'),
+  // Not a key. Here because this is where the fallback's codepoint and name
+  // are read from, and a second table would be a second place to get it wrong.
+  '': (SystemEmojiPack.packId, '1f504', 'counterclockwise arrows button'),
+  moreWordsLabel: (SystemEmojiPack.packId, '27a1-fe0f', 'right arrow'),
+  'back a page': (SystemEmojiPack.packId, '2b05-fe0f', 'left arrow'),
+};
+
+/// Ordinary words whose picture is chosen rather than matched by keyword.
+///
+/// The curated pack matches on the word, and for most words that is the right
+/// answer. A handful are better served by something the pack has no entry for
+/// — `go` wants the green circle everybody already reads as *go*, not a
+/// drawing of somebody walking.
+///
+/// Same mechanism as the fixed keys: a chosen `symbolId` resolves through
+/// `resolveChosen`, which never consults the pack list, so this is a decision
+/// rather than a match that might drift when the pack changes.
+const wordEmoji = {'go': ('1f7e2', 'green circle')};
+
+/// The symbol id for a word that was given one, or null for a word that takes
+/// whatever the pack has for it.
+Future<String?> wordSymbol(WordbridgeDatabase db, String label) async {
+  final chosen = wordEmoji[label.toLowerCase().trim()];
+  if (chosen == null) return null;
+
+  final (codepoints, name) = chosen;
+  final id = 'word-$codepoints';
+
+  await db
+      .into(db.symbols)
+      .insert(
+        SymbolsCompanion.insert(
+          id: id,
+          packId: const Value(SystemEmojiPack.packId),
+          source: SymbolSource.bundled,
+          externalId: Value(codepoints),
+          label: name,
+          license: 'Unicode-3.0',
+          attribution: 'Emoji drawn by this device in its own font',
+          createdAt: nowMs(),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+  return id;
+}
+
+/// The symbol id for a fixed key, made on first use, or null for a key that
+/// has no emoji of its own — a category key, which is a word and takes the
+/// picture its word already has.
+Future<String?> frameKeySymbol(WordbridgeDatabase db, String label) async {
+  final chosen = frameKeyEmoji[label];
+  if (chosen == null) return null;
+
+  final (packId, externalId, name) = chosen;
+  // One row per emoji for the whole database, at a derived id: every board
+  // carries its own copy of each fixed key, and a row per copy would be one
+  // per board per key for nothing.
+  final id = 'frame-$externalId';
+
+  await db
+      .into(db.symbols)
+      .insert(
+        SymbolsCompanion.insert(
+          id: id,
+          packId: Value(packId),
+          source: packId == SystemEmojiPack.packId
+              ? SymbolSource.bundled
+              : SymbolSource.downloaded,
+          externalId: Value(externalId),
+          label: name,
+          license: packId == SystemEmojiPack.packId
+              ? 'Unicode-3.0'
+              : 'CC-BY-SA-4.0',
+          attribution: packId == SystemEmojiPack.packId
+              ? 'Emoji drawn by this device in its own font'
+              : 'Global Symbols',
+          createdAt: nowMs(),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+  // The second picture, seeded whether or not it is ever drawn. A fallback
+  // that is only written when the first one fails would need somebody to fail
+  // first, on a device that has no network — which is exactly the device that
+  // cannot then write it.
+  final second = symbolFallbacks[id];
+  if (second != null) {
+    final emoji = frameKeyEmoji.values.firstWhere(
+      (v) => 'frame-${v.$2}' == second,
+    );
+    await db
+        .into(db.symbols)
+        .insert(
+          SymbolsCompanion.insert(
+            id: second,
+            packId: const Value(SystemEmojiPack.packId),
+            source: SymbolSource.bundled,
+            externalId: Value(emoji.$2),
+            label: emoji.$3,
+            license: 'Unicode-3.0',
+            attribution: 'Emoji drawn by this device in its own font',
+            createdAt: nowMs(),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+
+  return id;
 }
 
 /// Where the fixed keys landed, and which category each one opens.

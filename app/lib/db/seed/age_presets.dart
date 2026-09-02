@@ -88,7 +88,8 @@ enum AgeBand {
 /// Level 2, matching the level every preset that receives this band starts on,
 /// so the profanity toggle is the only gate anybody meets. Level 1 would put it
 /// ahead of the whole level-2 fringe on a small grid, and a board that pages
-/// "right" and "wrong" off to keep "bloody" is not the trade anyone asked for.
+/// "right" and "wrong" off to keep a swear word is not the trade anyone asked
+/// for.
 final swearingBand = Band<SeedWord>(
   name: 'strong words',
   shedRank: 8,
@@ -97,7 +98,7 @@ final swearingBand = Band<SeedWord>(
   items: phrases([
     'damn',
     'crap',
-    'bloody',
+    'bitch',
     'piss off',
     'shit',
     'bastard',

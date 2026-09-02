@@ -186,6 +186,11 @@ final homeBands = <Band<SeedWord>>[
       w('she', PartOfSpeech.pronoun),
       w('it', PartOfSpeech.pronoun),
       w('that', PartOfSpeech.pronoun),
+      // With "that", not with the determiners. They are one pair of
+      // demonstratives doing one job, and English does not sort them into
+      // different word classes: both work as pronoun and as determiner, "I
+      // want that" beside "that cup". Tagged apart they drew in different
+      // colors, in different regions, so somebody who had learned one got no
       w('we', PartOfSpeech.pronoun, level: 2),
       w('they', PartOfSpeech.pronoun, level: 2),
       // Neither has a substitute here: "+'s" fires after "I" and produces
@@ -194,6 +199,22 @@ final homeBands = <Band<SeedWord>>[
       // one that follows a verb.
       w('my', PartOfSpeech.pronoun, level: 2),
       w('me', PartOfSpeech.pronoun),
+      // With "that", not with the determiners. They are one pair of
+      // demonstratives doing one job, and English does not sort them into
+      // different word classes: both work as pronoun and as determiner, "I
+      // want that" beside "that cup". Tagged apart they drew in different
+      // colors, in different regions, so somebody who had learned one got no
+      // help finding the other.
+      //
+      // Last in the band, which is what puts it beside "it" and one cell from
+      // "that" rather than at the top of the next column. The band fills down
+      // its columns and is exactly six deep, so any two consecutive words that
+      // straddle that boundary end up diagonally apart — which is what putting
+      // it next to "that" in this list would have done.
+      //
+      // Level 2, because "that" is the Universal Core demonstrative and points
+      // at the same things: level 1 carries one of the pair rather than both.
+      w('this', PartOfSpeech.pronoun, level: 2),
     ],
   ),
 
@@ -206,9 +227,15 @@ final homeBands = <Band<SeedWord>>[
       w('same', PartOfSpeech.determiner),
       w('different', PartOfSpeech.determiner),
       w('more', PartOfSpeech.determiner, essential: true),
-      // "that" is the Universal Core demonstrative and points at the same
-      // things, so level 1 carries one of the pair rather than both.
-      w('this', PartOfSpeech.determiner, level: 2),
+      // Directly under "more", which is the whole point of where it sits. The
+      // band fills down its column, so the two are one cell apart and the pair
+      // is learned as a pair rather than as two positions that happen to mean
+      // opposite things.
+      //
+      // Level 2: "more" is in the Universal Core 36 and this is not, so a
+      // level 1 board holds the location without drawing it, and raising the
+      // level reveals it exactly where it has always been.
+      w('less', PartOfSpeech.determiner, level: 2),
     ],
   ),
 
@@ -283,6 +310,19 @@ final homeBands = <Band<SeedWord>>[
       // overflow reads in declaration order, and a word inserted into the
       // middle of it moves every pair after it apart.
       w('will', PartOfSpeech.verb, level: 2, pageRank: 25),
+      // The rest of the modals, which the board had no way to say. Without
+      // them a person can state and request but cannot hedge, offer or ask
+      // permission — "could I", "would you", "should we" — and those are the
+      // forms most of asking politely is made of.
+      //
+      // Level 3 and behind "will" in the overflow, deliberately. They are one
+      // step past the tense set: a board still learning that "will" makes a
+      // future does not need three more auxiliaries competing with it, and
+      // declaring them here keeps the paired verbs above untouched for the
+      // reason the comment above gives.
+      w('could', PartOfSpeech.verb, level: 3, pageRank: 26),
+      w('would', PartOfSpeech.verb, level: 3, pageRank: 26),
+      w('should', PartOfSpeech.verb, level: 3, pageRank: 26),
     ],
   ),
 
@@ -311,6 +351,30 @@ final homeBands = <Band<SeedWord>>[
       // location covers am / is / are and another covers was / were.
       _copula('am/is/are', 'present'),
       _copula('was/were', 'past'),
+      // Comparatives, at level 3 rather than with the rest of the band (§4.68).
+      //
+      // `applyMorpheme` has always known how to make these, irregulars
+      // included — good becomes better, bad becomes worse — and no board had a
+      // key to ask with. What arrives here is the movement, not the grammar.
+      //
+      // Level 3 because nothing is unsayable without them: the copula earns
+      // level 2 by being the difference between a board that can ask "are you
+      // ok?" and one that cannot, and a comparative is not that. It also needs
+      // an adjective already in the bar to attach to, which is a later skill
+      // than the endings beside it.
+      //
+      // And the first thing off the root board when it will not all fit. Every
+      // other ending ranks at `grammarKeyPageRank`, which is what kept them on
+      // page one ahead of the conjunctions at 20 — so adding two more at that
+      // rank pushed `and but because so` off instead. Linking words are what
+      // turn a run of words into a sentence and they earn page one; a
+      // comparative does not, on any grid too small for both.
+      //
+      // 35 puts them behind the conjunctions and behind the verb tail at 30,
+      // which is the honest order: of everything on the root board these are
+      // the least costly to reach for on a second page.
+      _morpheme('+er', MorphemeKind.comparativeEr, level: 3, pageRank: 35),
+      _morpheme('+est', MorphemeKind.superlativeEst, level: 3, pageRank: 35),
     ],
   ),
 
@@ -333,6 +397,18 @@ final homeBands = <Band<SeedWord>>[
       w('but', PartOfSpeech.conjunction, level: 2),
       w('because', PartOfSpeech.conjunction, level: 2),
       w('so', PartOfSpeech.conjunction, level: 2),
+      // With the joining words, which is what it is: "for" is benefactive, not
+      // locative — "help for me" answers who, not where — and under the
+      // "where" heading it was mislabelled.
+      //
+      // This band is six deep, so it goes to the second page. Accepted rather
+      // than worked around: at 7x11 it was already on the second page of
+      // "where", so the move costs nothing it was not already costing and buys
+      // a heading that describes it.
+      //
+      // Still tagged a preposition. Fitzgerald colors by word class, and the
+      // color should not change because the neighbours did.
+      w('for', PartOfSpeech.preposition, level: 2),
     ],
   ),
 
@@ -362,6 +438,24 @@ final homeBands = <Band<SeedWord>>[
       // filter is off unless somebody asks for it.
       w('to', PartOfSpeech.preposition, level: 2),
       w('out', PartOfSpeech.preposition, level: 2),
+      // "for" is what turns a request into one made on somebody's behalf —
+      // "help for me", "a drink for you" — and it is the preposition this band
+      // was missing (§4.70).
+      // The only one of the common spatial prepositions the band was missing:
+      // in, on, up and out were all here and "under" was not, so a board could
+      // say where a thing was in every direction but one.
+      w('under', PartOfSpeech.preposition, level: 2),
+      // Directions, which the band had none of: a person could say a thing was
+      // in, on, up, out or under something and not which side of it.
+      //
+      // "right" is also on the right and wrong band, as the opposite of wrong.
+      // Two buttons, one label, two meanings — which is what the word does in
+      // English, and separating them by board and by region is how a board
+      // carries a homograph. Nothing keys behavior off this label, so the two
+      // do not interfere; anything added later that matches words by label has
+      // to expect both.
+      w('left', PartOfSpeech.preposition, level: 3),
+      w('right', PartOfSpeech.preposition, level: 3),
     ],
   ),
 
@@ -453,7 +547,12 @@ final pinnedQuestions = <BandItem<SeedWord>>[
   w('how', PartOfSpeech.question),
 ];
 
-BandItem<SeedWord> _morpheme(String label, MorphemeKind kind) => BandItem(
+BandItem<SeedWord> _morpheme(
+  String label,
+  MorphemeKind kind, {
+  int level = 2,
+  int pageRank = grammarKeyPageRank,
+}) => BandItem(
   (
     label: label,
     message: '',
@@ -461,8 +560,8 @@ BandItem<SeedWord> _morpheme(String label, MorphemeKind kind) => BandItem(
     morphemeKind: kind,
     pos: PartOfSpeech.other,
   ),
-  level: 2,
-  pageRankOverride: grammarKeyPageRank,
+  level: level,
+  pageRankOverride: pageRank,
 );
 
 BandItem<SeedWord> _copula(String label, String tense) => BandItem(
@@ -1428,7 +1527,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...phrases(['how many'], level: 2),
         ...adjectives(['none'], level: 2),
         ...phrases(['a lot', 'a little'], level: 2),
-        ...adjectives(['both', 'half'], level: 3),
+        // "whole" beside "half", which is the pair a quantity is usually
+        // described against: half the sandwich, the whole sandwich.
+        ...adjectives(['both', 'half', 'whole'], level: 3),
       ],
     ),
 

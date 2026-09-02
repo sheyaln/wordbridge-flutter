@@ -92,12 +92,12 @@ void main() {
     // open. Column 11 carries the pinned questions and row 6 the system keys,
     // both asserted separately.
     const shipped = [
-      'I    we   all       want need  like     +s        a       . here good',
-      'you  they some      go   stop  wait     +ed       the     . in   not',
-      'he   my   same      can  get   take     +ing      and     . on   yes',
-      'she  me   different do   make  put      +\'s      but     . up   no',
-      'it   .    more      open close help     am/is/are because . to   don\'t',
-      'that .    this      look turn  finish   was/were  so      . out  maybe',
+      'I    we   all       want need  like     +s        a       here under good',
+      'you  they some      go   stop  wait     +ed       the     in   .     not',
+      'he   my   same      can  get   take     +ing      and     on   .   yes',
+      'she  me   different do   make  put      +\'s      but     up   .   no',
+      'it   this more      open close help     am/is/are because to   .   don\'t',
+      'that .    less      look turn  finish   was/were  so      out  .   maybe',
     ];
 
     final home = await (db.select(
@@ -139,6 +139,59 @@ void main() {
       isEmpty,
       reason: 'a core word is missing from the shipped vocabulary',
     );
+  });
+
+  test('"less" sits directly under "more"', () async {
+    // A pair learned as a pair. Two positions that happen to mean opposite
+    // things are learned twice; one cell apart is one movement apart.
+    final home = await (db.select(
+      db.boards,
+    )..where((b) => b.name.equals('home'))).getSingle();
+
+    final placed = {
+      for (final r in await (db.select(db.buttons).join([
+        innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+      ])..where(db.cells.boardId.equals(home.id))).get())
+        r.readTable(db.buttons).label: (
+          row: r.readTable(db.cells).row,
+          col: r.readTable(db.cells).col,
+        ),
+    };
+
+    expect(placed['more'], isNotNull);
+    expect(placed['less'], isNotNull);
+    expect(placed['less']!.col, placed['more']!.col);
+    expect(placed['less']!.row, placed['more']!.row + 1);
+  });
+
+  test('the green circle is the picture for "go"', () async {
+    // A chosen symbol, not a keyword match: the pack has a drawing for "go"
+    // and a green circle is what people already read as go.
+    final go =
+        await (db.select(db.buttons)..where(
+              (b) => b.vocabularyId.equals(vocabId) & b.label.equals('go'),
+            ))
+            .get();
+
+    expect(go, isNotEmpty);
+    for (final button in go) {
+      expect(button.symbolId, 'word-1f7e2');
+    }
+
+    final symbol = await (db.select(
+      db.symbols,
+    )..where((s) => s.id.equals('word-1f7e2'))).getSingleOrNull();
+    expect(symbol, isNotNull);
+    expect(symbol!.externalId, '1f7e2');
+  });
+
+  test('every direction has a word, "under" included', () async {
+    // in, on, up and out were all here and "under" was not, so a board could
+    // say where a thing was in every direction but one.
+    final labels = {for (final b in await buttons()) b.label};
+    for (final word in ['in', 'on', 'up', 'out', 'under']) {
+      expect(labels, contains(word));
+    }
   });
 
   test('the core words carried as a stem are on the board as one', () async {
@@ -201,8 +254,14 @@ void main() {
     // The column beside the pronouns carries the core pronouns that would not
     // fit in column 0, and its tail stays open for the people in a particular
     // person's life, which no shipped board can guess.
-    final nameRows = col1.where((c) => c.row >= 4 && c.row < 6);
-    expect(nameRows, hasLength(2));
+    //
+    // One row, not two. §4.68 moved "this" here to sit beside "that" and "it"
+    // rather than among the determiners, and it was paid for out of this tail.
+    // Recorded rather than quietly absorbed: the tail is the only space a
+    // shipped board reserves for a family's own names, and it is now half what
+    // it was.
+    final nameRows = col1.where((c) => c.row >= 5 && c.row < 6);
+    expect(nameRows, hasLength(1));
     expect(
       nameRows.every((c) => c.state == CellState.emptyReserved),
       isTrue,
@@ -985,5 +1044,91 @@ void main() {
       reason: 'refusal must be on the root board, not buried in a folder',
     );
     expect(rows.single.readTable(db.buttons).vocabLevel, 1);
+  });
+
+  /// §4.68. The engine could always make these; no board could ask for them.
+  group('the comparative endings', () {
+    Future<Button> keyFor(String label) async =>
+        (db.select(db.buttons)..where(
+              (b) => b.vocabularyId.equals(vocabId) & b.label.equals(label),
+            ))
+            .getSingle();
+
+    test('are on the board, at level 3', () async {
+      for (final label in ['+er', '+est']) {
+        final button = await keyFor(label);
+        expect(button.action, ButtonAction.morpheme);
+        expect(
+          button.vocabLevel,
+          3,
+          reason:
+              'a comparative needs an adjective already in the bar, which is '
+              'a later skill than the endings beside it',
+        );
+      }
+    });
+
+    test('carry the kinds the engine already dispatches', () async {
+      // The whole point: `applyMorpheme` has handled both since it was
+      // written, irregulars included — good becomes better, bad becomes worse.
+      // A key wired to the wrong kind draws correctly and says the wrong word.
+      expect((await keyFor('+er')).morphemeKind, MorphemeKind.comparativeEr);
+      expect((await keyFor('+est')).morphemeKind, MorphemeKind.superlativeEst);
+    });
+
+    test('and they page off before the linking words do', () async {
+      // §4.68. They first shipped at `grammarKeyPageRank`, like every other
+      // ending, which put them ahead of the conjunctions at 20 — so on a 7x11
+      // board `and but because so` went to page two and two suffixes stayed.
+      // Linking words are what turn a run of words into a sentence. A
+      // comparative is not, and it goes first.
+      for (final cols in [11, 12]) {
+        final narrow = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+        addTearDown(narrow.close);
+        final id = await seedCoreBoardSet(narrow, rows: 7, cols: cols);
+
+        final boards = await (narrow.select(
+          narrow.boards,
+        )..where((b) => b.vocabularyId.equals(id))).get();
+        final root = boards.firstWhere((b) => b.name == 'home');
+
+        final onRoot = {
+          for (final r in await (narrow.select(narrow.buttons).join([
+            innerJoin(
+              narrow.cells,
+              narrow.cells.id.equalsExp(narrow.buttons.cellId),
+            ),
+          ])..where(narrow.cells.boardId.equals(root.id))).get())
+            r.readTable(narrow.buttons).label,
+        };
+
+        for (final word in ['and', 'but', 'because', 'so']) {
+          expect(
+            onRoot,
+            contains(word),
+            reason: '"$word" was pushed off the root board at 7x$cols',
+          );
+        }
+        expect(
+          onRoot,
+          isNot(contains('+er')),
+          reason: 'a comparative held a root location a linking word needed',
+        );
+      }
+    });
+
+    test('and they did not push anything off the board', () async {
+      // They took a column that was already blank. Every word that shipped
+      // before them still ships, which is what to check after a band claims
+      // another column.
+      final labels = {for (final b in await buttons()) b.label};
+      for (final word in ['a', 'the', 'because', 'here', 'good', 'maybe']) {
+        expect(
+          labels,
+          contains(word),
+          reason: '"$word" fell off when the endings band grew',
+        );
+      }
+    });
   });
 }
