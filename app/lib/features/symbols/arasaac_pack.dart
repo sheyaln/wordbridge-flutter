@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'drawable.dart';
 import 'symbol_pack.dart';
 
 /// ARASAAC pictograms, fetched on demand.
@@ -50,6 +51,9 @@ class ArasaacPack implements DownloadingSymbolPack {
   /// dead spot with a screen full of missing symbols would otherwise reissue
   /// every request on every rebuild. Cleared by [clearFailures] or a restart.
   final _failed = <String>{};
+
+  /// Symbols whose cached file has been looked at and can be drawn.
+  final _checked = <String>{};
 
   Future<Directory>? _cachedDirectory;
 
@@ -146,7 +150,9 @@ class ArasaacPack implements DownloadingSymbolPack {
 
     final file = await _fileFor(ref.externalId);
     if (file == null) return null;
-    if (await file.exists()) return file.path;
+    if (await file.exists()) {
+      return await _usable(ref, file) ? file.path : null;
+    }
 
     // Deliberately not awaited. Resolution runs while a grid is building and
     // a button must never wait on a network round trip to be pressable.
@@ -215,6 +221,33 @@ class ArasaacPack implements DownloadingSymbolPack {
     }
   }
 
+  /// Whether a file already on disk is one the renderer can read.
+  ///
+  /// Checked once per symbol per session, not per draw. Anything filed before
+  /// §4.67 was written without this, so a device carries whatever it collected
+  /// — and a bad file there throws on every attempt to draw it, forever. The
+  /// only way out is to look at one, so this looks, deletes what cannot be
+  /// drawn, and marks it failed like any other download that did not arrive.
+  Future<bool> _usable(SymbolRef ref, File file) async {
+    if (_checked.contains(ref.externalId)) return true;
+    try {
+      final bytes = await file.readAsBytes();
+      if (looksDrawable(
+        bytes,
+        asSvg: file.path.toLowerCase().endsWith('.svg'),
+      )) {
+        _checked.add(ref.externalId);
+        return true;
+      }
+      await file.delete();
+    } catch (_) {
+      // Unreadable is the same answer as undrawable, and neither is worth an
+      // exception on the path a board draws itself on.
+    }
+    _failed.add(ref.externalId);
+    return false;
+  }
+
   Future<void> _queueDownload(SymbolRef ref, File target) {
     if (_failed.contains(ref.externalId)) return Future.value();
     // Single-flight: a grid with the same symbol on several boards, or a
@@ -240,6 +273,18 @@ class ArasaacPack implements DownloadingSymbolPack {
       }
 
       await target.parent.create(recursive: true);
+
+      // What came back has to be an image before it is filed. A 200 is not
+      // evidence of one: an error page, or a body cut short after the headers,
+      // is written and renamed and then looks cached for the life of the
+      // install, throwing on every draw (§4.67).
+      if (!looksDrawable(
+        response.bodyBytes,
+        asSvg: target.path.toLowerCase().endsWith('.svg'),
+      )) {
+        _failed.add(ref.externalId);
+        return;
+      }
 
       // Write alongside and rename. A process killed mid-write must not leave
       // a truncated PNG behind, because that file would then look cached and
