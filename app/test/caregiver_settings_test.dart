@@ -82,10 +82,14 @@ class _SilentSpeech implements SpeechEngine {
 
 /// Every control, and the section it is reached through.
 ///
-/// The list a caregiver is owed: nothing here was reachable before and is not
-/// now. Written as titles rather than as widget types because a title is what
-/// somebody is actually looking for, and a rearrangement that keeps the widget
-/// tree and loses the words is still a control they cannot find.
+/// The list a caregiver is owed, in the order they meet it. Written as titles
+/// rather than as widget types because a title is what somebody is actually
+/// looking for, and a rearrangement that keeps the widget tree and loses the
+/// words is still a control they cannot find.
+///
+/// Pictures is absent because [pumpSettings] supplies no registry, and a build
+/// without one has no packs to offer. In the app it sits between Board and
+/// Board behavior.
 const _reachable = <String, List<String>>{
   'Profile': [
     'Profiles',
@@ -93,18 +97,11 @@ const _reachable = <String, List<String>>{
     'New words',
     'Include strong language',
   ],
-  'Board': ['Button size and orientation', 'Rebuild from shipped vocabulary'],
-  // One screen rather than a page of controls, so the row on the list opens
-  // it directly. What has to stay reachable is the control, not the hop.
-  'Backups': ['Back up now'],
-  // §4.41 part 3. The readers and writers existed and nothing called them.
-  'Import and export': ['Export this board set', 'Files on this tablet'],
-  // Also one screen. The four below it were nominally reachable and
-  // practically were not: they sat under every offline voice the tablet has,
-  // and a caregiver who had used the app for weeks did not know pitch control
-  // existed (§4.45). The list is behind "Which voice" now, and these are on
-  // the screen the row opens.
+  // One screen, and second on the list: the device exists to talk, so the voice
+  // is reachable before anything about the grid. The four dials sit under
+  // "Which voice" on the screen the row opens (§4.45).
   'Speech': ['Which voice', 'Tone', 'Speed', 'Pitch', 'Volume'],
+  'Board': ['Button size and orientation', 'Rebuild from shipped vocabulary'],
   'Board behavior': [
     'Return to the home board after each word',
     'Speak each word as it is selected',
@@ -128,6 +125,12 @@ const _reachable = <String, List<String>>{
     'Held for 2 seconds',
   ],
   'Usage tracking': ['Track usage'],
+  // Durability rather than setup, so both sit below the decisions that make the
+  // tablet somebody's. One screen rather than a page of controls, so the row on
+  // the list opens it: what has to stay reachable is the control, not the hop.
+  'Backups': ['Back up now'],
+  // §4.41 part 3. The readers and writers existed and nothing called them.
+  'Import and export': ['Export this board set', 'Files on this tablet'],
   // §4.52, and one screen on the same reasoning as backups: the row opens it.
   // These two are on the reports screen itself, so finding them one tap from
   // the list is what says there is no page in between holding a row named
@@ -345,7 +348,7 @@ void main() {
       await closeHome(tester);
     });
 
-    testWidgets('the sections keep the order they have always had', (
+    testWidgets('the sections are in the order the decisions are made', (
       tester,
     ) async {
       await pumpSettings(tester, onSwitchProfile: (_) {});

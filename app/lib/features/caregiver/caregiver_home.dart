@@ -213,7 +213,7 @@ class _Boards extends StatelessWidget {
               leading: const Icon(Icons.add),
               title: const Text('New board'),
               subtitle: const Text(
-                'For a sub-category, or another page of an existing one',
+                'For a subcategory, or another page of an existing one',
               ),
               onTap: () => _createBoard(context),
             ),
@@ -758,11 +758,12 @@ class _Settings extends StatelessWidget {
     if (boardGone == true && context.mounted) Navigator.of(context).pop();
   }
 
-  /// The sections, in the order a caregiver has already learned to look in.
+  /// The sections, in the order the decisions are actually made.
   ///
-  /// Nothing moves between them and nothing is renamed. Where a switch lives
-  /// is something people remember, and a rearrangement dressed up as a
-  /// tidy-up costs them that for nothing.
+  /// Who it is for, then how they sound, then what is on the board and how it
+  /// looks, then how it responds, then the guardrails, then data and support.
+  /// Somebody setting a tablet up for the first time works down this list, so
+  /// the things that make it theirs come before the things that keep it safe.
   List<_Section> get _sections => [
     _Section(
       icon: Icons.people_outline,
@@ -796,6 +797,32 @@ class _Settings extends StatelessWidget {
           ),
       ],
     ),
+    // Second, because the whole device exists to talk. One screen holding both
+    // voices, so the row opens it directly (§4.43a): which voice speaks is one
+    // question and belongs on one page.
+    if (settings != null && speech != null)
+      _Section(
+        icon: Icons.record_voice_over_outlined,
+        title: 'Speech',
+        description: 'Which voice speaks, and its rate, pitch and volume',
+        // A profile can carry `neuralVoice` on a build that has no neural
+        // engine — the setting outlives the binary. The row names the voice
+        // that is actually speaking, which in that case is the device's.
+        state:
+            settings!.neuralVoice &&
+                showsNeuralVoice(speech!, db: db, vocabularyId: vocabularyId)
+            ? 'Neural voice, early access · '
+                  '${neuralVoiceById(settings!.neuralVoiceId).name}'
+            : '${settings!.voiceName ?? 'The device\'s own voice'} · '
+                  '${settings!.tone.label}',
+        opens: (context) => VoiceScreen.show(
+          context,
+          speech: speech!,
+          settings: settings!,
+          db: db,
+          vocabularyId: vocabularyId,
+        ),
+      ),
     _Section(
       icon: Icons.grid_on_outlined,
       title: 'Board',
@@ -860,64 +887,19 @@ class _Settings extends StatelessWidget {
         ),
       ],
     ),
-    // One screen, so the row on this list opens it. A section page in between
-    // would hold a single row saying the same thing again.
-    _Section(
-      icon: Icons.history,
-      title: 'Backups',
-      description:
-          'Full copies of this board set, and restoring one. A copy is taken '
-          'automatically before every update.',
-      opens: (context) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => BackupsScreen(db: db, backup: backup),
-        ),
-      ),
-    ),
-    // Also one screen. Next to Backups because that is where somebody looks
-    // for it, and separate from Backups because it is not one: an exported
-    // file carries the words and not what makes them a motor plan.
-    _Section(
-      icon: Icons.swap_horiz,
-      title: 'Import and export',
-      description:
-          'Open Board Format files, for moving a board set between programs. '
-          'Not a backup.',
-      opens: (context) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => BoardFilesScreen(
-            db: db,
-            vocabularyId: vocabularyId,
-            store: boards,
-            onImported: onChanged,
-          ),
-        ),
-      ),
-    ),
-    // One screen holding both voices, so the row opens it directly (§4.43a).
-    // Which voice speaks is one question, and it used to be asked on two pages
-    // that did not mention each other.
-    if (settings != null && speech != null)
+    // Beside Board, because a picture set changes what every cell looks like.
+    // Only where a registry was supplied: a build without one has no packs to
+    // offer and the row would open onto nothing.
+    if (registry != null)
       _Section(
-        icon: Icons.record_voice_over_outlined,
-        title: 'Speech',
-        description: 'Which voice speaks, and its rate, pitch and volume',
-        // A profile can carry `neuralVoice` on a build that has no neural
-        // engine — the setting outlives the binary. The row names the voice
-        // that is actually speaking, which in that case is the device's.
-        state:
-            settings!.neuralVoice &&
-                showsNeuralVoice(speech!, db: db, vocabularyId: vocabularyId)
-            ? 'Neural voice, pre-alpha · '
-                  '${neuralVoiceById(settings!.neuralVoiceId).name}'
-            : '${settings!.voiceName ?? 'The device\'s own voice'} · '
-                  '${settings!.tone.label}',
-        opens: (context) => VoiceScreen.show(
-          context,
-          speech: speech!,
-          settings: settings!,
-          db: db,
-          vocabularyId: vocabularyId,
+        icon: Icons.image_outlined,
+        title: 'Pictures',
+        description:
+            'Which picture sets this tablet may use, and which are downloaded',
+        opens: (context) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => SymbolPacksScreen(db: db, registry: registry!),
+          ),
         ),
       ),
     _Section(
@@ -997,7 +979,6 @@ class _Settings extends StatelessWidget {
             subtitle: const Text(
               'Draws the whole board set, including words above this '
               'profile\'s vocabulary level and words that have been hidden. '
-              'Nothing is written: no level is raised and nothing is unhidden. '
               'The board displays a banner while this is on, and closing the '
               'app turns it off.',
             ),
@@ -1143,6 +1124,41 @@ class _Settings extends StatelessWidget {
         ),
       ],
     ),
+    // Durability rather than setup, so it sits below the decisions that make
+    // the tablet somebody's. One screen, and the row on this list opens it: a
+    // section page in between would hold a single row saying the same thing.
+    _Section(
+      icon: Icons.history,
+      title: 'Backups',
+      description:
+          'Full copies of this board set, and restoring one. A copy is taken '
+          'automatically when an update changes how the board is stored.',
+      opens: (context) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BackupsScreen(db: db, backup: backup),
+        ),
+      ),
+    ),
+    // Also one screen. Next to Backups because that is where somebody looks
+    // for it, and separate from Backups because it is not one: an exported
+    // file carries the words and not what makes them a motor plan.
+    _Section(
+      icon: Icons.swap_horiz,
+      title: 'Import and export',
+      description:
+          'Open Board Format files, for moving a board set between programs. '
+          'Not a backup.',
+      opens: (context) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BoardFilesScreen(
+            db: db,
+            vocabularyId: vocabularyId,
+            store: boards,
+            onImported: onChanged,
+          ),
+        ),
+      ),
+    ),
     // One screen, so the row opens it directly (§4.43a). What the page in
     // between held was a row named for the section that opened it.
     _Section(
@@ -1150,7 +1166,7 @@ class _Settings extends StatelessWidget {
       title: 'Reports',
       description:
           'Tell us something is wrong or missing, and send faults this tablet '
-          'caught. Nothing is sent until you have read it and pressed send.',
+          'caught.',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ReportsScreen(
@@ -1166,20 +1182,6 @@ class _Settings extends StatelessWidget {
         ),
       ),
     ),
-    // Only where a registry was supplied. A build without one has no packs to
-    // offer and the row would open onto nothing.
-    if (registry != null)
-      _Section(
-        icon: Icons.image_outlined,
-        title: 'Pictures',
-        description:
-            'Which picture sets this tablet may use, and which are downloaded',
-        opens: (context) => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => SymbolPacksScreen(db: db, registry: registry!),
-          ),
-        ),
-      ),
     // One screen of its own (§4.43a). What is on it is prose rather than
     // controls, and the one thing there is to press on it opens the credits.
     _Section(
@@ -1377,8 +1379,8 @@ class _VocabularyLevel extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Text(
                 'Words revealed by raising this have held their locations '
-                'since the board set was built. Nothing moves to make room, '
-                'and lowering it hides them again without losing them.',
+                'since the board set was built. Lowering it hides them again '
+                'in place.',
                 style: TextStyle(fontSize: 13, color: Colors.black54),
               ),
             ),
@@ -1442,8 +1444,8 @@ class _StrongLanguage extends StatelessWidget {
           value: settings.profanity,
           title: const Text('Include strong language'),
           subtitle: const Text(
-            'Off hides these words in place rather than deleting them, so '
-            'turning it back on moves nothing.',
+            'Off hides these words in place. Turning it back on shows them in '
+            'the same locations.',
           ),
           isThreeLine: true,
           onChanged: (v) async {
