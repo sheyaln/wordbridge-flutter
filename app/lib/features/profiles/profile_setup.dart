@@ -166,7 +166,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isFirstRun ? 'Set up wordbridge' : 'New profile'),
+        title: Text(
+          widget.isFirstRun ? 'Set up Wordbridge AAC' : 'New profile',
+        ),
         automaticallyImplyLeading: !widget.isFirstRun,
       ),
       body: ListView(

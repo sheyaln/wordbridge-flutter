@@ -191,8 +191,9 @@ class _BackupsScreenState extends State<BackupsScreen> {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: Text(
-                    'Backups are saved in Files under wordbridge. Copy one to '
-                    'iCloud Drive or Google Drive from there: a backup only '
+                    'Backups are saved in Files under Wordbridge AAC. Copy '
+                    'one to iCloud Drive or Google Drive from there: a backup '
+                    'only '
                     'on the tablet does not survive losing the tablet.\n\n'
                     'A backup includes any usage recorded, which is one '
                     'person\'s speech. Somewhere shared is somewhere others '

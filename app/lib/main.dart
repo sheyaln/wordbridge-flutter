@@ -407,7 +407,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'wordbridge',
+      title: 'Wordbridge AAC',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
       // The database would not open, or the speech engine would not start.
@@ -455,7 +455,7 @@ class _FirstRun extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'wordbridge',
+                'Wordbridge AAC',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 12),
@@ -463,7 +463,7 @@ class _FirstRun extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   'A few questions about how this device will be used, then '
-                  'your wordbridge board will be built.',
+                  'your board will be built.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.black54),
                 ),

@@ -180,7 +180,7 @@ List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
   // directory in pubspec.yaml. A pack with no assets is not a pack.
   BundledSymbolPack(
     id: 'core',
-    name: 'wordbridge core symbols',
+    name: 'Wordbridge AAC core symbols',
     license: 'CC-BY-SA-4.0',
     attribution:
         'Assembled from Mulberry Symbols, Stellar Symbols, Tawasol and '

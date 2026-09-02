@@ -1066,7 +1066,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('This board has everything wordbridge ships.'),
+        find.text('This board has everything Wordbridge AAC ships.'),
         findsNothing,
         reason: 'a refused category was reported as nothing missing',
       );

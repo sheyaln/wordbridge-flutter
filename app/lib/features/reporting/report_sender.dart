@@ -92,7 +92,7 @@ class ReportSender {
 String? problemFor(int status) => switch (status) {
   200 || 201 || 202 || 204 => null,
   400 || 422 =>
-    'This version of wordbridge cannot send reports any more. '
+    'This version of Wordbridge AAC cannot send reports any more. '
         'Update the app and try again.',
   401 || 403 =>
     'This build is not allowed to send reports. Update the app '

@@ -372,7 +372,7 @@ class BackupService {
       if (version == null) {
         return (
           restored: false,
-          problem: 'That file is not a wordbridge backup.',
+          problem: 'That file is not a Wordbridge AAC backup.',
         );
       }
 
@@ -380,7 +380,7 @@ class BackupService {
         return (
           restored: false,
           problem:
-              'That backup was made by a newer version of wordbridge '
+              'That backup was made by a newer version of Wordbridge AAC '
               '(backup $version, this app reads ${_db.schemaVersion}). '
               'Update the app and try again. Nothing has been changed.',
         );

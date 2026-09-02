@@ -173,7 +173,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
             title: const Text('Export this board set'),
             subtitle: const Text(
               'One .obz file with every board, its words, symbols and links. '
-              'Find it in Files under wordbridge, boards.',
+              'Find it in Files under Wordbridge AAC, boards.',
             ),
             isThreeLine: true,
             trailing: FilledButton(
@@ -195,7 +195,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
               padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
                 'None yet. Anything exported appears here, as does any .obf '
-                'or .obz file placed in Files under wordbridge, boards.',
+                'or .obz file placed in Files under Wordbridge AAC, boards.',
               ),
             )
           else

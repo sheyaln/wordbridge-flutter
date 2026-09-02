@@ -54,7 +54,7 @@ class AboutScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'wordbridge',
+                  'Wordbridge AAC',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
@@ -66,7 +66,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 const Text(
-                  'wordbridge is written by $developer. It is open source '
+                  'Wordbridge AAC is written by $developer. It is open source '
                   'under the MIT license. That license covers the app. '
                   'The symbols on the buttons keep their own.',
                   style: _body,

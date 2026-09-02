@@ -55,7 +55,7 @@ class SystemEmojiPack implements GlyphSymbolPack {
   String get attribution =>
       'Emoji names and search words from Unicode CLDR, © Unicode, Inc., '
       'under the Unicode License v3. The pictures are drawn by this device '
-      'with its own emoji font and are not part of wordbridge.';
+      'with its own emoji font and are not part of Wordbridge AAC.';
 
   @override
   bool get allowsCommercialUse => true;

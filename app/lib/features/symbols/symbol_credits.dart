@@ -136,8 +136,8 @@ class _SymbolCreditsState extends State<SymbolCredits> {
               ],
 
               const Text(
-                'wordbridge itself is open source under the MIT license. That '
-                'license covers the app, not the symbols above. Each set '
+                'Wordbridge AAC itself is open source under the MIT license. '
+                'That license covers the app, not the symbols above. Each set '
                 'keeps its own terms, and CC BY-SA in particular means '
                 'anything derived from these symbols stays under the same '
                 'license.',

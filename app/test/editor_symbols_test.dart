@@ -433,7 +433,7 @@ class _AssembledPack implements AssembledSymbolPack {
   String get id => 'core';
 
   @override
-  String get name => 'wordbridge core symbols';
+  String get name => 'Wordbridge AAC core symbols';
 
   @override
   String get license => 'CC-BY-SA-4.0';
@@ -467,7 +467,7 @@ void _originTests() {
         (packId: 'core', externalId: external, label: label);
 
     test('an assembled pack names the set, not itself', () {
-      // "wordbridge core symbols" is true of all four sets and distinguishes
+      // "Wordbridge AAC core symbols" is true of all four sets and
       // none of them, which is what made a replacement impossible to ask for.
       final pack = _AssembledPack({'woman': 'tawasol', 'all': 'mulberry'});
 
@@ -478,7 +478,7 @@ void _originTests() {
     test('falls back to the pack when the set is unknown', () {
       expect(
         symbolOrigin(_AssembledPack(const {}), ref('woman', 'woman.svg')),
-        'wordbridge core symbols',
+        'Wordbridge AAC core symbols',
       );
     });
 

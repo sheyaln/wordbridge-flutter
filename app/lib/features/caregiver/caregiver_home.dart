@@ -1721,7 +1721,7 @@ class _NewWordsState extends State<_NewWords> {
           return const ListTile(
             leading: Icon(Icons.playlist_add_check),
             title: Text('New words'),
-            subtitle: Text('This board has everything wordbridge ships.'),
+            subtitle: Text('This board has everything Wordbridge AAC ships.'),
           );
         }
 
