@@ -525,15 +525,15 @@ class _SymbolTileState extends State<_SymbolTile> {
         child: Column(
           children: [
             Expanded(
-              // A placeholder rather than the word, because the word is now
-              // printed under every tile: drawing it here too showed it twice
-              // on the tiles whose picture had not arrived.
+              // The word stands in for a picture that has not arrived. A tile
+              // with no picture is not worth choosing anyway, so the name is
+              // the only useful thing it can carry.
               child: image == null
-                  ? const Center(
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 20,
-                        color: Colors.black26,
+                  ? Center(
+                      child: Text(
+                        widget.ref.label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11),
                       ),
                     )
                   : SymbolPicture(image),
@@ -541,13 +541,16 @@ class _SymbolTileState extends State<_SymbolTile> {
             // The picture's own name, above where it came from. Two tiles from
             // different sets are otherwise identical on screen, and a person
             // who wants a different one has no way to say which they mean.
-            Text(
-              widget.ref.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10),
-            ),
+            // Skipped where the picture is missing, because the word is
+            // already standing in for it above.
+            if (image != null)
+              Text(
+                widget.ref.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 10),
+              ),
             if (packName != null)
               Text(
                 packName,
