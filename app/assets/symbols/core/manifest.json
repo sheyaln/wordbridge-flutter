@@ -278,10 +278,10 @@
       "part_of_speech": "verb"
     },
     "feelings": {
-      "file": "feelings.png",
-      "set": "tawasol",
-      "picto_id": 7907,
-      "matched": "feelings",
+      "file": "feelings.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53191,
+      "matched": "emotions",
       "part_of_speech": "noun"
     },
     "places": {
@@ -313,10 +313,10 @@
       "part_of_speech": "noun"
     },
     "friend": {
-      "file": "friend.svg",
-      "set": "openmoji",
-      "picto_id": 42683,
-      "matched": "Friend",
+      "file": "friend.png",
+      "set": "tawasol",
+      "picto_id": 7946,
+      "matched": "friends",
       "part_of_speech": "noun"
     },
     "teacher": {
@@ -376,10 +376,10 @@
       "part_of_speech": "noun"
     },
     "name": {
-      "file": "name.png",
-      "set": "tawasol",
-      "picto_id": 7631,
-      "matched": "name",
+      "file": "name.svg",
+      "set": "openmoji",
+      "picto_id": 44139,
+      "matched": "European Name Badge",
       "part_of_speech": "noun"
     },
     "eat": {
@@ -411,10 +411,10 @@
       "part_of_speech": "noun"
     },
     "juice": {
-      "file": "juice.png",
-      "set": "tawasol",
-      "picto_id": 7968,
-      "matched": "juice",
+      "file": "juice.svg",
+      "set": "mulberry",
+      "picto_id": 5214,
+      "matched": "Orange Juice",
       "part_of_speech": "noun"
     },
     "hungry": {
@@ -1029,8 +1029,8 @@
     "us": {
       "file": "us.svg",
       "set": "openmoji",
-      "picto_id": 43942,
-      "matched": "US",
+      "picto_id": 44206,
+      "matched": "Group",
       "part_of_speech": "noun"
     },
     "boy": {
@@ -1041,10 +1041,10 @@
       "part_of_speech": "noun"
     },
     "girl": {
-      "file": "girl.png",
-      "set": "tawasol",
-      "picto_id": 7953,
-      "matched": "girl",
+      "file": "girl.svg",
+      "set": "openmoji",
+      "picto_id": 41151,
+      "matched": "Girl",
       "part_of_speech": "noun"
     },
     "man": {
@@ -1302,15 +1302,15 @@
     "plane": {
       "file": "plane.svg",
       "set": "mulberry",
-      "picto_id": 5357,
-      "matched": "Plane",
+      "picto_id": 3130,
+      "matched": "Aeroplane",
       "part_of_speech": "noun"
     },
     "walk": {
-      "file": "walk.png",
-      "set": "tawasol",
-      "picto_id": 7538,
-      "matched": "walk",
+      "file": "walk.svg",
+      "set": "openmoji",
+      "picto_id": 42087,
+      "matched": "Man Walking",
       "part_of_speech": "verb"
     },
     "near": {
@@ -1484,8 +1484,8 @@
     "far": {
       "file": "far.svg",
       "set": "openmoji",
-      "picto_id": 43110,
-      "matched": "Far Away",
+      "picto_id": 44201,
+      "matched": "Distance",
       "part_of_speech": "noun"
     },
     "lemon": {
@@ -1524,10 +1524,10 @@
       "part_of_speech": "noun"
     },
     "meeting": {
-      "file": "meeting.png",
-      "set": "tawasol",
-      "picto_id": 7856,
-      "matched": "meeting",
+      "file": "meeting.svg",
+      "set": "openmoji",
+      "picto_id": 41061,
+      "matched": "Meeting",
       "part_of_speech": "noun"
     },
     "melon": {
@@ -1573,10 +1573,10 @@
       "part_of_speech": "verb"
     },
     "see": {
-      "file": "see.png",
-      "set": "tawasol",
-      "picto_id": 7890,
-      "matched": "see",
+      "file": "see.svg",
+      "set": "mulberry",
+      "picto_id": 49201,
+      "matched": "look",
       "part_of_speech": "verb"
     },
     "shower": {
@@ -1643,10 +1643,10 @@
       "part_of_speech": "pronoun"
     },
     "think": {
-      "file": "think.png",
-      "set": "tawasol",
-      "picto_id": 7556,
-      "matched": "think",
+      "file": "think.svg",
+      "set": "openmoji",
+      "picto_id": 40773,
+      "matched": "Thinking Face",
       "part_of_speech": "verb"
     },
     "wrong": {
@@ -1834,8 +1834,8 @@
     "town": {
       "file": "town.svg",
       "set": "openmoji",
-      "picto_id": 44187,
-      "matched": "Town",
+      "picto_id": 42987,
+      "matched": "Cityscape",
       "part_of_speech": "noun"
     },
     "train": {
@@ -1846,17 +1846,17 @@
       "part_of_speech": "noun"
     },
     "wait": {
-      "file": "wait.png",
-      "set": "tawasol",
-      "picto_id": 7762,
-      "matched": "wait",
+      "file": "wait.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53003,
+      "matched": "Please wait until I am done typing",
       "part_of_speech": "verb"
     },
     "pool": {
       "file": "pool.svg",
-      "set": "openmoji",
-      "picto_id": 43206,
-      "matched": "Pool",
+      "set": "mulberry",
+      "picto_id": 5859,
+      "matched": "Swim , To",
       "part_of_speech": "noun"
     },
     "ready": {
@@ -1882,9 +1882,9 @@
     },
     "period": {
       "file": "period.svg",
-      "set": "openmoji",
-      "picto_id": 44095,
-      "matched": "Period",
+      "set": "stellar-symbols",
+      "picto_id": 54311,
+      "matched": "period cycle",
       "part_of_speech": "noun"
     },
     "phone": {
@@ -1903,9 +1903,9 @@
     },
     "pee": {
       "file": "wee.svg",
-      "set": "openmoji",
-      "picto_id": 44100,
-      "matched": "Urine",
+      "set": "mulberry",
+      "picto_id": 5984,
+      "matched": "Toilet , Go To The",
       "part_of_speech": "noun"
     },
     "wheelchair": {
