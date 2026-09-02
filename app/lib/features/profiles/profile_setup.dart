@@ -77,6 +77,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
 
   /// On unless somebody says otherwise, and asked at setup either way (§7).
   bool _usageTracking = ProfileSettings.usageTrackingForNewProfiles;
+
+  /// Whether a fault this tablet catches is sent on the next launch (§4.59).
+  bool _crashReports = ProfileSettings.crashReportsForNewProfiles;
   bool _creating = false;
 
   /// Asked on the first run and nowhere else.
@@ -145,6 +148,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
         profanity: _profanity,
         vocabLevel: _vocabLevel,
         usageTracking: _usageTracking,
+        crashReports: _crashReports,
       );
 
       if (mounted) Navigator.of(context).pop(profile);
@@ -358,6 +362,37 @@ class _ProfileSetupState extends State<ProfileSetup> {
                       'you what moving a word will cost.',
                   selected: !_usageTracking,
                   onTap: () => setState(() => _usageTracking = false),
+                ),
+              ],
+            ),
+          ),
+
+          // The other half of the question, and a different one: the log above
+          // never leaves the tablet, and this does (§4.59).
+          _Section(
+            title: 'Crash reports',
+            note:
+                'Sent the next time the app opens, never while it is being '
+                'used. Changeable later under Reports.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _OptionCard(
+                  title: 'Send crash reports',
+                  subtitle:
+                      'The version, the tablet model, the grid size and what '
+                      'went wrong. Never a board word or a name.',
+                  selected: _crashReports,
+                  onTap: () => setState(() => _crashReports = true),
+                ),
+                const SizedBox(height: 8),
+                _OptionCard(
+                  title: 'Do not send crash reports',
+                  subtitle:
+                      'Faults are still recorded on the tablet, and can be '
+                      'sent by hand from Reports.',
+                  selected: !_crashReports,
+                  onTap: () => setState(() => _crashReports = false),
                 ),
               ],
             ),

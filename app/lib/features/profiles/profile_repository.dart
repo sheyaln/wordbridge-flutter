@@ -72,6 +72,7 @@ class ProfileRepository {
     bool? profanity,
     int? vocabLevel,
     bool usageTracking = ProfileSettings.usageTrackingForNewProfiles,
+    bool crashReports = ProfileSettings.crashReportsForNewProfiles,
   }) async {
     if (!grid.isUsable) {
       throw ArgumentError(grid.refusal);
@@ -104,6 +105,7 @@ class ProfileRepository {
                 // no, so the record says somebody was asked rather than
                 // leaving it to a getter's default.
                 'usageTracking': usageTracking,
+                'crashReports': crashReports,
               }),
             ),
             createdAt: ts,

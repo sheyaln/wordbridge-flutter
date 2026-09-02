@@ -18,6 +18,8 @@ import 'package:wordbridge/main.dart';
 /// so a caregiver who switched recording on lost it overnight, and the tap
 /// counts the editor warns a move with never accumulated past one session.
 void main() {
+  _telemetryTests();
+
   late WordbridgeDatabase db;
 
   setUp(() async {
@@ -195,6 +197,23 @@ void main() {
       addTearDown(logger.dispose);
       applyUsageConsent(logger, reopened);
       expect(logger.enabled, isTrue);
+    });
+  });
+}
+
+/// §4.59. The two switches that decide what leaves this tablet on its own.
+void _telemetryTests() {
+  group('telemetry defaults', () {
+    test('crash reports are on, and the constant agrees with the getter', () {
+      // They were two constants once for usage tracking, and a profile could
+      // be created tracking while the getter reported it off.
+      expect(ProfileSettings.crashReportsForNewProfiles, isTrue);
+    });
+
+    test('voice measurements are off until somebody says yes', () {
+      // Deliberately not crashReports' answer. One is "tell us the app broke",
+      // the other is "measurements about the voice travel with it".
+      expect(ProfileSettings.voiceMeasurementsForNewProfiles, isFalse);
     });
   });
 }

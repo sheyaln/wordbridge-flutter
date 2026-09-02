@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../profiles/profile_settings.dart';
+import 'telemetry_switches.dart';
 import '../speech/neural/bake.dart';
 import '../speech/neural/bake_vocabulary.dart';
 import '../speech/neural/neural_engine.dart';
@@ -337,6 +338,15 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
                 ),
               ],
             ),
+          ),
+
+          // The same switch that appears under Reports, not a second copy of
+          // it (§4.59). Disabled while the device voice is speaking, because
+          // there are no neural timings to send.
+          VoiceMeasurementSwitch(
+            settings: _settings,
+            available: on,
+            onChanged: () => setState(() {}),
           ),
         ],
 

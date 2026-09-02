@@ -285,6 +285,29 @@ class ProfileSettings extends ChangeNotifier {
   /// Off unless somebody said yes, on the same principle.
   bool get voiceMeasurements => _values['voiceMeasurements'] as bool? ?? false;
 
+  /// What a profile created without an answer is given. Named for the same
+  /// reason as the others: setup and this getter must not drift into
+  /// disagreeing about what "not asked" means.
+  static const voiceMeasurementsForNewProfiles = false;
+
+  /// Whether a fault this tablet caught is sent without being asked (§4.59).
+  ///
+  /// **Sent on the next launch, never during the crash.** The handler that
+  /// records a fault installs before the app does: it has no database and no
+  /// profile, and the fault it is holding may be the database. A network call
+  /// from inside an error handler on a device that has just failed is how one
+  /// fault becomes two. So the record is written when it happens and the
+  /// waiting ones go out later, when the app is working and nobody is mid
+  /// sentence.
+  ///
+  /// On by default, and asked at setup. What it sends is a stack trace with
+  /// quoted text and file paths taken out, plus the version, the hardware and
+  /// the grid — no board words and no names.
+  bool get crashReports => _values['crashReports'] as bool? ?? true;
+
+  /// What a profile created without an answer is given.
+  static const crashReportsForNewProfiles = true;
+
   T _enum<T extends Enum>(String key, List<T> values, T fallback) {
     final stored = _values[key];
     for (final value in values) {

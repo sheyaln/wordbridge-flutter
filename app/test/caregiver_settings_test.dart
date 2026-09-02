@@ -135,7 +135,15 @@ const _reachable = <String, List<String>>{
   // These two are on the reports screen itself, so finding them one tap from
   // the list is what says there is no page in between holding a row named
   // after the section that opened it.
-  'Reports': ['Tell us something', 'Review and send'],
+  // A page of controls now rather than a jump straight to the screen (§4.59):
+  // what this tablet sends on its own is decided here, and writing a report is
+  // one row on the same page. "Tell us something" and "Review and send" moved
+  // one level down with it.
+  'Reports': [
+    'Send crash reports',
+    'Send how the neural voice is performing',
+    'Write a report',
+  ],
   // One screen for the same reason: what is on it is prose, and the credits
   // are the only thing on it there is to press. The disclaimer and the license
   // are text rather than controls, and `what About has to say` owns those.

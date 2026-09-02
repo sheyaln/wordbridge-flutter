@@ -18,6 +18,7 @@ import '../editor/grid_change_screen.dart';
 import '../editor/rebuild_sheet.dart';
 import '../interop/board_files.dart';
 import '../prediction/word_prediction.dart';
+import '../speech/neural/neural_engine.dart';
 import '../speech/neural/neural_voice.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_picker.dart';
@@ -35,6 +36,7 @@ import 'about_screen.dart';
 import 'backups_screen.dart';
 import 'board_files_screen.dart';
 import 'symbol_packs_screen.dart';
+import 'telemetry_switches.dart';
 import 'reports_screen.dart';
 import 'voice_screen.dart';
 
@@ -1160,27 +1162,53 @@ class _Settings extends StatelessWidget {
       ),
     ),
     // One screen, so the row opens it directly (§4.43a). What the page in
-    // between held was a row named for the section that opened it.
+    // A page of controls now rather than a straight jump to the screen
+    // (§4.59): what leaves this tablet on its own is decided here, and writing
+    // a report is one row on the same page.
     _Section(
       icon: Icons.outgoing_mail,
       title: 'Reports',
       description:
-          'Tell us something is wrong or missing, and send faults this tablet '
-          'caught.',
-      opens: (context) => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => ReportsScreen(
-            db: db,
-            vocabularyId: vocabularyId,
-            profileId: profileId,
-            settings: settings,
-            speech: speech,
-            crashes: crashes,
-            sender: sender,
-            userName: userName,
+          'Tell us something is wrong or missing, and what this tablet sends '
+          'on its own',
+      state: settings == null
+          ? null
+          : switch ((settings!.crashReports, settings!.voiceMeasurements)) {
+              (false, _) => 'Off',
+              (true, true) => 'Crashes and voice',
+              (true, false) => 'Crashes',
+            },
+      tiles: (context, onChanged) => [
+        CrashReportSwitch(settings: settings, onChanged: onChanged),
+        VoiceMeasurementSwitch(
+          settings: settings,
+          available: speech is NeuralSpeechEngine,
+          onChanged: onChanged,
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.edit_outlined),
+          title: const Text('Write a report'),
+          subtitle: const Text(
+            'Tell us something is wrong or missing, and send faults this '
+            'tablet caught',
+          ),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ReportsScreen(
+                db: db,
+                vocabularyId: vocabularyId,
+                profileId: profileId,
+                settings: settings,
+                speech: speech,
+                crashes: crashes,
+                sender: sender,
+                userName: userName,
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     ),
     // One screen of its own (§4.43a). What is on it is prose rather than
     // controls, and the one thing there is to press on it opens the credits.

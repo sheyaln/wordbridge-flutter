@@ -12,7 +12,9 @@ import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
 import 'features/profiles/profile_setup.dart';
+import 'features/reporting/crash_flush.dart';
 import 'features/reporting/crash_store.dart';
+import 'features/reporting/report_sender.dart';
 import 'features/speech/neural/neural_engine.dart';
 import 'features/speech/speech_engine.dart';
 import 'features/speech/voice_setup.dart';
@@ -311,7 +313,53 @@ class _WordbridgeAppState extends State<WordbridgeApp>
       _symbols.setEnabled(choice.key, choice.value);
     }
 
-    return _profiles.resume();
+    final profile = await _profiles.resume();
+
+    // Faults caught last time, if this profile said yes to sending them
+    // (§4.59). Deliberately here and not in the handler that recorded them:
+    // that one runs before the app, holds no database, and may be holding a
+    // fault about the database. Not awaited either — a report that will not
+    // send must not hold up a board somebody is waiting to talk on.
+    if (profile != null) unawaited(_sendWaitingFaults(profile));
+
+    return profile;
+  }
+
+  /// Sends what crashed last time, and swallows everything.
+  ///
+  /// Every failure in here ends in the records staying where they are, for the
+  /// next launch or for somebody to send by hand. Nothing it does may reach
+  /// the launch it is running inside.
+  Future<void> _sendWaitingFaults(Profile profile) async {
+    try {
+      final settings = ProfileSettings(_db, profile.id);
+      await settings.load();
+      if (!settings.crashReports) return;
+
+      final vocabularyId = profile.activeVocabularyId;
+      final vocabulary = vocabularyId == null
+          ? null
+          : await (_db.select(
+              _db.vocabularies,
+            )..where((v) => v.id.equals(vocabularyId))).getSingleOrNull();
+
+      await flushCaughtFaults(
+        store: CrashStore(),
+        sender: ReportSender(),
+        enabled: true,
+        board: (
+          rows: vocabulary?.gridRows ?? 0,
+          cols: vocabulary?.gridCols ?? 0,
+          level: profile.vocabLevel,
+          engine: settings.neuralVoice ? 'neural' : 'platform',
+        ),
+        // The name on the board is the one thing a machine-written trace is
+        // most likely to be carrying.
+        names: [profile.displayName],
+      );
+    } catch (_) {
+      // Kept for next time.
+    }
   }
 
   /// Called after setup, and after a caregiver switches profile.
