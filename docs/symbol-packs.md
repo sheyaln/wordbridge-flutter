@@ -53,8 +53,8 @@ is a network call, and it fails soft when there is none.
 not searched, not resolved, not drawn, until a person turns them on. Opting out
 again stops resolving images already on disk. The restriction then attaches to
 the user's choice rather than to this project's distribution. `ArasaacPack` is
-implemented and tested but is not registered in `main.dart`, so it is not yet
-reachable in the running app.
+registered in `main.dart` and reachable from caregiver settings under Pictures,
+off until somebody turns it on.
 
 The default for a pack a person has never touched is its own
 `allowsCommercialUse`, not a saved list. A pack added in a later release

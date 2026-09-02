@@ -3,9 +3,6 @@
 A free, open source AAC app. Runs on a tablet, shows a grid of words and
 pictures, speaks whatever is pressed.
 
-**Early access.** Runs on one iPad, not in any app store. Do not put it on a
-device somebody depends on.
-
 ## Fixed motor planning
 
 Every word has a permanent place on the grid. Adding vocabulary never moves
