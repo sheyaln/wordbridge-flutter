@@ -42,7 +42,7 @@ const starterPredictions = <String, List<String>>{
   'it': ['good', 'not', 'yucky', 'yummy', 'here', 'more', 'hurt'],
   'that': ['good', 'not', 'more', 'please', 'here', 'yucky'],
   // Body parts and people, because "my" is how both get claimed.
-  'my': ['turn', 'tummy', 'head', 'mum', 'dad', 'friend', 'name', 'book'],
+  'my': ['turn', 'tummy', 'head', 'mom', 'dad', 'friend', 'name', 'book'],
   'me': ['more', 'please', 'that', 'it', 'up'],
 
   // Verbs want an object, a direction, or another verb.
@@ -66,16 +66,16 @@ const starterPredictions = <String, List<String>>{
   'know': ['it', 'that', 'you', 'what', 'why'],
   'think': ['so', 'I', 'it', 'that', 'you'],
   'say': ['it', 'that', 'no', 'yes', 'please', 'hello'],
-  'tell': ['me', 'you', 'mum', 'dad', 'him', 'her'],
+  'tell': ['me', 'you', 'mom', 'dad', 'him', 'her'],
   'see': ['it', 'that', 'you', 'me', 'more'],
   'come': ['here', 'in', 'out', 'up', 'outside'],
   'give': ['me', 'it', 'that', 'more', 'him', 'her'],
   // A feeling word, not "good": the whole reason to reach for "feel" is to say
   // something the strip cannot get to from the root board.
   'feel': ['sad', 'sick', 'tired', 'happy', 'angry', 'scared', 'poorly'],
-  'love': ['you', 'it', 'that', 'mum', 'dad', 'music'],
+  'love': ['you', 'it', 'that', 'mom', 'dad', 'music'],
   'hate': ['it', 'that', 'this', 'school', 'you'],
-  'miss': ['you', 'mum', 'dad', 'home', 'him', 'her'],
+  'miss': ['you', 'mom', 'dad', 'home', 'him', 'her'],
   'wait': ['please', 'here', 'I', 'stop'],
   'finish': ['I', 'yes', 'no', 'more'],
 
@@ -116,10 +116,10 @@ const starterPredictions = <String, List<String>>{
   'wrong': ['you', 'that', 'no', 'not', 'I'],
 
   // Greeting and naming a person, which on this board is a way of getting one.
-  'hello': ['mum', 'dad', 'I', 'you', 'teacher', 'friend'],
-  'bye': ['mum', 'dad', 'you', 'thank you'],
-  'thank you': ['I', 'you', 'mum', 'dad', 'bye'],
-  'mum': ['help', 'I', 'look', 'come', 'here', 'please'],
+  'hello': ['mom', 'dad', 'I', 'you', 'teacher', 'friend'],
+  'bye': ['mom', 'dad', 'you', 'thank you'],
+  'thank you': ['I', 'you', 'mom', 'dad', 'bye'],
+  'mom': ['help', 'I', 'look', 'come', 'here', 'please'],
   'dad': ['help', 'I', 'look', 'come', 'here', 'please'],
   'brother': ['I', 'here', 'play', 'come', 'help'],
   'sister': ['I', 'here', 'play', 'come', 'help'],
@@ -131,10 +131,10 @@ const starterPredictions = <String, List<String>>{
   // Food. A drink or a meal is nearly always a request, so "please" and "more"
   // sit near the front of every one of these.
   'eat': ['food', 'more', 'lunch', 'dinner', 'breakfast', 'snack', 'toast'],
-  'drink': ['water', 'milk', 'juice', 'squash', 'more', 'please'],
+  'drink': ['water', 'milk', 'juice', 'more', 'please'],
   'hungry': ['food', 'please', 'snack', 'lunch', 'more', 'dinner'],
   'food': ['please', 'more', 'I', 'yummy', 'hungry'],
-  'thirsty': ['please', 'water', 'drink', 'juice', 'squash', 'I'],
+  'thirsty': ['please', 'water', 'drink', 'juice', 'I'],
   'yummy': ['more', 'please', 'I', 'thank you'],
   'yucky': ['no', 'not', 'stop', 'different', 'I'],
   'water': ['please', 'more', 'I', 'cold', 'thank you'],
@@ -151,9 +151,9 @@ const starterPredictions = <String, List<String>>{
   // Feelings. "because" first, because a feeling nobody is given a reason for
   // gets managed rather than answered.
   'happy': ['because', 'thank you', 'I', 'you', 'good'],
-  'sad': ['because', 'help', 'I', 'mum', 'dad'],
+  'sad': ['because', 'help', 'I', 'mom', 'dad'],
   'angry': ['because', 'stop', 'I', 'leave me alone', 'you'],
-  'scared': ['because', 'help', 'I', 'mum', 'stop'],
+  'scared': ['because', 'help', 'I', 'mom', 'stop'],
   'tired': ['I', 'because', 'home', 'bedroom', 'please'],
   'excited': ['because', 'I', 'yes', 'more'],
   'bored': ['because', 'I', 'play', 'different', 'more'],
@@ -193,7 +193,7 @@ const starterPredictions = <String, List<String>>{
   'dizzy': ['I', 'help', 'because'],
   'medicine': ['please', 'need', 'want', 'I'],
   'toilet': ['please', 'go', 'I', 'want', 'need'],
-  'wee': ['please', 'toilet', 'need', 'I'],
+  'pee': ['please', 'toilet', 'need', 'I'],
   'poo': ['please', 'toilet', 'need', 'I'],
 
   // Play: the thing, and the doing of it.

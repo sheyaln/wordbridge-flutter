@@ -935,7 +935,7 @@
       "matched": "Holiday",
       "part_of_speech": "noun"
     },
-    "mum": {
+    "mom": {
       "file": "mum.png",
       "set": "tawasol",
       "picto_id": 7792,
@@ -949,7 +949,7 @@
       "matched": "father",
       "part_of_speech": "noun"
     },
-    "biscuit": {
+    "cookie": {
       "file": "biscuit.svg",
       "set": "stellar-symbols",
       "picto_id": 53070,
@@ -1159,7 +1159,7 @@
       "matched": "Grapes",
       "part_of_speech": "noun"
     },
-    "crisps": {
+    "chips": {
       "file": "crisps.svg",
       "set": "mulberry",
       "picto_id": 3940,
@@ -1663,7 +1663,7 @@
       "matched": "yes",
       "part_of_speech": "adverb"
     },
-    "yoghurt": {
+    "yogurt": {
       "file": "yoghurt.svg",
       "set": "mulberry",
       "picto_id": 6220,
@@ -1901,7 +1901,7 @@
       "matched": "please",
       "part_of_speech": "adverb"
     },
-    "wee": {
+    "pee": {
       "file": "wee.svg",
       "set": "openmoji",
       "picto_id": 44100,

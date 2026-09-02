@@ -115,7 +115,7 @@ void main() {
     /// Gets as far as the question, which is where every one of these starts.
     Future<void> askToRestore(WidgetTester tester) async {
       backup.kept = [_snapshotAt(DateTime.utc(2026, 8, 3, 14, 22))];
-      await addWord('biscuit');
+      await addWord('cookie');
       await open(tester);
 
       await tester.tap(find.byIcon(Icons.restore));

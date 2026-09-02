@@ -177,7 +177,7 @@ void main() {
     });
 
     test('on a later page counts the pages', () async {
-      final found = await find('biscuit');
+      final found = await find('cookie');
 
       expect(found.single.boardId, await boardNamed('food 2'));
       expect(found.single.steps, [

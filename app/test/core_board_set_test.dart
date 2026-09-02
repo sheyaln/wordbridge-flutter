@@ -544,7 +544,7 @@ void main() {
       // already on this board moved to make room for it.
       const shipped = [
         'eat drink food straw plate cook taste chew swallow pour spill',
-        'water milk juice squash tea coffee fizzy . . . .',
+        'water milk juice tea coffee soda . . . . .',
         'breakfast lunch dinner snack soup pizza chicken . . . .',
         'bread toast cereal rice pasta egg cheese butter honey jam .',
         'apple banana orange grapes berries melon lemon . . . .',
@@ -608,7 +608,7 @@ void main() {
         'tomato',
         'salad',
       ]);
-      expect(byRow[1], ['cake', 'biscuit', 'crisps', 'yoghurt']);
+      expect(byRow[1], ['cake', 'cookie', 'chips', 'yogurt']);
       // §4.42's two new clusters went to the back of the queue rather than
       // pushing `fruit` off page one — a band that has just arrived does not
       // displace one somebody may already have learned.

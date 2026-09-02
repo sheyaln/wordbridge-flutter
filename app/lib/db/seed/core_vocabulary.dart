@@ -581,7 +581,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'family',
       shedRank: 1,
       items: [
-        ...nouns(['mum', 'dad'], level: 1),
+        ...nouns(['mom', 'dad'], level: 1),
         ...nouns([
           'baby',
           'brother',
@@ -701,7 +701,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 2,
       items: [
         ...nouns(['water', 'milk', 'juice'], level: 1),
-        ...nouns(['squash', 'tea', 'coffee', 'fizzy'], level: 3),
+        ...nouns(['tea', 'coffee', 'soda'], level: 3),
       ],
     ),
 
@@ -767,8 +767,8 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'treats',
       shedRank: 7,
       items: [
-        ...nouns(['cake', 'biscuit'], level: 2),
-        ...nouns(['crisps', 'yoghurt'], level: 3),
+        ...nouns(['cake', 'cookie'], level: 2),
+        ...nouns(['chips', 'yogurt'], level: 3),
       ],
     ),
 
@@ -1153,7 +1153,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'toileting',
       shedRank: 0,
-      items: nouns(['toilet', 'wee', 'poo'], level: 1),
+      items: nouns(['toilet', 'pee', 'poo'], level: 1),
     ),
 
     // Twenty seven parts, and a row holds eleven. Three rows by region rather
@@ -1225,7 +1225,6 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns([
           'medicine',
-          'plaster',
           'bandage',
           'cough',
           'temperature',
@@ -1519,7 +1518,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 4,
       items: [
         ...nouns(['shoes', 'coat'], level: 2),
-        ...nouns(['shirt', 'trousers', 'socks', 'hat'], level: 3),
+        ...nouns(['shirt', 'pants', 'socks', 'hat'], level: 3),
       ],
     ),
 
