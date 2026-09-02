@@ -231,7 +231,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       body: ListView(
         children: [
           // The device's own voice first, and the neural one below it. It is
-          // what ships, what speaks by default, and what a pre-alpha feature
+          // what ships, what speaks by default, and what an early access voice
           // falls back to — a screen that opened on the experiment read as
           // though the experiment were the arrangement.
           const VoiceHeader('Device voice'),

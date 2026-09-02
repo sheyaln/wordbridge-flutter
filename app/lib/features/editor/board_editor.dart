@@ -283,7 +283,7 @@ class _BoardEditorState extends State<BoardEditor> {
                 ),
                 subtitle: Text(
                   impact.taps == 0
-                      ? 'Not used from this spot in the last '
+                      ? 'Nothing recorded at this location in the last '
                             '${impact.windowDays} days'
                       : '${impact.taps} taps here over ${impact.days} days, '
                             'in the last ${impact.windowDays}',
@@ -1298,10 +1298,10 @@ class _NameALineState extends State<_NameALine> {
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: Text(
-              'A name here is shown above the row when "Label what each part '
-              'of the board is for" is on. Rebuilding the board set or '
-              'changing the grid re-lays every row, and these are dropped '
-              'rather than moved onto a row that is not the one you named.',
+              'A name here is shown above the row when "Label each row" is on. '
+              'Rebuilding the board set or changing the grid lays every row '
+              'out afresh, and these are dropped rather than moved onto a row '
+              'that is not the one you named.',
             ),
             isThreeLine: true,
           ),

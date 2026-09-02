@@ -610,7 +610,7 @@ void main() {
       await settle(tester);
 
       expect(
-        find.textContaining('Could not read the most-used words'),
+        find.textContaining('Could not read the most used words'),
         findsOneWidget,
       );
       expect(find.text('9'), findsWidgets, reason: 'the counts read fine');
@@ -630,7 +630,7 @@ void main() {
             'does nothing',
       );
       expect(
-        find.textContaining('Could not read the most-used words'),
+        find.textContaining('Could not read the most used words'),
         findsNothing,
       );
       expect(
@@ -660,7 +660,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.textContaining('Could not read the most-used words'),
+        find.textContaining('Could not read the most used words'),
         findsOneWidget,
       );
       expect(find.text('Try again'), findsNWidgets(3));

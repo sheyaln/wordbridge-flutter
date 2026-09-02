@@ -182,8 +182,9 @@ class _BackupsScreenState extends State<BackupsScreen> {
                   title: Text(lastBackedUp(snapshots)),
                   subtitle: const Text(
                     'A backup is the whole board set: every word, picture and '
-                    'location, plus any usage recorded. One is taken before '
-                    'every update.',
+                    'location, plus any usage recorded. One is taken '
+                    'automatically when an update changes how the board is '
+                    'stored.',
                   ),
                   isThreeLine: true,
                 ),
@@ -235,7 +236,10 @@ class _BackupsScreenState extends State<BackupsScreen> {
                 if (snapshots.isEmpty)
                   const ListTile(
                     title: Text('No backups yet'),
-                    subtitle: Text('One will be taken before the next update.'),
+                    subtitle: Text(
+                      'Use Back up now, above. One is also taken when an '
+                      'update changes how the board is stored.',
+                    ),
                   ),
                 for (final snapshot in snapshots)
                   ListTile(

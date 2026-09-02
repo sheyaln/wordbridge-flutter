@@ -203,7 +203,7 @@ class _UsageSummaryState extends State<UsageSummary> {
         const _Heading('Most used'),
         _Panel<List<WordCount>>(
           future: mostUsed,
-          what: 'the most-used words',
+          what: 'the most used words',
           onRetry: () => setState(() {
             _mostUsed = _readMostUsed();
           }),

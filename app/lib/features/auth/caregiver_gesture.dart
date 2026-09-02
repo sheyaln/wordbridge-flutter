@@ -9,13 +9,13 @@ import '../../db/database.dart';
 enum CaregiverGesture {
   cornerHold(
     'One corner, held',
-    'Press and hold the top-left corner of the sentence bar. Nothing is drawn '
+    'Press and hold the top left corner of the sentence bar. Nothing is drawn '
         'until the hold is already underway, so there is nothing inviting '
         'anyone to try it.',
   ),
   twoCorners(
     'Both bottom corners, held together',
-    'Press and hold the bottom-left and bottom-right locations of the board at '
+    'Press and hold the bottom left and bottom right locations of the board at '
         'the same time: home and the “more words” key. A hand resting on the '
         'tablet cannot produce two contacts that far apart.',
   );

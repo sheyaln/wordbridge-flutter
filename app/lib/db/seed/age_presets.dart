@@ -22,7 +22,10 @@ enum AgeBand {
   earlyYears('Under 6', 'Core words first, with the rest ready to reveal.'),
   child('6 to 12', 'The full starter vocabulary.'),
   teen('13 to 17', 'Adds the words a teenager needs and adults forget.'),
-  adult('18 and over', 'Adds adult vocabulary, appointments and self-care.');
+  adult(
+    '18 and over',
+    'Adds adult vocabulary, appointments and personal care.',
+  );
 
   const AgeBand(this.label, this.description);
 

@@ -58,14 +58,14 @@ Future<RestoreAttempt> restoreKeepingACopy(
 ///
 /// So this copies the database, not the vocabulary. The OBF/OBZ export in
 /// `features/interop` is an interchange format for moving words between
-/// programs, and it does not carry reserved cells, vocabulary levels, hidden
-/// words, band maps, or usage history. Offering it as a backup would recreate
-/// the exact failure: a caregiver who believes they are safe and is not. A
-/// backup here is byte-for-byte the same database, or it is not a backup.
+/// programs, and it leaves behind the band maps, the names given to rows, the
+/// usage history and every profile setting. Offering it as a backup would
+/// recreate the exact failure: a caregiver who believes they are safe and is
+/// not. A backup here is byte-for-byte the same database, or it is not a
+/// backup.
 ///
-/// Nothing here touches a network and nothing here has anywhere to send a
-/// file. Snapshots include the usage log, which is a record of a disabled
-/// person's private speech, and they stay on the tablet it was said on.
+/// Snapshots include the usage log, which is a record of a disabled person's
+/// private speech, and they stay on the tablet it was said on.
 ///
 /// Taking a snapshot never throws. It runs while somebody may be mid-sentence,
 /// and a backup that can interrupt speech is worse than no backup at all;
@@ -256,7 +256,7 @@ class BackupService {
           snapshot: null,
           problem:
               'A backup from this moment already exists. Nothing was '
-              'changed — try again in a second.',
+              'changed. Try again in a second.',
         ));
       }
 

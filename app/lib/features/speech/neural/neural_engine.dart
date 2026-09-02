@@ -287,7 +287,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// Says a whole sentence, and this is the one place a wait was agreed to.
   ///
   /// The exception in §4.5 is exact: one press, one wait, one sentence, for a
-  /// profile that switched a realiztic voice on knowing what it costs. It is
+  /// profile that switched a realistic voice on knowing what it costs. It is
   /// bounded by [budget], because an opted-in wait is a trade somebody chose
   /// and an *unbounded* wait is not a trade at all — nobody agrees to a number
   /// they were never shown.

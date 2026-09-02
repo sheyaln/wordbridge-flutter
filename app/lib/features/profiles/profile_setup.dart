@@ -175,7 +175,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
                 labelText: 'Name',
-                helperText: 'Shown in settings only. Never spoken aloud.',
+                helperText:
+                    'Added to the home board as a button, so it is spoken '
+                    'aloud. It also names this profile in settings.',
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -286,8 +288,8 @@ class _ProfileSetupState extends State<ProfileSetup> {
             _Section(
               title: 'Strong language',
               note:
-                  'Turning this off hides these words in place rather than '
-                  'deleting them, so turning it back on moves nothing.',
+                  'Turning this off hides these words in place. Turning it '
+                  'back on shows them in the same locations.',
               child: SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Include swearing'),

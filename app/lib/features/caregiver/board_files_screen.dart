@@ -267,11 +267,11 @@ class _NotABackup extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'An exported file carries words, symbols and links. It does '
-                  'not carry reserved locations, the vocabulary level, what '
-                  'is hidden, or any usage recorded. Use Backups to keep a '
-                  'board set safe; use this to move one to another program '
-                  'or person.',
+                  'An exported file carries the boards, their words, symbols '
+                  'and links. It leaves behind the row groupings, any names '
+                  'you gave rows, everything recorded about use, and this '
+                  'profile\'s own settings. Use Backups to keep a board set '
+                  'safe; use this to move one to another program or person.',
                   style: Theme.of(context).textTheme.bodyMedium
                       ?.copyWith(color: colors.onTertiaryContainer),
                 ),

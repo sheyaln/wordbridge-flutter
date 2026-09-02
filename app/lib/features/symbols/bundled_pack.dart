@@ -166,8 +166,8 @@ List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
     license: 'CC-BY-SA-4.0',
     attribution:
         'Assembled from Mulberry Symbols, Stellar Symbols, Tawasol and '
-        'OpenMoji via Global Symbols. All CC BY-SA. Per-symbol credits are '
-        'listed in the pack manifest and on the Symbol credits screen.',
+        'OpenMoji via Global Symbols. All CC BY-SA. Credits for each symbol '
+        'are listed in the pack manifest and on the Symbol credits screen.',
     bundle: bundle,
   ),
 ];

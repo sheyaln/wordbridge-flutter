@@ -81,8 +81,8 @@ class RemapConfirmSheet extends StatelessWidget {
               Text(warning!, style: const TextStyle(fontSize: 16, height: 1.4))
             else
               Text(
-                '"${impact.label}" has not been used from this spot yet, so '
-                'moving it costs nothing.',
+                'Nothing is recorded at this location for '
+                '"${impact.label}", so this is about as cheap as a move gets.',
                 style: const TextStyle(fontSize: 16, height: 1.4),
               ),
 
