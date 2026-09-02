@@ -285,8 +285,8 @@ Those are reasons. They are not citations, and the distinction is deliberate.
 
 One design rule belongs with them, because it constrains what a word may be
 asked to do. Every button carries exactly one meaning regardless of what
-preceded it ([ADR-0002](adr/0002-no-polysemous-symbols.md)), so no word in this
-vocabulary depends on a sequence to mean what it says.
+preceded it (ADR 0002, which lives with the project rather than in this repo),
+so no word in this vocabulary depends on a sequence to mean what it says.
 
 Three further citations appear in `band_layout.dart` and `core_vocabulary.dart`:
 Thistle & Wilkinson (2017), Wilkinson, Gilmore & Qian (2022), and Fallon, Light
