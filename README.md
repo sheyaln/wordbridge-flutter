@@ -10,20 +10,17 @@ what is already there; new words go into cells left empty for them.
 
 A grid location is a database row that exists whether or not a word sits on it.
 Every cell is created with its board, empty, and its identity never changes.
-Content attaches to a location. Locations are never computed from a list of
-words, because computed layouts are how grid apps reshuffle in silence.
+Content attaches to a location, and every location is deliberate rather than
+computed.
 
-`app/test/motor_plan_invariant_test.dart` records the route to every word,
-grows the vocabulary to full size, and fails if any existing route changes. It
-blocks CI.
-
-Evidence for consistent placement is thin: one study (Thistle et al., 2018),
-24 typically developing four year olds. Built as though it matters because the
-mechanism is plausible and the cost of being wrong is low. No more than that.
+Despite evidence for consistent placement being thin (Thistle et al., 2018),
+this was built because the mechanism is plausible, and muscle memory supports
+the goal of making an AAC app that is intuitive.
 
 ## Editing
 
-The editor is open to parents, aides and therapists, and holds one rule:
+The editor is open to whoever knows the board, the user included, and holds one
+rule:
 
 > Additive changes are safe. Displacing changes are not.
 
@@ -42,8 +39,8 @@ Displacing edits are still possible, with the cost shown first.
 Speech happens before anything else. Logging comes after and cannot throw, so a
 database problem never costs somebody a word.
 
-Everything needed is on the device. Bytes leave because a person read a report
-and pressed send. Usage tracking is off until somebody turns it on.
+Everything needed is on the device. Reports are sent by hand, after they have
+been read. Usage tracking is off until somebody turns it on.
 
 ## Build
 
@@ -57,9 +54,9 @@ flutter run
 flutter test
 ```
 
-Goldens carry the `golden` tag and are read locally; a Linux runner rasterizes
-text differently, so CI runs `flutter test --concurrency=1 --exclude-tags
-golden`.
+Render tests carry the `golden` tag and are checked locally; a Linux runner
+rasterizes text differently, so CI runs `flutter test --concurrency=1
+--exclude-tags golden`.
 
 Deploying: [Deploying to an iPad](docs/deploy-ipad.md).
 
