@@ -125,7 +125,10 @@ const _reachable = <String, List<String>>{
     'Both bottom corners, held together',
     'Held for 2 seconds',
   ],
-  'Usage tracking': ['Track usage'],
+  // Two controls, because stopping the recording and deleting what was already
+  // recorded are two different things and only one of them is reversible
+  // (§4.78).
+  'Usage tracking': ['Track usage', 'Delete usage history'],
   // Durability rather than setup, so both sit below the decisions that make the
   // tablet somebody's. One screen rather than a page of controls, so the row on
   // the list opens it: what has to stay reachable is the control, not the hop.
