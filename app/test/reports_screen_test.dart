@@ -10,6 +10,7 @@ import 'package:wordbridge/features/caregiver/reports_screen.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
 import 'package:wordbridge/features/reporting/crash_store.dart';
 import 'package:wordbridge/features/reporting/device_facts.dart';
+import 'package:wordbridge/features/reporting/report.dart';
 import 'package:wordbridge/features/reporting/report_sender.dart';
 
 /// §4.52. Nothing leaves this tablet without somebody reading it first.
@@ -112,6 +113,28 @@ void main() {
     ) async {
       await open(tester, url: '');
       expect(find.textContaining('nowhere to send reports'), findsOneWidget);
+    });
+  });
+
+  group('the note box says what it is', () {
+    testWidgets('the notice is beside the box, not somewhere else', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.text(personalInformationNotice), findsOneWidget);
+    });
+
+    testWidgets('and asks for names to be left out', (tester) async {
+      // §4.79. Everything else in a report is cleaned on the way out and this
+      // field is not, so this is the sentence that has to do the work.
+      expect(personalInformationNotice.toLowerCase(), contains('names'));
+      expect(personalInformationNotice, contains('exactly as written'));
+    });
+
+    testWidgets('and holds to the house style', (tester) async {
+      // §5: no dashes in anything a person reads.
+      expect(personalInformationNotice, isNot(contains('-')));
+      expect(personalInformationNotice, isNot(contains('—')));
     });
   });
 
