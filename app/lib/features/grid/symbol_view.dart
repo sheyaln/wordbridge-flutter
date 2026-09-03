@@ -178,17 +178,38 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          // Without a picture the word carries the whole button, so it is set
-          // larger rather than left floating at caption size.
-          fontSize: large ? 22 : 13,
-          fontWeight: large ? FontWeight.w600 : FontWeight.w500,
-          color: Colors.black87,
+    // A `FittedBox` hands its child unbounded width, so text inside one never
+    // wraps: it lays out on a single line and is then scaled down to fit. For
+    // a word that is fine. For a phrase it is not — "I use a computer voice to
+    // talk" is one long line shrunk until it is unreadable, which on a 10x14
+    // grid is a button nobody can read.
+    //
+    // Constraining the text to the width it actually has lets it wrap first
+    // and be scaled second. A short word is narrower than that width and lays
+    // out exactly as it did before.
+    return LayoutBuilder(
+      builder: (context, box) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            // Wider than the cell on purpose. At exactly the cell's width a
+            // word longer than the line breaks in the middle of itself —
+            // "comput" over "er" — because that is what Flutter does when a
+            // word will not fit. Laying out in a wider box keeps words whole,
+            // and the scale down that follows is what makes it fit.
+            maxWidth: box.maxWidth.isFinite ? box.maxWidth * 2 : 200,
+          ),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              // Without a picture the word carries the whole button, so it is
+              // set larger rather than left floating at caption size.
+              fontSize: large ? 22 : 13,
+              fontWeight: large ? FontWeight.w600 : FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
         ),
       ),
     );

@@ -35,9 +35,14 @@ const _out = String.fromEnvironment(
 
 const _name = String.fromEnvironment('name', defaultValue: 'Wordbridge');
 
-/// An iPad mini's logical size. The short and long sides are what
+/// The device's logical size. The short and long sides are what
 /// [GridChoice.derive] reads, so either orientation of the pair works.
-const _screen = Size(744, 1133);
+///
+/// Defaults to an iPad mini. Pass the pair for another device to stage a
+/// screenshot at the size a store asks for.
+const _short = int.fromEnvironment('short', defaultValue: 744);
+const _long = int.fromEnvironment('long', defaultValue: 1133);
+final _screen = Size(_short.toDouble(), _long.toDouble());
 
 void main() {
   test('writes a seeded database for a screenshot', () async {
