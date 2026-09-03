@@ -104,3 +104,20 @@ const reportSizeLimit = 64 * 1024;
 /// The most a caregiver may type. Generous: somebody describing what went
 /// wrong should not be counting characters.
 const noteLimit = 4000;
+
+/// What the note box is, said beside the note box (§4.79).
+///
+/// Everything else in a report is cleaned on the way out: the trace loses
+/// quoted text and file paths, and `refusalToSend` stops a report still
+/// carrying a profile name. That check reads machine-written text only, on
+/// purpose — what somebody typed themselves is theirs to type — which leaves
+/// this one field reaching us exactly as written.
+///
+/// So it carries the reason and not just the instruction. "Do not send personal
+/// information" is a warning somebody scrolls past; "this is the only part of
+/// the report that can carry a name" is a fact they can act on.
+const personalInformationNotice =
+    'What you type here is sent exactly as written. Everything else in the '
+    'report has names and board words taken out first, so this box is the one '
+    'part that can carry them. Please leave out names and anything else '
+    'personal.';

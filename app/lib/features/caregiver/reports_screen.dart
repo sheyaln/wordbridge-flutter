@@ -219,6 +219,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
           ),
+          // Under the box rather than in the helper line. A helper line is
+          // small, grey, and one line tall, which is the right size for
+          // "It does not do what it should" and the wrong size for the only
+          // sentence here that changes what somebody types.
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Text(
+              personalInformationNotice,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                height: 1.4,
+              ),
+            ),
+          ),
           // Hidden outright where the build has no neural voice at all, and
           // shown inert where it has one that is switched off. Settings makes
           // the opposite call and shows it either way — that page is an
