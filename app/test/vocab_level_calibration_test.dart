@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/age_presets.dart';
+import 'package:wordbridge/db/seed/band_layout.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/seed/core_vocabulary.dart';
 
@@ -249,7 +250,14 @@ void main() {
       // a test failing for arithmetic rather than for a decision.
       //
       // Raise it deliberately again if a board is added, and say so here.
-      expect(shippedWordsAtMost(2), inInclusiveRange(200, 290));
+      //
+      // Raised from 290 to 310 for §4.68 and §4.70, which added `for`,
+      // `under`, `left`, `right`, `less`, `whole` and the modals — words the
+      // board could not say, every one of them level 2. That took it to 291,
+      // which is the wall the note above describes rather than a budget, so
+      // this time the headroom is deliberate: near twenty words of room, and
+      // level 3 is still roughly twice this.
+      expect(shippedWordsAtMost(2), inInclusiveRange(200, 310));
     });
 
     test('level 3 is everything', () {
@@ -334,24 +342,38 @@ void main() {
     );
   });
 
-  test('nothing on the root board outranks the verbs that page off', () {
-    // Level is also shed order: the highest level leaves the page first. The
-    // tail of the verb band is the run a 7x12 grid has no room for, so a level
-    // above it anywhere else sheds ahead of it and takes a learned location.
+  /// Level 3 outside the verbs band, on purpose, with a decision behind it.
+  ///
+  /// Two entries, and each one is an argument rather than a convenience:
+  /// §4.68's comparatives are level 3 because nothing is unsayable without
+  /// them, and §4.70's directions because saying which side of a thing
+  /// something is comes after saying that it is in, on, up, out or under it.
+  /// Anything joining this set has to be measured by the test below, not just
+  /// added to it.
+  bool deliberatelyLate(String bandName, BandItem<SeedWord> item) =>
+      comparativeMorphemes.contains(item.value.morphemeKind) ||
+      (bandName == 'places' &&
+          const {'left', 'right'}.contains(item.value.label));
+
+  test('everything else on the root board is drawn before the verb tail', () {
     for (final band in homeBands) {
       for (final item in band.items) {
         if (band.name == 'verbs') continue;
+        if (deliberatelyLate(band.name, item)) continue;
         expect(
           item.level,
           lessThanOrEqualTo(2),
           reason:
               '"${item.value.label}" in "${band.name}" sheds before the verbs '
               'the root board already pages off, which moves the words around '
-              'it',
+              'it. If that is deliberate, name it in `deliberatelyLate` and '
+              'let the measurement below prove it moves nothing',
         );
       }
     }
+  });
 
+  test('the verbs that page off are one run at the end of their band', () {
     final verbLevels = [
       for (final band in homeBands)
         if (band.name == 'verbs')
@@ -363,6 +385,90 @@ void main() {
       everyElement(3),
       reason: 'the level-3 verbs are no longer one run at the end of the band',
     );
+  });
+
+  test('nothing on the root board outranks the verbs that page off', () {
+    // Level is also shed order: the highest level leaves the page first. The
+    // tail of the verb band is the run a 7x12 grid has no room for, so a level
+    // above it anywhere else sheds ahead of it and could take a learned
+    // location.
+    //
+    // The rule is a statement about placement that only ever checked a
+    // declared number, so for the exception where the number is doing the work
+    // the placement is measured instead: the root board without the
+    // comparatives, laid out beside the root board as it ships, at every
+    // geometry the app derives. A word at different coordinates, or a word that
+    // has left page one, is the failure.
+    //
+    // Only the comparatives. `left` and `right` are the other exception and
+    // this says nothing about them, deliberately: what a word's level changes
+    // is who sees it, not where anything sits, so their being level 3 cannot
+    // move a location. Adding two words to a band can, and did — at 9x15 the
+    // yes/no column shifted one place — but that is what adding vocabulary to
+    // a full board costs, it is the same cost at level 2, and it reaches new
+    // profiles only. An upgrade never moves a cell on a board somebody already
+    // has; `motor_plan_invariant_test` and `grid_migration_test` are what hold
+    // that line.
+    //
+    // The baseline is the board without these two words, not the board with a
+    // whole level stripped out. Removing every level-3 word does move things,
+    // and it means nothing: no build has ever drawn that board.
+    final without = [
+      for (final band in homeBands)
+        if (band.name == 'verbs')
+          band
+        else
+          Band<SeedWord>(
+            name: band.name,
+            items: [
+              for (final item in band.items)
+                if (!comparativeMorphemes.contains(item.value.morphemeKind))
+                  item,
+            ],
+            minLines: band.minLines,
+            maxLines: band.maxLines,
+            reserveLines: band.reserveLines,
+            reserveRank: band.reserveRank,
+            shedRank: band.shedRank,
+            startsLine: band.startsLine,
+            tailOnly: band.tailOnly,
+            fill: band.fill,
+          ),
+    ];
+
+    Map<String, ({int row, int col})> coordinates(
+      List<Band<SeedWord>> bands, {
+      required int rows,
+      required int cols,
+    }) {
+      final layout = layOutBands(bands: bands, rows: rows, cols: cols);
+      return {
+        for (final p in layout.placed) p.value.label: (row: p.row, col: p.col),
+      };
+    }
+
+    for (final grid in geometries) {
+      final before = coordinates(without, rows: grid.rows, cols: grid.cols);
+      final after = coordinates(homeBands, rows: grid.rows, cols: grid.cols);
+
+      for (final entry in before.entries) {
+        expect(
+          after[entry.key],
+          entry.value,
+          reason:
+              '"${entry.key}" moved at ${grid.rows}x${grid.cols} '
+              '(${grid.name}) to make room for the comparatives',
+        );
+      }
+
+      expect(
+        after.keys.toSet(),
+        containsAll(before.keys),
+        reason:
+            'a shipped word left page one at ${grid.rows}x${grid.cols} '
+            '(${grid.name}) to make room for the comparatives',
+      );
+    }
   });
 
   test('the preset extras are leveled like everything else', () {
