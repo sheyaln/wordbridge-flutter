@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- TestFlight and the App Store are the same export. `app-store-connect`
+       is what Xcode 15 and later call it; `app-store` is the old name and is
+       still accepted. -->
+  <key>method</key>
+  <string>app-store-connect</string>
+
+  <key>teamID</key>
+  <string>98GHT62M9Q</string>
+
+  <!-- Let Xcode make and renew the distribution profile rather than pinning a
+       name that expires and takes the build with it. -->
+  <key>signingStyle</key>
+  <string>automatic</string>
+
+  <!-- Symbols go up so a crash in TestFlight arrives readable. The app sends
+       its own reports, and this is the other half: a fault the Dart handler
+       never sees, because the process was killed rather than throwing, only
+       exists in Apple's crash logs. -->
+  <key>uploadSymbols</key>
+  <true/>
+
+  <!-- Never. An App Store build must be the code that was tested. -->
+  <key>stripSwiftSymbols</key>
+  <true/>
+</dict>
+</plist>
