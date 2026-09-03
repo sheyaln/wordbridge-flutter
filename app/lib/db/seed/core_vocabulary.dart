@@ -111,6 +111,25 @@ BandItem<SeedWord> w(
 /// only vocabulary some boards ever draw.
 const grammarKeyPageRank = 15;
 
+/// Where the comparatives sit in that same order (§4.68).
+///
+/// The one grammar key that does not earn [grammarKeyPageRank]. Behind the
+/// conjunctions at 20 and behind the verb tail at 30, because linking words
+/// are what turn a run of words into a sentence and a comparative is not that.
+/// Of everything on the root board these are the least costly to reach for on
+/// a second page.
+const comparativePageRank = 35;
+
+/// The two endings that are drawn late as well as paged off late (§4.68).
+///
+/// Named because two rules have to make an exception of exactly this pair and
+/// a rule that makes its exception by matching a label is a rule that breaks
+/// when somebody renames a key.
+const comparativeMorphemes = {
+  MorphemeKind.comparativeEr,
+  MorphemeKind.superlativeEst,
+};
+
 List<BandItem<SeedWord>> _all(
   List<String> labels,
   PartOfSpeech pos, {
@@ -373,8 +392,18 @@ final homeBands = <Band<SeedWord>>[
       // 35 puts them behind the conjunctions and behind the verb tail at 30,
       // which is the honest order: of everything on the root board these are
       // the least costly to reach for on a second page.
-      _morpheme('+er', MorphemeKind.comparativeEr, level: 3, pageRank: 35),
-      _morpheme('+est', MorphemeKind.superlativeEst, level: 3, pageRank: 35),
+      _morpheme(
+        '+er',
+        MorphemeKind.comparativeEr,
+        level: 3,
+        pageRank: comparativePageRank,
+      ),
+      _morpheme(
+        '+est',
+        MorphemeKind.superlativeEst,
+        level: 3,
+        pageRank: comparativePageRank,
+      ),
     ],
   ),
 
