@@ -93,8 +93,8 @@ void main() {
     // both asserted separately.
     const shipped = [
       'I    we   all       want need  like     +s        a       here under good',
-      'you  they some      go   stop  wait     +ed       the     in   .     not',
-      'he   my   same      can  get   take     +ing      and     on   .   yes',
+      'you  they some      go   stop  wait     +ed       the     in   left  not',
+      'he   my   same      can  get   take     +ing      and     on   right yes',
       'she  me   different do   make  put      +\'s      but     up   .   no',
       'it   this more      open close help     am/is/are because to   .   don\'t',
       'that .    less      look turn  finish   was/were  so      out  .   maybe',
@@ -239,7 +239,14 @@ void main() {
     // cells but that the two reserves survive: the noun column and the cells
     // beside the pronouns. Both exist so personal vocabulary has somewhere to
     // land that displaces nothing.
-    expect(reserved.length, greaterThan(6));
+    //
+    // Six, down from seven. §4.68 and §4.70 spent the difference on words the
+    // board could not say — `for`, `under`, `left`, `right`, `less`, `whole`,
+    // the modals — and the reserve is where a dense board finds the room. Held
+    // at six rather than raised again: the tests that matter are the two below
+    // that name which reserves those are, and this one only stops the last of
+    // them being spent without anybody noticing.
+    expect(reserved.length, greaterThanOrEqualTo(6));
   });
 
   test('reserves the column beside the pronouns for names', () async {
