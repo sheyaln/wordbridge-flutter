@@ -28,6 +28,7 @@ import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import '../talk/route_walk.dart';
 import '../usage/logger.dart';
+import '../usage/usage_queries.dart';
 import '../utterance/morphology.dart';
 import '../reporting/crash_store.dart';
 import '../reporting/report_sender.dart';
@@ -1127,6 +1128,7 @@ class _Settings extends StatelessWidget {
                   onChanged();
                 },
         ),
+        _ForgetUsageTile(db: db, profileId: profileId, onChanged: onChanged),
         const Padding(
           padding: EdgeInsets.all(16),
           child: Text(
@@ -1234,6 +1236,101 @@ class _Settings extends StatelessWidget {
 /// Safe to change from in here precisely because you are already inside. It is
 /// the device's answer rather than the profile's: which hands hold the tablet
 /// is not a fact about the person speaking on it.
+/// Deleting what has already been recorded, beside the switch that stops more
+/// being recorded (§4.78).
+///
+/// Two halves of one thing and deliberately two controls: stopping is
+/// reversible and this is not. It shows the count before asking, because a
+/// button that deletes an unknown quantity of somebody's history is a button
+/// nobody can weigh.
+class _ForgetUsageTile extends StatefulWidget {
+  const _ForgetUsageTile({
+    required this.db,
+    required this.profileId,
+    required this.onChanged,
+  });
+
+  final WordbridgeDatabase db;
+  final String profileId;
+  final VoidCallback onChanged;
+
+  @override
+  State<_ForgetUsageTile> createState() => _ForgetUsageTileState();
+}
+
+class _ForgetUsageTileState extends State<_ForgetUsageTile> {
+  late final _usage = UsageQueries(widget.db);
+  int? _recorded;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_count());
+  }
+
+  Future<void> _count() async {
+    final recorded = await _usage.recordedFor(widget.profileId);
+    if (mounted) setState(() => _recorded = recorded);
+  }
+
+  Future<void> _confirm() async {
+    final recorded = _recorded ?? 0;
+
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete usage history?'),
+        content: Text(usageDeletionWarning(recorded)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete it'),
+          ),
+        ],
+      ),
+    );
+    if (go != true) return;
+
+    final gone = await _usage.forgetProfile(widget.profileId);
+    if (!mounted) return;
+
+    setState(() => _recorded = 0);
+    widget.onChanged();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          gone == 1 ? 'One selection deleted' : '$gone selections deleted',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final recorded = _recorded;
+
+    return ListTile(
+      leading: const Icon(Icons.delete_outline),
+      title: const Text('Delete usage history'),
+      isThreeLine: true,
+      subtitle: Text(
+        recorded == null
+            ? 'Removes every location count recorded for this profile.'
+            : recorded == 0
+            ? 'Nothing is recorded for this profile.'
+            : 'Removes the $recorded ${recorded == 1 ? 'selection' : 'selections'} '
+                  'recorded for this profile. Switching tracking off stops new '
+                  'ones; this deletes the old ones.',
+      ),
+      onTap: recorded == null || recorded == 0 ? null : _confirm,
+    );
+  }
+}
+
 class _CaregiverEntryTile extends StatefulWidget {
   const _CaregiverEntryTile({required this.db});
 

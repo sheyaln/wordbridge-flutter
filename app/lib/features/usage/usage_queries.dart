@@ -12,6 +12,23 @@ typedef Utterance = ({String text, DateTime at});
 /// learned about where it is.
 typedef CellHistory = ({int taps, int days, DateTime? firstUsed});
 
+/// What deleting a profile's usage history costs, in the sentence somebody is
+/// asked to agree to (§4.78).
+///
+/// A pure function of the count so the sentence is a thing a test can state,
+/// the same way the restore warning is. What it has to carry is the number and
+/// the consequence: the log's only job is answering "how much practice has this
+/// location had", and deleting it takes that answer away until new selections
+/// build up.
+String usageDeletionWarning(int recorded) {
+  if (recorded == 0) return 'Nothing has been recorded for this profile yet.';
+
+  final selections = recorded == 1 ? 'selection' : 'selections';
+  return 'This deletes $recorded recorded $selections. Until new ones build '
+      'up, the editor cannot say how much practice a location has had before '
+      'you move the word in it.';
+}
+
 /// The [days] calendar days ending on [today], oldest first, each at local
 /// midnight.
 ///
@@ -106,6 +123,36 @@ class UsageQueries {
   /// transcript. A count that has stopped being true is deleted.
   Future<int> forgetCell(String cellId) =>
       (_db.delete(_db.usageEvents)..where((e) => e.cellId.equals(cellId))).go();
+
+  /// How many selections are recorded for one profile (§4.78).
+  ///
+  /// Asked before offering to delete them, because "delete usage history" with
+  /// no number in it is a button whose cost nobody can see.
+  Future<int> recordedFor(String profileId) async {
+    final count = _db.usageEvents.id.count();
+    final row =
+        await (_db.selectOnly(_db.usageEvents)
+              ..addColumns([count])
+              ..where(_db.usageEvents.profileId.equals(profileId)))
+            .getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// Deletes one profile's usage history, on purpose, because somebody asked
+  /// (§4.78).
+  ///
+  /// Scoped to the profile rather than the device: what this records is one
+  /// person's selections, and the switch that stops the recording is per
+  /// profile for the same reason. Deleting somebody else's history from
+  /// somebody else's screen is not a thing this should be able to do.
+  ///
+  /// Turning tracking off stops the recording from that moment and leaves what
+  /// is already on disk. This is the other half, and the two are deliberately
+  /// separate: stopping is reversible and losing months of practice counts is
+  /// not.
+  Future<int> forgetProfile(String profileId) => (_db.delete(
+    _db.usageEvents,
+  )..where((e) => e.profileId.equals(profileId))).go();
 
   Future<CellHistory> historyForCell(
     String cellId, {
