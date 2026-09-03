@@ -82,9 +82,30 @@ void main() {
 
     test('and a word can be drawn late and paged off early', () {
       final endingsBand = homeBands.firstWhere((b) => b.name == 'endings');
-      for (final item in endingsBand.items) {
+      for (final item in endingsBand.items.where(
+        (i) => !comparativeMorphemes.contains(i.value.morphemeKind),
+      )) {
         expect(item.level, 2);
         expect(item.pageRank, lessThan(20));
+      }
+    });
+
+    test('and the comparatives are the corner where both are late', () {
+      // The rest of the endings band is drawn late and kept on page one. These
+      // two are drawn late and paged off late, which is the fourth corner and
+      // the reason the two ranks are separate at all: nothing is unsayable
+      // without a comparative, and they are the first thing the root board
+      // gives up rather than the linking words.
+      final endingsBand = homeBands.firstWhere((b) => b.name == 'endings');
+      final items = endingsBand.items.where(
+        (i) => comparativeMorphemes.contains(i.value.morphemeKind),
+      );
+
+      expect(items, hasLength(2));
+      for (final item in items) {
+        expect(item.level, 3);
+        expect(item.pageRank, comparativePageRank);
+        expect(item.pageRank, greaterThan(30), reason: 'behind the verb tail');
       }
     });
 
