@@ -3,6 +3,11 @@
 A free, open source AAC app. Runs on a tablet, shows a grid of words and
 pictures, speaks whatever is pressed.
 
+This app was developed with the assistance of generative AI. It is said here,
+on the About screen inside the app, and in the footer of the website, because
+anyone deciding what this is allowed to do is entitled to know that before they
+decide.
+
 ## Fixed motor planning
 
 Every word has a permanent place on the grid. Adding vocabulary never moves
@@ -39,8 +44,18 @@ Displacing edits are still possible, with the cost shown first.
 Speech happens before anything else. Logging comes after and cannot throw, so a
 database problem never costs somebody a word.
 
-Everything needed is on the device. Reports are sent by hand, after they have
-been read. Usage tracking is off until somebody turns it on.
+Everything needed to speak is on the device, so nothing waits on a network.
+
+What leaves it, and what does not:
+
+- Usage tracking is on by default and asked about at setup. It records the
+  location, never the word, and it never leaves the device.
+- Crash reports are on by default and asked about at setup. They go out on the
+  next launch, never during the crash, carrying a stack trace with quoted text
+  and file paths removed.
+- Voice measurements are off until somebody turns them on.
+- A bug report or an idea is shown whole before it is sent, and somebody
+  presses send.
 
 ## Build
 
