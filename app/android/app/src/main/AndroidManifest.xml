@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Tablets only, for the same reason the iOS build is iPad only: the grid
+         is derived from the screen, and a phone does not have the room. An
+         iPhone SE refuses every orientation and icon size combination outright.
+         600dp is the 7 inch floor, so Play does not offer this to a device that
+         cannot build a board. -->
+    <supports-screens android:requiresSmallestWidthDp="600" />
+
     <application
         android:label="Wordbridge AAC"
         android:name="${applicationName}"
