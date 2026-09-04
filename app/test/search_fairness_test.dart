@@ -27,20 +27,29 @@ class _Countable implements SymbolPack {
   @override
   String get attribution => id;
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   Future<List<SymbolRef>> search(
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => [
     for (var i = 0; i < available && i < limit; i++)
       (packId: id, externalId: '$i', label: '$id $i'),
   ];
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => null;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => null;
 }
 
 /// Whether a set a person can see listed is a set they can find anything in.

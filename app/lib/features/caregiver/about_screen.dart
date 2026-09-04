@@ -4,6 +4,7 @@ import '../auth/hold_ring.dart';
 import '../developer/developer_mode.dart';
 import '../reporting/report.dart';
 import '../symbols/symbol_credits.dart';
+import '../symbols/symbol_registry.dart';
 
 /// Who made this app, what it may be used under, and how it was built.
 ///
@@ -16,7 +17,7 @@ import '../symbols/symbol_credits.dart';
 /// directly (§4.43a). There is one thing to press on it, and that is a second
 /// screen rather than a hop to one.
 class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key, this.developerMode});
+  const AboutScreen({super.key, this.developerMode, this.registry});
 
   /// Where developer mode is switched on, or null on a build that has no such
   /// thing.
@@ -26,6 +27,11 @@ class AboutScreen extends StatelessWidget {
   /// is behind the gesture and the PIN already; what the hold on the version
   /// adds is that nobody arrives at it while looking for something else.
   final DeveloperMode? developerMode;
+
+  /// Passed through to the credits, which need it to name the sets a fetching
+  /// pack reaches. Those ship no manifest, so without it they are credited
+  /// nowhere a person can reach and every one of them is CC BY-SA.
+  final SymbolRegistry? registry;
 
   /// The people, not the account. The commit history carries a handle; a
   /// caregiver deciding whether to trust this with a child is owed names.
@@ -122,7 +128,9 @@ class AboutScreen extends StatelessWidget {
             subtitle: const Text('Who made the pictures, and their licenses'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const SymbolCredits()),
+              MaterialPageRoute<void>(
+                builder: (_) => SymbolCredits(registry: registry),
+              ),
             ),
           ),
         ],

@@ -68,9 +68,9 @@ SymbolTileState symbolTileState({
 
 /// Where a picture came from, in the fewest words that identify it again.
 ///
-/// The bundled pack is assembled from four upstream sets, so its own name says
-/// nothing useful: every tile read "Wordbridge AAC core symbols" whatever set
-/// drew it. Where the set is known it is shown instead, because that plus the
+/// The bundled pack is assembled from several upstream sets, so its own name
+/// says nothing useful: every tile read "Wordbridge AAC core symbols" whatever
+/// set drew it. Where the set is known it is shown instead, because that plus the
 /// label above it is what somebody needs to ask for a different picture by
 /// name.
 ///

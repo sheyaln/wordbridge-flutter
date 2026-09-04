@@ -395,7 +395,15 @@ class _FakePack implements SymbolPack {
   String get attribution => 'test';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   /// Not bundled, so resolution yields a file path and the test never needs an
   /// asset in the build.
@@ -407,6 +415,7 @@ class _FakePack implements SymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) {
     if (hangs) return Completer<List<SymbolRef>>().future;
     if (throws) throw StateError('broken');
@@ -415,7 +424,7 @@ class _FakePack implements SymbolPack {
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) {
     if (hangs) return Completer<String?>().future;
     if (throws) throw StateError('broken');
     return Future.value(images[ref.label]);
@@ -442,7 +451,15 @@ class _AssembledPack implements AssembledSymbolPack {
   String get attribution => 'Assembled.';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   bool get isBundled => true;
@@ -455,6 +472,7 @@ class _AssembledPack implements AssembledSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => const [];
 
   @override
@@ -462,7 +480,7 @@ class _AssembledPack implements AssembledSymbolPack {
       sourceOf(ref) == null ? null : 'Drawn by ${sourceOf(ref)}';
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => null;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => null;
 }
 
 void _originTests() {
@@ -528,7 +546,15 @@ class _DownloadingPack implements DownloadingSymbolPack {
   String get attribution => 'Global Symbols.';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   bool get isBundled => false;
@@ -544,10 +570,11 @@ class _DownloadingPack implements DownloadingSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => const [];
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => null;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => null;
 
   @override
   Future<void> dispose() async {}

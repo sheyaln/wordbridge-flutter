@@ -8,12 +8,17 @@ import '../symbols/symbol_registry.dart';
 /// Which picture sets this tablet may use.
 ///
 /// The screen exists for one rule, which the registry enforces and this makes
-/// visible: a pack whose license forbids commercial use is inert until
-/// somebody turns it on. Fetching one on a person's instruction is their
-/// choice; shipping it enabled would make it ours.
+/// visible: a set whose license forbids commercial use is inert until somebody
+/// turns it on. Fetching one on a person's instruction is their choice;
+/// shipping it enabled would make it ours.
 ///
-/// So the switch says what the license actually restricts, in the terms
-/// somebody deciding would need. It does not argue for either answer.
+/// **Sets, not packs.** Whether a picture ships in the binary or is downloaded
+/// when a word needs one is how the app is built, and it used to be the thing
+/// a caregiver was asked about: two switches called "Wordbridge AAC core
+/// symbols" and "More pictures", neither of which is a name anybody chooses
+/// between. Somebody deciding wants Mulberry drawings and not emoji, or the
+/// other way round. So the list is the sets themselves, and the row says what
+/// each one costs to use rather than which mechanism carries it.
 class SymbolPacksScreen extends StatefulWidget {
   const SymbolPacksScreen({
     super.key,
@@ -29,15 +34,15 @@ class SymbolPacksScreen extends StatefulWidget {
 }
 
 class _SymbolPacksScreenState extends State<SymbolPacksScreen> {
-  Future<void> _set(SymbolPack pack, bool enabled) async {
-    widget.registry.setEnabled(pack.id, enabled);
+  Future<void> _set(SymbolSet set, bool enabled) async {
+    widget.registry.setSetEnabled(set.slug, enabled);
     await saveSymbolChoices(widget.db, widget.registry.choices);
     if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final packs = widget.registry.packs;
+    final registry = widget.registry;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pictures')),
@@ -47,21 +52,21 @@ class _SymbolPacksScreenState extends State<SymbolPacksScreen> {
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'Pictures that come with the app are always available. The rest '
-              'are downloaded when a word needs one, and kept on the device '
-              'afterwards.',
+              'Each set is drawn by different people in a different style. '
+              'Turning one off takes it out of picture search and off the '
+              'buttons that were using it.',
               style: TextStyle(fontSize: 14, height: 1.45),
             ),
           ),
-          for (final pack in packs)
+          for (final set in registry.sets)
             SwitchListTile(
-              value: widget.registry.isEnabled(pack.id),
-              title: Text(pack.name),
-              subtitle: Text(subtitleFor(pack)),
-              isThreeLine: !pack.allowsCommercialUse,
-              // A bundled pack is the app's own artwork and switching it off
-              // would leave the shipped board blank.
-              onChanged: pack.isBundled ? null : (v) => _set(pack, v),
+              value: registry.isSetEnabled(set.slug),
+              title: Text(set.name),
+              subtitle: Text(
+                subtitleFor(set, registry.packsOffering(set.slug)),
+              ),
+              isThreeLine: !set.allowsCommercialUse,
+              onChanged: (v) => _set(set, v),
             ),
         ],
       ),
@@ -69,18 +74,32 @@ class _SymbolPacksScreenState extends State<SymbolPacksScreen> {
   }
 }
 
-/// What a caregiver reads under a pack's name.
+/// What a caregiver reads under a set's name.
 ///
-/// Extracted so the one sentence that carries a license term can be tested
-/// without building a screen. A noncommercial pack that quietly described
-/// itself as ordinary would be the whole safeguard undone by a subtitle.
-String subtitleFor(SymbolPack pack) {
-  if (pack.isBundled) {
-    return 'Comes with the app. Always available, and works offline.';
-  }
-  if (pack.allowsCommercialUse) {
-    return 'Show results from this pack in picture search.';
-  }
-  return 'Show results from this pack in picture search. Licensed for '
-      'noncommercial use only.';
+/// Two things, in the order they matter to somebody deciding: whether it works
+/// without a network, and what the license restricts.
+///
+/// Extracted so the sentence that carries a license term can be tested without
+/// building a screen. A noncommercial set that quietly described itself as
+/// ordinary would be the whole safeguard undone by a subtitle.
+String subtitleFor(SymbolSet set, List<SymbolPack> offering) {
+  final ships = offering.any((p) => p.isBundled);
+  final glyph = offering.any((p) => p is GlyphSymbolPack);
+  final fetches = offering.any((p) => p is DownloadingSymbolPack);
+
+  final cost = switch ((ships, glyph, fetches)) {
+    // Both, which is the case a per pack switch could not describe: some of
+    // this set is in the app and the rest of it is a download away.
+    (true, _, true) =>
+      'Some pictures come with the app. More are downloaded when a word '
+          'needs one.',
+    (true, _, _) => 'Comes with the app. Works offline.',
+    (_, true, _) => 'Drawn by this device. Works offline.',
+    (_, _, true) =>
+      'Downloaded when a word needs one, and kept on the device afterwards.',
+    _ => 'Show pictures from this set.',
+  };
+
+  if (set.allowsCommercialUse) return cost;
+  return '$cost Licensed for noncommercial use only.';
 }

@@ -52,13 +52,24 @@ class SystemEmojiPack implements GlyphSymbolPack {
   String get license => 'Unicode-3.0';
 
   @override
-  String get attribution =>
-      'Emoji names and search words from Unicode CLDR, © Unicode, Inc., '
-      'under the Unicode License v3. The pictures are drawn by this device '
-      'with its own emoji font and are not part of Wordbridge AAC.';
+  String get attribution => set.attribution;
+
+  /// Its own source, so one set. Named for what a person is choosing rather
+  /// than for the mechanism: nobody picks "the system emoji pack", they decide
+  /// whether they want the device's emoji among their pictures.
+  static const set = (
+    slug: 'device-emoji',
+    name: 'Device emoji',
+    attribution:
+        'Emoji names and search words from Unicode CLDR, © Unicode, Inc., '
+        'under the Unicode License v3. The pictures are drawn by this device '
+        'with its own emoji font and are not part of Wordbridge AAC.',
+    license: 'Unicode-3.0',
+    allowsCommercialUse: true,
+  );
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => const [set];
 
   /// False, and it matters. No picture ships inside the binary — only the
   /// codepoints that ask the platform for one.
@@ -113,9 +124,11 @@ class SystemEmojiPack implements GlyphSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty || limit <= 0) return const [];
+    if (sets != null && !sets.contains(set.slug)) return const [];
 
     final entries = await index();
     if (entries.isEmpty) return const [];
@@ -158,8 +171,9 @@ class SystemEmojiPack implements GlyphSymbolPack {
   /// picture somebody already chose has to keep being drawn even after the
   /// index it was found through is regenerated without it.
   @override
-  Future<String?> resolve(SymbolRef ref) async {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async {
     if (ref.packId != id) return null;
+    if (sets != null && !sets.contains(set.slug)) return null;
     return charactersFor(ref.externalId);
   }
 

@@ -1292,7 +1292,8 @@ class _Settings extends StatelessWidget {
       description: 'This version of the app, and its credits',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => AboutScreen(developerMode: developer),
+          builder: (_) =>
+              AboutScreen(developerMode: developer, registry: registry),
         ),
       ),
     ),

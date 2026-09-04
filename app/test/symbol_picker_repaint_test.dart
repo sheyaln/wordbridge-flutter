@@ -270,7 +270,15 @@ class _QueueingPack implements DownloadingSymbolPack {
   String get attribution => 'test';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   bool get isBundled => false;
@@ -283,10 +291,11 @@ class _QueueingPack implements DownloadingSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => refs;
 
   @override
-  Future<String?> resolve(SymbolRef ref) async {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async {
     resolveCalls++;
     return _landed.contains(ref.externalId) ? file : null;
   }

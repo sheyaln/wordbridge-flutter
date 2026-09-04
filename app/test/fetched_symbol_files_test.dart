@@ -55,12 +55,16 @@ void main() {
   );
 
   /// Everything in the pack's directory, so a test can say what it was called.
+  ///
+  /// Walked one level down: a downloaded picture is filed under the set that
+  /// drew it, which is the only record of that surviving the app being closed.
   List<String> filed() {
-    final directory = Directory('${temp.path}/symbols/globalsymbols');
-    if (!directory.existsSync()) return const [];
+    final root = Directory('${temp.path}/symbols/globalsymbols');
+    if (!root.existsSync()) return const [];
     return [
-      for (final file in directory.listSync().whereType<File>())
-        file.uri.pathSegments.last,
+      for (final set in root.listSync().whereType<Directory>())
+        for (final file in set.listSync().whereType<File>())
+          file.uri.pathSegments.last,
     ]..sort();
   }
 

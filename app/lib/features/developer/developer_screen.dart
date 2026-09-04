@@ -150,8 +150,8 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
           if (widget.registry case final registry?) ...[
             const Divider(height: 32),
             const _Heading('Picture sets'),
-            for (final pack in registry.packs)
-              _Fact(pack.id, registry.isEnabled(pack.id) ? 'on' : 'off'),
+            for (final set in registry.sets)
+              _Fact(set.slug, registry.isSetEnabled(set.slug) ? 'on' : 'off'),
           ],
 
           const Divider(height: 32),

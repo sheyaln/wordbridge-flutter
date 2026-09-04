@@ -268,7 +268,7 @@ void main() {
       // Opting out of a pack has to take its pictures off the board, and a
       // path stored on the symbol row is not a way around that.
       final registry = SymbolRegistry(packs: [packServingWater()]);
-      registry.setEnabled('core', false);
+      registry.setSetEnabled('core', false);
       final resolver = SymbolResolver(registry: registry, db: db);
       addTearDown(resolver.dispose);
       final chosen = await packSymbol(externalId: 'cup.png', label: 'cup');
@@ -847,7 +847,15 @@ class _FakePack implements SymbolPack {
   String get attribution => 'test';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   /// Not bundled, so resolution yields a file path and no test needs an asset
   /// in the build.
@@ -859,6 +867,7 @@ class _FakePack implements SymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     if (hangs) return Completer<List<SymbolRef>>().future;
     final externalId = words[query];
@@ -867,7 +876,7 @@ class _FakePack implements SymbolPack {
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) {
     if (hangs) return Completer<String?>().future;
     return Future.value(files[ref.externalId]);
   }
@@ -904,7 +913,15 @@ class _LatePack implements DownloadingSymbolPack {
   String get attribution => 'test';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   bool get isBundled => false;
@@ -914,10 +931,11 @@ class _LatePack implements DownloadingSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => query == 'water' ? const [_ref] : const [];
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => _path;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => _path;
 
   @override
   Future<void> dispose() => _available.close();
