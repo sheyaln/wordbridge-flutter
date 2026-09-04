@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master]
+    tags: ['v*']
   pull_request:
     branches: [master]
 
@@ -54,3 +55,139 @@ jobs:
   # The report intake (§4.53) is built and tested in its own repository, which
   # is where its source lives. A job here would check out this one and find no
   # `intake` directory to run in.
+
+  # Nothing in `flutter test` compiles for a device. That gap has already cost
+  # a broken build once: a Swift file was written, referenced from
+  # AppDelegate, and never added to the Xcode target — 1888 Dart tests passed
+  # on a tree that produced no iOS app at all. This job is the Android half of
+  # closing that.
+  #
+  # Debug, and unsigned by anything that matters: the release keystore is not
+  # on this runner and must not be. What is being checked is that the Kotlin,
+  # the Gradle config and the plugins still produce an APK.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Generate database code
+        run: dart run build_runner build
+
+      - name: Build APK
+        run: flutter build apk --debug
+
+      # So a change can be put on a phone without a local toolchain. Debug
+      # signed, so it is for looking at and never for a person who relies on
+      # the board — that is what the release job below is for.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordbridge-debug-apk
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+
+  # The APK the website offers, built only for a tag.
+  #
+  # **Signed with the upload key**, which is deliberately not the key Play
+  # distributes with: Play re-signs with a key Google holds. So a board built
+  # here and a board installed from Play are different signatures, and a device
+  # cannot move between them without uninstalling — which on this app means
+  # deleting somebody's voice. The download is for people Play cannot reach,
+  # and the page that offers it says so.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Loud rather than quiet. Without these the Gradle config falls back to
+      # the debug signing key and would publish an APK that looks like a
+      # release and can never be updated by one.
+      - name: Require the signing secrets
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 is not set. Refusing to publish an" >&2
+            echo "APK signed with the debug key. See docs/release-apk.md." >&2
+            exit 1
+          fi
+
+      - name: Restore the keystore
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE" | base64 --decode > app/android/upload-keystore.jks
+          cat > app/android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          EOF
+
+      - run: flutter pub get
+        working-directory: app
+
+      - name: Generate database code
+        run: dart run build_runner build
+        working-directory: app
+
+      # Where a crash report goes, compiled in. Absent, the Reports screen
+      # builds and says it has nowhere to send anything, which is honest but
+      # is not what a release should ship as.
+      - name: Build the release APK
+        working-directory: app
+        env:
+          INTAKE_URL: ${{ secrets.WORDBRIDGE_INTAKE_URL }}
+          INTAKE_TOKEN: ${{ secrets.WORDBRIDGE_INTAKE_TOKEN }}
+        run: |
+          defines=()
+          if [ -n "$INTAKE_URL" ] && [ -n "$INTAKE_TOKEN" ]; then
+            defines+=(--dart-define=WORDBRIDGE_INTAKE_URL="$INTAKE_URL")
+            defines+=(--dart-define=WORDBRIDGE_INTAKE_TOKEN="$INTAKE_TOKEN")
+          fi
+          flutter build apk --release "${defines[@]}"
+          mv build/app/outputs/flutter-apk/app-release.apk wordbridge.apk
+
+      # The keystore is on this runner's disk until the job ends. Removing it
+      # costs nothing and means a later step added by somebody cannot read it.
+      - name: Shred the keystore
+        if: always()
+        run: rm -f app/android/upload-keystore.jks app/android/key.properties
+
+      # A fixed asset name, so the website can link to
+      # releases/latest/download/wordbridge.apk and never be edited again.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" app/wordbridge.apk \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
