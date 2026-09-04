@@ -110,6 +110,8 @@ List<String> get namesToOffer => ({
   'colors',
   'numbers',
   'time',
+  'weather',
+  'pets',
 }.toList()..sort());
 
 /// One label on the strip: what it says, and which lines it sits over.

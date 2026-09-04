@@ -229,12 +229,13 @@ void main() {
       // the slot takes its picture from whichever category it is showing, so a
       // chosen one is ignored — this is the case where it is not.
       //
-      // The width follows the number of shipped categories: it was 14 for nine
-      // and is 15 for ten. `showsEveryCategory` below is the premise, and it
-      // is asserted rather than assumed for exactly this reason.
+      // The width follows the number of shipped categories — a system row
+      // holds `cols - 5` of them — so it was 14 for nine, 15 for ten and is 18
+      // for thirteen. `showsEveryCategory` below is the premise, and it is
+      // asserted rather than assumed for exactly this reason.
       final wide = WordbridgeDatabase.forTesting(NativeDatabase.memory());
       addTearDown(wide.close);
-      final id = await seedCoreBoardSet(wide, rows: 7, cols: 15);
+      final id = await seedCoreBoardSet(wide, rows: 7, cols: 18);
 
       final frame = SystemFrame.parse(
         (await (wide.select(

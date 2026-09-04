@@ -492,6 +492,17 @@ final homeBands = <Band<SeedWord>>[
       // to expect both.
       w('left', PartOfSpeech.preposition, level: 3),
       w('right', PartOfSpeech.preposition, level: 3),
+      // "on" has been here since the first board and "off" never was, so the
+      // board could put a thing somewhere and not take it back — and could
+      // not say the one thing anybody says about a light, a tap or a
+      // television. It draws at level 2 with "out" and "under", the other two
+      // that answer where something went rather than where it is.
+      w('off', PartOfSpeech.preposition, level: 2),
+      // The other axis. Left and right are the only directions a board with
+      // these could give, which is half of every instruction about a
+      // wheelchair, a queue, a page or a walk.
+      w('forward', PartOfSpeech.preposition, level: 3),
+      w('backward', PartOfSpeech.preposition, level: 3),
     ],
   ),
 
@@ -645,6 +656,12 @@ const categoryNames = [
   'numbers',
   'time',
   'objects',
+  // Appended for the same reason and with the same guarantee: the wheel is a
+  // window onto this list in order, so every key already learned still opens
+  // what it always opened.
+  'weather',
+  'clothing',
+  'animals',
 ];
 
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
@@ -1448,6 +1465,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 2,
       items: [
         ...verbs(['ask', 'answer', 'talk'], level: 2),
+        // The noun the two verbs beside it take. "ask" and "answer" were both
+        // here and the thing being asked and answered was not, so a person
+        // could say they were asking without naming what — and "I have a
+        // question" is how somebody gets a turn in a classroom.
+        ...nouns(['question'], level: 2),
         ...verbs(['listen'], level: 1),
         ...verbs(['call'], level: 3),
         ...verbs(['show'], level: 1),
@@ -1650,15 +1672,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       ],
     ),
 
-    Band(
-      name: 'clothes',
-      shedRank: 4,
-      items: [
-        ...nouns(['shoes', 'coat'], level: 2),
-        ...nouns(['shirt', 'pants', 'socks', 'hat'], level: 3),
-      ],
-    ),
-
+    // The `clothes` band that used to close this board is now the `clothing`
+    // board, which is where somebody looks for a sock. Six words wedged
+    // between the school things and the caregiver reserve were as far as an
+    // objects board could go, and getting dressed is a daily negotiation
+    // rather than a corner of the naming vocabulary.
     Band(
       name: 'ours',
       shedRank: 9,
@@ -1740,6 +1758,205 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // Units. A person names the unit only once they are negotiating with
         // it — "five more minutes" — which is a level-3 conversation.
         ...nouns(['minute', 'hour', 'day', 'week'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // Nothing on the board said what it was like outside. Weather is the
+  // small talk a person is asked for most and can least improvise — "is it
+  // raining?" is a closed question somebody either answers or is answered
+  // for — and it is what decides whether going out is being offered at all.
+  //
+  // Adjectives lead, because what a person says is "it's sunny" rather than
+  // "sun". The nouns are below them for the times the thing itself is the
+  // subject.
+  'weather': [
+    Band(
+      name: 'what it is like',
+      shedRank: 0,
+      items: [
+        ...adjectives(['sunny', 'rainy'], level: 2),
+        ...adjectives(['windy', 'cloudy'], level: 3),
+        ...adjectives(['snowy', 'foggy', 'icy', 'stormy'], level: 3),
+      ],
+    ),
+
+    // Deliberately not "hot" and "cold". Both are on `food` / `how it is`,
+    // where they describe a meal about to be eaten or refused, and that is
+    // the sense a person needs first and most urgently. A second pair here
+    // would give each word two homes and neither would be the obvious one
+    // (§4.42). These four say the same thing about a day without taking the
+    // meal's words away from it.
+    Band(
+      name: 'how it feels',
+      shedRank: 1,
+      items: [
+        ...adjectives(['warm', 'cool'], level: 2),
+        ...adjectives(['freezing', 'boiling'], level: 3),
+        ...adjectives(['wet', 'dry'], level: 2),
+      ],
+    ),
+
+    Band(
+      name: 'in the sky',
+      shedRank: 2,
+      items: [
+        ...nouns(['sun', 'rain'], level: 2),
+        ...nouns(['snow', 'wind', 'cloud'], level: 3),
+        ...nouns(['sky', 'storm'], level: 3),
+      ],
+    ),
+
+    // What the weather is usually being asked about: whether to go out, and
+    // what has to be found before anybody can.
+    Band(
+      name: 'what to take',
+      shedRank: 3,
+      items: [
+        ...nouns(['umbrella'], level: 2),
+        ...nouns(['sunglasses', 'sunscreen'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // Getting dressed, which is a daily negotiation and was six nouns in a
+  // corner of `objects`. Those six are here unchanged and in the same order,
+  // and the rest of the board is what they could not say: which garment,
+  // whether it is going on or coming off, and what is wrong with it.
+  //
+  // Rows run in Fitzgerald order like every other mixed-class board — whole
+  // utterances and verbs, then the nouns, then what modifies them — so a
+  // class holds a contiguous block of rows and therefore of color. The first
+  // draft led with the clothes, which put an orange row above the verbs and
+  // two more below them; the golden of this board is what showed it.
+  //
+  // The verbs `dress` and `wear` are not here. Both are on `doing` /
+  // `caring`, with the rest of self-care, and one word with two homes and
+  // neither obvious is worse than one movement further away (§4.42).
+  //
+  // Where British and American English differ — sweater and jumper, pyjamas
+  // and pajamas, what "pants" means — one had to be picked. These are near
+  // the top of the list a caregiver renames, and renaming a label never moves
+  // the key it is on.
+  'clothing': [
+    // On and off, as whole utterances rather than verbs. "put" and "on" are
+    // two keys and two endings away from each other, and a verb key spelled
+    // "put on" would take the board's suffixes and produce "put oning".
+    Band(
+      name: 'getting dressed',
+      shedRank: 1,
+      items: [
+        ...phrases(['put it on', 'take it off'], level: 1),
+        ...verbs(['change'], level: 2),
+        ...verbs(['zip', 'button'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'every day',
+      shedRank: 0,
+      items: [
+        ...nouns(['shoes', 'coat'], level: 2),
+        ...nouns(['shirt', 'pants', 'socks', 'hat'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'more to wear',
+      shedRank: 3,
+      items: [
+        ...nouns(['jacket', 'sweater'], level: 3),
+        ...nouns(['dress', 'skirt', 'shorts'], level: 3),
+        ...nouns(['boots', 'gloves', 'scarf'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'underneath',
+      shedRank: 4,
+      items: [
+        ...nouns(['underwear', 'pyjamas'], level: 2),
+        ...nouns(['swimsuit'], level: 3),
+      ],
+    ),
+
+    // What is wrong with it, which is the half of dressing a board usually
+    // forgets and the half a person most needs. Without these the only thing
+    // sayable about an unbearable seam is "no", and a refusal nobody can
+    // explain gets treated as a mood.
+    Band(
+      name: 'how it feels on',
+      shedRank: 2,
+      items: [
+        ...adjectives(['itchy', 'tight'], level: 2),
+        ...adjectives(['loose', 'scratchy'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // Basics, which is what was asked for. An animals board is naming
+  // vocabulary, so almost all of it is level 3 — with the exception of the
+  // two a household actually contains and talks to, which are level 2.
+  //
+  // Banded by where the animal is met rather than by anything taxonomic: a
+  // child looking for "cow" is thinking of a farm, not of hooves.
+  'animals': [
+    Band(
+      name: 'pets',
+      shedRank: 0,
+      items: [
+        ...nouns(['dog', 'cat'], level: 2),
+        ...nouns(['fish', 'bird', 'rabbit'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'on the farm',
+      shedRank: 1,
+      items: [
+        ...nouns(['horse', 'cow', 'sheep'], level: 3),
+        ...nouns(['pig', 'chicken', 'duck'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'wild',
+      shedRank: 2,
+      items: [
+        ...nouns(['lion', 'bear', 'elephant'], level: 3),
+        ...nouns(['monkey', 'tiger', 'snake'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'small ones',
+      shedRank: 3,
+      items: [
+        ...nouns(['bug', 'spider', 'bee', 'butterfly'], level: 3),
       ],
     ),
 

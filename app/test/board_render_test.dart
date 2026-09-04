@@ -322,11 +322,15 @@ void main() {
     );
   });
 
-  testWidgets('the newest category board, with its rows named', (tester) async {
-    // The board added last, which is the one nobody has looked at yet. Its
-    // rows carry the widest labels in the set — "days of the week", "parts of
-    // the day" — and §4.29 is the standing reminder that a label nobody can
-    // read teaches nothing.
+  testWidgets('the board with the widest row labels, named', (tester) async {
+    // `time` carries the widest labels in the set — "days of the week",
+    // "parts of the day" — and §4.29 is the standing reminder that a label
+    // nobody can read teaches nothing.
+    //
+    // It used to be picked for being the newest board as well. It is not any
+    // more — `weather`, `clothing` and `animals` shipped after it — and the
+    // name said so for long enough to be worth correcting: a golden named
+    // after a property it no longer has is a picture nobody rechecks.
     //
     // Reached by turning the wheel rather than by `openBoard`, and that is the
     // point worth recording: a category past the last slot has no navigate
@@ -361,6 +365,52 @@ void main() {
     await expectLater(
       find.byType(TalkScreen),
       matchesGoldenFile('goldens/time_labeled.png'),
+    );
+  });
+
+  testWidgets('the newest category board, with its rows named', (tester) async {
+    // The board added last that nobody has looked at. `clothing` of the three,
+    // because it is the one with something to get wrong: five bands, three
+    // word classes, whole phrases beside single words, and the longest band
+    // names of the set. Weather and animals are noun rows.
+    //
+    // Reached by turning the wheel rather than by `openBoard`, and that is the
+    // point worth recording: a category past the last slot has no navigate
+    // button of its own anywhere in the database. Its slot is re-pointed at
+    // render time, so the only way to it is the way a person takes.
+    await settings.set('regionLabels', true);
+    await pump(tester);
+
+    final vocab = await (db.select(
+      db.vocabularies,
+    )..where((v) => v.id.equals(vocabularyId))).getSingle();
+    final frame = SystemFrame.parse(vocab.systemCellMap)!;
+
+    final index = frame.categories.indexWhere((c) => c.name == 'clothing');
+    expect(
+      index,
+      isNonNegative,
+      reason: 'the clothing board is not on the wheel',
+    );
+
+    final slots = frame.categoryCols.length;
+    for (var turn = 0; turn < index ~/ slots; turn++) {
+      await tester.tap(find.byKey(ValueKey('${frame.row}:${frame.cycleCol}')));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    await tester.tap(
+      find.byKey(ValueKey('${frame.row}:${frame.categoryCols[index % slots]}')),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/clothing_labeled.png'),
     );
   });
 }

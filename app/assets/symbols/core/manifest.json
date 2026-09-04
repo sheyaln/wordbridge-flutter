@@ -1935,6 +1935,426 @@
       "picto_id": 4927,
       "matched": "Left",
       "part_of_speech": "noun"
+    },
+    "off": {
+      "file": "off.svg",
+      "set": "mulberry",
+      "picto_id": 5183,
+      "matched": "Off",
+      "part_of_speech": "noun"
+    },
+    "forward": {
+      "file": "forward.svg",
+      "set": "mulberry",
+      "picto_id": 4588,
+      "matched": "Forward",
+      "part_of_speech": "noun"
+    },
+    "question": {
+      "file": "question.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53009,
+      "matched": "question",
+      "part_of_speech": "modifier"
+    },
+    "sunny": {
+      "file": "sunny.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53224,
+      "matched": "sunny",
+      "part_of_speech": "adjective"
+    },
+    "rainy": {
+      "file": "rainy.svg",
+      "set": "stellar-symbols",
+      "picto_id": 53218,
+      "matched": "rainy",
+      "part_of_speech": "adjective"
+    },
+    "windy": {
+      "file": "windy.svg",
+      "set": "openmoji",
+      "picto_id": 43139,
+      "matched": "Windy",
+      "part_of_speech": "noun"
+    },
+    "cloudy": {
+      "file": "cloudy.svg",
+      "set": "mulberry",
+      "picto_id": 3658,
+      "matched": "Cloudy",
+      "part_of_speech": "noun"
+    },
+    "foggy": {
+      "file": "foggy.svg",
+      "set": "openmoji",
+      "picto_id": 42985,
+      "matched": "Foggy",
+      "part_of_speech": "noun"
+    },
+    "icy": {
+      "file": "icy.svg",
+      "set": "openmoji",
+      "picto_id": 43142,
+      "matched": "Icy",
+      "part_of_speech": "noun"
+    },
+    "stormy": {
+      "file": "stormy.svg",
+      "set": "openmoji",
+      "picto_id": 43129,
+      "matched": "Stormy",
+      "part_of_speech": "noun"
+    },
+    "warm": {
+      "file": "warm.svg",
+      "set": "openmoji",
+      "picto_id": 42804,
+      "matched": "Warm",
+      "part_of_speech": "noun"
+    },
+    "cool": {
+      "file": "cool.svg",
+      "set": "openmoji",
+      "picto_id": 43124,
+      "matched": "Cool",
+      "part_of_speech": "noun"
+    },
+    "wet": {
+      "file": "wet.svg",
+      "set": "mulberry",
+      "picto_id": 6156,
+      "matched": "Wet",
+      "part_of_speech": "noun"
+    },
+    "dry": {
+      "file": "dry.svg",
+      "set": "mulberry",
+      "picto_id": 4090,
+      "matched": "Dry",
+      "part_of_speech": "noun"
+    },
+    "sun": {
+      "file": "sun.svg",
+      "set": "mulberry",
+      "picto_id": 5845,
+      "matched": "Sun",
+      "part_of_speech": "noun"
+    },
+    "rain": {
+      "file": "rain.svg",
+      "set": "mulberry",
+      "picto_id": 5470,
+      "matched": "Rain",
+      "part_of_speech": "noun"
+    },
+    "snow": {
+      "file": "snow.svg",
+      "set": "mulberry",
+      "picto_id": 5724,
+      "matched": "Snow",
+      "part_of_speech": "noun"
+    },
+    "wind": {
+      "file": "wind.svg",
+      "set": "openmoji",
+      "picto_id": 43132,
+      "matched": "Wind",
+      "part_of_speech": "noun"
+    },
+    "cloud": {
+      "file": "cloud.svg",
+      "set": "openmoji",
+      "picto_id": 43123,
+      "matched": "Cloud",
+      "part_of_speech": "noun"
+    },
+    "sky": {
+      "file": "sky.svg",
+      "set": "openmoji",
+      "picto_id": 43119,
+      "matched": "Sky",
+      "part_of_speech": "noun"
+    },
+    "storm": {
+      "file": "storm.svg",
+      "set": "openmoji",
+      "picto_id": 43125,
+      "matched": "Storm",
+      "part_of_speech": "noun"
+    },
+    "umbrella": {
+      "file": "umbrella.svg",
+      "set": "mulberry",
+      "picto_id": 6062,
+      "matched": "Umbrella",
+      "part_of_speech": "noun"
+    },
+    "sunglasses": {
+      "file": "sunglasses.svg",
+      "set": "mulberry",
+      "picto_id": 5847,
+      "matched": "Sunglasses",
+      "part_of_speech": "noun"
+    },
+    "sunscreen": {
+      "file": "sunscreen.svg",
+      "set": "mulberry",
+      "picto_id": 5848,
+      "matched": "Sunscreen",
+      "part_of_speech": "noun"
+    },
+    "coat": {
+      "file": "coat.svg",
+      "set": "mulberry",
+      "picto_id": 3661,
+      "matched": "Coat",
+      "part_of_speech": "noun"
+    },
+    "shirt": {
+      "file": "shirt.svg",
+      "set": "mulberry",
+      "picto_id": 5658,
+      "matched": "Shirt",
+      "part_of_speech": "noun"
+    },
+    "pants": {
+      "file": "pants.svg",
+      "set": "mulberry",
+      "picto_id": 5243,
+      "matched": "Pants",
+      "part_of_speech": "noun"
+    },
+    "socks": {
+      "file": "socks.svg",
+      "set": "mulberry",
+      "picto_id": 5726,
+      "matched": "Socks",
+      "part_of_speech": "noun"
+    },
+    "hat": {
+      "file": "hat.svg",
+      "set": "openmoji",
+      "picto_id": 41811,
+      "matched": "Hat",
+      "part_of_speech": "noun"
+    },
+    "change": {
+      "file": "change.svg",
+      "set": "openmoji",
+      "picto_id": 44226,
+      "matched": "Change",
+      "part_of_speech": "noun"
+    },
+    "zip": {
+      "file": "zip.svg",
+      "set": "mulberry",
+      "picto_id": 6232,
+      "matched": "Zip",
+      "part_of_speech": "noun"
+    },
+    "button": {
+      "file": "button.svg",
+      "set": "mulberry",
+      "picto_id": 3434,
+      "matched": "Button",
+      "part_of_speech": "noun"
+    },
+    "jacket": {
+      "file": "jacket.svg",
+      "set": "mulberry",
+      "picto_id": 4848,
+      "matched": "Jacket",
+      "part_of_speech": "noun"
+    },
+    "sweater": {
+      "file": "sweater.svg",
+      "set": "stellar-symbols",
+      "picto_id": 52980,
+      "matched": "sweater",
+      "part_of_speech": "noun"
+    },
+    "dress": {
+      "file": "dress.svg",
+      "set": "mulberry",
+      "picto_id": 4067,
+      "matched": "Dress",
+      "part_of_speech": "noun"
+    },
+    "skirt": {
+      "file": "skirt.svg",
+      "set": "mulberry",
+      "picto_id": 5704,
+      "matched": "Skirt",
+      "part_of_speech": "noun"
+    },
+    "shorts": {
+      "file": "shorts.svg",
+      "set": "mulberry",
+      "picto_id": 5667,
+      "matched": "Shorts",
+      "part_of_speech": "noun"
+    },
+    "boots": {
+      "file": "boots.svg",
+      "set": "mulberry",
+      "picto_id": 3339,
+      "matched": "Boots",
+      "part_of_speech": "noun"
+    },
+    "gloves": {
+      "file": "gloves.svg",
+      "set": "mulberry",
+      "picto_id": 4640,
+      "matched": "Gloves",
+      "part_of_speech": "noun"
+    },
+    "scarf": {
+      "file": "scarf.svg",
+      "set": "mulberry",
+      "picto_id": 5595,
+      "matched": "Scarf",
+      "part_of_speech": "noun"
+    },
+    "pyjamas": {
+      "file": "pyjamas.svg",
+      "set": "mulberry",
+      "picto_id": 5454,
+      "matched": "Pyjamas",
+      "part_of_speech": "noun"
+    },
+    "dog": {
+      "file": "dog.svg",
+      "set": "mulberry",
+      "picto_id": 4042,
+      "matched": "Dog",
+      "part_of_speech": "noun"
+    },
+    "cat": {
+      "file": "cat.svg",
+      "set": "mulberry",
+      "picto_id": 3515,
+      "matched": "Cat",
+      "part_of_speech": "noun"
+    },
+    "fish": {
+      "file": "fish.svg",
+      "set": "mulberry",
+      "picto_id": 4242,
+      "matched": "Fish",
+      "part_of_speech": "noun"
+    },
+    "bird": {
+      "file": "bird.svg",
+      "set": "mulberry",
+      "picto_id": 3295,
+      "matched": "Bird",
+      "part_of_speech": "noun"
+    },
+    "rabbit": {
+      "file": "rabbit.svg",
+      "set": "mulberry",
+      "picto_id": 5466,
+      "matched": "Rabbit",
+      "part_of_speech": "noun"
+    },
+    "horse": {
+      "file": "horse.svg",
+      "set": "mulberry",
+      "picto_id": 4797,
+      "matched": "Horse",
+      "part_of_speech": "noun"
+    },
+    "cow": {
+      "file": "cow.svg",
+      "set": "mulberry",
+      "picto_id": 3922,
+      "matched": "Cow",
+      "part_of_speech": "noun"
+    },
+    "sheep": {
+      "file": "sheep.svg",
+      "set": "mulberry",
+      "picto_id": 5652,
+      "matched": "Sheep",
+      "part_of_speech": "noun"
+    },
+    "pig": {
+      "file": "pig.svg",
+      "set": "openmoji",
+      "picto_id": 42708,
+      "matched": "Pig",
+      "part_of_speech": "noun"
+    },
+    "duck": {
+      "file": "duck.svg",
+      "set": "mulberry",
+      "picto_id": 4096,
+      "matched": "Duck",
+      "part_of_speech": "noun"
+    },
+    "lion": {
+      "file": "lion.svg",
+      "set": "mulberry",
+      "picto_id": 4955,
+      "matched": "Lion",
+      "part_of_speech": "noun"
+    },
+    "bear": {
+      "file": "bear.svg",
+      "set": "mulberry",
+      "picto_id": 3263,
+      "matched": "Bear",
+      "part_of_speech": "noun"
+    },
+    "elephant": {
+      "file": "elephant.svg",
+      "set": "mulberry",
+      "picto_id": 4137,
+      "matched": "Elephant",
+      "part_of_speech": "noun"
+    },
+    "monkey": {
+      "file": "monkey.svg",
+      "set": "openmoji",
+      "picto_id": 42680,
+      "matched": "Monkey",
+      "part_of_speech": "noun"
+    },
+    "tiger": {
+      "file": "tiger.svg",
+      "set": "mulberry",
+      "picto_id": 5958,
+      "matched": "Tiger",
+      "part_of_speech": "noun"
+    },
+    "snake": {
+      "file": "snake.svg",
+      "set": "mulberry",
+      "picto_id": 5720,
+      "matched": "Snake",
+      "part_of_speech": "noun"
+    },
+    "bug": {
+      "file": "bug.svg",
+      "set": "openmoji",
+      "picto_id": 42777,
+      "matched": "Bug",
+      "part_of_speech": "noun"
+    },
+    "spider": {
+      "file": "spider.svg",
+      "set": "mulberry",
+      "picto_id": 5760,
+      "matched": "Spider",
+      "part_of_speech": "noun"
+    },
+    "butterfly": {
+      "file": "butterfly.svg",
+      "set": "mulberry",
+      "picto_id": 3432,
+      "matched": "Butterfly",
+      "part_of_speech": "noun"
     }
   }
 }

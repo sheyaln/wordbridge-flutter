@@ -257,7 +257,15 @@ void main() {
       // which is the wall the note above describes rather than a budget, so
       // this time the headroom is deliberate: near twenty words of room, and
       // level 3 is still roughly twice this.
-      expect(shippedWordsAtMost(2), inInclusiveRange(200, 310));
+      //
+      // Raised again from 310 to 340 for the `weather`, `clothing` and
+      // `animals` boards and for `off` and `question`. That took it to 311.
+      // Three boards' worth of level-2 vocabulary is twenty words, because
+      // naming vocabulary is what level 3 is for and almost all of those
+      // boards sit there: what earned level 2 is what a day is negotiated in
+      // — whether it is raining, whether the seam itches, and the two animals
+      // a household talks to.
+      expect(shippedWordsAtMost(2), inInclusiveRange(200, 340));
     });
 
     test('level 3 is everything', () {
@@ -350,10 +358,23 @@ void main() {
   /// something is comes after saying that it is in, on, up, out or under it.
   /// Anything joining this set has to be measured by the test below, not just
   /// added to it.
+  ///
+  /// `forward` and `backward` join the directions on the same argument and no
+  /// other: they are the axis `left` and `right` were half of, and they come
+  /// after the five prepositions for the same reason those two do. `off` is
+  /// deliberately *not* here — it is level 2, because it is the opposite of a
+  /// word the board has had since the first version and a board that can put
+  /// something on and not take it off is missing half a pair rather than a
+  /// refinement.
   bool deliberatelyLate(String bandName, BandItem<SeedWord> item) =>
       comparativeMorphemes.contains(item.value.morphemeKind) ||
       (bandName == 'places' &&
-          const {'left', 'right'}.contains(item.value.label));
+          const {
+            'left',
+            'right',
+            'forward',
+            'backward',
+          }.contains(item.value.label));
 
   test('everything else on the root board is drawn before the verb tail', () {
     for (final band in homeBands) {

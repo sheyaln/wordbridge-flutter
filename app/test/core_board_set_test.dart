@@ -95,9 +95,9 @@ void main() {
       'I    we   all       want need  like     +s        a       here under good',
       'you  they some      go   stop  wait     +ed       the     in   left  not',
       'he   my   same      can  get   take     +ing      and     on   right yes',
-      'she  me   different do   make  put      +\'s      but     up   .   no',
-      'it   this more      open close help     am/is/are because to   .   don\'t',
-      'that .    less      look turn  finish   was/were  so      out  .   maybe',
+      'she  me   different do   make  put      +\'s      but     up   off      no',
+      'it   this more      open close help     am/is/are because to   forward  don\'t',
+      'that .    less      look turn  finish   was/were  so      out  backward maybe',
     ];
 
     final home = await (db.select(
@@ -240,13 +240,19 @@ void main() {
     // beside the pronouns. Both exist so personal vocabulary has somewhere to
     // land that displaces nothing.
     //
-    // Six, down from seven. §4.68 and §4.70 spent the difference on words the
-    // board could not say — `for`, `under`, `left`, `right`, `less`, `whole`,
-    // the modals — and the reserve is where a dense board finds the room. Held
-    // at six rather than raised again: the tests that matter are the two below
-    // that name which reserves those are, and this one only stops the last of
-    // them being spent without anybody noticing.
-    expect(reserved.length, greaterThanOrEqualTo(6));
+    // Three, down from six, down from seven. §4.68 and §4.70 spent the first
+    // difference on words the board could not say — `for`, `under`, `left`,
+    // `right`, `less`, `whole`, the modals. The second went on `off`,
+    // `forward` and `backward`: "on" had been here since the first board and
+    // its opposite never had, and left and right were the only directions the
+    // board could give.
+    //
+    // Three is the floor and not a target. What survives is what the two
+    // tests below name — the noun column and the tail beside the pronouns —
+    // and those are the reserves a caregiver's own words actually land in.
+    // The next thing that wants a location on this board takes one of the
+    // last three, and this line is what makes somebody say so out loud.
+    expect(reserved.length, greaterThanOrEqualTo(3));
   });
 
   test('reserves the column beside the pronouns for names', () async {
@@ -517,7 +523,15 @@ void main() {
       // The tail is where new boards land, and the only place they may. Each
       // one appended here left every key already learned opening exactly what
       // it always opened; inserting one anywhere above would not have.
-      expect(order.skip(6), ['doing', 'numbers', 'time', 'objects']);
+      expect(order.skip(6), [
+        'doing',
+        'numbers',
+        'time',
+        'objects',
+        'weather',
+        'clothing',
+        'animals',
+      ]);
     });
 
     test('the doing board is reachable and carries its verbs', () async {
@@ -588,10 +602,11 @@ void main() {
         containsAll(['wash', 'sit', 'ask', 'remember', 'hold', 'share']),
         reason: 'a strip of the doing board was never placed',
       );
-      // One fewer since `cook` moved to `food` (§4.42). Arithmetic, not
-      // behavior: a word leaving the shipped board moves this number and
+      // One fewer since `cook` moved to `food` (§4.42), one more for the noun
+      // `question` that `ask` and `answer` needed. Arithmetic, not behavior:
+      // a word joining or leaving the shipped board moves this number and
       // nothing else.
-      expect(labels, hasLength(47));
+      expect(labels, hasLength(48));
     });
 
     test('the 7x12 food board is exactly where it ships', () async {

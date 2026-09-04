@@ -237,6 +237,17 @@ Future<Map<String, ({int row, int col, bool hidden})>> wordsAcross(
 /// The whole point is that it is additive: a word lands where the layout rule
 /// already puts it, or it does not land at all. A top-up that moved something
 /// would be a rebuild wearing a disguise.
+/// The categories a 7x12 board set has to be short of for its system row to be
+/// exactly full with no cycle key.
+///
+/// The row holds `cols - 5` of them, so seven here, which means six have to be
+/// missing — and `doing` has to be one of the six, because both tests that
+/// need this premise follow that board by name afterwards. Derived rather than
+/// written out: it used to be a hand-kept list that grew by one every time a
+/// category shipped, and a premise maintained by remembering is one that
+/// quietly stops holding.
+final _shortOfAFullRow = ['doing', ...categoryNames.skip(8)];
+
 void main() {
   late WordbridgeDatabase db;
   late String vocabId;
@@ -504,14 +515,15 @@ void main() {
     // those questions get tangled up with which turn a key is showing. The
     // turning case has its own group below.
     //
-    // The width follows the number of shipped categories: it was 14 for nine
-    // of them and is 15 for ten. That is the premise, not the subject — a
-    // narrower grid here does not make the test harder, it makes it a
-    // different test that the group below already runs.
+    // The width follows the number of shipped categories — a row holds
+    // `cols - 5` of them — so it was 14 for nine, 15 for ten and is 18 for
+    // thirteen. That is the premise, not the subject: a narrower grid here
+    // does not make the test harder, it makes it a different test that the
+    // group below already runs.
     setUp(() async {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
-      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 15);
+      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 18);
     });
 
     test('the board arrives, with its words in it', () async {
@@ -536,11 +548,12 @@ void main() {
         words.keys,
         containsAll(['wash', 'sit', 'ask', 'remember', 'hold', 'share']),
       );
-      // The board's own verbs and the `how` adverbs §4.42 added to it, plus
-      // the six question words every board carries in its pinned column.
-      // Arithmetic, not behavior: a word added to the shipped vocabulary
-      // moves this number and nothing else.
-      expect(words.keys, hasLength(53 + 6));
+      // The board's own verbs, the `how` adverbs §4.42 added to it and the
+      // noun "question" that `ask` and `answer` needed, plus the six question
+      // words every board carries in its pinned column. Arithmetic, not
+      // behavior: a word added to the shipped vocabulary moves this number
+      // and nothing else.
+      expect(words.keys, hasLength(54 + 6));
       expect(
         result.added.where((a) => a.board == 'doing').map((a) => a.label),
         containsAll(['wash', 'breathe', 'cry']),
@@ -621,19 +634,18 @@ void main() {
         );
       }
 
-      expect(after['doing'], (page: 0, slot: 9));
+      // Last on the wheel, wherever that falls. Read off the shipped list
+      // rather than written down, because a literal here is a test that has
+      // to be edited every time a category ships — and the thing under test
+      // is precisely that shipping one does not disturb what is already
+      // placed.
+      final last = categoryNames.length - 1;
+      final perPage = frame.categoryCols.length;
+      expect(after['doing'], (page: last ~/ perPage, slot: last % perPage));
       expect(frame.categories.map((c) => c.name).toList(), [
-        'people',
-        'food',
-        'play',
-        'feelings',
-        'places',
-        'body',
         // Appended in the order they were missing, so the one unshipped for
         // this test arrives last however many shipped after it.
-        'numbers',
-        'time',
-        'objects',
+        ...categoryNames.where((name) => name != 'doing'),
         'doing',
       ]);
 
@@ -732,9 +744,9 @@ void main() {
       // key. A wheel that already turns always has room for one more turn, so
       // there would be nothing to refuse — which means this list grows by one
       // every time a category ships.
-      await unship(db, vocabId, 'doing');
-      await unship(db, vocabId, 'time');
-      await unship(db, vocabId, 'objects');
+      for (final category in _shortOfAFullRow) {
+        await unship(db, vocabId, category);
+      }
 
       // Whichever column the row is not using — with eight categories that is
       // the gap, not the tail. Found rather than named, so this keeps testing
@@ -769,7 +781,7 @@ void main() {
       final result = await topUpVocabulary(db, vocabularyId: vocabId);
 
       // Both, because a row with nothing spare has nothing spare for either.
-      expect(result.refusedBoards, ['doing', 'time', 'objects']);
+      expect(result.refusedBoards, _shortOfAFullRow);
       expect(result.addedBoards, isEmpty);
       expect(result.added, isEmpty);
       expect(
@@ -826,7 +838,9 @@ void main() {
       for (final entry in before.entries) {
         expect(after[entry.key], entry.value, reason: '"${entry.key}" moved');
       }
-      expect(after['doing'], (page: 3, slot: 0));
+      final last = categoryNames.length - 1;
+      final perPage = frame.categoryCols.length;
+      expect(after['doing'], (page: last ~/ perPage, slot: last % perPage));
 
       for (final entry in fingerprintBefore.entries) {
         expect(
@@ -846,7 +860,7 @@ void main() {
       // still. The shipped set turns the wheel on this grid already, which is
       // not the state under test — so this list grows by one every time a
       // category ships.
-      await seedAt(7, 12, without: const ['doing', 'time', 'objects']);
+      await seedAt(7, 12, without: _shortOfAFullRow);
       final was = await frameOf(narrow, narrowId);
       expect(was.cycleCol, isNull, reason: 'the fixture already cycles');
       expect(was.categoryCols, [3, 4, 5, 6, 7, 8, 9]);
@@ -975,15 +989,7 @@ void main() {
       await topUpVocabulary(db, vocabularyId: vocabId);
 
       expect((await frameOf(db, vocabId)).categories.map((c) => c.name), [
-        'people',
-        'food',
-        'play',
-        'places',
-        'body',
-        'doing',
-        'numbers',
-        'time',
-        'objects',
+        ...categoryNames.where((name) => name != 'feelings'),
         'feelings',
       ]);
     });

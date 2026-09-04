@@ -288,9 +288,19 @@ void main() {
 
     test('even where a real word wears the same name', () async {
       // `back` is a key on every board and also a body part on one of them.
+      // The key is not offered; the body part is.
+      //
+      // Not the only result any more, and it should not be: the search
+      // matches on prefix, so "back" reaches "backward" on the root board
+      // too. What is under test is that the *system key* is left out, so the
+      // word is picked out by name rather than by being alone.
       final found = await find('back');
 
-      expect(found.single.boardId, await boardNamed('body'));
+      expect(found.map((f) => f.label), contains('back'));
+      expect(
+        found.singleWhere((f) => f.label == 'back').boardId,
+        await boardNamed('body'),
+      );
     });
 
     test('a word on a board nothing reaches', () async {
