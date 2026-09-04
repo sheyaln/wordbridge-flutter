@@ -24,26 +24,12 @@ const _requestTimeout = Duration(seconds: 25);
 /// commercial use** — see NOTICE.md. ARASAAC and Sclera are excluded on
 /// purpose: they are CC BY-NC and may only ever be opt-in downloads.
 ///
-/// **Stellar leads.** It is small — a few hundred pictures against Mulberry's
-/// 3,436 — and drawn for exactly the abstract core vocabulary Mulberry is
-/// weakest on, so putting it first costs almost nothing on the concrete nouns
-/// it has no entry for and wins the words a board is built around. Preferring
-/// it by order rather than by naming words means a picture it adds later is
-/// picked up by re-running this, instead of by somebody noticing.
-///
-/// Mulberry follows, with its own two extension sets behind it because they
-/// are drawn to match it. It is strong on concrete nouns and weak on abstract
-/// core vocabulary — its 3,436 symbols contain no "stop", "you", "not" or
-/// "want" — so later entries fill those gaps. Mixing styles is a real cost to
-/// visual consistency, but a pre-literate user faced with a blank button pays
-/// more.
+/// Mulberry leads because it is a purpose-built AAC set with a consistent
+/// drawn style. It is strong on concrete nouns and weak on abstract core
+/// vocabulary — its 3,436 symbols contain no "stop", "you", "not" or "want" —
+/// so later entries fill those gaps. Mixing styles is a real cost to visual
+/// consistency, but a pre-literate user faced with a blank button pays more.
 const _sets = <({String slug, int id, String name, String attribution})>[
-  (
-    slug: 'stellar-symbols',
-    id: 133,
-    name: 'Stellar Symbols',
-    attribution: 'Stellar Symbols © Colin McNamee. CC BY-SA 4.0.',
-  ),
   (
     slug: 'mulberry',
     id: 13,
@@ -52,24 +38,11 @@ const _sets = <({String slug, int id, String name, String attribution})>[
         'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
         'CC BY-SA 4.0. https://mulberrysymbols.org',
   ),
-  // Mulberry's own two extension sets, drawn to match it. Ahead of everything
-  // else because a picture in the same house style as the set beside it is
-  // worth more than a nearer word in a different one.
   (
-    slug: 'corona-symbols',
-    id: 86,
-    name: 'Mulberry Plus Collection',
-    attribution:
-        'Mulberry Plus Collection © Mulberry and Global Symbols. '
-        'CC BY-SA 4.0. https://globalsymbols.com',
-  ),
-  (
-    slug: 'additional-mulberry-symbols',
-    id: 205,
-    name: 'Mulberry Additional Symbols',
-    attribution:
-        'Mulberry Additional Symbols © Verlag Karin Kestner GmbH. '
-        'CC BY-SA 4.0. https://www.kestner.de',
+    slug: 'stellar-symbols',
+    id: 133,
+    name: 'Stellar Symbols',
+    attribution: 'Stellar Symbols © Colin McNamee. CC BY-SA 4.0.',
   ),
   (
     slug: 'tawasol',
@@ -174,56 +147,6 @@ const _searchCandidates = <String, List<String>>{
   'yoghurt': ['yoghurt', 'yogurt'],
 };
 
-/// Words whose picture was chosen by a person rather than found by name.
-///
-/// The search matches a set's label against the word, which is right when a
-/// set names the concept the way the board does and useless when it does not:
-/// no set has a "tell" at all, every set's "see" is the same drawing as its
-/// "look", and the picture of a napkin worth having is filed under "Tissues".
-///
-/// **Keyed by the upstream catalog number**, because that is what a set calls
-/// its own picture and the only handle that survives a label being reworded.
-/// [query] exists only to find the page the number is on — there is no
-/// fetch-by-id endpoint, so a search still has to name something the set
-/// indexes.
-///
-/// A choice made by looking at the pictures belongs here rather than in the
-/// manifest. In the manifest it is indistinguishable from something the tool
-/// found, and the next run that re-fetches the word silently undoes it — which
-/// is exactly what nearly happened to the seventeen picked by hand in
-/// `4354a08` the first time the set order changed underneath them.
-const _chosen = <String, ({String query, int pictoId})>{
-  // Picked by hand from the pictures themselves (4354a08).
-  'far': (query: 'Distance', pictoId: 44201),
-  'feelings': (query: 'emotions', pictoId: 53191),
-  'friend': (query: 'friends', pictoId: 7946),
-  'girl': (query: 'Girl', pictoId: 41151),
-  'juice': (query: 'Orange Juice', pictoId: 5214),
-  'meeting': (query: 'Meeting', pictoId: 41061),
-  'name': (query: 'European Name Badge', pictoId: 44139),
-  'pee': (query: 'Toilet', pictoId: 5984),
-  'period': (query: 'period cycle', pictoId: 54311),
-  'plane': (query: 'Aeroplane', pictoId: 3130),
-  'pool': (query: 'Swim', pictoId: 5859),
-  'think': (query: 'Thinking Face', pictoId: 40773),
-  'town': (query: 'Cityscape', pictoId: 42987),
-  'us': (query: 'Group', pictoId: 44206),
-  'wait': (query: 'Please wait', pictoId: 53003),
-  'walk': (query: 'Man Walking', pictoId: 42087),
-
-  // The speaker the talk button draws, for the word that means saying
-  // something to somebody.
-  'tell': (query: 'speaker', pictoId: 43279),
-  // Eyes, which is what "see" is once the looking is taken out of it. It was
-  // the "look" drawing, so a board carrying both words carried one picture
-  // twice.
-  'see': (query: 'eye', pictoId: 4174),
-  // A napkin is filed under what it is made of.
-  'napkin': (query: 'tissue', pictoId: 5977),
-  'knife': (query: 'knife', pictoId: 42935),
-  'spoon': (query: 'spoon', pictoId: 5765),
-};
-
 Future<void> main(List<String> args) async {
   final words = _wordsFrom(
     args.isEmpty ? '/tmp/wordbridge-words.txt' : args.first,
@@ -302,53 +225,22 @@ Future<void> main(List<String> args) async {
       'symbols': manifest,
     });
 
-    // Trailing newline, so the file has an end a diff can show rather than a
-    // last line every run reports as changed.
     File('${dir.path}/manifest.json').writeAsStringSync('$encoded\n');
   }
 
   for (final word in words) {
-    final chosen = _chosen[word.toLowerCase()];
-
-    // A chosen word is re-resolved every run rather than skipped. It is in
-    // the manifest either way — as whatever the search found before somebody
-    // overruled it, or as the overruling — and only asking again tells the
-    // two apart.
-    if (chosen == null && manifest.containsKey(word.toLowerCase())) continue;
+    if (manifest.containsKey(word.toLowerCase())) continue;
     final candidates = _searchCandidates[word] ?? [word];
     stdout.write('${word.padRight(12)} ');
 
     try {
       _Hit? hit;
-      if (chosen != null) {
-        // Every set, because the number says which one it is and naming the
-        // set as well would be a second thing to keep in step with it.
-        for (final set in _sets) {
-          hit = await _search(
-            client,
-            chosen.query,
-            set,
-            wantPicto: chosen.pictoId,
-          );
+      for (final set in _sets) {
+        for (final query in candidates) {
+          hit = await _search(client, query, set);
           if (hit != null) break;
         }
-
-        if (hit == null) {
-          stdout.writeln(
-            'picture ${chosen.pictoId} is no longer reachable by searching '
-            '"${chosen.query}" — left as it was',
-          );
-          failed.add(word);
-          continue;
-        }
-      } else {
-        for (final set in _sets) {
-          for (final query in candidates) {
-            hit = await _search(client, query, set);
-            if (hit != null) break;
-          }
-          if (hit != null) break;
-        }
+        if (hit != null) break;
       }
 
       if (hit == null) {
@@ -357,7 +249,7 @@ Future<void> main(List<String> args) async {
         continue;
       }
 
-      final ext = _extensionOf(hit);
+      final ext = hit.format == 'svg' ? 'svg' : 'png';
       final filename = '${_slug(word)}.$ext';
       final bytes = await _download(client, hit.imageUrl);
 
@@ -428,13 +320,12 @@ class _RateLimited implements Exception {
 Future<_Hit?> _search(
   HttpClient client,
   String query,
-  ({String slug, int id, String name, String attribution}) set, {
-  int? wantPicto,
-}) async {
+  ({String slug, int id, String name, String attribution}) set,
+) async {
   for (var attempt = 0; attempt < 4; attempt++) {
     try {
       await _throttle();
-      return await _searchOnce(client, query, set, wantPicto: wantPicto);
+      return await _searchOnce(client, query, set);
     } on _RateLimited catch (e) {
       if (attempt == 3) rethrow;
       // Long waits, because the server has said in as many words that it is
@@ -467,9 +358,8 @@ Future<void> _throttle() async {
 Future<_Hit?> _searchOnce(
   HttpClient client,
   String query,
-  ({String slug, int id, String name, String attribution}) set, {
-  int? wantPicto,
-}) async {
+  ({String slug, int id, String name, String attribution}) set,
+) async {
   final uri = Uri.https('globalsymbols.com', '/api/v1/labels/search', {
     'query': query,
     'symbolset': set.slug,
@@ -510,20 +400,8 @@ Future<_Hit?> _searchOnce(
   // returns Notebook, "she" returns Sheep. Accepting a near-miss would teach
   // an AAC user that a word means whatever the picture shows — a wrong symbol
   // is worse than none, and a blank button honestly says "no picture yet".
-  //
-  // [wantPicto] is how a hand-picked symbol is asked for: the search term
-  // finds the page and the catalog number says which picture on it. Exact
-  // either way — of somebody's decision rather than of the word.
   Map<String, dynamic>? exact;
   for (final entry in body.cast<Map<String, dynamic>>()) {
-    if (wantPicto != null) {
-      final picto = entry['picto'];
-      if (picto is Map && picto['id'] == wantPicto) {
-        exact = entry;
-        break;
-      }
-      continue;
-    }
     if (_normalise(entry['text'] as String?) == _normalise(query)) {
       exact = entry;
       break;
@@ -532,10 +410,7 @@ Future<_Hit?> _searchOnce(
   if (exact == null) return null;
 
   final picto = exact['picto'];
-  if (picto == null) return null;
-  // A pinned number carries its own set; only a match by word has to be
-  // checked against the set that was asked.
-  if (wantPicto == null && picto['symbolset_id'] != set.id) return null;
+  if (picto == null || picto['symbolset_id'] != set.id) return null;
 
   return (
     pictoId: picto['id'] as int,
@@ -677,27 +552,6 @@ String _inlineStyles(String svg) {
 
 String _slug(String word) =>
     word.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-
-/// What to call the file, from what the server is actually serving.
-///
-/// The declared format and the URL agree for nearly everything and disagree
-/// for the handful of sets that scanned their symbols: those are `jpg`, which
-/// was filed as `.png` because the only question asked was "is it svg". The
-/// bundled renderer sniffs the bytes and draws them anyway, so nothing was
-/// visibly wrong here — but the runtime pack answers the same question about
-/// what it downloads, and there a wrong extension is a picture that never
-/// loads at all.
-String _extensionOf(_Hit hit) {
-  final path = Uri.tryParse(hit.imageUrl)?.path ?? hit.imageUrl;
-  final dot = path.lastIndexOf('.');
-  final fromUrl = dot < 0 ? '' : path.substring(dot + 1).toLowerCase();
-  return _drawableExtensions.contains(fromUrl) ? fromUrl : hit.format;
-}
-
-/// Extensions the app can draw. Anything else is not a picture and taking the
-/// declared format is a better guess than trusting a URL that ends in a query
-/// string or nothing at all.
-const _drawableExtensions = {'svg', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'};
 
 /// Collapses case and punctuation so "want , to" can match "want".
 String _normalise(String? text) => (text ?? '')

@@ -31,7 +31,7 @@ wordbridge never links a symbol pack directly; packs are loaded behind a
 
 ### Bundled, commercial use permitted
 
-**One pack ships: `core`.** It is a single set of 381 pictures assembled from
+**One pack ships: `core`.** It is a single set of 275 pictures assembled from
 the sources below via Global Symbols, and its manifest carries the credit for
 each picture individually. The sources are **not** shipped as packs of their
 own. This app does not carry Mulberry, or OpenMoji, or any of them, in full.
@@ -39,8 +39,6 @@ own. This app does not carry Mulberry, or OpenMoji, or any of them, in full.
 | Source of a `core` picture | License | Notes |
 |---|---|---|
 | Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org>. Upstream marks the set unmaintained. |
-| Mulberry Plus Collection | CC BY-SA 4.0 | © Mulberry and Global Symbols. <https://globalsymbols.com> |
-| Mulberry Additional Symbols | CC BY-SA 4.0 | © Verlag Karin Kestner GmbH. <https://www.kestner.de> |
 | Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee |
 | OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> |
 | Tawasol Symbols | CC BY-SA 4.0 | © Mada, Qatar. Arabic focused. <http://tawasolsymbols.org> |
