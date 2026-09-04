@@ -1,12 +1,12 @@
 {
-    "name": "wordbridge",
-    "short_name": "wordbridge",
+    "name": "Wordbridge AAC",
+    "short_name": "Wordbridge",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#faf7fd",
+    "theme_color": "#5b4a8a",
+    "description": "Free, open-source AAC with customizable motor planning.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

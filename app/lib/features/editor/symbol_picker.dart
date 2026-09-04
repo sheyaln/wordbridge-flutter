@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
+import '../../platform/host.dart';
 
 import 'package:image_picker/image_picker.dart';
 
@@ -303,33 +304,38 @@ class _SymbolPickerState extends State<SymbolPicker> {
             ),
             const SizedBox(height: 12),
 
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Take a photo'),
-                    onPressed: () => _useOwnPhoto(ImageSource.camera),
+            // A photo is filed on the device and drawn from there. Offering
+            // the buttons where there is nowhere to file it would take a
+            // picture somebody chose and lose it between the camera and the
+            // button.
+            if (hostKeepsFiles) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('Take a photo'),
+                      onPressed: () => _useOwnPhoto(ImageSource.camera),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Choose a photo'),
-                    onPressed: () => _useOwnPhoto(ImageSource.gallery),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Choose a photo'),
+                      onPressed: () => _useOwnPhoto(ImageSource.gallery),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'A photo of the real person or object is often clearer than a '
-              'drawing. Photos stay on this device.',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-
-            const Divider(height: 28),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'A photo of the real person or object is often clearer than a '
+                'drawing. Photos stay on this device.',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const Divider(height: 28),
+            ],
 
             TextField(
               controller: _query,

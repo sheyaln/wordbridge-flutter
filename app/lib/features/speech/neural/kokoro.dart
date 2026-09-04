@@ -7,5 +7,4 @@
 /// nothing above this file has to know which.
 library;
 
-export 'kokoro_native.dart'
-    if (dart.library.js_interop) 'kokoro_web.dart';
+export 'kokoro_native.dart' if (dart.library.js_interop) 'kokoro_web.dart';

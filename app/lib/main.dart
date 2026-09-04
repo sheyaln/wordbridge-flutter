@@ -33,6 +33,7 @@ import 'features/talk/fallback_board.dart';
 import 'features/talk/talk_screen.dart';
 import 'features/usage/device_id.dart';
 import 'features/usage/logger.dart';
+import 'platform/host.dart';
 
 /// The resolver every board on this device draws through.
 ///
@@ -83,7 +84,10 @@ Widget awaiting<T>({
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   installFallbackBoard();
-  recordCaughtFaults(CrashStore());
+  // Nowhere to write one, and a recorder that throws on every fault it is
+  // handed would be reached by its own failure through
+  // `PlatformDispatcher.onError`.
+  if (hostKeepsFiles) recordCaughtFaults(CrashStore());
   runApp(const WordbridgeApp());
 }
 
@@ -364,13 +368,16 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   /// caregiver's choice to make and neither may be ours.
   late final _globalSymbolsNc = GlobalSymbolsPack.nonCommercial();
 
+  /// The three fetching packs file what they download and draw it from there,
+  /// so a host with nowhere to file it gets neither the picture nor a switch
+  /// offering one. Left registered they would put four sets on the Pictures
+  /// screen that do nothing when they are switched on, which is §5
+  /// non-negotiable 9 in the form it is easiest to ship by accident.
   late final _symbols = SymbolRegistry(
     packs: [
       ...bundledSymbolPacks(),
       SystemEmojiPack(),
-      _globalSymbols,
-      ArasaacPack(),
-      _globalSymbolsNc,
+      if (hostKeepsFiles) ...[_globalSymbols, ArasaacPack(), _globalSymbolsNc],
     ],
   );
   late final _resolver = appSymbolResolver(db: _db, registry: _symbols);
@@ -383,11 +390,16 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     // Before `resume()`, which is the first query and therefore the thing that
     // opens the database and runs any migration due. Nothing has touched the
     // file yet, which is the condition `snapshotFile` cannot check for itself.
-    await snapshotBeforeMigration(
-      database: boardDatabaseFile,
-      appVersion: _db.schemaVersion,
-      backup: _backup,
-    );
+    //
+    // There is no file to copy where the database is the browser's rather than
+    // ours, and asking for one would report a failed backup on every launch.
+    if (hostKeepsFiles) {
+      await snapshotBeforeMigration(
+        database: boardDatabaseFile,
+        appVersion: _db.schemaVersion,
+        backup: _backup,
+      );
+    }
 
     // After the snapshot, because this is the first query and therefore the
     // thing that opens the database.
@@ -409,13 +421,15 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     // that one runs before the app, holds no database, and may be holding a
     // fault about the database. Not awaited either — a report that will not
     // send must not hold up a board somebody is waiting to talk on.
-    if (profile != null) unawaited(_sendWaitingFaults(profile));
+    if (hostKeepsFiles && profile != null) {
+      unawaited(_sendWaitingFaults(profile));
+    }
 
     // The copy in the family's own account, at most once a day, plus whatever
     // the pre-migration snapshot above just wrote. Not awaited, for the same
     // reason as the line above it: an upload that will not finish must not
     // hold up a board somebody is waiting to talk on.
-    unawaited(_cloud.keepUpToDate());
+    if (hostKeepsFiles) unawaited(_cloud.keepUpToDate());
 
     return profile;
   }

@@ -9,6 +9,7 @@ import '../../db/tables.dart';
 import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
+import '../../platform/host.dart';
 import '../auth/caregiver_gesture.dart';
 import '../backup/backup_service.dart';
 import '../backup/cloud_backup.dart';
@@ -416,6 +417,78 @@ class _Section {
   /// is a stop on the way to somewhere, not a place.
   final Future<void> Function(BuildContext context)? opens;
 }
+
+/// What a copy running in a browser is, and what it is not.
+///
+/// Stands where Backups, Import and export, and Reports stand on a tablet.
+/// All three are a file on a disk, and a page has none, so the honest thing is
+/// not three absent rows — it is one row that says where the board is being
+/// kept and what that means, before somebody trusts it with the vocabulary
+/// they have spent a month building.
+///
+/// The tone is deliberate. This is not an apology for a browser; it is the
+/// same sentence the project says everywhere else about where a person's voice
+/// should live.
+final _thisCopy = _Section(
+  icon: Icons.public,
+  title: 'This copy',
+  description: 'What a board in a browser can and cannot do',
+  state: 'In a browser',
+  tiles: (context, onChanged) => const [
+    Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        'Everything on the board works here: the words, their locations, the '
+        'editor, and speech. What is missing is everything that needs a file '
+        'on a disk.',
+        style: TextStyle(fontSize: 14, height: 1.45),
+      ),
+    ),
+    ListTile(
+      leading: Icon(Icons.history),
+      title: Text('No backups'),
+      subtitle: Text(
+        'This board is kept in the browser\'s own storage. Clearing site '
+        'data removes it, and nothing here can copy it somewhere safe first.',
+      ),
+    ),
+    ListTile(
+      leading: Icon(Icons.swap_horiz),
+      title: Text('No import or export'),
+      subtitle: Text(
+        'A board set cannot be written to a file or read from one, so it '
+        'cannot be moved to another program or another device.',
+      ),
+    ),
+    ListTile(
+      leading: Icon(Icons.outgoing_mail),
+      title: Text('No reports'),
+      subtitle: Text(
+        'Faults are not recorded and nothing is sent. Nothing leaves this '
+        'page.',
+      ),
+    ),
+    ListTile(
+      leading: Icon(Icons.image_outlined),
+      title: Text('Only the pictures that come with the app'),
+      subtitle: Text(
+        'Sets that fetch a picture when a word needs one keep it in a file '
+        'afterwards, and photographs are filed the same way. Neither is '
+        'offered here.',
+      ),
+    ),
+    Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Text(
+        'Use this to see what the app does and to decide whether it suits '
+        'somebody. A person whose voice this becomes should have it on their '
+        'own device, where the board is a file that survives an update and '
+        'can be backed up.',
+        style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.45),
+      ),
+    ),
+  ],
+);
 
 /// One section, on a page of its own.
 ///
@@ -1205,85 +1278,96 @@ class _Settings extends StatelessWidget {
         ),
       ],
     ),
+    // The three rows below are each a file on a disk — a snapshot, an exported
+    // board set, a report waiting to be sent — so they stand or fall together
+    // on whether this host has one. Where it does not, [_thisCopy] takes their
+    // place and says why, because a caregiver who came here looking for
+    // backups needs an answer rather than a gap where the row was.
+    if (!hostKeepsFiles) _thisCopy,
+
     // Durability rather than setup, so it sits below the decisions that make
     // the tablet somebody's. One screen, and the row on this list opens it: a
     // section page in between would hold a single row saying the same thing.
-    _Section(
-      icon: Icons.history,
-      title: 'Backups',
-      description: 'Keeping and restoring copies of this board set',
-      opens: (context) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => BackupsScreen(db: db, backup: backup, cloud: cloud),
-        ),
-      ),
-    ),
-    // Also one screen. Next to Backups because that is where somebody looks
-    // for it, and separate from Backups because it is not one: an exported
-    // file carries the words and not what makes them a motor plan.
-    _Section(
-      icon: Icons.swap_horiz,
-      title: 'Import and export',
-      description: 'Moving a board set to and from other programs',
-      opens: (context) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => BoardFilesScreen(
-            db: db,
-            vocabularyId: vocabularyId,
-            store: boards,
-            onImported: onChanged,
+    if (hostKeepsFiles)
+      _Section(
+        icon: Icons.history,
+        title: 'Backups',
+        description: 'Keeping and restoring copies of this board set',
+        opens: (context) => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BackupsScreen(db: db, backup: backup, cloud: cloud),
           ),
         ),
       ),
-    ),
+    // Also one screen. Next to Backups because that is where somebody looks
+    // for it, and separate from Backups because it is not one: an exported
+    // file carries the words and not what makes them a motor plan.
+    if (hostKeepsFiles)
+      _Section(
+        icon: Icons.swap_horiz,
+        title: 'Import and export',
+        description: 'Moving a board set to and from other programs',
+        opens: (context) => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BoardFilesScreen(
+              db: db,
+              vocabularyId: vocabularyId,
+              store: boards,
+              onImported: onChanged,
+            ),
+          ),
+        ),
+      ),
     // One screen, so the row opens it directly (§4.43a). What the page in
     // A page of controls now rather than a straight jump to the screen
     // (§4.59): what leaves this tablet on its own is decided here, and writing
     // a report is one row on the same page.
-    _Section(
-      icon: Icons.outgoing_mail,
-      title: 'Reports',
-      description: 'Telling us when something is wrong',
-      state: settings == null
-          ? null
-          : switch ((settings!.crashReports, settings!.voiceMeasurements)) {
-              (false, _) => 'Off',
-              (true, true) => 'Crashes and voice',
-              (true, false) => 'Crashes',
-            },
-      tiles: (context, onChanged) => [
-        CrashReportSwitch(settings: settings, onChanged: onChanged),
-        VoiceMeasurementSwitch(
-          settings: settings,
-          available:
-              speech is NeuralSpeechEngine && (settings?.neuralVoice ?? false),
-          onChanged: onChanged,
-        ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.edit_outlined),
-          title: const Text('Write a report'),
-          subtitle: const Text(
-            'Tell us something is wrong or missing, and send faults this '
-            'device caught',
+    if (hostKeepsFiles)
+      _Section(
+        icon: Icons.outgoing_mail,
+        title: 'Reports',
+        description: 'Telling us when something is wrong',
+        state: settings == null
+            ? null
+            : switch ((settings!.crashReports, settings!.voiceMeasurements)) {
+                (false, _) => 'Off',
+                (true, true) => 'Crashes and voice',
+                (true, false) => 'Crashes',
+              },
+        tiles: (context, onChanged) => [
+          CrashReportSwitch(settings: settings, onChanged: onChanged),
+          VoiceMeasurementSwitch(
+            settings: settings,
+            available:
+                speech is NeuralSpeechEngine &&
+                (settings?.neuralVoice ?? false),
+            onChanged: onChanged,
           ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ReportsScreen(
-                db: db,
-                vocabularyId: vocabularyId,
-                profileId: profileId,
-                settings: settings,
-                speech: speech,
-                crashes: crashes,
-                sender: sender,
-                userName: userName,
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Write a report'),
+            subtitle: const Text(
+              'Tell us something is wrong or missing, and send faults this '
+              'device caught',
+            ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ReportsScreen(
+                  db: db,
+                  vocabularyId: vocabularyId,
+                  profileId: profileId,
+                  settings: settings,
+                  speech: speech,
+                  crashes: crashes,
+                  sender: sender,
+                  userName: userName,
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
     // One screen of its own (§4.43a). What is on it is prose rather than
     // controls, and the one thing there is to press on it opens the credits.
     _Section(

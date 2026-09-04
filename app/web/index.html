@@ -1,46 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
+    Replaced by `flutter build web --base-href`. Kept as the placeholder so a
+    build under a subdirectory does not need this file edited.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description"
+        content="Free, open-source AAC with customizable motor planning. This is the browser copy: the board works, and a person's own device is where their voice should live.">
 
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="wordbridge">
+  <meta name="apple-mobile-web-app-title" content="Wordbridge AAC">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>wordbridge</title>
+  <title>Wordbridge AAC</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Shown until Flutter paints its first frame. The board is a database
+       away — seeding a new one builds every location before anything can be
+       drawn — and a white page for that long reads as a page that failed. */
+    html, body { margin: 0; height: 100%; background: #faf7fd; }
+    #boot {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.25rem;
+      font: 400 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #4a4458;
+      text-align: center; padding: 1.5rem;
+    }
+    #boot img { width: 96px; height: 96px; }
+    #boot p { margin: 0; max-width: 30rem; }
+    #boot .quiet { color: #6f6880; font-size: 13px; }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="boot">
+    <img src="icons/Icon-192.png" alt="">
+    <p><strong>Wordbridge AAC</strong></p>
+    <p class="quiet">Building the board.</p>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <script>
+    // Flutter's loader has no "first frame" hook, so the app removes this
+    // itself once there is something to look at.
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('boot');
+      if (boot) boot.remove();
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

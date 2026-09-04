@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'board_aspect.dart';
 import 'grid_geometry.dart';
 import 'grid_surface.dart' show PlacedCell;
 
@@ -41,6 +42,10 @@ class CellLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return holdBoardAspect(rows: rows, cols: cols, child: _grid());
+  }
+
+  Widget _grid() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final geometry = GridGeometry(

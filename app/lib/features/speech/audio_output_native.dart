@@ -4,14 +4,11 @@ import 'package:flutter_tts/flutter_tts.dart';
 ///
 /// Without this an iPad with the ringer switch off is silent, which for an AAC
 /// device means a user who cannot speak. Not optional.
-Future<void> prepareAudioOutput(FlutterTts tts) => tts.setIosAudioCategory(
-  IosTextToSpeechAudioCategory.playback,
-  [
-    IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
-    IosTextToSpeechAudioCategoryOptions.duckOthers,
-  ],
-  IosTextToSpeechAudioMode.defaultMode,
-);
+Future<void> prepareAudioOutput(FlutterTts tts) =>
+    tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
+      IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+      IosTextToSpeechAudioCategoryOptions.duckOthers,
+    ], IosTextToSpeechAudioMode.defaultMode);
 
 /// Turns "1.0 means normal" into the number the plugin wants.
 ///
