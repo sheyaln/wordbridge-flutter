@@ -514,13 +514,22 @@ class _WalkMode extends StatelessWidget {
 
   static const _descriptions = {
     WalkMode.presses:
-        'The board presses each key on the route itself, about a second on '
-        'each, and stops on the word.',
-    // TODO: Make this configurable, not just a second unilaterially
+        'The board presses each key on the route itself and stops on the '
+        'word. How long it rests on each key is set below.',
     WalkMode.waits:
         'each key is highlighted until it is selected, then the next key '
         'is highlighted',
   };
+
+  /// The beats a person is offered, in the units the setting is stored in.
+  ///
+  /// A short list rather than a slider: the difference that matters here is
+  /// between "faster than I can follow" and "slow enough to learn from", and
+  /// nobody needs to express that to the nearest fiftieth of a second.
+  static const _beats = [1000, 1500, 2000, 3000, 4000, 6000];
+
+  static String _beatLabel(int ms) =>
+      ms % 1000 == 0 ? '${ms ~/ 1000}s' : '${ms / 1000}s';
 
   @override
   Widget build(BuildContext context) {
@@ -555,6 +564,32 @@ class _WalkMode extends StatelessWidget {
             ],
           ),
         ),
+        // Only under the mode that walks. Under the other one the board is
+        // waiting for a person, and there is no beat to set.
+        if (settings.walkMode == WalkMode.presses)
+          ListTile(
+            leading: const Icon(Icons.timer_outlined),
+            title: const Text('Time on each key'),
+            subtitle: const Text(
+              'Long enough to watch where the key is. The walk is how a route '
+              'is learned, so this is about the eye rather than the board.',
+            ),
+            isThreeLine: true,
+            trailing: DropdownButton<int>(
+              value: _beats.contains(settings.walkBeat.inMilliseconds)
+                  ? settings.walkBeat.inMilliseconds
+                  : _beats.first,
+              onChanged: (chosen) async {
+                if (chosen == null) return;
+                await settings.set('walkBeatMs', chosen);
+                onChanged();
+              },
+              items: [
+                for (final ms in _beats)
+                  DropdownMenuItem(value: ms, child: Text(_beatLabel(ms))),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1024,11 +1059,11 @@ class _Settings extends StatelessWidget {
         if (settings != null)
           SwitchListTile(
             value: settings!.contractions,
-            title: const Text('Contract not with the word before it'),
+            title: const Text('Join words that contract'),
             subtitle: const Text(
-              'When enabled, "can" then "not" is spoken as "can\'t". When '
-              'disabled, both words are spoken as selected. No key moves '
-              'either way.',
+              'When enabled, "can" then "not" is spoken as "can\'t", and "I" '
+              'then "am" as "I\'m". When disabled, both words are spoken as '
+              'selected. No key moves either way.',
             ),
             isThreeLine: true,
             onChanged: (v) async {

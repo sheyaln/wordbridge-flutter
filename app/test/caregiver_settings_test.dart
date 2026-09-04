@@ -114,7 +114,7 @@ const _reachable = <String, List<String>>{
   ],
   'Grammar': [
     'Show word endings only where they apply',
-    'Contract not with the word before it',
+    'Join words that contract',
     'Choosing between am, is and are',
     'Hide other verbs after a verb',
     'Word prediction',

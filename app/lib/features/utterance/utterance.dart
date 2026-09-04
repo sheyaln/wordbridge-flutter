@@ -74,7 +74,7 @@ class UtteranceBar extends ChangeNotifier {
 
   UtteranceEntry? get last => _entries.isEmpty ? null : _entries.last;
 
-  /// Joins a "not" to the word in front of it, or leaves both alone.
+  /// Joins a word to the one in front of it, or leaves both alone.
   ///
   /// Returns the contraction when the pair collapsed into one — in which case
   /// [word] has **not** been added and the caller says the contraction instead
@@ -90,12 +90,12 @@ class UtteranceBar extends ChangeNotifier {
   /// "isn't" is outside the ring [_fixOpeningCopula] would correct — so
   /// contracting it there would strand "isn't you" where "aren't you" belongs.
   String? contract(String word) {
-    if (!isNegation(word) || _entries.isEmpty) return null;
+    if (!canFollowInContraction(word) || _entries.isEmpty) return null;
 
     final previous = _entries.last;
     if (previous.subjectFollows) return null;
 
-    final contracted = contractionFor(previous.text);
+    final contracted = contractionOf(previous.text, word);
     if (contracted == null) return null;
 
     _entries[_entries.length - 1] = (

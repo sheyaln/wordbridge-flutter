@@ -4,7 +4,8 @@ import 'package:wordbridge/features/utterance/contractions.dart';
 import 'package:wordbridge/features/utterance/morphology.dart';
 import 'package:wordbridge/features/utterance/utterance.dart';
 
-/// §4.42. "can" and "not" spoken as "can't", as a setting rather than a rule.
+/// §4.42. Two pressed words spoken as the one word English says — "can" and
+/// "not" as "can't", "I" and "am" as "I'm" — as a setting rather than a rule.
 ///
 /// The same shape as the "a" → "an" repair: the user cannot know how the
 /// sentence will continue when they press the first word, so the sentence is
@@ -17,49 +18,85 @@ void main() {
 
   group('which pairs English contracts', () {
     test('the modals', () {
-      expect(contractionFor('can'), "can't");
-      expect(contractionFor('will'), "won't");
-      expect(contractionFor('could'), "couldn't");
-      expect(contractionFor('should'), "shouldn't");
-      expect(contractionFor('would'), "wouldn't");
+      expect(contractionOf('can', 'not'), "can't");
+      expect(contractionOf('will', 'not'), "won't");
+      expect(contractionOf('could', 'not'), "couldn't");
+      expect(contractionOf('should', 'not'), "shouldn't");
+      expect(contractionOf('would', 'not'), "wouldn't");
     });
 
     test('the forms of "to be", present and past', () {
-      expect(contractionFor('is'), "isn't");
-      expect(contractionFor('are'), "aren't");
-      expect(contractionFor('was'), "wasn't");
-      expect(contractionFor('were'), "weren't");
+      expect(contractionOf('is', 'not'), "isn't");
+      expect(contractionOf('are', 'not'), "aren't");
+      expect(contractionOf('was', 'not'), "wasn't");
+      expect(contractionOf('were', 'not'), "weren't");
     });
 
     test('the auxiliaries', () {
-      expect(contractionFor('do'), "don't");
-      expect(contractionFor('does'), "doesn't");
-      expect(contractionFor('did'), "didn't");
-      expect(contractionFor('have'), "haven't");
-      expect(contractionFor('has'), "hasn't");
-      expect(contractionFor('had'), "hadn't");
+      expect(contractionOf('do', 'not'), "don't");
+      expect(contractionOf('does', 'not'), "doesn't");
+      expect(contractionOf('did', 'not'), "didn't");
+      expect(contractionOf('have', 'not'), "haven't");
+      expect(contractionOf('has', 'not'), "hasn't");
+      expect(contractionOf('had', 'not'), "hadn't");
     });
 
     test('but not "am", which English contracts at the other end', () {
       // "I am not" becomes "I'm not". "amn't" is not a word anybody says, and
       // contracting the subject is a different rule reaching further back.
-      expect(contractionFor('am'), isNull);
+      expect(contractionOf('am', 'not'), isNull);
     });
 
     test('and not an ordinary word', () {
-      expect(contractionFor('want'), isNull);
-      expect(contractionFor('apple'), isNull);
-      expect(contractionFor(''), isNull);
+      expect(contractionOf('want', 'not'), isNull);
+      expect(contractionOf('apple', 'not'), isNull);
+      expect(contractionOf('', 'not'), isNull);
     });
 
-    test('however it was capitalized or spaced', () {
-      expect(contractionFor('  Can '), "can't");
+    test('however it was spaced, keeping the case that was pressed', () {
+      expect(contractionOf('  Can ', 'not'), "Can't");
+      expect(contractionOf(' can ', ' NOT '), "can't");
     });
 
-    test('and "not" is the word it joins to', () {
-      expect(isNegation('not'), isTrue);
-      expect(isNegation(' NOT '), isTrue);
-      expect(isNegation('no'), isFalse);
+    test('and "not" is a word that joins to what is in front of it', () {
+      expect(canFollowInContraction('not'), isTrue);
+      expect(canFollowInContraction(' NOT '), isTrue);
+      expect(canFollowInContraction('no'), isFalse);
+    });
+
+    test('the subject pairs, which is the half a board presses far more', () {
+      // A user builds "I am hungry" one key at a time and used to hear it
+      // said that way, in a register nobody speaks in.
+      expect(contractionOf('I', 'am'), "I'm");
+      expect(contractionOf('you', 'are'), "you're");
+      expect(contractionOf('we', 'are'), "we're");
+      expect(contractionOf('they', 'will'), "they'll");
+      expect(contractionOf('she', 'would'), "she'd");
+      expect(contractionOf('it', 'is'), "it's");
+    });
+
+    test('the ones a question is built out of', () {
+      expect(contractionOf('what', 'is'), "what's");
+      expect(contractionOf('where', 'is'), "where's");
+      expect(contractionOf('who', 'are'), "who're");
+      expect(contractionOf('there', 'is'), "there's");
+      expect(contractionOf('that', 'is'), "that's");
+      expect(contractionOf('let', 'us'), "let's");
+    });
+
+    test('but not "have", which a board cannot tell apart from owning', () {
+      // "I've eaten" is the perfect auxiliary; "I have a drink" is
+      // possession, and both are pressed the same way. Saying "I've a drink"
+      // for a request is worse than leaving the pair alone.
+      expect(contractionOf('I', 'have'), isNull);
+      expect(contractionOf('they', 'have'), isNull);
+    });
+
+    test('the case of the key pressed survives', () {
+      // A board whose keys are capitalized must not start saying "i'm".
+      expect(contractionOf('You', 'are'), "You're");
+      expect(contractionOf('What', 'is'), "What's");
+      expect(contractionOf('i', 'am'), "I'm", reason: '"I" carries its case');
     });
   });
 
@@ -91,10 +128,26 @@ void main() {
       );
     });
 
-    test('and refuses anything that is not "not"', () {
+    test('and refuses a word that joins to nothing', () {
       bar.add('can', pos: PartOfSpeech.verb);
 
       expect(bar.contract('go'), isNull);
+      expect(bar.text, 'can');
+    });
+
+    test('joins a subject to the auxiliary after it', () {
+      bar.add('I', pos: PartOfSpeech.pronoun);
+
+      expect(bar.contract('am'), "I'm");
+      expect(bar.text, "I'm");
+    });
+
+    test('and leaves a pair that only looks like one alone', () {
+      // "can" then "am" is not a pair English joins, and the board must not
+      // invent one out of two words that each belong to a pair.
+      bar.add('can', pos: PartOfSpeech.verb);
+
+      expect(bar.contract('am'), isNull);
       expect(bar.text, 'can');
     });
 
