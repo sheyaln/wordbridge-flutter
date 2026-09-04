@@ -512,6 +512,14 @@ ObfBoard _toObf({
     buttons: buttons,
     grid: ObfGrid(rows: rows, columns: cols, order: order),
     images: images.values.toList(),
+    // No board-level `license`. What is recorded about where a board set came
+    // from is a sentence of provenance, and OBF's `license.type` is a license
+    // identifier that other programs display as one — a paragraph there reads
+    // as a license nobody granted. It travels under the spec's own extension
+    // mechanism instead, which our importer reads alongside `license`.
+    //
+    // The per-image licenses are a different matter and are emitted in full:
+    // those are what permit a picture's bytes to be in the file at all.
     ext: {
       WordbridgeExt.boardKind: board.kind.name,
       WordbridgeExt.vocabularyName: vocabulary.name,
