@@ -52,12 +52,20 @@ bool _isSvg(Uint8List bytes) {
   }
 }
 
-/// The first bytes of the formats Flutter can decode.
+/// What these bytes are, as a media type, or null for something that is not an
+/// image this app recognizes.
 ///
-/// By content rather than by extension, deliberately: nine bundled files are
-/// named `.png` and hold JPEG data, and they render, because the decoder reads
-/// the bytes. What must be refused is a body that is not an image at all.
-bool _isRaster(Uint8List b) {
+/// Read from the bytes rather than from a file name because the two disagree:
+/// nine bundled files are named `.png` and hold JPEG data. They render, because
+/// the decoder reads the bytes — and an export that trusted the extension would
+/// label them `image/png` and hand a recipient a file their decoder rejects.
+String? imageContentType(Uint8List bytes) =>
+    _rasterType(bytes) ?? (_isSvg(bytes) ? 'image/svg+xml' : null);
+
+bool _isRaster(Uint8List b) => _rasterType(b) != null;
+
+/// The first bytes of the formats Flutter can decode.
+String? _rasterType(Uint8List b) {
   bool starts(List<int> magic) {
     if (b.length < magic.length) return false;
     for (var i = 0; i < magic.length; i++) {
@@ -66,10 +74,10 @@ bool _isRaster(Uint8List b) {
     return true;
   }
 
-  if (starts(const [0x89, 0x50, 0x4E, 0x47])) return true; // PNG
-  if (starts(const [0xFF, 0xD8, 0xFF])) return true; // JPEG
-  if (starts(const [0x47, 0x49, 0x46, 0x38])) return true; // GIF
-  if (starts(const [0x42, 0x4D])) return true; // BMP
+  if (starts(const [0x89, 0x50, 0x4E, 0x47])) return 'image/png';
+  if (starts(const [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
+  if (starts(const [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+  if (starts(const [0x42, 0x4D])) return 'image/bmp';
   // WEBP is "RIFF" .... "WEBP".
   if (starts(const [0x52, 0x49, 0x46, 0x46]) &&
       b.length >= 12 &&
@@ -77,7 +85,7 @@ bool _isRaster(Uint8List b) {
       b[9] == 0x45 &&
       b[10] == 0x42 &&
       b[11] == 0x50) {
-    return true;
+    return 'image/webp';
   }
-  return false;
+  return null;
 }
