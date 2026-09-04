@@ -11,6 +11,15 @@ extension SymbolRefKey on SymbolRef {
   String get key => '$packId/$externalId';
 }
 
+/// The id the system emoji pack's rows are stored under.
+///
+/// Here rather than on the pack class because the board seed writes it into
+/// `symbols.pack_id`, and reaching for `SystemEmojiPack` to read one string
+/// would put an import of a concrete pack in `db/` — which is the boundary
+/// tools/check_symbol_boundary.sh exists to hold. What a stored row is keyed
+/// by is not the pack.
+const systemEmojiPackId = 'system-emoji';
+
 /// The packs a board consults for a word it has no chosen picture for.
 ///
 /// Deliberately only the curated one. That fallback runs with nobody looking —

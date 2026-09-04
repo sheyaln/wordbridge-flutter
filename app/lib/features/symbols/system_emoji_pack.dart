@@ -33,7 +33,7 @@ class SystemEmojiPack implements GlyphSymbolPack {
 
   /// Written into `symbols.pack_id`, so a stored choice finds its way back
   /// here on the next launch.
-  static const packId = 'system-emoji';
+  static const packId = systemEmojiPackId;
 
   static const indexKey = 'assets/symbols/$packId/manifest.json';
 

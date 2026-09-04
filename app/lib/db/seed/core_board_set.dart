@@ -11,7 +11,6 @@ import 'band_layout.dart';
 import 'core_vocabulary.dart';
 import '../../features/grid/region_labels.dart';
 import '../../features/symbols/symbol_pack.dart';
-import '../../features/symbols/system_emoji_pack.dart';
 
 /// Builds the shipped vocabulary at whatever grid size was chosen.
 ///
@@ -770,8 +769,8 @@ Future<void> addFixedKeys(
 /// draws it in its own font. Nothing is ever rasterized — those fonts are
 /// proprietary, and no cache, capture or file of one may exist here.
 const frameKeyEmoji = {
-  'home': (SystemEmojiPack.packId, '1f3e0', 'house'),
-  'back': (SystemEmojiPack.packId, '1f519', 'back arrow'),
+  'home': (systemEmojiPackId, '1f3e0', 'house'),
+  'back': (systemEmojiPackId, '1f519', 'back arrow'),
   // Handpicked from the downloading pack rather than the emoji font. It is the
   // one of these with no emoji worth the name — a cycling arrow says "again",
   // not "more of these" — so it is fetched like any other picture, and until
@@ -779,9 +778,9 @@ const frameKeyEmoji = {
   cycleCategoriesLabel: ('globalsymbols', '53182', 'categories'),
   // Not a key. Here because this is where the fallback's codepoint and name
   // are read from, and a second table would be a second place to get it wrong.
-  '': (SystemEmojiPack.packId, '1f504', 'counterclockwise arrows button'),
-  moreWordsLabel: (SystemEmojiPack.packId, '27a1-fe0f', 'right arrow'),
-  'back a page': (SystemEmojiPack.packId, '2b05-fe0f', 'left arrow'),
+  '': (systemEmojiPackId, '1f504', 'counterclockwise arrows button'),
+  moreWordsLabel: (systemEmojiPackId, '27a1-fe0f', 'right arrow'),
+  'back a page': (systemEmojiPackId, '2b05-fe0f', 'left arrow'),
 };
 
 /// Ordinary words whose picture is chosen rather than matched by keyword.
@@ -810,7 +809,7 @@ Future<String?> wordSymbol(WordbridgeDatabase db, String label) async {
       .insert(
         SymbolsCompanion.insert(
           id: id,
-          packId: const Value(SystemEmojiPack.packId),
+          packId: const Value(systemEmojiPackId),
           source: SymbolSource.bundled,
           externalId: Value(codepoints),
           label: name,
@@ -843,15 +842,13 @@ Future<String?> frameKeySymbol(WordbridgeDatabase db, String label) async {
         SymbolsCompanion.insert(
           id: id,
           packId: Value(packId),
-          source: packId == SystemEmojiPack.packId
+          source: packId == systemEmojiPackId
               ? SymbolSource.bundled
               : SymbolSource.downloaded,
           externalId: Value(externalId),
           label: name,
-          license: packId == SystemEmojiPack.packId
-              ? 'Unicode-3.0'
-              : 'CC-BY-SA-4.0',
-          attribution: packId == SystemEmojiPack.packId
+          license: packId == systemEmojiPackId ? 'Unicode-3.0' : 'CC-BY-SA-4.0',
+          attribution: packId == systemEmojiPackId
               ? 'Emoji drawn by this device in its own font'
               : 'Global Symbols',
           createdAt: nowMs(),
@@ -873,7 +870,7 @@ Future<String?> frameKeySymbol(WordbridgeDatabase db, String label) async {
         .insert(
           SymbolsCompanion.insert(
             id: second,
-            packId: const Value(SystemEmojiPack.packId),
+            packId: const Value(systemEmojiPackId),
             source: SymbolSource.bundled,
             externalId: Value(emoji.$2),
             label: emoji.$3,
