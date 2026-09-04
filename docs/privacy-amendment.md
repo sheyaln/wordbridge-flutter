@@ -167,9 +167,11 @@ then publish the amendment and the new build together.
   user-initiated transfers through system pickers has moved before. If the
   reviewer's reading is that any off-device transfer counts, the honest
   declaration is *Files and docs → collected, not shared → App functionality →
-  optional*, with "Data is encrypted in transit" answered yes (the providers
-  use TLS) and "Users can request that data be deleted" answered yes (Settings
-  → Backups → Remove every copy).
+  optional*, and "Users can request that data be deleted" answered yes
+  (Settings → Backups → Remove every copy). "Data is encrypted in transit" is
+  the provider's answer, not ours: the app hands the file to a
+  `DocumentsProvider` on the device and never opens a socket, so where the
+  folder is a cloud one the transfer and its encryption belong to that app.
 - **Families policy.** If the listing is in the Designed for Families programme
   or targets children, re-read the disclosure requirements: this is a feature
   that moves a child's data off the device, even though it moves it to the
