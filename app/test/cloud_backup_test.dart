@@ -490,6 +490,182 @@ void main() {
     });
   });
 
+  /// Which of the two places on an iPad the copies go to.
+  ///
+  /// The failure being guarded against is not a copy that fails. It is a
+  /// caregiver who moves their backups to Drive and never finds out that months
+  /// of their child's recorded speech are still sitting in an iCloud account
+  /// nobody looks at any more — and its mirror image, a family whose only
+  /// copies are quietly deleted by an app tidying up after itself.
+  ///
+  /// So: nothing is moved, nothing is deleted, and the old place is named on
+  /// the screen until somebody deals with it.
+  group('choosing where the copies go', () {
+    test('sends copies to the folder once one is chosen', () async {
+      await addWord('trampoline');
+      await cloud.backUpNow();
+
+      await cloud.sendTo(CloudPlace.folder);
+
+      expect(account.place, CloudPlace.folder);
+      expect(
+        account.shelves[CloudPlace.folder],
+        isNotEmpty,
+        reason: 'the copies were left with nowhere to be',
+      );
+    });
+
+    test('leaves what is already in the old place where it is', () async {
+      await cloud.backUpNow();
+      final before = Map.of(account.shelves[CloudPlace.account]!);
+
+      await cloud.sendTo(CloudPlace.folder);
+
+      expect(account.shelves[CloudPlace.account], before);
+      expect(
+        account.deleted,
+        isEmpty,
+        reason: 'the family\'s copies were tidied away by an app',
+      );
+    });
+
+    test('and says where they are, rather than only having said it', () async {
+      await cloud.backUpNow();
+
+      await cloud.sendTo(CloudPlace.folder);
+      final view = await cloud.view();
+
+      expect(view.leftBehind, 'iCloud');
+      expect(view.label, 'Google Drive');
+    });
+
+    test('says nothing about a place that never held anything', () async {
+      await cloud.sendTo(CloudPlace.folder);
+
+      expect((await cloud.view()).leftBehind, isNull);
+    });
+
+    test('stops claiming a date the new place has never had', () async {
+      await cloud.backUpNow();
+      expect((await cloud.view()).lastCopiedUp, isNotNull);
+
+      account.refuseUpload = const CloudRefusal('It would not take it.');
+      await cloud.sendTo(CloudPlace.folder);
+      account.refusal = const CloudRefusal('The folder has gone.');
+
+      expect(
+        (await cloud.view()).lastCopiedUp,
+        isNull,
+        reason: 'a date from the old place was read out as the new one\'s',
+      );
+    });
+
+    test('a picker somebody dismissed changes nothing at all', () async {
+      await cloud.backUpNow();
+      account.folderName = null;
+
+      await cloud.sendTo(CloudPlace.folder);
+      final view = await cloud.view();
+
+      expect(account.place, CloudPlace.account);
+      expect(view.leftBehind, isNull);
+      expect(
+        view.lastCopiedUp,
+        isNotNull,
+        reason: 'changing their mind cost them a backup that was working',
+      );
+    });
+
+    test('switching back names the place they have just left', () async {
+      await cloud.backUpNow();
+      await cloud.sendTo(CloudPlace.folder);
+
+      await cloud.sendTo(CloudPlace.account);
+      final view = await cloud.view();
+
+      expect(view.label, 'iCloud');
+      expect(view.leftBehind, 'Google Drive');
+      expect(
+        view.backups,
+        isNotEmpty,
+        reason: 'the copies already in iCloud stopped being offered',
+      );
+    });
+
+    test('a copy in the folder still comes back onto a bare tablet', () async {
+      await addWord('trampoline');
+      await cloud.sendTo(CloudPlace.folder);
+      await cloud.backUpNow();
+
+      await (db.delete(
+        db.buttons,
+      )..where((b) => b.label.equals('trampoline'))).go();
+      await loseTheTablet();
+
+      final result = await cloud.restore((await cloud.list()).first);
+
+      expect(result.restored, isTrue);
+      expect(await hasWord('trampoline'), isTrue);
+    });
+  });
+
+  /// A folder that was chosen and has since gone: a provider uninstalled, a
+  /// permission the system dropped, a folder somebody deleted.
+  ///
+  /// The tablet in front of somebody has to keep working. Losing the copies off
+  /// the device is survivable; losing the backups on it because the folder went
+  /// is the failure this whole feature exists against, arrived at from a new
+  /// direction.
+  group('a folder that has gone', () {
+    setUp(() async {
+      await cloud.sendTo(CloudPlace.folder);
+      account.refusal = const CloudRefusal('The folder has gone.');
+    });
+
+    test('is reported, and the local backup is still taken', () async {
+      final attempt = await cloud.keepUpToDate();
+
+      expect(
+        attempt?.snapshot,
+        isNotNull,
+        reason: 'the backup on the tablet went with the folder',
+      );
+      expect(attempt?.problem, 'The folder has gone.');
+      expect(await backup.snapshots(), isNotEmpty);
+    });
+
+    test('and the reason survives until somebody opens the screen', () async {
+      await cloud.keepUpToDate();
+
+      final view = await cloud.view();
+
+      expect(view.reachable, isFalse);
+      expect(view.problem, 'The folder has gone.');
+      expect(
+        view.label,
+        'Google Drive',
+        reason: 'the failure sent them to look in the wrong place',
+      );
+    });
+
+    test('and pressing back up now still writes one to the tablet', () async {
+      final attempt = await cloud.backUpNow();
+
+      expect(attempt.snapshot, isNotNull);
+      expect(attempt.problem, isNotNull);
+    });
+
+    test('is fixable by choosing one again, without switching off', () async {
+      await cloud.keepUpToDate();
+
+      await cloud.sendTo(CloudPlace.folder, pick: true);
+
+      expect(await cloud.on, isTrue);
+      expect((await cloud.view()).problem, isNull);
+      expect(account.shelves[CloudPlace.folder], isNotEmpty);
+    });
+  });
+
   group('the platform side', () {
     const channel = MethodChannel(PlatformCloudDestination.channelName);
     late PlatformCloudDestination destination;
@@ -581,12 +757,70 @@ void main() {
       );
     });
 
-    test('says what to fix, and it is not the same thing on both', () async {
-      // The platform can only say "no". Telling an Android caregiver to sign
-      // in to Google Drive sends them to a screen where nothing is wrong.
+    test('says what to fix, and it is not the same thing in both', () async {
+      // The platform can only say "no". Telling somebody who picked Google
+      // Drive to sign in to iCloud sends them to a screen where nothing is
+      // wrong.
       expect(
-        noDestination('iCloud'),
-        Platform.isAndroid ? noFolderChosen : notSignedIn('iCloud'),
+        noDestination('iCloud', CloudPlace.account),
+        notSignedIn('iCloud'),
+      );
+      expect(noDestination('Google Drive', CloudPlace.folder), noFolderChosen);
+    });
+
+    test('reports where copies go and what the platform calls it', () async {
+      answer(
+        (call) async => call.method == 'place'
+            ? {'place': 'folder', 'label': 'Google Drive', 'reachable': true}
+            : null,
+      );
+
+      final status = await destination.status();
+
+      expect(status.reachable, isTrue);
+      expect(destination.place, CloudPlace.folder);
+      expect(
+        destination.label,
+        'Google Drive',
+        reason: 'a caregiver would be sent to look in the wrong account',
+      );
+    });
+
+    test('asks the platform for the place it was told to use', () async {
+      final asked = <Map<Object?, Object?>>[];
+      answer((call) async {
+        asked.add(call.arguments as Map<Object?, Object?>);
+        return {'place': 'folder', 'label': 'Dropbox', 'reachable': true};
+      });
+
+      await destination.use(CloudPlace.folder, pick: true);
+
+      expect(asked.single['place'], 'folder');
+      expect(asked.single['pick'], isTrue);
+      expect(destination.label, 'Dropbox');
+    });
+
+    test('a folder that has gone is not one that was never chosen', () async {
+      // Different events with different fixes. "Choose one under Backups" is
+      // no help to somebody whose folder was working yesterday.
+      answer((call) async => throw PlatformException(code: 'gone'));
+
+      final status = await destination.status();
+
+      expect(status.reachable, isFalse);
+      expect(status.problem, contains('no longer reach the backup folder'));
+      expect(status.problem, contains('Backups on this device still work'));
+    });
+
+    test('a place it cannot name is not left wearing the old name', () async {
+      answer((call) async => {'place': 'folder', 'reachable': false});
+
+      await destination.status();
+
+      expect(
+        destination.label,
+        isNot('iCloud'),
+        reason: 'copies moved and the screen still names where they were',
       );
     });
 
@@ -608,38 +842,84 @@ void main() {
 /// named like it.
 class _Account implements CloudDestination {
   @override
-  final String label = 'iCloud';
+  String label = 'iCloud';
 
-  final Map<String, Uint8List> files = {};
+  @override
+  CloudPlace place = CloudPlace.account;
+
+  @override
+  List<CloudPlace> places = const [CloudPlace.account, CloudPlace.folder];
+
+  /// What each place holds, kept apart so that a test can ask the question the
+  /// switch is really about: whether the copies in the place somebody left are
+  /// still there afterwards.
+  final Map<CloudPlace, Map<String, Uint8List>> shelves = {
+    CloudPlace.account: {},
+    CloudPlace.folder: {},
+  };
+
+  Map<String, Uint8List> get files => shelves[place]!;
+
   final List<String> uploaded = [];
   final List<String> deleted = [];
 
   bool reachable = true;
   CloudRefusal? refuseUpload;
 
+  /// What every call refuses with, for a place that has stopped working — a
+  /// provider uninstalled, a folder deleted, a permission the system dropped.
+  CloudRefusal? refusal;
+
   /// How many times somebody was asked for whatever the platform needs — a
-  /// folder, on Android. Never at launch, only when the switch is thrown.
+  /// folder. Never at launch, only when the switch is thrown.
   int connects = 0;
 
   /// Whether being asked actually produces one.
   bool connectSucceeds = true;
+
+  /// The places somebody asked for, in order.
+  final List<CloudPlace> asked = [];
+
+  /// What the picker would name the folder, or null where it is dismissed.
+  String? folderName = 'Google Drive';
 
   /// A download that stops halfway, which is what a tablet losing its
   /// connection mid-restore actually produces.
   bool truncateDownloads = false;
 
   void _reachable() {
+    if (refusal != null) throw refusal!;
     if (!reachable) throw CloudRefusal(notSignedIn(label));
   }
 
   @override
-  Future<CloudStatus> status() async =>
-      (reachable: reachable, problem: reachable ? null : notSignedIn(label));
+  Future<CloudStatus> status() async {
+    final ok = reachable && refusal == null;
+    return (
+      reachable: ok,
+      problem: ok ? null : (refusal?.message ?? noDestination(label, place)),
+    );
+  }
 
   @override
   Future<CloudStatus> connect() async {
     connects++;
     if (connectSucceeds) reachable = true;
+    return status();
+  }
+
+  @override
+  Future<CloudStatus> use(CloudPlace to, {bool pick = false}) async {
+    asked.add(to);
+
+    // A picker somebody dismissed leaves everything exactly as it was, which
+    // is the case the service must not read as a move.
+    if (to == CloudPlace.folder && folderName == null) return status();
+
+    place = to;
+    label = to == CloudPlace.folder ? folderName! : 'iCloud';
+    reachable = true;
+    refusal = null;
     return status();
   }
 

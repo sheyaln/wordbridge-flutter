@@ -49,10 +49,20 @@ enum _Readiness {
 /// answers, and this is the one moment where the grid is chosen — everything
 /// after it is either additive or an explicit, warned migration.
 class ProfileSetup extends StatefulWidget {
-  const ProfileSetup({super.key, required this.db, this.isFirstRun = false});
+  const ProfileSetup({
+    super.key,
+    required this.db,
+    this.isFirstRun = false,
+    this.cloud,
+  });
 
   final WordbridgeDatabase db;
   final bool isFirstRun;
+
+  /// Where a copy of the board could go, so that the question about it can be
+  /// answered here rather than only pointed at. Injected for tests, which must
+  /// never reach a real one.
+  final CloudDestination? cloud;
 
   static Future<Profile?> show(
     BuildContext context, {
@@ -108,6 +118,28 @@ class _ProfileSetupState extends State<ProfileSetup> {
   /// device, so it is consent, and consent nobody was offered is not consent.
   bool _cloudBackup = CloudBackupStore.offeredAtSetup;
 
+  late final CloudDestination _cloud =
+      widget.cloud ?? PlatformCloudDestination();
+
+  /// Which of the places this device offers the copy goes to.
+  ///
+  /// The container is preselected where there is a choice, for the reason it is
+  /// the default everywhere else: it needs nobody to pick anything and it comes
+  /// back after a reinstall, so it is still the right answer when whoever is
+  /// holding the tablet is not the person who knows which account the family
+  /// keeps their files in.
+  CloudPlace _cloudPlace = CloudPlace.account;
+
+  /// What the platform ended up calling the place, once it has one to call.
+  String? _cloudLabel;
+
+  /// Why the place could not be set up, from the moment somebody chose it.
+  ///
+  /// Shown here rather than saved for the Backups screen. Somebody who has just
+  /// dismissed a folder picker is the only person who can put that right, and
+  /// they are holding the tablet now.
+  String? _cloudProblem;
+
   /// How long that gesture is held for.
   ///
   /// Adjustable here rather than only in caregiver settings, which are behind
@@ -158,6 +190,34 @@ class _ProfileSetupState extends State<ProfileSetup> {
       });
     }
   }
+
+  /// Says where the copy goes, and asks the platform for it there and then.
+  ///
+  /// The picker is opened here rather than left to be found under Backups
+  /// because a folder answer with no folder behind it is the same as no
+  /// answer, and nobody would find that out until the day the tablet was gone.
+  Future<void> _choosePlace(CloudPlace place) async {
+    setState(() {
+      _cloudBackup = true;
+      _cloudPlace = place;
+      _cloudLabel = null;
+      _cloudProblem = null;
+    });
+
+    final status = await _cloud.use(place);
+    if (!mounted) return;
+
+    setState(() {
+      _cloudProblem = status.problem;
+      _cloudLabel = status.reachable ? _cloud.label : null;
+    });
+  }
+
+  /// What the chosen place ended up being called, or what it would be.
+  String _placeTitle(CloudPlace place) =>
+      _cloudPlace == place && _cloudLabel != null
+      ? _cloudLabel!
+      : cloudLabel(place);
 
   Future<void> _create() async {
     final choice = _choiceFor(context, _iconSize);
@@ -403,18 +463,30 @@ class _ProfileSetupState extends State<ProfileSetup> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _OptionCard(
-                    title: 'Keep a copy in ${cloudLabel()}',
-                    subtitle:
-                        'Goes to the ${cloudLabel()} account already signed '
-                        'in on this tablet. It stays in that account — we '
-                        'never receive it and cannot read it. This is what '
-                        'gets the board back if the tablet is lost, broken '
-                        'or replaced.',
-                    selected: _cloudBackup,
-                    onTap: () => setState(() => _cloudBackup = true),
-                  ),
-                  const SizedBox(height: 8),
+                  if (_cloud.places.length > 1)
+                    for (final place in _cloud.places) ...[
+                      _OptionCard(
+                        title: 'Keep a copy in ${_placeTitle(place)}',
+                        subtitle: _placeReason(place),
+                        selected: _cloudBackup && _cloudPlace == place,
+                        onTap: () => _choosePlace(place),
+                      ),
+                      const SizedBox(height: 8),
+                    ]
+                  else ...[
+                    _OptionCard(
+                      title: 'Keep a copy in ${cloudLabel()}',
+                      subtitle:
+                          'Goes to the ${cloudLabel()} account already signed '
+                          'in on this tablet. It stays in that account — we '
+                          'never receive it and cannot read it. This is what '
+                          'gets the board back if the tablet is lost, broken '
+                          'or replaced.',
+                      selected: _cloudBackup,
+                      onTap: () => setState(() => _cloudBackup = true),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   _OptionCard(
                     title: 'Backups on this device only',
                     subtitle:
@@ -424,6 +496,10 @@ class _ProfileSetupState extends State<ProfileSetup> {
                     onTap: () => setState(() => _cloudBackup = false),
                   ),
                   const SizedBox(height: 8),
+                  if (_cloudProblem != null) ...[
+                    _Note(_cloudProblem!),
+                    const SizedBox(height: 8),
+                  ],
                   const _Note(
                     'A backup is the whole board set, and includes any usage '
                     'recorded — which is a record of what this person has '
@@ -535,6 +611,24 @@ class _ProfileSetupState extends State<ProfileSetup> {
     );
   }
 }
+
+/// What one of the places gets, and what it does not ask for.
+///
+/// Both say who cannot read the copy, in the same breath as offering it. A
+/// backup that quietly starts sending a disabled person's speech somewhere is
+/// not a feature anybody consented to, and the promise cannot live only in the
+/// one card somebody did not read.
+String _placeReason(CloudPlace place) => switch (place) {
+  CloudPlace.account =>
+    'Goes to Wordbridge\'s own folder in the ${cloudLabel()} account already '
+        'signed in on this tablet. It stays in that account — we never '
+        'receive it and cannot read it. This is what gets the board back if '
+        'the tablet is lost, broken or replaced.',
+  CloudPlace.folder =>
+    'Goes to a folder you pick now: your Google Drive, Dropbox, OneDrive, or '
+        'the tablet\'s own storage. Wordbridge holds no sign-in for any of '
+        'them — the system grants it that one folder and nothing else.',
+};
 
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.child, this.note});

@@ -34,6 +34,10 @@ void main() {
   tearDown(() async => db.close());
 
   group('the question at setup', () {
+    late _Picker picker;
+
+    setUp(() => picker = _Picker());
+
     /// A surface an iPad's worth of grid derives from, so the build button is
     /// reachable rather than disabled on an unusable geometry.
     Future<void> pumpSetup(
@@ -46,7 +50,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: ProfileSetup(db: db, isFirstRun: isFirstRun),
+          home: ProfileSetup(db: db, isFirstRun: isFirstRun, cloud: picker),
         ),
       );
       await tester.pumpAndSettle();
@@ -128,6 +132,55 @@ void main() {
         findsOneWidget,
         reason: 'a copy of somebody\'s speech left the device unannounced',
       );
+    });
+
+    testWidgets('offers a folder too, where the tablet has one to offer', (
+      tester,
+    ) async {
+      await pumpSetup(tester);
+      await reveal(tester, find.text('Keep a copy in $unpickedFolder'));
+
+      expect(find.text('Keep a copy in $unpickedFolder'), findsOneWidget);
+      expect(
+        find.textContaining('Google Drive, Dropbox, OneDrive'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('holds no sign-in for any of them'),
+        findsOneWidget,
+        reason: 'a place was offered without saying what it costs',
+      );
+    });
+
+    testWidgets('asks for the folder the moment it is chosen', (tester) async {
+      // Left for the Backups screen, a folder answer with no folder behind it
+      // is the same as no answer — and nobody would find that out until the
+      // day the tablet was gone.
+      await pumpSetup(tester);
+      await reveal(tester, find.text('Keep a copy in $unpickedFolder'));
+
+      await tester.tap(find.text('Keep a copy in $unpickedFolder'));
+      await tester.pumpAndSettle();
+
+      expect(picker.asked, [CloudPlace.folder]);
+      expect(find.text('Keep a copy in Google Drive'), findsOneWidget);
+
+      await build(tester);
+
+      expect(await CloudBackupStore(db).answer(), isTrue);
+    });
+
+    testWidgets('and a picker nobody finished says so there and then', (
+      tester,
+    ) async {
+      picker.folderName = null;
+      await pumpSetup(tester);
+      await reveal(tester, find.text('Keep a copy in $unpickedFolder'));
+
+      await tester.tap(find.text('Keep a copy in $unpickedFolder'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(noFolderChosen), findsOneWidget);
     });
 
     testWidgets('is not put again when a second person is added', (
@@ -269,6 +322,114 @@ void main() {
       expect(cloud.forgotten, isFalse);
     });
 
+    group('where the copies go', () {
+      testWidgets('offers both places where the tablet has two', (
+        tester,
+      ) async {
+        cloud.view_ = _view();
+        await open(tester);
+
+        await reveal(tester, find.text('A folder you choose'));
+
+        expect(find.text('Where the copies go'), findsOneWidget);
+        expect(find.text('A folder you choose'), findsOneWidget);
+      });
+
+      testWidgets('says what changing it leaves behind, before it does', (
+        tester,
+      ) async {
+        cloud.view_ = _view(
+          backups: [_copyAt(DateTime.utc(2026, 8, 3, 14, 22))],
+        );
+        await open(tester);
+
+        await reveal(tester, find.text('A folder you choose'));
+        await tester.tap(find.text('A folder you choose'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('The one copy already in iCloud stays'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('delete them in iCloud itself'),
+          findsOneWidget,
+          reason: 'it did not say how to get rid of what it left',
+        );
+        expect(cloud.sentTo, isEmpty, reason: 'it moved before asking');
+      });
+
+      testWidgets('and moves them once they have agreed', (tester) async {
+        cloud.view_ = _view(
+          backups: [_copyAt(DateTime.utc(2026, 8, 3, 14, 22))],
+        );
+        await open(tester);
+
+        await reveal(tester, find.text('A folder you choose'));
+        await tester.tap(find.text('A folder you choose'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Change where they go'));
+        await tester.pumpAndSettle();
+
+        expect(cloud.sentTo, [CloudPlace.folder]);
+      });
+
+      testWidgets('goes straight there when there is nothing to leave', (
+        tester,
+      ) async {
+        // A confirmation about nothing is what teaches somebody to dismiss
+        // the one that is about their child's recorded speech.
+        cloud.view_ = _view();
+        await open(tester);
+
+        await reveal(tester, find.text('A folder you choose'));
+        await tester.tap(find.text('A folder you choose'));
+        await tester.pumpAndSettle();
+
+        expect(cloud.sentTo, [CloudPlace.folder]);
+      });
+
+      testWidgets('keeps saying where the older copies were left', (
+        tester,
+      ) async {
+        cloud.view_ = _view(
+          label: 'Google Drive',
+          place: CloudPlace.folder,
+          leftBehind: 'iCloud',
+        );
+        await open(tester);
+
+        await reveal(tester, find.text('Older copies are still in iCloud'));
+
+        expect(find.text('Older copies are still in iCloud'), findsOneWidget);
+      });
+
+      testWidgets('offers the picker again for a folder that has gone', (
+        tester,
+      ) async {
+        cloud.view_ = _view(
+          label: 'Google Drive',
+          place: CloudPlace.folder,
+          reachable: false,
+          problem: folderGone('Google Drive'),
+        );
+        await open(tester);
+
+        expect(find.text(folderGone('Google Drive')), findsOneWidget);
+
+        await reveal(tester, find.text('Choose a different folder'));
+        await tester.tap(find.text('Choose a different folder'));
+        await tester.pumpAndSettle();
+
+        expect(cloud.sentTo, [CloudPlace.folder]);
+        expect(
+          cloud.picked,
+          isTrue,
+          reason: 'the only way back was switching the whole thing off',
+        );
+      });
+    });
+
     group('restoring from the account', () {
       final at = DateTime.utc(2026, 8, 3, 14, 22);
 
@@ -373,6 +534,10 @@ void main() {
 CloudView _view({
   bool on = true,
   bool reachable = true,
+  String label = 'iCloud',
+  CloudPlace place = CloudPlace.account,
+  List<CloudPlace> places = const [CloudPlace.account, CloudPlace.folder],
+  String? leftBehind,
   DateTime? lastCopiedUp,
   bool checked = true,
   List<CloudBackup> backups = const [],
@@ -380,7 +545,10 @@ CloudView _view({
 }) => (
   answered: true,
   on: on,
-  label: 'iCloud',
+  label: label,
+  place: place,
+  places: places,
+  leftBehind: leftBehind,
   reachable: reachable,
   lastCopiedUp: lastCopiedUp ?? backups.firstOrNull?.takenAt,
   checked: checked && reachable,
@@ -434,6 +602,8 @@ class _Cloud extends CloudBackupService {
 
   final List<String> order = [];
   final List<CloudBackup> restored = [];
+  final List<CloudPlace> sentTo = [];
+  bool picked = false;
   bool forgotten = false;
   String? refuseRestore;
 
@@ -465,6 +635,19 @@ class _Cloud extends CloudBackupService {
   }
 
   @override
+  Future<CloudAttempt> sendTo(CloudPlace place, {bool pick = false}) async {
+    sentTo.add(place);
+    picked = picked || pick;
+    view_ = _view(
+      on: view_.on,
+      place: place,
+      label: place == CloudPlace.folder ? 'Google Drive' : 'iCloud',
+      leftBehind: place == CloudPlace.folder ? 'iCloud' : null,
+    );
+    return (snapshot: null, copy: null, problem: null);
+  }
+
+  @override
   Future<RestoreAttempt> restore(CloudBackup copy) async {
     restored.add(copy);
     if (refuseRestore != null) {
@@ -488,12 +671,74 @@ class _NoAccount implements CloudDestination {
   String get label => 'iCloud';
 
   @override
+  CloudPlace get place => CloudPlace.account;
+
+  @override
+  List<CloudPlace> get places => const [];
+
+  @override
   Future<CloudStatus> status() async =>
       (reachable: false, problem: 'No account.');
 
   @override
   Future<CloudStatus> connect() async =>
       (reachable: false, problem: 'No account.');
+
+  @override
+  Future<CloudStatus> use(CloudPlace place, {bool pick = false}) async =>
+      (reachable: false, problem: 'No account.');
+
+  @override
+  Future<List<CloudBackup>> list() async => const [];
+
+  @override
+  Future<CloudBackup> upload(Object file, String name) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> download(CloudBackup backup, Object to) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> delete(CloudBackup backup) => throw UnimplementedError();
+}
+
+/// The platform's answer to being asked for a place, with no platform under it.
+///
+/// The setup screen can open a folder picker, and a test that reached a real
+/// one would be a test that only passes on a tablet somebody is holding.
+class _Picker implements CloudDestination {
+  @override
+  String label = 'iCloud';
+
+  @override
+  CloudPlace place = CloudPlace.account;
+
+  @override
+  List<CloudPlace> places = const [CloudPlace.account, CloudPlace.folder];
+
+  final List<CloudPlace> asked = [];
+
+  /// What the picker would name the folder, or null where it is dismissed.
+  String? folderName = 'Google Drive';
+
+  @override
+  Future<CloudStatus> use(CloudPlace to, {bool pick = false}) async {
+    asked.add(to);
+    if (to == CloudPlace.folder && folderName == null) {
+      return (reachable: false, problem: noFolderChosen);
+    }
+
+    place = to;
+    label = to == CloudPlace.folder ? folderName! : 'iCloud';
+    return (reachable: true, problem: null);
+  }
+
+  @override
+  Future<CloudStatus> status() async => (reachable: true, problem: null);
+
+  @override
+  Future<CloudStatus> connect() async => status();
 
   @override
   Future<List<CloudBackup>> list() async => const [];
