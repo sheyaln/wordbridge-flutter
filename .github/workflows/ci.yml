@@ -107,7 +107,7 @@ jobs:
       # the board — that is what the release job below is for.
       - uses: actions/upload-artifact@v4
         with:
-          name: wordbridge-debug-apk
+          name: wordbridge-aac-debug-apk
           path: app/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
 
@@ -202,7 +202,7 @@ jobs:
             defines+=(--dart-define=WORDBRIDGE_INTAKE_TOKEN="$INTAKE_TOKEN")
           fi
           flutter build apk --release "${defines[@]}"
-          mv build/app/outputs/flutter-apk/app-release.apk wordbridge.apk
+          mv build/app/outputs/flutter-apk/app-release.apk wordbridge-aac.apk
 
       # The keystore is on this runner's disk until the job ends. Removing it
       # costs nothing and means a later step added by somebody cannot read it.
@@ -211,12 +211,13 @@ jobs:
         run: rm -f android/upload-keystore.jks android/key.properties
 
       # A fixed asset name, so the website can link to
-      # releases/latest/download/wordbridge.apk and never be edited again.
+      # releases/latest/download/wordbridge-aac.apk and never be edited
+      # again.
       - name: Publish the release
         if: steps.gate.outputs.signed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" wordbridge.apk \
+          gh release create "${{ github.ref_name }}" wordbridge-aac.apk \
             --title "${{ github.ref_name }}" \
             --generate-notes

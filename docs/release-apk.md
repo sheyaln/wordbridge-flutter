@@ -7,7 +7,7 @@ the build before the Play rollout reaches them.
 
 The link never changes:
 
-    https://github.com/sheyaln/wordbridge-flutter/releases/latest/download/wordbridge.apk
+    https://github.com/sheyaln/wordbridge-flutter/releases/latest/download/wordbridge-aac.apk
 
 GitHub resolves `latest/download/<name>` to the newest release's asset of that
 name, so publishing a release is the whole of updating the site.
@@ -19,7 +19,7 @@ name, so publishing a release is the whole of updating the site.
 
 The `release` job runs only for tags matching `v*`, and only after `check` and
 `android` have passed. It builds a signed release APK, attaches it as
-`wordbridge.apk`, and generates notes from the commits since the last tag.
+`wordbridge-aac.apk`, and generates notes from the commits since the last tag.
 
 ## The secrets it needs
 

@@ -620,13 +620,14 @@ class _ProfileSetupState extends State<ProfileSetup> {
 /// one card somebody did not read.
 String _placeReason(CloudPlace place) => switch (place) {
   CloudPlace.account =>
-    'Goes to Wordbridge\'s own folder in the ${cloudLabel()} account already '
+    'Goes to Wordbridge AAC\'s own folder in the ${cloudLabel()} account '
+        'already '
         'signed in on this tablet. It stays in that account — we never '
         'receive it and cannot read it. This is what gets the board back if '
         'the tablet is lost, broken or replaced.',
   CloudPlace.folder =>
     'Goes to a folder you pick now: your Google Drive, Dropbox, OneDrive, or '
-        'the tablet\'s own storage. Wordbridge holds no sign-in for any of '
+        'the tablet\'s own storage. Wordbridge AAC holds no sign-in for any of '
         'them — the system grants it that one folder and nothing else.',
 };
 

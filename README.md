@@ -1,4 +1,4 @@
-# wordbridge
+# Wordbridge AAC
 
 A free, open source AAC app. Runs on a tablet, shows a grid of words and
 pictures, speaks whatever is pressed.

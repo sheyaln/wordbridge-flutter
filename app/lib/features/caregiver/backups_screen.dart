@@ -657,7 +657,8 @@ String cloudPlaceTitle(CloudView view, CloudPlace place) {
 /// something this app knows.
 String cloudPlaceNote(CloudPlace place) => switch (place) {
   CloudPlace.account =>
-    'Wordbridge\'s own folder in the ${cloudLabel()} account already signed '
+    'Wordbridge AAC\'s own folder in the ${cloudLabel()} account already '
+        'signed '
         'in on this tablet. Nothing to choose, and it is still there after '
         'the app is reinstalled.',
   CloudPlace.folder =>
@@ -680,7 +681,7 @@ String leavingWarning(CloudView view) {
     final many => 'The $many copies already in ${view.label} stay',
   };
 
-  return '$copies where they are. Wordbridge stops adding to them and '
+  return '$copies where they are. Wordbridge AAC stops adding to them and '
       'stops listing them here.\n\n'
       'To get rid of them: delete them in ${view.label} itself, or come back '
       'here, switch to ${view.label} again and use "Remove every copy".\n\n'
