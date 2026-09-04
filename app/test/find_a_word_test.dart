@@ -619,6 +619,13 @@ void main() {
   });
 
   group('walking the way there', () {
+    // Set rather than assumed. This group is about the board pressing the
+    // keys itself, which stopped being the default when `waits` took over —
+    // and a group whose premise is whatever the shipped default happens to be
+    // is a group that silently changes what it tests. The one below sets its
+    // own mode for the same reason and always did.
+    setUp(() async => settings.set('walkMode', WalkMode.presses.name));
+
     testWidgets('starts at home, pointing at the first key', (tester) async {
       await pumpTalkScreen(tester);
       final path = await somewhereElse();

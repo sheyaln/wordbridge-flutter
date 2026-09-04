@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../profiles/profile_settings.dart';
+
 /// The row of suggested next words.
 ///
 /// It sits outside the grid and never reaches into it. Predictive *reordering*
@@ -24,7 +26,7 @@ class PredictionStrip extends StatefulWidget {
     required this.words,
     required this.onSelect,
     this.slots = 5,
-    this.settleDelay = const Duration(milliseconds: 500),
+    this.settleDelay = ProfileSettings.defaultSettleDelay,
   });
 
   final List<String> words;

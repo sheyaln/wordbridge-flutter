@@ -495,7 +495,7 @@ class TalkScreenState extends State<TalkScreen> {
   /// Starts the delay, and schedules the rebuild that ends it.
   void _settle() {
     final delay =
-        widget.settings?.settleDelay ?? const Duration(milliseconds: 500);
+        widget.settings?.settleDelay ?? ProfileSettings.defaultSettleDelay;
     if (delay <= Duration.zero) return;
 
     _settleTimer?.cancel();
@@ -1375,7 +1375,7 @@ class TalkScreenState extends State<TalkScreen> {
                     words: [for (final b in _suggestions) b.message],
                     settleDelay:
                         widget.settings?.settleDelay ??
-                        const Duration(milliseconds: 500),
+                        ProfileSettings.defaultSettleDelay,
                     onSelect: _onSuggestionWord,
                   ),
                 Expanded(

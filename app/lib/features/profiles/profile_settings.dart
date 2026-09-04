@@ -62,8 +62,19 @@ class ProfileSettings extends ChangeNotifier {
   /// This is the one place something deliberately stands between a user and
   /// speech, so it is short, adjustable, and can be switched off entirely by
   /// setting it to zero.
-  Duration get settleDelay =>
-      Duration(milliseconds: _values['settleDelayMs'] as int? ?? 500);
+  /// A quarter of a second, down from half. Long enough to swallow the tap
+  /// that was aimed at the board that just left, short enough that it does
+  /// not read as the device thinking.
+  ///
+  /// Named because four places need this number and a build with no settings
+  /// object still has to pause for the same length as one that has them.
+  /// Written out four times it drifted the moment one of them was changed.
+  static const defaultSettleDelay = Duration(milliseconds: 250);
+
+  Duration get settleDelay {
+    final ms = _values['settleDelayMs'] as int?;
+    return ms == null ? defaultSettleDelay : Duration(milliseconds: ms);
+  }
 
   /// How long the board rests on each key while it walks a route to a word
   /// found in Find a word.
@@ -236,12 +247,17 @@ class ProfileSettings extends ChangeNotifier {
 
   /// Who presses the keys on the way to a word the finder found (§4.47).
   ///
-  /// The board does, by default — which is what shipped, and the mode a
-  /// caregiver looking a word up wants. The other one has the better argument
-  /// from the thesis and no evidence behind it yet, and a default changed
-  /// under somebody who has learned this one is the displacement this app
+  /// The key waits, by default. The board pressing the keys itself shows
+  /// somebody the route; the key waiting makes them walk it, and walking it is
+  /// what lays down the motor plan this whole app is built to protect. A
+  /// found word that the board fetches teaches the person nothing about where
+  /// it lives.
+  ///
+  /// This was `presses` for as long as it was the only mode. Changing it is
+  /// safe here and would not be later: no profile has learned the old one, and
+  /// a default moved under somebody who had is the displacement this app
   /// exists to refuse.
-  WalkMode get walkMode => _enum('walkMode', WalkMode.values, WalkMode.presses);
+  WalkMode get walkMode => _enum('walkMode', WalkMode.values, WalkMode.waits);
 
   /// Whether each key speaks as it is pressed (§4.48).
   ///

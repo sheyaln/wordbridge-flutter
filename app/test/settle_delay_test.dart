@@ -17,10 +17,19 @@ void main() {
 
   tearDown(() async => db.close());
 
-  test('half a second by default', () {
+  test('a quarter of a second by default', () {
     // Long enough to catch a finger already on its way down, short enough not
-    // to be felt by someone using the board at a normal pace.
-    expect(settings.settleDelay, const Duration(milliseconds: 500));
+    // to be felt by someone using the board at a normal pace. Half a second
+    // was the first guess and read as the device thinking.
+    expect(settings.settleDelay, const Duration(milliseconds: 250));
+  });
+
+  test('and every fallback agrees with it', () {
+    // The number lives in four places: this getter and three widgets that
+    // take it as a default for a build with no settings object. Written out
+    // four times, changing one of them left a board pausing for one length
+    // and its prediction strip for another.
+    expect(settings.settleDelay, ProfileSettings.defaultSettleDelay);
   });
 
   test('zero turns it off completely', () async {
