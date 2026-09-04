@@ -12,10 +12,23 @@ class PinGate extends StatefulWidget {
 
   final PinAuth auth;
 
+  /// Closed by Cancel and by nothing else.
+  ///
+  /// A dismissible barrier made this dialog impossible to use with a mouse.
+  /// The gesture that opens it is a two-second hold, so the dialog is pushed
+  /// while the pointer is still down — and on the web the release that follows
+  /// reaches the barrier that was not there when the press began, which closed
+  /// the gate on the way in. Measured in a browser: the dialog appeared under
+  /// the cursor and vanished the instant the button came up, with no way past
+  /// it. Touch is unaffected, which is why a tablet never showed this.
+  ///
+  /// It is the right behaviour anyway. This is the door to the editor, reached
+  /// deliberately; closing it by a stray tap beside it is not something
+  /// anybody needs, and Cancel is on the dialog.
   static Future<bool> show(BuildContext context, PinAuth auth) async {
     final ok = await showDialog<bool>(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (_) => Dialog(child: PinGate(auth: auth)),
     );
     return ok ?? false;

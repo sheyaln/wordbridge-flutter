@@ -368,23 +368,39 @@ class NeuralSpeechEngine implements SpeechEngine {
     Future<void> Function(String) saySomehow,
   ) async {
     final deadline = budget.forText(spoken);
+
+    // Filed as soon as it exists, whether or not anybody is still waiting for
+    // it. **A word that arrives late is still the right sound for that word**,
+    // and the press after this one is what it is for: dropping it meant a host
+    // slower than its budget re-made every word on every press and never
+    // filled its pack, which is the voice never being heard at all rather than
+    // being heard a moment late. It is filed, not spoken — see the timeout
+    // below.
+    final work = _synthesize(spoken).then((clip) async {
+      if (clip != null) await clips.write(spoken, clip);
+      return clip;
+    });
+    // Past the deadline nothing is listening to `work` any more, so a failure
+    // in it would surface as an unhandled error seconds after the board has
+    // moved on.
+    unawaited(work.then((_) {}, onError: (Object _) {}));
+
     try {
       // The budget covers the wait for the engine as well as the synthesis.
       // A model busy with the word before this one is a person waiting just
       // the same, and the clock they are watching does not know the
       // difference.
-      final clip = await _synthesize(spoken).timeout(deadline);
+      final clip = await work.timeout(deadline);
       if (mine != _generation) return;
       if (clip == null) {
         _recordFallback(spoken, 'the voice could not be loaded');
         await saySomehow(spoken);
         return;
       }
-      await clips.write(spoken, clip);
       await _play(clip);
     } on TimeoutException {
-      // The result may still arrive. It is dropped where it lands: the words
-      // are about to be spoken, and hearing them twice — the second time in
+      // The result is not spoken when it lands: the words are about to be said
+      // in the other voice, and hearing them twice — the second time in
       // another voice — is worse than not hearing them in this one.
       if (mine != _generation) return;
       _recordFallback(spoken, 'took longer than ${deadline.inMilliseconds} ms');

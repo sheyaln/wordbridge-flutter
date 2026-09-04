@@ -39,11 +39,18 @@ const kokoroInt8V019 = (
   installedBytes: 140800000,
 );
 
-/// Whether the voice is here. There are no paths to hand anybody.
+/// Whether the voice can be run here. There are no paths to hand anybody.
 ///
 /// The engine reads its own files, in the worker, straight into the module's
-/// filesystem — so nothing on this side ever holds one. What the engine needs
-/// from this type is the single fact that the download finished.
+/// filesystem — so nothing on this side ever holds one. What it needs from
+/// this type is the single fact that there is something to read.
+///
+/// **Reachable, not cached.** The two come apart: a browser can refuse to keep
+/// 134 MB — a device short of disk is the case seen — and a voice that
+/// answered "not installed" to that would be a voice permanently unavailable
+/// on a machine where it works perfectly well, just slower on each visit.
+/// Whether the download is *kept* is a separate question, and the one the
+/// caregiver screen asks through [VoiceModelStore.isInstalled].
 class VoiceModelFiles {
   const VoiceModelFiles({required this.arePresent});
 
@@ -69,8 +76,25 @@ class VoiceModelStore {
   final _worker = KokoroWorker.instance;
 
   Future<VoiceModelFiles> files() async =>
-      VoiceModelFiles(arePresent: await isInstalled());
+      VoiceModelFiles(arePresent: await isReachable());
 
+  /// Whether the files are being served where this build expects them.
+  ///
+  /// The one thing that stops the voice outright: a build published without
+  /// `tools/fetch_web_voice.sh` having been run beside it.
+  Future<bool> isReachable() async {
+    try {
+      return (await _worker.status()).totalBytes > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Whether the browser is keeping the whole download.
+  ///
+  /// What the caregiver screen shows. False after a browser has declined to
+  /// keep it, which costs the next visit the download again and costs this one
+  /// nothing.
   Future<bool> isInstalled() async {
     try {
       return (await _worker.status()).complete;

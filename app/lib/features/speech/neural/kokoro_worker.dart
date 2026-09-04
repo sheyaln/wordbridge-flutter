@@ -115,11 +115,15 @@ class KokoroWorker {
   }
 
   void _failAll(String reason) {
-    for (final waiting in _pending.values) {
-      if (!waiting.isCompleted) waiting.completeError(StateError(reason));
-    }
+    final waiting = List.of(_pending.values);
     _pending.clear();
-    _progress?.addError(StateError(reason));
+    for (final request in waiting) {
+      if (!request.isCompleted) request.completeError(StateError(reason));
+    }
+    final progress = _progress;
+    if (progress != null && !progress.isClosed) {
+      progress.addError(StateError(reason));
+    }
     _loaded = false;
   }
 
@@ -215,20 +219,28 @@ class KokoroWorker {
   }
 
   /// Gives the engine's memory back, and keeps the download.
+  ///
+  /// **Ends the worker rather than asking it to free anything.** Emscripten
+  /// never shrinks a wasm heap, so freeing the engine inside it moves almost
+  /// nothing — measured, 4 MB against the 570 MB that terminating gives back.
+  /// The next thing that needs a voice spawns another, and from a warm cache
+  /// that is under a second.
+  ///
+  /// Anything mid-synthesis is dropped, which is what this is for: it is
+  /// called when the voice is switched off and when the page goes to the
+  /// background, and both are moments when nobody is waiting for a word.
   Future<void> unload() async {
-    if (!_loaded) return;
+    final worker = _worker;
+    _worker = null;
     _loaded = false;
-    try {
-      await _send('unload', const {});
-    } catch (_) {
-      // Nothing above this can do anything about a worker that will not let
-      // go, and the memory comes back when the page does.
-    }
+    if (worker == null) return;
+    worker.terminate();
+    _failAll('The neural voice was stopped.');
   }
 
   /// Throws the download away.
   Future<void> evict() async {
-    _loaded = false;
+    await unload();
     await _send('evict', const {});
   }
 

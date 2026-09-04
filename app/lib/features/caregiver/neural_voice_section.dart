@@ -469,21 +469,15 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
           'them all again. Pitch, volume and tone do not reach this one.',
         ),
 
-        // Only where the pack is a file. A bake is half an hour of synthesis
-        // and it buys a launch that is instant from the first word; against a
-        // pack that dies with the page it buys the same half hour again on the
-        // next visit, for words this person may never press.
-        if (_speech.clips?.survivesTheSession ?? true) ...[
-          const VoiceHeader('Words made in advance'),
-          _BakeTile(
-            baked: baked,
-            words: words,
-            job: _bake,
-            busy: _busy,
-            onStart: _startBake,
-            onPause: () => _bake?.pause(),
-          ),
-        ],
+        const VoiceHeader('Words made in advance'),
+        _BakeTile(
+          baked: baked,
+          words: words,
+          job: _bake,
+          busy: _busy,
+          onStart: _startBake,
+          onPause: () => _bake?.pause(),
+        ),
 
         const VoiceHeader('Times the device voice was used instead'),
         _FallbackTile(count: _speech.fallbackCount, recent: _speech.fallbacks),

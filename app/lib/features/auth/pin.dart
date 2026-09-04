@@ -3,40 +3,21 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../db/database.dart';
 import '../../db/ids.dart';
+import 'device_secret.dart';
+import 'secret_store.dart';
 
-/// Somewhere to keep a secret that is not the database.
-///
-/// Exists so the PIN salt can be stored in the platform keystore in
-/// production and in memory under test, without tests having to subclass a
-/// package whose method signatures change between versions.
-abstract interface class SecretStore {
-  Future<String?> read(String key);
-  Future<void> write(String key, String value);
-}
-
-/// Hardware-backed storage: Keychain on Apple platforms, Keystore on Android.
-class KeychainSecretStore implements SecretStore {
-  const KeychainSecretStore();
-
-  static const _storage = FlutterSecureStorage();
-
-  @override
-  Future<String?> read(String key) => _storage.read(key: key);
-
-  @override
-  Future<void> write(String key, String value) =>
-      _storage.write(key: key, value: value);
-}
+// Callers hold a `PinAuth` and its store together; a test that substitutes
+// one should not have to know which file the interface is declared in.
+export 'secret_store.dart';
 
 /// Caregiver PIN.
 ///
-/// The salt lives in the platform keystore rather than the database, so
-/// someone who copies `wordbridge.db` off the device still cannot brute-force
-/// the PIN offline.
+/// The salt is kept by the host rather than in the database, so someone who
+/// copies `wordbridge.db` off a tablet still cannot brute-force the PIN
+/// offline. What a browser can offer instead is in [DeviceSecretStore].
 ///
 /// The threat model is deliberately modest: this keeps an AAC user — and
 /// their curious sibling — out of the editor, where a careless drag can undo
@@ -44,7 +25,7 @@ class KeychainSecretStore implements SecretStore {
 /// adult with the unlocked device.
 class PinAuth {
   PinAuth(this._db, {SecretStore? storage})
-    : _storage = storage ?? const KeychainSecretStore();
+    : _storage = storage ?? const DeviceSecretStore();
 
   final WordbridgeDatabase _db;
   final SecretStore _storage;
