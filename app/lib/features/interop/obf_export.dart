@@ -417,8 +417,9 @@ class _Pictures {
     final licenses = _withheld.keys.toList()..sort();
     notes.add(
       '$total picture(s) are named and credited in this file but not copied '
-      'into it: ${licenses.join(', ')} does not permit this app to pass the '
-      'images on. Whoever opens it can fetch them from the source named '
+      'into it: ${licenses.join(', ')} '
+      '${licenses.length == 1 ? 'does' : 'do'} not permit this app to pass '
+      'the images on. Whoever opens it can fetch them from the source named '
       'beside each one.',
     );
   }
