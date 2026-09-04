@@ -511,6 +511,46 @@ void main() {
         expect(status.problem, PlatformCloudDestination.notAvailableHere);
       },
     );
+
+    test('takes the name the platform actually filed it under', () async {
+      // A document provider is free to rename a file it creates, and the date
+      // a caregiver chooses by lives in that name.
+      final asked = snapshotFileName(DateTime.utc(2026, 8, 3));
+      answer((call) async => {'id': 'doc-1', 'name': asked, 'bytes': 2048});
+
+      final written = await destination.upload(File('unused'), asked);
+
+      expect(written.name, asked);
+      expect(written.takenAt, DateTime.utc(2026, 8, 3));
+    });
+
+    test('and refuses one it filed under a name with no date in it', () async {
+      answer(
+        (call) async => {
+          'id': 'doc-1',
+          'name': 'wordbridge-20260803T000000000Z (1).db',
+          'bytes': 2048,
+        },
+      );
+
+      await expectLater(
+        destination.upload(
+          File('unused'),
+          snapshotFileName(DateTime.utc(2026, 8, 3)),
+        ),
+        throwsA(isA<CloudRefusal>()),
+        reason: 'a copy nothing will ever list was reported as a backup',
+      );
+    });
+
+    test('and refuses a folder it was never given', () async {
+      answer((call) async => throw PlatformException(code: 'folder'));
+
+      final connected = await destination.connect();
+
+      expect(connected.reachable, isFalse);
+      expect(connected.problem, contains('No folder has been chosen'));
+    });
   });
 }
 

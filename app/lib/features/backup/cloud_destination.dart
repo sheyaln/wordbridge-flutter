@@ -194,12 +194,21 @@ class PlatformCloudDestination implements CloudDestination {
 
     final id = written?['id'];
     final bytes = written?['bytes'];
-    final takenAt = snapshotTakenAt(name);
+
+    // The name the platform actually used, not the one it was asked for. A
+    // document provider is free to rename a file it creates, and a snapshot's
+    // date lives in its name — a copy filed as "wordbridge-… (1).db" is a copy
+    // no listing will ever offer as a way back, so it is better to find that
+    // out here, on the upload, than on the day somebody needs it.
+    final stored = written?['name'];
+    final filed = stored is String && stored.isNotEmpty ? stored : name;
+    final takenAt = snapshotTakenAt(filed);
+
     if (id is! String || bytes is! int || takenAt == null) {
       throw CloudRefusal(didNotArrive(label));
     }
 
-    return (id: id, name: name, takenAt: takenAt, bytes: bytes);
+    return (id: id, name: filed, takenAt: takenAt, bytes: bytes);
   }
 
   @override

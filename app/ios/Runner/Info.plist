@@ -92,6 +92,27 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<!-- The iCloud container's Documents folder, shown in Files under the app's
+	     name. Without this key the copies exist and no human being can reach
+	     them, which is most of what was wrong with relying on the automatic
+	     iCloud device backup in the first place: a family moving to a tablet
+	     that is not signed in to the same account has to be able to carry the
+	     file across by hand.
+
+	     "None" for folder levels, because there are none: one flat folder of
+	     dated snapshots is what the backups screen lists. -->
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.sheyaln.aac</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Wordbridge AAC</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>None</string>
+		</dict>
+	</dict>
 	<!-- Both are required by iOS before the picker will open, and an app that
 	     asks without them does not fail politely: it is terminated. The symbol
 	     picker offers "use my own photo" and "take a photo", so without these
