@@ -443,7 +443,14 @@ class _ProfileSetupState extends State<ProfileSetup> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          // A rule, not a gap. Everything above is a question being asked;
+          // the summary below is the answer the board was already built from,
+          // and eight pixels of air read as one more question somebody forgot
+          // to answer.
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Divider(height: 1),
+          ),
           _GridSummary(choice: choice),
         ],
       ),
