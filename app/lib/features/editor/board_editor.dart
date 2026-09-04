@@ -242,17 +242,12 @@ class _BoardEditorState extends State<BoardEditor> {
     );
   }
 
-  /// Asks what goes on the location, offering the phrases first (§4.42).
-  ///
-  /// A caregiver staring at an empty cell has to think of the phrase before
-  /// they can type it, and the ones worth having are the ones nobody thinks of
-  /// until the moment they are needed. So the list comes first and the text
-  /// field last, the same shape as naming a row.
+  /// Asks what goes on the location.
   Future<String?> _promptForWord() {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => const SafeArea(child: _AddAWord()),
+      builder: (context) => const _AddAWord(),
     );
   }
 
@@ -1377,12 +1372,15 @@ class _NameALineState extends State<_NameALine> {
   }
 }
 
-/// What goes on an empty location: a phrase off the list, or anything typed.
+/// What goes on an empty location.
 ///
-/// The phrases are grouped by the moment they are for rather than by word
-/// class. Interrupting, buying time, correcting somebody, ending a
-/// conversation — those are the moments an AAC user is most often talked over
-/// in, and the phrase that ends one is worth a location on any board.
+/// A text field and nothing else. This used to open on twenty ready-made
+/// phrases with the field under them, on the theory that a caregiver staring
+/// at an empty cell has to think of the phrase before they can type it — but
+/// somebody who opened this already knows the word they came to add, and made
+/// them scroll past a list to reach the one control they wanted. The phrases
+/// are still shipped and still seeded onto boards; what changed is that they
+/// no longer stand between a person and the field.
 class _AddAWord extends StatefulWidget {
   const _AddAWord();
 
@@ -1399,74 +1397,61 @@ class _AddAWordState extends State<_AddAWord> {
     super.dispose();
   }
 
+  void _submit() {
+    final word = _typed.text.trim();
+    if (word.isEmpty) return;
+    Navigator.of(context).pop(word);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.75,
-      builder: (context, controller) => ListView(
-        controller: controller,
-        children: [
-          // The way out is at the top, where it is always on screen. At the
-          // bottom it would be behind twenty phrases and a keyboard, and a
-          // caregiver who opened this by mistake would be left guessing that
-          // tapping the dimmed part of the screen works.
-          ListTile(
-            title: const Text(
-              'What goes here?',
-              style: TextStyle(fontWeight: FontWeight.w600),
+    return Padding(
+      // Above the keyboard, which is up the moment this opens. Without this
+      // the field and its button are behind it.
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text(
+                'What goes here?',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'An ordinary key: it speaks what it says and it keeps this '
+                'location.',
+              ),
+              trailing: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
             ),
-            subtitle: const Text(
-              'A phrase off the list, or anything you type. Either way it is '
-              'an ordinary key: it speaks what it says and it keeps this '
-              'location.',
-            ),
-            isThreeLine: true,
-            trailing: TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ),
-          const Divider(height: 1),
-          for (final group in readyMadePhrases.entries) ...[
+            const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                group.key,
-                style: Theme.of(context).textTheme.titleSmall
-                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
-              ),
-            ),
-            for (final phrase in group.value)
-              ListTile(
-                dense: true,
-                title: Text(phrase),
-                onTap: () => Navigator.of(context).pop(phrase),
-              ),
-          ],
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: _typed,
-                  decoration: const InputDecoration(
-                    labelText: 'Or a word or phrase of your own',
-                    border: OutlineInputBorder(),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _typed,
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'A word or phrase',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _submit(),
                   ),
-                  onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () =>
-                      Navigator.of(context).pop(_typed.text.trim()),
-                  child: const Text('Add it'),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: _submit, child: const Text('Add it')),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
