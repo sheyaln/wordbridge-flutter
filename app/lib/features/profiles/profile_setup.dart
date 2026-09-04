@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../db/database.dart';
 import '../../db/seed/age_presets.dart';
 import '../auth/caregiver_gesture.dart';
+import '../backup/cloud_backup.dart';
+import '../backup/cloud_destination.dart';
 import 'grid_choice.dart';
 import 'profile_settings.dart';
 import 'profile_repository.dart';
@@ -90,6 +92,22 @@ class _ProfileSetupState extends State<ProfileSetup> {
   /// four gestures on one tablet and none of them reliable.
   CaregiverGesture _gesture = CaregiverGesture.cornerHold;
 
+  /// Whether a copy of the board goes to the account signed in on this tablet.
+  ///
+  /// First run only, for the same reason as the gesture and a stronger one: a
+  /// backup is the whole database, so it holds every profile on the device. A
+  /// per-profile answer would let one person's yes carry another person's
+  /// usage log — a record of their speech — into an account nobody asked them
+  /// about.
+  ///
+  /// Preselected yes, and still asked. The failure it prevents is the most
+  /// reported one there is: *"we lost months of custom button and phrase
+  /// building because we thought the iCloud backup would protect us"*, and a
+  /// family who never saw the question is a family who will find out on the
+  /// day the tablet breaks. But it is a copy of somebody's speech leaving the
+  /// device, so it is consent, and consent nobody was offered is not consent.
+  bool _cloudBackup = CloudBackupStore.offeredAtSetup;
+
   /// How long that gesture is held for.
   ///
   /// Adjustable here rather than only in caregiver settings, which are behind
@@ -152,6 +170,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
         await CaregiverEntryStore(widget.db).write(
           const CaregiverEntry.standard().withGesture(_gesture).withHold(_hold),
         );
+        await CloudBackupStore(widget.db).setAnswer(_cloudBackup);
       }
 
       final profile = await ProfileRepository(widget.db).create(
@@ -371,6 +390,47 @@ class _ProfileSetupState extends State<ProfileSetup> {
                       'turned off: two corners needs two hands, and whoever '
                       'picks this device up next may not have them.',
                     ),
+                ],
+              ),
+            ),
+
+          if (widget.isFirstRun)
+            _Section(
+              title: 'Backing up the board',
+              note:
+                  'Set once for this device, not per profile: a backup is the '
+                  'whole tablet. Changeable later under Backups.',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _OptionCard(
+                    title: 'Keep a copy in ${cloudLabel()}',
+                    subtitle:
+                        'Goes to the ${cloudLabel()} account already signed '
+                        'in on this tablet. It stays in that account — we '
+                        'never receive it and cannot read it. This is what '
+                        'gets the board back if the tablet is lost, broken '
+                        'or replaced.',
+                    selected: _cloudBackup,
+                    onTap: () => setState(() => _cloudBackup = true),
+                  ),
+                  const SizedBox(height: 8),
+                  _OptionCard(
+                    title: 'Backups on this device only',
+                    subtitle:
+                        'Backups still happen and still work, right up until '
+                        'the tablet does not.',
+                    selected: !_cloudBackup,
+                    onTap: () => setState(() => _cloudBackup = false),
+                  ),
+                  const SizedBox(height: 8),
+                  const _Note(
+                    'A backup is the whole board set, and includes any usage '
+                    'recorded — which is a record of what this person has '
+                    'said. A copy carries that with it. You can turn this off '
+                    'or delete every copy from the account at any time, under '
+                    'Backups.',
+                  ),
                 ],
               ),
             ),

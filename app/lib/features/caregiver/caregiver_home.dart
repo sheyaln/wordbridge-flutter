@@ -11,6 +11,8 @@ import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
 import '../auth/caregiver_gesture.dart';
 import '../backup/backup_service.dart';
+import '../backup/cloud_backup.dart';
+import '../backup/cloud_destination.dart';
 import '../editor/board_delete.dart';
 import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
@@ -60,6 +62,7 @@ class CaregiverHome extends StatefulWidget {
     this.userName,
     this.onSwitchProfile,
     this.backup,
+    this.cloud,
     this.boards,
     this.viewAll = false,
     this.onViewAll,
@@ -83,6 +86,12 @@ class CaregiverHome extends StatefulWidget {
   /// screen is wired by existing rather than by being passed down four levels;
   /// tests give it one pointed somewhere other than the documents directory.
   final BackupService? backup;
+
+  /// The copies in the family's own account. Built from [db] and the platform
+  /// when nothing supplies one, the same way [backup] is; a test gives it one
+  /// with a faked account behind it, because nothing in a widget test may
+  /// reach an account or a network.
+  final CloudBackupService? cloud;
 
   /// Where exported and imported board files are. Same arrangement, and the
   /// same reason: a widget test cannot be allowed to read the real folder.
@@ -110,6 +119,13 @@ class CaregiverHome extends StatefulWidget {
 class _CaregiverHomeState extends State<CaregiverHome> {
   int _tab = 0;
   late final _backup = widget.backup ?? BackupService(widget.db);
+  late final _cloud =
+      widget.cloud ??
+      CloudBackupService(
+        backup: _backup,
+        store: CloudBackupStore(widget.db),
+        destination: PlatformCloudDestination(),
+      );
   late final _boards = widget.boards ?? BoardFileStore(widget.db);
 
   @override
@@ -148,6 +164,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           profileId: widget.profileId,
           logger: widget.logger,
           backup: _backup,
+          cloud: _cloud,
           boards: _boards,
           speech: widget.speech,
           settings: widget.settings,
@@ -627,6 +644,7 @@ class _Settings extends StatelessWidget {
     required this.profileId,
     required this.logger,
     required this.backup,
+    required this.cloud,
     required this.boards,
     required this.settings,
     required this.onChanged,
@@ -652,6 +670,7 @@ class _Settings extends StatelessWidget {
   /// not offered.
   final SymbolResolver? resolver;
   final BackupService backup;
+  final CloudBackupService cloud;
   final BoardFileStore boards;
   final CrashStore? crashes;
   final ReportSender? sender;
@@ -1149,7 +1168,7 @@ class _Settings extends StatelessWidget {
       description: 'Keeping and restoring copies of this board set',
       opens: (context) => Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => BackupsScreen(db: db, backup: backup),
+          builder: (_) => BackupsScreen(db: db, backup: backup, cloud: cloud),
         ),
       ),
     ),
