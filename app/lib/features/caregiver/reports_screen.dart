@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../profiles/profile_settings.dart';
-import 'telemetry_switches.dart';
 import '../reporting/crash_store.dart';
 import '../reporting/device_facts.dart';
 import '../reporting/report.dart';
@@ -234,17 +233,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
           ),
-          // Hidden outright where the build has no neural voice at all, and
-          // shown inert where it has one that is switched off. Settings makes
-          // the opposite call and shows it either way — that page is an
-          // inventory of what the app can do, and this one is a message
-          // somebody is writing.
-          if (widget.speech is NeuralSpeechEngine)
-            VoiceMeasurementSwitch(
-              settings: widget.settings,
-              available: _neuralVoiceIsOn,
-              onChanged: () => setState(() {}),
-            ),
+          // The measurement switch is deliberately not here. It is on the
+          // voice screen, where somebody is deciding about the voice, and
+          // under Settings, which is the inventory of what the app can do.
+          // A third copy on the page where a person is writing a sentence to
+          // a human being asked them to make an unrelated decision mid-report
+          // — and three places to change one setting is three places to
+          // wonder which one is the real one.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: FilledButton(
@@ -259,15 +254,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
     );
   }
-
-  /// Whether anything is producing neural timings right now.
-  ///
-  /// Both halves: an engine that can, and a profile that asked for it. A build
-  /// with the neural voice compiled in but switched off has nothing to send,
-  /// and a switch offering to send it is the defect §4.59 is about.
-  bool get _neuralVoiceIsOn =>
-      widget.speech is NeuralSpeechEngine &&
-      (widget.settings?.neuralVoice ?? false);
 
   Future<void> _review() async {
     final payload = await _payload();
