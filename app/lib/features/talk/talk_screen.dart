@@ -217,7 +217,11 @@ class TalkScreenState extends State<TalkScreen> {
   /// Long enough to see which key was pressed and where it sits, which is the
   /// thing being taught. Faster than this and the board simply changes several
   /// times, which teaches nothing and looks like a fault.
-  static const walkBeat = Duration(milliseconds: 1100);
+  /// The fallback beat, for a screen built without settings. A profile's own
+  /// number is read from [ProfileSettings.walkBeat].
+  static const walkBeat = Duration(milliseconds: 2000);
+
+  Duration get _walkBeat => widget.settings?.walkBeat ?? walkBeat;
 
   /// The location the grid is pointing at: the next key, or the word arrived
   /// at.
@@ -276,7 +280,7 @@ class TalkScreenState extends State<TalkScreen> {
     _pointAt = (row: press.row, col: press.col);
     if (_walkMode == WalkMode.waits) return;
 
-    _walkTimer = Timer(walkBeat, _nextBeat);
+    _walkTimer = Timer(_walkBeat, _nextBeat);
   }
 
   /// Moves the walk on by one, however the beat was earned.

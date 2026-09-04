@@ -65,6 +65,18 @@ class ProfileSettings extends ChangeNotifier {
   Duration get settleDelay =>
       Duration(milliseconds: _values['settleDelayMs'] as int? ?? 500);
 
+  /// How long the board rests on each key while it walks a route to a word
+  /// found in Find a word.
+  ///
+  /// A second was a number somebody typed, and it is too fast for the thing it
+  /// is for: the point of the walk is that a person watches where the keys are
+  /// so their hand can go there next time, and a beat that outruns the eye
+  /// teaches the route to nobody. Two seconds is the default, and it is
+  /// adjustable because how long that takes is a fact about a person rather
+  /// than about the board.
+  Duration get walkBeat =>
+      Duration(milliseconds: _values['walkBeatMs'] as int? ?? 2000);
+
   /// The two answers the grid was derived from.
   ///
   /// Stored so the settings screen can show what was chosen rather than only
