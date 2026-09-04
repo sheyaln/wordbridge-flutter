@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/features/auth/pin.dart';
+import 'package:wordbridge/features/developer/developer_mode.dart';
 import 'package:wordbridge/features/editor/rebuild_from_seed.dart';
 import 'package:wordbridge/features/profiles/grid_choice.dart';
 import 'package:wordbridge/features/profiles/profile_repository.dart';
@@ -87,6 +88,7 @@ void main() {
         resolver: SymbolResolver(registry: registry, db: db),
         registry: registry,
         fetcher: fetcher,
+        developer: DeveloperMode(db),
         onSwitchProfile: (_) {},
       ),
     );

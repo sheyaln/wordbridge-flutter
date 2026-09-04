@@ -4,6 +4,8 @@ import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../../theme/fitzgerald.dart';
 import '../auth/corner_pair_hold.dart';
+import '../developer/board_overlay.dart';
+import '../developer/developer_mode.dart';
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_resolver.dart';
 import 'cell_layout.dart';
@@ -37,6 +39,8 @@ class GridSurface extends StatefulWidget {
     this.pairHold,
     this.onPairHold,
     this.pointAt,
+    this.developer,
+    this.onDeveloperHold,
   });
 
   final int rows;
@@ -111,6 +115,19 @@ class GridSurface extends StatefulWidget {
   /// are being shown how to press.
   final ({int row, int col})? pointAt;
 
+  /// What developer mode is drawing over this board, or null where it is off.
+  ///
+  /// Null is not the same as a view with everything switched off: with nothing
+  /// here no overlay and no hold layer is built at all, so a board with
+  /// developer mode off is the board as it ships.
+  final DeveloperView? developer;
+
+  /// A location held down for the developer view's hold.
+  ///
+  /// Absent where nothing can honor it, and the hold layer is then not built
+  /// rather than built and inert.
+  final void Function(PlacedCell)? onDeveloperHold;
+
   @override
   State<GridSurface> createState() => _GridSurfaceState();
 }
@@ -127,18 +144,48 @@ class _GridSurfaceState extends State<GridSurface> {
   /// clear it a moment too early.
   bool _pairFired = false;
 
+  /// The location a completed developer hold fired on.
+  ///
+  /// Same problem as [_pairFired] and the same shape of answer: the key acts
+  /// on release, the finger is still down when the hold completes, and a hold
+  /// that also spoke the word under it would put a word nobody chose into the
+  /// sentence every time somebody inspected a location. Cleared by the next
+  /// contact rather than by that release, which reaches this widget first.
+  ({int row, int col})? _heldAt;
+
   bool _isPairAnchor(Cell cell) =>
       cell.row == widget.rows - 1 &&
       (cell.col == 0 || cell.col == widget.cols - 1);
 
   void _select(PlacedCell placed) {
     if (_pairFired && _isPairAnchor(placed.cell)) return;
+    if (_heldAt == (row: placed.cell.row, col: placed.cell.col)) return;
     widget.onSelect(placed);
+  }
+
+  /// The location the developer hold landed on, as the grid holds it.
+  ///
+  /// Read out of the cells already in hand rather than queried, because the
+  /// hold reports a row and a column and everything behind a location — the
+  /// board it belongs to, the button in it, whether there is one — is on the
+  /// row this widget was handed.
+  void _held(int row, int col) {
+    final onHeld = widget.onDeveloperHold;
+    if (onHeld == null) return;
+
+    for (final placed in widget.cells) {
+      if (placed.cell.row == row && placed.cell.col == col) {
+        _heldAt = (row: row, col: col);
+        onHeld(placed);
+        return;
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final pairHold = widget.pairHold;
+    final developer = widget.developer;
 
     return CellLayout(
       rows: widget.rows,
@@ -155,7 +202,16 @@ class _GridSurfaceState extends State<GridSurface> {
         isAvailable: widget.isAvailable,
         onSelect: _select,
         onLongPress: widget.onLongPress,
-        longPressable: widget.longPressable,
+        // Developer inspection takes every hold on the board while it is
+        // switched on. Two hold handlers on one key fire in sequence — the
+        // key's own at Flutter's threshold, the inspection layer's at its own
+        // — and open one sheet on top of another. One gesture means one thing.
+        //
+        // Gated on the same thing that installs the inspection layer below,
+        // not on the callback: the callback is handed over whether or not
+        // developer mode is on, and reading it as the switch took the hold off
+        // the cycle key for everybody.
+        longPressable: developer?.hold == null ? widget.longPressable : null,
       ),
       overlay: (geometry) => [
         if (widget.pointAt case final at?)
@@ -179,6 +235,30 @@ class _GridSurfaceState extends State<GridSurface> {
                 _pairFired = true;
                 widget.onPairHold!();
               },
+            ),
+          ),
+
+        // Both developer layers sit above the pair hold and below nothing,
+        // and neither takes a touch the board would otherwise have had: the
+        // tags ignore pointers outright and the hold passes every one through.
+        if (developer != null && !developer.drawsNothing)
+          Positioned.fill(
+            child: DeveloperOverlay(
+              geometry: geometry,
+              cells: widget.cells,
+              view: developer,
+              vocabLevel: widget.vocabLevel,
+              isAvailable: widget.isAvailable,
+            ),
+          ),
+        if (developer?.hold case final hold?
+            when widget.onDeveloperHold != null)
+          Positioned.fill(
+            child: DeveloperHold(
+              geometry: geometry,
+              hold: hold,
+              onHeld: _held,
+              onTouched: () => _heldAt = null,
             ),
           ),
       ],

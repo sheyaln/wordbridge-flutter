@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../auth/hold_ring.dart';
+import '../developer/developer_mode.dart';
 import '../reporting/report.dart';
 import '../symbols/symbol_credits.dart';
 
@@ -14,7 +16,16 @@ import '../symbols/symbol_credits.dart';
 /// directly (§4.43a). There is one thing to press on it, and that is a second
 /// screen rather than a hop to one.
 class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key});
+  const AboutScreen({super.key, this.developerMode});
+
+  /// Where developer mode is switched on, or null on a build that has no such
+  /// thing.
+  ///
+  /// It lives here rather than as a row in the settings list because a row is
+  /// a thing a caregiver reads on their way past, and this is not for them. It
+  /// is behind the gesture and the PIN already; what the hold on the version
+  /// adds is that nobody arrives at it while looking for something else.
+  final DeveloperMode? developerMode;
 
   /// The people, not the account. The commit history carries a handle; a
   /// caregiver deciding whether to trust this with a child is owed names.
@@ -69,10 +80,18 @@ class AboutScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 // Read from the constants the reports carry, so a version on
                 // this screen and a version in a report cannot disagree.
-                const Text(
-                  'Version $appVersion, build $appBuild',
-                  style: TextStyle(fontSize: 13, color: Colors.black54),
-                ),
+                //
+                // It is also the way into developer mode, held. Nothing says
+                // so, on the principle the corner target is built on: an
+                // affordance is an invitation, and this one is not addressed
+                // to whoever is reading the page.
+                if (developerMode case final mode?)
+                  _HoldTheVersion(developer: mode)
+                else
+                  const Text(
+                    'Version $appVersion, build $appBuild',
+                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
                 const SizedBox(height: 28),
                 const _Fact('Developed by', developer),
                 const _Fact('License', 'MIT'),
@@ -84,6 +103,19 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
           const Divider(height: 40),
+          // Said out loud once it is on, because a mode that draws on somebody
+          // else's board has to be visible from inside the settings as well as
+          // from the board itself.
+          if (developerMode != null && developerMode!.enabled)
+            ListTile(
+              leading: const Icon(Icons.developer_mode),
+              title: const Text('Developer mode is on'),
+              subtitle: const Text('The board says so while it is'),
+              trailing: TextButton(
+                onPressed: () => developerMode!.setEnabled(false),
+                child: const Text('Turn it off'),
+              ),
+            ),
           ListTile(
             leading: const Icon(Icons.image_outlined),
             title: const Text('Symbol credits'),
@@ -123,4 +155,115 @@ class _Fact extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The version, and a five second hold on it.
+///
+/// The convention every Android tablet already carries, in the shape this app
+/// uses for a hold: nothing drawn until it is underway, every press starting
+/// the count over, and a question at the end rather than a mode that simply
+/// arrives. Five seconds accumulated across a morning of touches is not a
+/// decision anybody made.
+class _HoldTheVersion extends StatefulWidget {
+  const _HoldTheVersion({required this.developer});
+
+  final DeveloperMode developer;
+
+  static const holdDuration = Duration(seconds: 5);
+
+  @override
+  State<_HoldTheVersion> createState() => _HoldTheVersionState();
+}
+
+class _HoldTheVersionState extends State<_HoldTheVersion>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller =
+      AnimationController(vsync: this, duration: _HoldTheVersion.holdDuration)
+        ..addStatusListener((status) {
+          if (status != AnimationStatus.completed) return;
+          _release();
+          _ask();
+        });
+
+  bool _holding = false;
+
+  void _start(_) {
+    setState(() => _holding = true);
+    _controller.forward(from: 0);
+  }
+
+  void _release([_]) {
+    _controller.stop();
+    _controller.value = 0;
+    if (mounted && _holding) setState(() => _holding = false);
+  }
+
+  Future<void> _ask() async {
+    if (widget.developer.enabled) return;
+
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Turn developer mode on?'),
+        content: const Text(
+          'Draws what the board knows about itself over the top of it, and '
+          'lets a location be held to open what is behind it. It does not '
+          'change a word, a location or a voice.\n\n'
+          'The board says so in a strip while it is on, and that strip turns '
+          'it off again.',
+          style: TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Turn it on'),
+          ),
+        ],
+      ),
+    );
+
+    if (yes == true) await widget.developer.setEnabled(true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: _start,
+      onPointerUp: _release,
+      onPointerCancel: _release,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          const Text(
+            'Version $appVersion, build $appBuild',
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+          const SizedBox(width: 12),
+          // Reserved whether or not anything is drawn in it, so the line does
+          // not move under a finger halfway through the hold.
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: _holding
+                ? AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) =>
+                        HoldRing(progress: _controller.value),
+                  )
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,10 +1,8 @@
-import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
-import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
