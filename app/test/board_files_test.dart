@@ -32,6 +32,13 @@ void main() {
     if (documents.existsSync()) documents.deleteSync(recursive: true);
   });
 
+  /// The whole board set written out, which is where most of these start.
+  Future<BoardFile> exportSet({DateTime? at}) async => (await store.export(
+    vocabularyId: vocabularyId,
+    scope: ExportScope.boardSet,
+    at: at,
+  )).file;
+
   group('what a written-out board is called', () {
     test('the board set\'s own name and the day', () {
       expect(
@@ -53,6 +60,15 @@ void main() {
         'board 2026-08-30.obz',
       );
     });
+
+    test('one board is an .obf, and says which set it came from', () {
+      // Two people's "Food" pages exported on one day would otherwise be one
+      // file, and the second would take the first's place without a word.
+      expect(
+        exportFileName('Maya Food', DateTime(2026, 8, 30), extension: '.obf'),
+        'Maya Food 2026-08-30.obf',
+      );
+    });
   });
 
   group('who an imported file belongs to', () {
@@ -72,10 +88,7 @@ void main() {
 
   group('writing a board set out', () {
     test('puts a file in the folder and reports it', () async {
-      final written = await store.exportVocabulary(
-        vocabularyId,
-        at: DateTime(2026, 8, 30),
-      );
+      final written = await exportSet(at: DateTime(2026, 8, 30));
 
       expect(written.name, endsWith('.obz'));
       expect(written.bytes, greaterThan(0));
@@ -84,7 +97,7 @@ void main() {
     });
 
     test('and the folder then lists it', () async {
-      await store.exportVocabulary(vocabularyId);
+      await exportSet();
 
       final files = await store.files();
       expect(files, hasLength(1));
@@ -97,7 +110,7 @@ void main() {
       final old = File('${directory.path}/old.obz')..writeAsBytesSync([1, 2]);
       old.setLastModifiedSync(DateTime(2020));
 
-      await store.exportVocabulary(vocabularyId);
+      await exportSet();
 
       final files = await store.files();
       expect(files.first.name, isNot('old.obz'));
@@ -120,7 +133,7 @@ void main() {
   group('bringing one in', () {
     /// Out and back, which is the round trip the format exists for.
     Future<ImportOutcome> roundTrip() async {
-      final written = await store.exportVocabulary(vocabularyId);
+      final written = await exportSet();
       return store.import(written, displayName: 'Sam');
     }
 
@@ -204,7 +217,7 @@ void main() {
     });
 
     test('a file that has gone says so too', () async {
-      final written = await store.exportVocabulary(vocabularyId);
+      final written = await exportSet();
       File(written.path).deleteSync();
 
       final outcome = await store.import(written);
@@ -250,7 +263,7 @@ void main() {
 
   group('removing a file', () {
     test('takes the file and leaves anything imported from it', () async {
-      final written = await store.exportVocabulary(vocabularyId);
+      final written = await exportSet();
       final outcome = await store.import(written, displayName: 'Sam');
 
       await store.remove(written);
@@ -263,10 +276,81 @@ void main() {
     });
 
     test('and does not object to one that has already gone', () async {
-      final written = await store.exportVocabulary(vocabularyId);
+      final written = await exportSet();
       File(written.path).deleteSync();
 
       await expectLater(store.remove(written), completes);
+    });
+  });
+
+  /// A caregiver sending one page to a school should not have to send the
+  /// whole board set to do it, and should not find out afterwards that four of
+  /// its keys open nothing on the other side.
+  group('exporting less than the whole set', () {
+    late List<ExportableBoard> boards;
+
+    setUp(() async => boards = await store.exportableBoards(vocabularyId));
+
+    test('the boards are offered with the root first', () async {
+      expect(boards, isNotEmpty);
+      expect(boards.first.name, 'home');
+      expect(
+        boards.first.opens,
+        greaterThan(0),
+        reason: 'home opens the categories',
+      );
+    });
+
+    test('one board writes an .obf named after it', () async {
+      final home = boards.first;
+      final outcome = await store.export(
+        vocabularyId: vocabularyId,
+        scope: ExportScope.board,
+        boardId: home.id,
+        at: DateTime(2026, 8, 30),
+      );
+
+      expect(outcome.file.name, endsWith('.obf'));
+      expect(outcome.file.name, contains('home'));
+      expect(File(outcome.file.path).existsSync(), isTrue);
+    });
+
+    test('and says which boards it left behind', () async {
+      final outcome = await store.export(
+        vocabularyId: vocabularyId,
+        scope: ExportScope.board,
+        boardId: boards.first.id,
+      );
+
+      // Said here, before the file is handed over, rather than discovered by
+      // whoever opens it.
+      expect(outcome.notes, isNotEmpty);
+      expect(outcome.notes.join(), contains('not in this file'));
+    });
+
+    test('a category writes an .obz holding what it opens', () async {
+      final home = boards.first;
+      final outcome = await store.export(
+        vocabularyId: vocabularyId,
+        scope: ExportScope.category,
+        boardId: home.id,
+      );
+
+      expect(outcome.file.name, endsWith('.obz'));
+      expect(
+        outcome.notes,
+        isEmpty,
+        reason: 'home reaches every board, so nothing was left behind',
+      );
+    });
+
+    test('asking for a board without naming one is a mistake', () async {
+      // Rather than quietly writing the whole set, which is the one thing the
+      // caregiver did not ask for.
+      await expectLater(
+        store.export(vocabularyId: vocabularyId, scope: ExportScope.board),
+        throwsArgumentError,
+      );
     });
   });
 }

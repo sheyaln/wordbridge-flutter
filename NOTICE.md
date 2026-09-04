@@ -126,6 +126,25 @@ ARASAAC attribution, required wherever its symbols appear:
 > application code imports a specific pack directly, so this boundary stays
 > real rather than aspirational.
 
+### What an exported board carries
+
+Exporting writes an `.obf` or `.obz` that leaves the device, so it is a
+redistribution and is treated as one.
+
+A picture's bytes are written into the file only when the license recorded on
+that symbol is one this project has read and knows permits it — see
+`redistributableSymbolLicenses` in `features/interop/obf_export.dart`, which is
+an allowlist and not a test for "NC". Every embedded picture carries its
+`license{}` and its author, which is what CC BY-SA requires of the file once it
+is somewhere else.
+
+Everything else is referenced rather than copied: the set and filename, the
+credit, and a URL where there is one. That covers ARASAAC, whose images this
+app never passes on, and it covers the system emoji, whose glyphs belong to the
+operating system's font and may not be written into a file at all. The person
+exporting is told, in the export screen, how many pictures were named rather
+than carried and under which license.
+
 ### What may be added
 
 A symbol set may be added only when its license permits redistribution, and it

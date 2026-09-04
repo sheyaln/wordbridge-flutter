@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
 import 'package:wordbridge/db/database.dart';
+import 'package:wordbridge/db/ids.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/interop/obf_export.dart';
@@ -155,6 +156,122 @@ String linkedBoard({
   'buttons': buttons,
   'grid': {'rows': rows, 'columns': columns, 'order': order},
 });
+
+/// A board set whose links go one way, so part of it can be exported.
+///
+/// The shipped set puts a category key on every board, so there every board
+/// reaches every other and a subset export has nothing to leave out. Here
+/// `home` opens `food` and `play`, `food` opens `fruit`, and `play` opens
+/// nothing.
+typedef LinkedSet = ({String vocabularyId, Map<String, String> boards});
+
+Future<LinkedSet> linkedSet(WordbridgeDatabase db) async {
+  final vocabularyId = newId();
+  final ts = nowMs();
+  await db
+      .into(db.vocabularies)
+      .insert(
+        VocabulariesCompanion.insert(
+          id: vocabularyId,
+          name: 'Sam',
+          gridRows: 2,
+          gridCols: 2,
+          createdAt: ts,
+          updatedAt: ts,
+        ),
+      );
+
+  final boards = <String, String>{};
+  for (final name in ['home', 'food', 'fruit', 'play']) {
+    boards[name] = await materializeBoard(
+      db,
+      vocabularyId: vocabularyId,
+      name: name,
+      kind: name == 'home' ? BoardKind.root : BoardKind.category,
+    );
+  }
+  await (db.update(db.vocabularies)..where((v) => v.id.equals(vocabularyId)))
+      .write(VocabulariesCompanion(rootBoardId: Value(boards['home'])));
+
+  Future<void> place(
+    String board,
+    int col,
+    String label, {
+    String? opens,
+    String? symbolId,
+  }) async {
+    await placeButton(
+      db,
+      vocabularyId: vocabularyId,
+      cellId: (await cell(db, boards[board]!, 0, col)).id,
+      label: label,
+      message: label,
+      action: opens == null ? ButtonAction.speak : ButtonAction.navigate,
+      targetBoardId: opens == null ? null : boards[opens],
+      symbolId: symbolId,
+    );
+  }
+
+  await place('home', 0, 'food', opens: 'food');
+  await place('home', 1, 'play', opens: 'play');
+  await place('food', 0, 'fruit', opens: 'fruit');
+  await place('food', 1, 'apple');
+  await place('fruit', 0, 'pear');
+  await place('play', 0, 'ball');
+
+  return (vocabularyId: vocabularyId, boards: boards);
+}
+
+/// A picture row, with whatever license the test is asking a question about.
+Future<String> addSymbol(
+  WordbridgeDatabase db, {
+  required String id,
+  required String license,
+  String? packId,
+  String? externalId,
+  String? localUri,
+  String attribution = '',
+}) async {
+  await db
+      .into(db.symbols)
+      .insert(
+        SymbolsCompanion.insert(
+          id: id,
+          packId: Value(packId),
+          source: SymbolSource.downloaded,
+          externalId: Value(externalId),
+          localUri: Value(localUri),
+          label: id,
+          license: license,
+          attribution: attribution,
+          createdAt: nowMs(),
+        ),
+      );
+  return id;
+}
+
+/// A one-pixel PNG, recognizable by sight in a hexdump of a zip.
+final pngBytes = Uint8List.fromList([
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  ...'wordbridge-test-picture'.codeUnits,
+]);
+
+Map<String, ArchiveFile> filesIn(List<int> zip) => {
+  for (final file in ZipDecoder().decodeBytes(zip).files) file.name: file,
+};
+
+ObfBoard boardIn(Map<String, ArchiveFile> files, String path) =>
+    ObfBoard.parse(utf8.decode(files[path]!.readBytes()!));
+
+ObzManifest manifestIn(Map<String, ArchiveFile> files) =>
+    ObzManifest.parse(utf8.decode(files['manifest.json']!.readBytes()!));
 
 void main() {
   late WordbridgeDatabase db;
@@ -801,5 +918,362 @@ void main() {
         }
       }
     });
+  });
+
+  /// Guards the whole point of a partial export: that a file holding one board
+  /// is still a valid, honest OBF document, and that the boards it does not
+  /// hold are named rather than quietly cut off the keys that opened them.
+  group('exporting part of a set', () {
+    late LinkedSet set;
+
+    setUp(() async => set = await linkedSet(db));
+
+    test('a category is the board and everything it opens', () async {
+      expect(await linkedBoardIds(db, set.boards['food']!), {
+        set.boards['food'],
+        set.boards['fruit'],
+      });
+
+      // Following links rather than parentage: `play` opens nothing, and
+      // nothing about being a category board makes it reach the rest.
+      expect(await linkedBoardIds(db, set.boards['play']!), {
+        set.boards['play'],
+      });
+      expect(
+        await linkedBoardIds(db, set.boards['home']!),
+        set.boards.values.toSet(),
+      );
+    });
+
+    test('one board goes out on its own, with its links named', () async {
+      final notes = <String>[];
+      final obf = ObfBoard.parse(
+        await exportObf(db, set.boards['food']!, notes: notes),
+      );
+
+      expect(obf.name, 'food');
+      expect(obf.buttons.map((b) => b.label), containsAll(['fruit', 'apple']));
+
+      // The choice, made visible. A dropped link would leave a key that looks
+      // like every other key and does nothing; the name means the importer can
+      // say which page is missing.
+      final fruit = obf.buttons.firstWhere((b) => b.label == 'fruit');
+      expect(fruit.loadBoard!.name, 'fruit');
+      expect(fruit.loadBoard!.id, set.boards['fruit']);
+      expect(
+        fruit.loadBoard!.path,
+        isNull,
+        reason: 'a standalone .obf has no package for a path to address',
+      );
+
+      expect(notes, hasLength(1));
+      expect(notes.single, contains('"fruit"'));
+      expect(notes.single, contains('not in this file'));
+    });
+
+    test('a category package holds exactly its own boards', () async {
+      final notes = <String>[];
+      final files = filesIn(
+        await exportObz(
+          db,
+          set.vocabularyId,
+          boardIds: await linkedBoardIds(db, set.boards['food']!),
+          rootBoardId: set.boards['food'],
+          notes: notes,
+        ),
+      );
+
+      final manifest = manifestIn(files);
+      expect(manifest.boards, hasLength(2));
+      expect(boardIn(files, manifest.root!).name, 'food');
+      expect(
+        files.keys.where((n) => n.endsWith('.obf')),
+        hasLength(2),
+        reason: 'home and play were not asked for',
+      );
+
+      // Inside the package the link resolves; nothing points out of it, so
+      // there is nothing to warn about.
+      final food = boardIn(files, manifest.root!);
+      final fruit = food.buttons.firstWhere((b) => b.label == 'fruit');
+      expect(files.keys, contains(fruit.loadBoard!.path));
+      expect(notes, isEmpty);
+    });
+
+    test('a package that leaves boards behind says which', () async {
+      final notes = <String>[];
+      await exportObz(
+        db,
+        set.vocabularyId,
+        boardIds: [set.boards['home']!],
+        notes: notes,
+      );
+
+      expect(notes, hasLength(1));
+      expect(notes.single, contains('"food"'));
+      expect(notes.single, contains('"play"'));
+      expect(notes.single, contains('2 key(s)'));
+    });
+
+    test('a category survives the trip out and back', () async {
+      final package = await exportObz(
+        db,
+        set.vocabularyId,
+        boardIds: await linkedBoardIds(db, set.boards['food']!),
+        rootBoardId: set.boards['food'],
+      );
+
+      final fresh = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(fresh.close);
+      final imported = await importObz(fresh, package);
+
+      final boards = await (fresh.select(
+        fresh.boards,
+      )..where((b) => b.vocabularyId.equals(imported))).get();
+      expect(boards.map((b) => b.name).toSet(), {'food', 'fruit'});
+
+      expect(await navigation(fresh, imported), {
+        (from: 'food', label: 'fruit', to: 'fruit'),
+      });
+
+      final vocabulary = await (fresh.select(
+        fresh.vocabularies,
+      )..where((v) => v.id.equals(imported))).getSingle();
+      final root = boards.firstWhere((b) => b.id == vocabulary.rootBoardId);
+      expect(root.name, 'food', reason: 'the category is what it opens on');
+    });
+
+    test('one board comes back with its dangling link reported', () async {
+      final fresh = WordbridgeDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(fresh.close);
+
+      final notes = <String>[];
+      final imported = await importObf(
+        fresh,
+        await exportObf(db, set.boards['food']!),
+        notes: notes,
+      );
+
+      // The key is still there, still a link, and still named - it just has
+      // nowhere to go, and the person importing is told so.
+      expect(await navigation(fresh, imported), {
+        (from: 'food', label: 'fruit', to: '<dangling>'),
+      });
+      expect(
+        notes.where((n) => n.contains('outside this package')),
+        hasLength(1),
+      );
+    });
+  });
+
+  /// Guards the licensing boundary NOTICE.md commits to. ARASAAC and Sclera
+  /// are CC BY-NC and this app may not pass their images on; a file it writes
+  /// carrying those bytes would be exactly that, sitting in somebody's email.
+  group('pictures an exported file may and may not carry', () {
+    late LinkedSet set;
+
+    setUp(() async => set = await linkedSet(db));
+
+    Future<void> giveApple(String symbolId) async {
+      final apple = await (db.select(
+        db.buttons,
+      )..where((b) => b.label.equals('apple'))).getSingle();
+      await (db.update(db.buttons)..where((b) => b.id.equals(apple.id))).write(
+        ButtonsCompanion(symbolId: Value(symbolId), updatedAt: Value(nowMs())),
+      );
+    }
+
+    test('a CC BY-SA picture travels, as a file in the package', () async {
+      await giveApple(
+        await addSymbol(
+          db,
+          id: 'sa',
+          license: 'CC-BY-SA-4.0',
+          attribution: 'Mulberry Symbols',
+          packId: 'core',
+          externalId: 'apple.png',
+          localUri: '/symbols/apple.png',
+        ),
+      );
+
+      final notes = <String>[];
+      final files = filesIn(
+        await exportObz(
+          db,
+          set.vocabularyId,
+          notes: notes,
+          readImage: (_) async => pngBytes,
+        ),
+      );
+
+      final manifest = manifestIn(files);
+      expect(manifest.images, hasLength(1));
+      final path = manifest.images['sa']!;
+      expect(files[path]!.readBytes(), pngBytes);
+
+      final food = boardIn(files, manifest.boards[set.boards['food']]!);
+      final image = food.images.single;
+      expect(image.path, path);
+      expect(image.contentType, 'image/png');
+
+      // Redistributed bytes travel with the credit that permits it.
+      expect(image.license!.type, 'CC-BY-SA-4.0');
+      expect(image.license!.authorName, 'Mulberry Symbols');
+      expect(notes, isEmpty);
+    });
+
+    test(
+      'a non-commercial picture is named and credited, never copied',
+      () async {
+        await giveApple(
+          await addSymbol(
+            db,
+            id: 'nc',
+            license: 'CC-BY-NC-SA',
+            attribution: 'Sergio Palao. Origin: ARASAAC.',
+            packId: 'arasaac',
+            externalId: '2462',
+            localUri: '/symbols/arasaac/2462.png',
+          ),
+        );
+
+        final notes = <String>[];
+        final package = await exportObz(
+          db,
+          set.vocabularyId,
+          notes: notes,
+          readImage: (_) async => pngBytes,
+        );
+        final files = filesIn(package);
+
+        expect(manifestIn(files).images, isEmpty);
+        expect(files.keys.where((n) => n.startsWith('images/')), isEmpty);
+        expect(
+          package.join(','),
+          isNot(contains(pngBytes.join(','))),
+          reason:
+              'the bytes must not be anywhere in the file, stored or deflated',
+        );
+
+        // What does travel: enough to fetch it, and the credit ARASAAC requires
+        // wherever its symbols appear.
+        final food = boardIn(
+          files,
+          manifestIn(files).boards[set.boards['food']]!,
+        );
+        final image = food.images.single;
+        expect(image.data, isNull);
+        expect(image.path, isNull);
+        expect(image.symbol!.set, 'arasaac');
+        expect(image.symbol!.filename, '2462');
+        expect(image.license!.authorName, contains('ARASAAC'));
+
+        expect(notes, hasLength(1));
+        expect(notes.single, contains('CC-BY-NC-SA'));
+        expect(notes.single, contains('not copied into it'));
+      },
+    );
+
+    test('a standalone .obf embeds under the same rule', () async {
+      await giveApple(
+        await addSymbol(
+          db,
+          id: 'sa',
+          license: 'CC-BY-SA-4.0',
+          localUri: '/symbols/apple.png',
+        ),
+      );
+
+      final embedded = ObfBoard.parse(
+        await exportObf(
+          db,
+          set.boards['food']!,
+          readImage: (_) async => pngBytes,
+        ),
+      );
+      expect(embedded.images.single.data, startsWith('data:image/png;base64,'));
+
+      await giveApple(
+        await addSymbol(
+          db,
+          id: 'nc',
+          license: 'CC-BY-NC-SA',
+          packId: 'arasaac',
+          externalId: '2462',
+          localUri: '/symbols/arasaac/2462.png',
+        ),
+      );
+
+      final referenced = ObfBoard.parse(
+        await exportObf(
+          db,
+          set.boards['food']!,
+          readImage: (_) async => pngBytes,
+        ),
+      );
+      expect(referenced.images.single.data, isNull);
+      expect(referenced.images.single.symbol!.set, 'arasaac');
+    });
+
+    test('an emoji is neither carried nor complained about', () async {
+      // A glyph pack answers with the characters to draw, not a path. There
+      // are no bytes to withhold, so a note about a withheld picture would be
+      // a warning about the system row on every board.
+      await giveApple(
+        await addSymbol(
+          db,
+          id: 'emoji',
+          license: 'Unicode-3.0',
+          packId: 'system-emoji',
+          externalId: '1f34e',
+          localUri: '\u{1f34e}',
+        ),
+      );
+
+      final notes = <String>[];
+      final files = filesIn(
+        await exportObz(db, set.vocabularyId, notes: notes),
+      );
+
+      expect(manifestIn(files).images, isEmpty);
+      expect(notes, isEmpty);
+
+      final food = boardIn(
+        files,
+        manifestIn(files).boards[set.boards['food']]!,
+      );
+      expect(food.images.single.symbol!.filename, '1f34e');
+    });
+
+    test(
+      'a picture this device does not have is left as a reference',
+      () async {
+        await giveApple(
+          await addSymbol(
+            db,
+            id: 'sa',
+            license: 'CC-BY-SA-4.0',
+            packId: 'core',
+            externalId: 'apple.png',
+            localUri: '/symbols/apple.png',
+          ),
+        );
+
+        final notes = <String>[];
+        final files = filesIn(
+          await exportObz(
+            db,
+            set.vocabularyId,
+            notes: notes,
+            readImage: (_) async => null,
+          ),
+        );
+
+        // Not a licensing question, so nothing to say about it: the recipient
+        // gets the same reference they would have got before any of this.
+        expect(manifestIn(files).images, isEmpty);
+        expect(notes, isEmpty);
+      },
+    );
   });
 }

@@ -15,6 +15,32 @@ import 'obf_model.dart';
 /// A board file sitting in the folder, ready to be taken away or brought in.
 typedef BoardFile = ({String path, String name, int bytes, DateTime at});
 
+/// How much of a board set an export covers.
+enum ExportScope {
+  /// One board, on its own, as a `.obf`.
+  board,
+
+  /// A board and every board its keys open, as a `.obz`.
+  category,
+
+  /// Every board in the set, as a `.obz`.
+  boardSet,
+}
+
+/// A written file and what the format could not carry out of it.
+///
+/// [notes] is the same idea as [ImportOutcome.notes] and for the same reason,
+/// pointed the other way: a caregiver about to email a file needs to know a
+/// page was left behind or a picture could not be passed on *before* they send
+/// it, not when the school opens it.
+typedef ExportOutcome = ({BoardFile file, List<String> notes});
+
+/// A board a caregiver could export on its own.
+///
+/// [opens] counts the other boards reachable from it, which is the number the
+/// screen has to state before asking whether to take them too.
+typedef ExportableBoard = ({String id, String name, int opens});
+
 /// What an import did, or why it did nothing.
 ///
 /// [notes] is what the format could not carry across — an unresolvable link, a
@@ -96,35 +122,107 @@ class BoardFileStore {
     return found;
   }
 
-  /// Writes a whole board set out as one `.obz`.
+  /// The boards of a set, in the order a caregiver would pick one.
   ///
-  /// A package rather than a single board, because the links between boards are
-  /// most of what a board set is and a lone `.obf` cannot carry them.
-  Future<BoardFile> exportVocabulary(
-    String vocabularyId, {
-    DateTime? at,
-  }) async {
+  /// The root first, because it is the one whose name they know, and the rest
+  /// alphabetically rather than by creation order — which is an accident of
+  /// how the set was built and means nothing to the person reading the list.
+  Future<List<ExportableBoard>> exportableBoards(String vocabularyId) async {
     final vocabulary = await (_db.select(
       _db.vocabularies,
     )..where((v) => v.id.equals(vocabularyId))).getSingle();
 
-    final bytes = await exportObz(_db, vocabularyId);
-    final file = File(
-      p.join(
-        (await directory()).path,
-        exportFileName(vocabulary.name, at ?? DateTime.now()),
-      ),
-    );
+    final boards =
+        await (_db.select(_db.boards)
+              ..where((b) => b.vocabularyId.equals(vocabularyId))
+              ..where((b) => b.deletedAt.isNull()))
+            .get();
+
+    final found = <ExportableBoard>[
+      for (final board in boards)
+        (
+          id: board.id,
+          name: board.name,
+          opens: (await linkedBoardIds(_db, board.id)).length - 1,
+        ),
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    final root = vocabulary.rootBoardId;
+    return [
+      ...found.where((b) => b.id == root),
+      ...found.where((b) => b.id != root),
+    ];
+  }
+
+  /// Writes a board set, one category of it, or one board into the folder.
+  ///
+  /// A set and a category go out as `.obz` because the links between boards
+  /// are most of what they are and a lone `.obf` cannot carry them. A single
+  /// board goes out as `.obf`, which is what one board is.
+  Future<ExportOutcome> export({
+    required String vocabularyId,
+    required ExportScope scope,
+    String? boardId,
+    DateTime? at,
+  }) async {
+    if (scope != ExportScope.boardSet && boardId == null) {
+      throw ArgumentError.notNull('boardId');
+    }
+
+    final vocabulary = await (_db.select(
+      _db.vocabularies,
+    )..where((v) => v.id.equals(vocabularyId))).getSingle();
+
+    final notes = <String>[];
+    final String name;
+    final List<int> bytes;
+
+    switch (scope) {
+      case ExportScope.boardSet:
+        name = exportFileName(vocabulary.name, at ?? DateTime.now());
+        bytes = await exportObz(_db, vocabularyId, notes: notes);
+
+      case ExportScope.category:
+        final board = await _board(boardId!);
+        name = exportFileName(
+          '${vocabulary.name} ${board.name}',
+          at ?? DateTime.now(),
+        );
+        bytes = await exportObz(
+          _db,
+          vocabularyId,
+          boardIds: await linkedBoardIds(_db, board.id),
+          rootBoardId: board.id,
+          notes: notes,
+        );
+
+      case ExportScope.board:
+        final board = await _board(boardId!);
+        name = exportFileName(
+          '${vocabulary.name} ${board.name}',
+          at ?? DateTime.now(),
+          extension: '.obf',
+        );
+        bytes = utf8.encode(await exportObf(_db, board.id, notes: notes));
+    }
+
+    final file = File(p.join((await directory()).path, name));
     await file.writeAsBytes(bytes, flush: true);
 
     final stat = await file.stat();
     return (
-      path: file.path,
-      name: p.basename(file.path),
-      bytes: stat.size,
-      at: stat.modified,
+      file: (
+        path: file.path,
+        name: p.basename(file.path),
+        bytes: stat.size,
+        at: stat.modified,
+      ),
+      notes: notes,
     );
   }
+
+  Future<Board> _board(String boardId) =>
+      (_db.select(_db.boards)..where((b) => b.id.equals(boardId))).getSingle();
 
   Future<void> remove(BoardFile file) async {
     final handle = File(file.path);
@@ -156,19 +254,21 @@ class BoardFileStore {
   }
 }
 
-/// What an exported package is called.
+/// What an exported file is called.
 ///
 /// The board set's own name and the day, so a folder holding four of them can
-/// be read without opening any. Anything a file system objects to is replaced
-/// rather than dropped, because a name with the punctuation silently removed
-/// is a different name.
-String exportFileName(String vocabularyName, DateTime at) {
-  final stem = vocabularyName.trim().isEmpty ? 'board' : vocabularyName.trim();
+/// be read without opening any. A single board adds its own name to the set's,
+/// because two people's "Food" pages exported on one day would otherwise be
+/// one file. Anything a file system objects to is replaced rather than
+/// dropped, because a name with the punctuation silently removed is a
+/// different name.
+String exportFileName(String name, DateTime at, {String extension = '.obz'}) {
+  final stem = name.trim().isEmpty ? 'board' : name.trim();
   final safe = stem.replaceAll(RegExp(r'[^A-Za-z0-9 _-]'), '-');
   final day =
       '${at.year}-${at.month.toString().padLeft(2, '0')}-'
       '${at.day.toString().padLeft(2, '0')}';
-  return '$safe $day.obz';
+  return '$safe $day$extension';
 }
 
 /// The person a file is imported as, before anybody renames them.
