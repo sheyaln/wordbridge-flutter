@@ -124,20 +124,27 @@ jobs:
           channel: stable
           cache: true
 
-      # Loud rather than quiet. Without these the Gradle config falls back to
-      # the debug signing key and would publish an APK that looks like a
-      # release and can never be updated by one.
-      - name: Require the signing secrets
+      # Publishing nothing is safe; publishing the wrong thing is not. Without
+      # the keystore the Gradle config falls back to the debug signing key,
+      # and an APK signed that way looks like a release, installs like one,
+      # and can never be updated by a real one. So the absence of the secret
+      # skips the publish rather than failing the tag — a tag is cut for the
+      # iOS build too, and a red mark there would be about neither.
+      - name: Is there a key to sign with
+        id: gate
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE" ]; then
-            echo "ANDROID_KEYSTORE_BASE64 is not set. Refusing to publish an" >&2
-            echo "APK signed with the debug key. See docs/release-apk.md." >&2
-            exit 1
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No ANDROID_KEYSTORE_BASE64. No APK published." \
+                 "See docs/release-apk.md."
+          else
+            echo "signed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Restore the keystore
+        if: steps.gate.outputs.signed == 'true'
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -154,15 +161,18 @@ jobs:
 
       - run: flutter pub get
         working-directory: app
+        if: steps.gate.outputs.signed == 'true'
 
       - name: Generate database code
         run: dart run build_runner build
         working-directory: app
+        if: steps.gate.outputs.signed == 'true'
 
       # Where a crash report goes, compiled in. Absent, the Reports screen
       # builds and says it has nowhere to send anything, which is honest but
       # is not what a release should ship as.
       - name: Build the release APK
+        if: steps.gate.outputs.signed == 'true'
         working-directory: app
         env:
           INTAKE_URL: ${{ secrets.WORDBRIDGE_INTAKE_URL }}
@@ -185,6 +195,7 @@ jobs:
       # A fixed asset name, so the website can link to
       # releases/latest/download/wordbridge.apk and never be edited again.
       - name: Publish the release
+        if: steps.gate.outputs.signed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
