@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'db/database.dart';
 import 'features/auth/pin.dart';
 import 'features/backup/backup_service.dart';
+import 'features/backup/cloud_backup.dart';
+import 'features/backup/cloud_destination.dart';
 import 'features/backup/pre_migration.dart';
 import 'features/developer/developer_mode.dart';
 import 'features/profiles/grid_choice.dart';
@@ -329,6 +331,16 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   late final _profiles = ProfileRepository(_db);
   late final _backup = BackupService(_db);
 
+  /// Where a copy of the board goes when a family has said it may: their own
+  /// iCloud or Google account, and nowhere else. Off until somebody answers
+  /// the question at setup, so an update cannot start copying a device that
+  /// predates this.
+  late final _cloud = CloudBackupService(
+    backup: _backup,
+    store: CloudBackupStore(_db),
+    destination: PlatformCloudDestination(),
+  );
+
   // The bundled pack covers the shipped vocabulary. The fetching one covers
   // everything a caregiver adds afterwards, from the same four CC BY-SA sets,
   // so a word somebody types today can have a picture today.
@@ -398,6 +410,12 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     // fault about the database. Not awaited either — a report that will not
     // send must not hold up a board somebody is waiting to talk on.
     if (profile != null) unawaited(_sendWaitingFaults(profile));
+
+    // The copy in the family's own account, at most once a day, plus whatever
+    // the pre-migration snapshot above just wrote. Not awaited, for the same
+    // reason as the line above it: an upload that will not finish must not
+    // hold up a board somebody is waiting to talk on.
+    unawaited(_cloud.keepUpToDate());
 
     return profile;
   }

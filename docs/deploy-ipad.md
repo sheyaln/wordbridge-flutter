@@ -88,3 +88,39 @@ Management** → your developer profile → **Trust**.
 - **Touch targets under a real finger**, not a mouse cursor.
 - **Nothing shifts between boards.** Tap a category, then home, and watch the
   bottom row.
+
+## Turning on iCloud backups
+
+`ios/Runner/Runner.entitlements` and the `NSUbiquitousContainers` key in
+`Info.plist` are both in the repository. Neither is wired into the target,
+because `CODE_SIGN_ENTITLEMENTS` and a provisioning profile carrying the iCloud
+capability are the kind of thing that breaks signing quietly, and this is not
+worth discovering on a build already in review.
+
+Two steps in Xcode, once:
+
+1. **Runner** target → **Signing & Capabilities** → **+ Capability** →
+   **iCloud** → tick **iCloud Documents**, and add the container
+   `iCloud.com.sheyaln.aac`. Xcode writes `CODE_SIGN_ENTITLEMENTS` for you; if
+   it creates a second entitlements file, point the setting back at
+   `Runner/Runner.entitlements` so the container ids match this repository.
+2. Rebuild. A paid account is required — the iCloud capability is not available
+   to a free personal team.
+
+Until then the app answers "this tablet is not signed in to iCloud" on the
+backups screen and keeps taking local backups. That is the intended state for a
+build without the capability, not a bug to chase.
+
+### What to verify on hardware
+
+- **A copy actually arrives.** Back up now, then Files → iCloud Drive →
+  Wordbridge AAC. The file's name carries the date; the backups screen should
+  say the same date under "Last copied to iCloud".
+- **A restore onto a second device.** Sign a second iPad into the same account,
+  install, set up, then restore from the copy. This is the whole feature: a
+  board that comes back on hardware that has never held it.
+- **A tablet signed out of iCloud.** The screen must say so and offer the
+  device backups, not fail silently.
+- **A file iCloud has evicted.** Restore something old enough to have been
+  purged from local storage; `CloudBackup.swift` waits for the download, and
+  the wait is the part a simulator cannot exercise.

@@ -4,10 +4,11 @@ import 'package:path/path.dart' as p;
 
 /// A copy of the board as it stood at one moment, sitting on this tablet.
 ///
-/// Snapshots stay on the device that wrote them. The usage log inside one is a
-/// record of a disabled person's private speech, and the tablet it was said on
-/// is the only place it is safe. A caregiver who wants a copy elsewhere moves
-/// the file themselves, deliberately.
+/// A snapshot leaves the device only where somebody has said it may, and only
+/// into their own account — see `cloud_backup.dart`. The usage log inside one
+/// is a record of a disabled person's private speech, so nowhere else is an
+/// acceptable destination: there is no server of ours for it to reach, and the
+/// question is asked at setup rather than answered by a default.
 ///
 /// [schemaVersion] is read out of the file rather than taken from its name, so
 /// a snapshot cannot claim to be readable by lying about what wrote it.

@@ -49,13 +49,19 @@ Everything needed to speak is on the device, so nothing waits on a network.
 What leaves it, and what does not:
 
 - Usage tracking is on by default and asked about at setup. It records the
-  location, never the word, and it never leaves the device.
+  location, never the word, and it never comes to us. It leaves the device by
+  one route only, if somebody asked for it: inside a backup, into their own
+  account.
 - Crash reports are on by default and asked about at setup. They go out on the
   next launch, never during the crash, carrying a stack trace with quoted text
   and file paths removed.
 - Voice measurements are off until somebody turns them on.
 - A bug report or an idea is shown whole before it is sent, and somebody
   presses send.
+- Backups are on the device, and a copy can also go to the family's own iCloud
+  or Google account. Asked at setup, per device, and never switched on by an
+  update. It goes to their account and never to us: there is no server of ours
+  involved and no credential of ours in the app.
 
 ## Build
 
