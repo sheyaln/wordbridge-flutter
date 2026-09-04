@@ -21,6 +21,8 @@ BUNDLE_ID=com.sheyaln.aac
 
 MODE=debug
 if [ "${1:-}" = "--release" ]; then MODE=release; fi
+# Built as one word: bash 3.2 misreads `--"$MODE"` as a variable name.
+MODE_FLAG="--$MODE"
 
 cd "$(dirname "$0")/../app"
 
@@ -63,7 +65,7 @@ for runtime, devices in json.load(sys.stdin)["devices"].items():
 ' "$udid")
 
 if [ "$state" != "Booted" ]; then
-  echo "Booting $DEVICE…"
+  echo "Booting ${DEVICE}…"
   xcrun simctl boot "$udid"
   open -a Simulator
   # The device reports Booted before it will accept an install.
@@ -88,10 +90,12 @@ else
   echo "No intake configured: Reports will build, collect, and refuse to send." >&2
 fi
 
-echo "Building $MODE…"
+# Braced: the ellipsis is a word character, so `$MODE…` names a
+# variable that does not exist and `set -u` kills the script here.
+echo "Building ${MODE}…"
 # `${DEFINES[@]}` alone is an unbound variable under `set -u` when the array is
 # empty, which is bash 3.2 — the bash macOS ships.
-flutter build ios --simulator --"$MODE" ${DEFINES[@]+"${DEFINES[@]}"}
+flutter build ios --simulator "$MODE_FLAG" ${DEFINES[@]+"${DEFINES[@]}"}
 
 echo "Installing…"
 xcrun simctl install "$udid" build/ios/iphonesimulator/Runner.app
