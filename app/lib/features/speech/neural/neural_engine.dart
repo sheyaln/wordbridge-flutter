@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../speech_engine.dart';
@@ -170,7 +169,10 @@ class NeuralSpeechEngine implements SpeechEngine {
     final packId = ClipStore.idFor(_voice.id, _speed);
     if (_clips?.packId != packId) {
       await _clips?.close();
-      _clips = await ClipStore.open(root: await _clipRoot(), packId: packId);
+      _clips = await openClipPack(
+        documentsDirectory: _documentsDirectory,
+        packId: packId,
+      );
       // A pack belongs to one voice at one speed, so the job that fills it
       // does too. Keeping the old one would report another pack's progress.
       _bake?.dispose();
@@ -178,12 +180,6 @@ class NeuralSpeechEngine implements SpeechEngine {
     }
     _on = true;
   }
-
-  Future<Directory> _clipRoot() async => ClipStore.directoryIn(
-    Directory(
-      p.join((await _documentsDirectory()).path, VoiceModelStore.folder),
-    ),
-  );
 
   /// Throws away every pack but the one in use.
   ///
@@ -193,7 +189,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   Future<int> pruneOtherVoices() async {
     final keep = _clips?.packId;
     if (keep == null) return 0;
-    return ClipStore.pruneTo(await _clipRoot(), keep);
+    return pruneClipPacks(documentsDirectory: _documentsDirectory, keep: keep);
   }
 
   /// Loads the model, once, when something needs it.
@@ -243,7 +239,7 @@ class NeuralSpeechEngine implements SpeechEngine {
   /// must not pay that to discover there is nothing to do.
   bool needsBaking(Iterable<String> words) {
     final clips = _clips;
-    if (!_on || clips == null) return false;
+    if (!_on || clips == null || !clips.survivesTheSession) return false;
     return words.any((word) => !clips.contains(word));
   }
 

@@ -469,15 +469,21 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
           'them all again. Pitch, volume and tone do not reach this one.',
         ),
 
-        const VoiceHeader('Words made in advance'),
-        _BakeTile(
-          baked: baked,
-          words: words,
-          job: _bake,
-          busy: _busy,
-          onStart: _startBake,
-          onPause: () => _bake?.pause(),
-        ),
+        // Only where the pack is a file. A bake is half an hour of synthesis
+        // and it buys a launch that is instant from the first word; against a
+        // pack that dies with the page it buys the same half hour again on the
+        // next visit, for words this person may never press.
+        if (_speech.clips?.survivesTheSession ?? true) ...[
+          const VoiceHeader('Words made in advance'),
+          _BakeTile(
+            baked: baked,
+            words: words,
+            job: _bake,
+            busy: _busy,
+            onStart: _startBake,
+            onPause: () => _bake?.pause(),
+          ),
+        ],
 
         const VoiceHeader('Times the device voice was used instead'),
         _FallbackTile(count: _speech.fallbackCount, recent: _speech.fallbacks),
@@ -796,12 +802,7 @@ class _ModelTile extends StatelessWidget {
             ? 'Resume. ${_megabytes(partial)} already downloaded'
             : 'Download the voice',
       ),
-      subtitle: Text(
-        running?.detail ??
-            '${_megabytes(published.downloadBytes)} to download, '
-                '${_megabytes(published.installedBytes)} once unpacked. Best '
-                'over wifi.',
-      ),
+      subtitle: Text(running?.detail ?? _cost(published)),
       isThreeLine: true,
       trailing: FilledButton(
         onPressed: onInstall,
@@ -810,6 +811,18 @@ class _ModelTile extends StatelessWidget {
     );
   }
 }
+
+/// What the download costs, in the two numbers that differ on a tablet.
+///
+/// An archive is smaller than what comes out of it, so a tablet is told both.
+/// A browser fetches the files themselves and holds exactly those, and
+/// printing one number twice reads as a mistake rather than as a fact.
+String _cost(PublishedModel published) =>
+    published.installedBytes == published.downloadBytes
+    ? '${_megabytes(published.downloadBytes)} to download. Best over wifi.'
+    : '${_megabytes(published.downloadBytes)} to download, '
+          '${_megabytes(published.installedBytes)} once unpacked. Best '
+          'over wifi.';
 
 class _BakeTile extends StatelessWidget {
   const _BakeTile({

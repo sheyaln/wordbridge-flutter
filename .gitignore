@@ -36,6 +36,11 @@ crash.log
 # The intake binary, when someone builds it in place.
 /intake/intake
 
+# The neural voice, unpacked beside the web build by tools/fetch_web_voice.sh.
+# 140 MB of weights that a GitHub release already holds, fetched rather than
+# committed. Whoever serves the web build runs the script.
+/app/web/voice/
+
 # The intake service and its Terraform live in wordbridge-infra.
 
 # The requirements log and the project notes live in the parent directory,

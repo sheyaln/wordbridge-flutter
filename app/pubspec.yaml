@@ -41,6 +41,12 @@ dependencies:
   # drift; named here because lib/ imports it.
   sqlite3: ^3.5.2
   uuid: ^4.6.0
+  # The browser's own APIs, typed. Only the web half of a platform seam
+  # imports it — Web Audio, to play a clip this app synthesized, and the
+  # module filesystem the WebAssembly build of the voice reads its weights
+  # from. Already in the tree underneath `flutter_web_plugins`; named here
+  # because lib/ imports it.
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
