@@ -31,7 +31,7 @@ wordbridge never links a symbol pack directly; packs are loaded behind a
 
 ### Bundled, commercial use permitted
 
-**One pack ships: `core`.** It is a single set of 274 pictures assembled from
+**One pack ships: `core`.** It is a single set of 381 pictures assembled from
 the sources below via Global Symbols, and its manifest carries the credit for
 each picture individually. The sources are **not** shipped as packs of their
 own. This app does not carry Mulberry, or OpenMoji, or any of them, in full.
@@ -39,6 +39,8 @@ own. This app does not carry Mulberry, or OpenMoji, or any of them, in full.
 | Source of a `core` picture | License | Notes |
 |---|---|---|
 | Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org>. Upstream marks the set unmaintained. |
+| Mulberry Plus Collection | CC BY-SA 4.0 | © Mulberry and Global Symbols. <https://globalsymbols.com> |
+| Mulberry Additional Symbols | CC BY-SA 4.0 | © Verlag Karin Kestner GmbH. <https://www.kestner.de> |
 | Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee |
 | OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> |
 | Tawasol Symbols | CC BY-SA 4.0 | © Mada, Qatar. Arabic focused. <http://tawasolsymbols.org> |
@@ -53,11 +55,11 @@ does not carry.
 
 ### Fetched on demand, commercial use permitted
 
-The **More pictures** pack reaches the same four CC BY-SA sets through the
+The **More pictures** pack reaches the same six CC BY-SA sets through the
 Global Symbols API (<https://globalsymbols.com>) so a caregiver adding a word
 does not have to wait for a release to get a picture for it. Images are cached
 in application documents. The attributions in the table above apply to them
-identically, and `GlobalSymbolsPack.attribution` carries all four plus the
+identically, and `GlobalSymbolsPack.attribution` carries all six plus the
 Global Symbols credit.
 
 ### The device's own emoji, **codepoints only, never glyphs**
@@ -94,9 +96,22 @@ update. That is inherent and is not a bug.
 chooses them, so the restriction attaches to that choice rather than to this
 project's distribution.
 
-| Pack | License |
-|---|---|
-| ARASAAC | CC BY-NC-SA |
+| Pack | License | Reached as |
+|---|---|---|
+| ARASAAC | CC BY-NC-SA 4.0 | `arasaac` |
+| AAC Image Library | CC BY-NC-SA 4.0 | `globalsymbols-nc` — © AAC Image Library, <https://aacil.neocities.org> |
+
+`globalsymbols-nc` is `GlobalSymbolsPack.nonCommercial()`: the same class and
+the same API as the **More pictures** pack, reaching a separate
+`nonCommercialSets` list. Two lists rather than one list with a licence field,
+because a list where the licence is a field is a list somebody filters wrong
+once. `SymbolRegistry.isEnabled` falls back to `allowsCommercialUse` for any
+pack nobody has answered about, so both of these arrive **off** in a release
+without anyone migrating a stored settings map.
+
+A fork that is sold drops these by removing the `nonCommercial` constructor and
+`nonCommercialSets`, and the `ArasaacPack` file. Nothing outside `main.dart`
+names either.
 
 ARASAAC attribution, required wherever its symbols appear:
 

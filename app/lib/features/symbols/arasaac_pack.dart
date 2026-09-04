@@ -254,10 +254,20 @@ class ArasaacPack implements DownloadingSymbolPack {
     // rebuild mid-download, must issue one request rather than one per caller.
     return _inFlight.putIfAbsent(
       ref.externalId,
-      () => _download(
-        ref,
-        target,
-      ).whenComplete(() => _inFlight.remove(ref.externalId)),
+      () =>
+          _download(
+            ref,
+            target,
+            // A block body, and that is the whole fix. `_inFlight` holds futures, so
+            // `remove` *returns* one — and an arrow body hands it back to
+            // `whenComplete`, which then waits for it before completing. The future
+            // it waits for is the one it is completing. Nothing downloaded ever
+            // arrived at a caller that awaited it; `fetchNow` sat for twice the
+            // request timeout and then reported failure for a file that was on the
+            // device.
+          ).whenComplete(() {
+            _inFlight.remove(ref.externalId);
+          }),
     );
   }
 

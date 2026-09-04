@@ -9,13 +9,20 @@ import 'package:path_provider/path_provider.dart';
 import 'drawable.dart';
 import 'symbol_pack.dart';
 
-/// The commercially-clean symbol sets, fetched on demand.
+/// Symbol sets fetched on demand from Global Symbols.
 ///
-/// The same four sets and the same source the offline bundler uses, reachable
-/// at runtime so a caregiver adding a word does not have to wait for a release
-/// to get a picture for it. All four are CC BY-SA: attribution and share-alike,
-/// commercial use permitted. **ARASAAC is deliberately not here**:
-/// they are CC BY-NC and stay behind their own opt-in pack.
+/// The same sets and the same source the offline bundler uses, reachable at
+/// runtime so a caregiver adding a word does not have to wait for a release to
+/// get a picture for it.
+///
+/// **Two packs, one class, and the licence is what separates them.** The
+/// default constructor reaches [commercialSets] — all CC BY-SA: attribution
+/// and share-alike, commercial use permitted — and is on by default.
+/// [GlobalSymbolsPack.nonCommercial] reaches [nonCommercialSets] and is off
+/// until somebody turns it on, because non-commercial is not an open-source
+/// licence and it contaminates every path by which this app could be sold or
+/// shipped on hardware. ARASAAC and Sclera stay behind their own opt-in pack
+/// for the same reason.
 ///
 /// Two different jobs, with two different standards of proof:
 ///
@@ -30,48 +37,111 @@ import 'symbol_pack.dart';
 /// Sheep. A blank button honestly says "no picture yet"; a plausible wrong one
 /// is a lie the user cannot contradict.
 class GlobalSymbolsPack implements DownloadingSymbolPack {
+  /// The commercially-clean pack: bundled-quality sets, on by default.
   GlobalSymbolsPack({
     http.Client? client,
     Future<Directory> Function()? documentsDirectory,
     this.requestTimeout = const Duration(seconds: 6),
-  }) : _client = client ?? http.Client(),
+  }) : id = 'globalsymbols',
+       name = 'More pictures',
+       license = 'CC-BY-SA-4.0',
+       allowsCommercialUse = true,
+       sets = commercialSets,
+       _client = client ?? http.Client(),
+       _documentsDirectory =
+           documentsDirectory ?? getApplicationDocumentsDirectory;
+
+  /// The non-commercial pack: same source, same code, different licence and
+  /// therefore a different answer about whether it may be used at all.
+  ///
+  /// Off until somebody says otherwise, and that is not a policy this class
+  /// enforces — [SymbolRegistry.isEnabled] falls back to
+  /// [allowsCommercialUse] for any pack nobody has answered about, so a pack
+  /// added in a release arrives correctly off without anybody migrating a
+  /// stored settings map.
+  ///
+  /// A separate pack rather than more entries in [commercialSets], because the
+  /// licence attaches to the pack and a fork that is sold has to be able to
+  /// delete this one whole.
+  GlobalSymbolsPack.nonCommercial({
+    http.Client? client,
+    Future<Directory> Function()? documentsDirectory,
+    this.requestTimeout = const Duration(seconds: 6),
+  }) : id = 'globalsymbols-nc',
+       name = 'More pictures (non-commercial)',
+       license = 'CC-BY-NC-SA-4.0',
+       allowsCommercialUse = false,
+       sets = nonCommercialSets,
+       _client = client ?? http.Client(),
        _documentsDirectory =
            documentsDirectory ?? getApplicationDocumentsDirectory;
 
   static const host = 'globalsymbols.com';
 
   /// In preference order. Mulberry leads because it is a purpose-built AAC set
-  /// with a consistent drawn style; the rest fill its gaps in abstract core
+  /// with a consistent drawn style, and its own two extension sets follow it
+  /// because they are drawn to match; the rest fill its gaps in abstract core
   /// vocabulary. Mixing styles costs visual consistency, and a blank button
   /// costs more.
-  static const sets = <({String slug, String name, String attribution})>[
-    (
-      slug: 'mulberry',
-      name: 'Mulberry Symbols',
-      attribution:
-          'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
-          'CC BY-SA 4.0. https://mulberrysymbols.org',
-    ),
-    (
-      slug: 'stellar-symbols',
-      name: 'Stellar Symbols',
-      attribution: 'Stellar Symbols © Colin McNamee. CC BY-SA 4.0.',
-    ),
-    (
-      slug: 'tawasol',
-      name: 'Tawasol',
-      attribution:
-          'Tawasol Symbols © Mada, Qatar. CC BY-SA 4.0. '
-          'http://tawasolsymbols.org',
-    ),
-    (
-      slug: 'openmoji',
-      name: 'OpenMoji',
-      attribution:
-          'OpenMoji © OpenMoji Project. CC BY-SA 4.0. '
-          'https://openmoji.org',
-    ),
-  ];
+  static const commercialSets =
+      <({String slug, String name, String attribution})>[
+        (
+          slug: 'mulberry',
+          name: 'Mulberry Symbols',
+          attribution:
+              'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
+              'CC BY-SA 4.0. https://mulberrysymbols.org',
+        ),
+        (
+          slug: 'corona-symbols',
+          name: 'Mulberry Plus Collection',
+          attribution:
+              'Mulberry Plus Collection © Mulberry and Global Symbols. '
+              'CC BY-SA 4.0. https://globalsymbols.com',
+        ),
+        (
+          slug: 'additional-mulberry-symbols',
+          name: 'Mulberry Additional Symbols',
+          attribution:
+              'Mulberry Additional Symbols © Verlag Karin Kestner GmbH. '
+              'CC BY-SA 4.0. https://www.kestner.de',
+        ),
+        (
+          slug: 'stellar-symbols',
+          name: 'Stellar Symbols',
+          attribution: 'Stellar Symbols © Colin McNamee. CC BY-SA 4.0.',
+        ),
+        (
+          slug: 'tawasol',
+          name: 'Tawasol',
+          attribution:
+              'Tawasol Symbols © Mada, Qatar. CC BY-SA 4.0. '
+              'http://tawasolsymbols.org',
+        ),
+        (
+          slug: 'openmoji',
+          name: 'OpenMoji',
+          attribution:
+              'OpenMoji © OpenMoji Project. CC BY-SA 4.0. '
+              'https://openmoji.org',
+        ),
+      ];
+
+  /// Sets that may not be bundled, sold, or shipped on hardware that is sold.
+  ///
+  /// Kept apart from [commercialSets] rather than flagged inside it. A list
+  /// where the licence is a field is a list somebody filters wrong once; two
+  /// lists cannot be got wrong by forgetting to look.
+  static const nonCommercialSets =
+      <({String slug, String name, String attribution})>[
+        (
+          slug: 'aac-image-library',
+          name: 'AAC Image Library',
+          attribution:
+              'AAC Image Library © AAC Image Library. CC BY-NC-SA 4.0. '
+              'https://aacil.neocities.org',
+        ),
+      ];
 
   final http.Client _client;
   final Future<Directory> Function() _documentsDirectory;
@@ -87,23 +157,29 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
 
   Future<Directory>? _cachedDirectory;
 
-  @override
-  String get id => 'globalsymbols';
+  /// What the symbol directory held when it was last listed, by external id.
+  Map<String, File>? _cachedOnDisk;
 
   @override
-  String get name => 'More pictures';
+  final String id;
 
   @override
-  String get license => 'CC-BY-SA-4.0';
+  final String name;
+
+  @override
+  final String license;
+
+  @override
+  final bool allowsCommercialUse;
+
+  /// Which sets this pack reaches, in preference order.
+  final List<({String slug, String name, String attribution})> sets;
 
   @override
   String get attribution => [
     for (final set in sets) set.attribution,
     'Fetched through Global Symbols (https://globalsymbols.com).',
   ].join('\n');
-
-  @override
-  bool get allowsCommercialUse => true;
 
   @override
   bool get isBundled => false;
@@ -119,10 +195,24 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
         'limit': '$limit',
       });
 
+  /// The most any one set is asked for in a single search.
+  ///
+  /// A ceiling on how much of one search a set can be asked to carry, not a
+  /// property of the API, which accepts more.
+  static const maxSetResults = 60;
+
   /// Candidates for a person to choose from, best sets first.
   ///
   /// Loose on purpose. Nothing here is assigned to a button without somebody
   /// looking at it.
+  ///
+  /// **Every set is asked, at once, for as much as the caller wanted.** This
+  /// used to send a fixed twelve whatever it was asked for and then walk the
+  /// sets in order until the budget ran out, which had two results a person
+  /// searching could see: a set with forty pictures of a word offered twelve,
+  /// and the sets after the first generous one were never reached at all.
+  /// Their pictures existed, were licensed, were listed on the set-filter
+  /// chips — and could not be found by searching for them.
   @override
   Future<List<SymbolRef>> search(
     String query, {
@@ -132,21 +222,20 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     final trimmed = query.trim();
     if (trimmed.isEmpty || limit <= 0) return const [];
 
-    final results = <SymbolRef>[];
-    final seen = <String>{};
+    final depth = limit.clamp(1, maxSetResults);
+    final answers = await Future.wait([
+      for (final set in sets) _labels(trimmed, set.slug, limit: depth),
+    ]);
 
-    for (final set in sets) {
-      if (results.length >= limit) break;
-
-      for (final entry in await _labels(trimmed, set.slug)) {
-        final ref = _refFrom(entry);
-        if (ref == null || !seen.add(ref.key)) continue;
-        results.add(ref);
-        if (results.length >= limit) break;
-      }
-    }
-
-    return results;
+    return fairMerge([
+      for (final entries in answers)
+        [
+          // Every entry is turned into a ref, including ones the merge will
+          // drop: that is what records the URL each one is downloadable from,
+          // and a result the caller pages past today may be chosen tomorrow.
+          for (final entry in entries) ?_refFrom(entry),
+        ],
+    ], limit);
   }
 
   /// The one symbol whose label *is* this word, or null.
@@ -170,15 +259,15 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   Future<String?> resolve(SymbolRef ref) async {
     if (ref.packId != id) return null;
 
-    final file = await _fileFor(ref);
-    if (file == null) return null;
-    if (await file.exists()) {
-      return await _usable(ref, file) ? file.path : null;
-    }
+    final held = await _held(ref);
+    if (held != null) return await _usable(ref, held) ? held.path : null;
+
+    final target = await _targetFor(ref);
+    if (target == null) return null;
 
     // Not awaited. Resolution runs while a grid is building, and a button must
     // never wait on a network round trip to be pressable.
-    unawaited(_queueDownload(ref, file));
+    unawaited(_queueDownload(ref, target));
     return null;
   }
 
@@ -187,20 +276,22 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   /// Used where a caregiver has just chosen a picture and is waiting to see
   /// it, which is the one moment blocking on the network is the right thing.
   Future<bool> fetchNow(SymbolRef ref) async {
-    final file = await _fileFor(ref);
-    if (file == null) return false;
-    if (await file.exists()) return _usable(ref, file);
+    final held = await _held(ref);
+    if (held != null) return _usable(ref, held);
+
+    final target = await _targetFor(ref);
+    if (target == null) return false;
 
     _failed.remove(ref.externalId);
     try {
       // A ceiling, not an open wait. Somebody is looking at a spinner, and a
       // slow network should give them the choice back rather than hold the
       // sheet open indefinitely.
-      await _queueDownload(ref, file).timeout(requestTimeout * 2);
+      await _queueDownload(ref, target).timeout(requestTimeout * 2);
     } catch (_) {
       return false;
     }
-    return file.exists();
+    return target.exists();
   }
 
   @override
@@ -216,11 +307,12 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
 
   Future<List<Map<String, dynamic>>> _labels(
     String query,
-    String setSlug,
-  ) async {
+    String setSlug, {
+    int limit = 12,
+  }) async {
     try {
       final response = await _client
-          .get(searchUri(query, setSlug))
+          .get(searchUri(query, setSlug, limit: limit))
           .timeout(requestTimeout);
       if (response.statusCode != 200) return const [];
 
@@ -249,19 +341,93 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   /// Application documents, never the cache directory. Both platforms evict
   /// caches under storage pressure without asking, and a user whose symbols
   /// vanish mid-conversation has lost their voice, not a thumbnail.
-  Future<File?> _fileFor(SymbolRef ref) async {
+  Future<Directory?> _directory() async {
     try {
-      final directory = await (_cachedDirectory ??= _documentsDirectory());
-      final url = _urls[ref.externalId] ?? '';
-      final extension = url.toLowerCase().endsWith('.png') ? 'png' : 'svg';
-      return File(
-        p.join(directory.path, 'symbols', id, '${ref.externalId}.$extension'),
-      );
+      final documents = await (_cachedDirectory ??= _documentsDirectory());
+      return Directory(p.join(documents.path, 'symbols', id));
     } catch (_) {
       _cachedDirectory = null;
       return null;
     }
   }
+
+  /// The file this device already holds for [ref], whatever it is called.
+  ///
+  /// Found by listing rather than by constructing a name, because the name
+  /// cannot be constructed: a symbol's extension is whatever the source served
+  /// it as, and the only record of that is the URL a search returned — which
+  /// lives in memory and is gone at the next launch. Building a name anyway
+  /// meant every downloaded PNG stopped being found the moment the app
+  /// restarted, and was then re-fetched or, with no URL to fetch from, marked
+  /// unavailable.
+  ///
+  /// One listing per session answers for every symbol on every board.
+  Future<File?> _held(SymbolRef ref) async => (await _onDisk())[ref.externalId];
+
+  Future<Map<String, File>> _onDisk() async {
+    final held = _cachedOnDisk;
+    if (held != null) return held;
+
+    final found = <String, File>{};
+    try {
+      final directory = await _directory();
+      if (directory != null && directory.existsSync()) {
+        for (final entry in directory.listSync().whereType<File>()) {
+          final name = p.basenameWithoutExtension(entry.path);
+          // Partial downloads are named `<id>.<ext>.part`, which leaves the
+          // extension as the stem and would file them under the symbol's name.
+          if (p.extension(entry.path) == '.part') continue;
+          found.putIfAbsent(name, () => entry);
+        }
+      }
+    } catch (_) {
+      // An unreadable directory is a device with no cached symbols, which is
+      // where every install starts.
+    }
+    return _cachedOnDisk = found;
+  }
+
+  /// Where a symbol that is not held yet would be written.
+  ///
+  /// Null where the URL is unknown, which is the honest answer: without it
+  /// there is nothing to download and no way to know what to call the result.
+  Future<File?> _targetFor(SymbolRef ref) async {
+    final url = _urls[ref.externalId];
+    if (url == null) return null;
+
+    final directory = await _directory();
+    if (directory == null) return null;
+
+    return File(
+      p.join(directory.path, '${ref.externalId}.${_extensionOf(url)}'),
+    );
+  }
+
+  /// The extension the server is actually serving, not a guess between two.
+  ///
+  /// Some sets scanned their symbols and serve `jpg`. Every one of those was
+  /// filed as `.svg` — the only question asked was "does the URL end in png" —
+  /// and then failed the check that the bytes are drawable as SVG, so it was
+  /// marked unavailable and never drew. The picker showed it as "Did not
+  /// load", permanently, for a picture that was on the device the whole time.
+  static String _extensionOf(String url) {
+    final path = Uri.tryParse(url)?.path ?? url;
+    final dot = path.lastIndexOf('.');
+    final extension = dot < 0 ? '' : path.substring(dot + 1).toLowerCase();
+    return _drawableExtensions.contains(extension) ? extension : 'svg';
+  }
+
+  /// Extensions the renderer can read. Anything else is not a picture, and
+  /// treating an unrecognized URL as SVG is what this did before.
+  static const _drawableExtensions = {
+    'svg',
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'bmp',
+    'webp',
+  };
 
   /// Whether a file already on disk is one the renderer can read.
   ///
@@ -282,6 +448,7 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
         return true;
       }
       await file.delete();
+      _cachedOnDisk?.remove(ref.externalId);
     } catch (_) {
       // Unreadable is the same answer as undrawable, and neither is worth an
       // exception on the path a board draws itself on.
@@ -294,10 +461,20 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     if (_failed.contains(ref.externalId)) return Future.value();
     return _inFlight.putIfAbsent(
       ref.externalId,
-      () => _download(
-        ref,
-        target,
-      ).whenComplete(() => _inFlight.remove(ref.externalId)),
+      () =>
+          _download(
+            ref,
+            target,
+            // A block body, and that is the whole fix. `_inFlight` holds futures, so
+            // `remove` *returns* one — and an arrow body hands it back to
+            // `whenComplete`, which then waits for it before completing. The future
+            // it waits for is the one it is completing. Nothing downloaded ever
+            // arrived at a caller that awaited it; `fetchNow` sat for twice the
+            // request timeout and then reported failure for a file that was on the
+            // device.
+          ).whenComplete(() {
+            _inFlight.remove(ref.externalId);
+          }),
     );
   }
 
@@ -338,6 +515,7 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
       final partial = File('${target.path}.part');
       await partial.writeAsBytes(response.bodyBytes, flush: true);
       await partial.rename(target.path);
+      _cachedOnDisk?[ref.externalId] = target;
 
       if (!_available.isClosed) _available.add(ref);
     } catch (_) {

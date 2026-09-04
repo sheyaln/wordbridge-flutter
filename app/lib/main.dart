@@ -114,23 +114,38 @@ void recordCaughtFaults(CrashStore store) {
   };
 }
 
-/// A profile's vocabulary level as it stands, not as it stood when the session
-/// opened.
+/// A profile's row as it stands, not as it stood when the session opened.
 ///
-/// Every other per-user setting lives in `settingsJson` behind a
-/// [ProfileSettings] listener, which the board is already subscribed to. This
-/// one is a column, so it needs its own way in: raising it reveals words that
-/// are already placed, and a caregiver who has to relaunch the app to see that
-/// happen has no reason to believe it did.
+/// Every per-user *setting* lives in `settingsJson` behind a [ProfileSettings]
+/// listener, which the board is already subscribed to. Three things are
+/// columns instead, and each of them was read once at launch and then believed
+/// for the life of the session:
 ///
-/// Distinct because the same row carries every other setting, and a settings
-/// write must not rebuild the board.
-Stream<int> watchVocabLevel(WordbridgeDatabase db, String profileId) =>
+///  * **the vocabulary level** — raising it reveals words that are already
+///    placed, and a caregiver who has to relaunch the app to see that happen
+///    has no reason to believe it did;
+///  * **the board set** — a rebuild, a grid migration and a board import all
+///    point the profile at a *new* vocabulary, and a session still holding the
+///    old id draws the board the caregiver just replaced;
+///  * **the name**.
+///
+/// Distinct on those three, so a write to anything else on the same row does
+/// not rebuild the board.
+Stream<Profile> watchProfile(WordbridgeDatabase db, String profileId) =>
     (db.select(db.profiles)..where((p) => p.id.equals(profileId)))
         .watchSingleOrNull()
         .where((profile) => profile != null)
-        .map((profile) => profile!.vocabLevel)
-        .distinct();
+        .map((profile) => profile!)
+        .distinct(
+          (a, b) =>
+              a.vocabLevel == b.vocabLevel &&
+              a.activeVocabularyId == b.activeVocabularyId &&
+              a.displayName == b.displayName,
+        );
+
+/// Just the level, for callers that want nothing else.
+Stream<int> watchVocabLevel(WordbridgeDatabase db, String profileId) =>
+    watchProfile(db, profileId).map((profile) => profile.vocabLevel).distinct();
 
 /// Puts a profile's stored voice on the engine.
 ///
@@ -322,12 +337,19 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   // a person's instruction is their choice; shipping it enabled would make it
   // ours.
   late final _globalSymbols = GlobalSymbolsPack();
+
+  /// The same source under a licence that forbids selling what it draws. Last
+  /// with ARASAAC, and off with it, for the same reason: both are the
+  /// caregiver's choice to make and neither may be ours.
+  late final _globalSymbolsNc = GlobalSymbolsPack.nonCommercial();
+
   late final _symbols = SymbolRegistry(
     packs: [
       ...bundledSymbolPacks(),
       SystemEmojiPack(),
       _globalSymbols,
       ArasaacPack(),
+      _globalSymbolsNc,
     ],
   );
   late final _resolver = appSymbolResolver(db: _db, registry: _symbols);
@@ -444,6 +466,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     _logger?.dispose();
     _resolver.dispose();
     _globalSymbols.dispose();
+    _globalSymbolsNc.dispose();
     _db.close();
     super.dispose();
   }
@@ -464,7 +487,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 
           // Keyed on the profile so switching rebuilds the whole screen rather
           // than leaving one person's board holding another person's settings.
-          return _Session(
+          return Session(
             key: ValueKey(profile.id),
             db: _db,
             profile: profile,
@@ -533,8 +556,13 @@ class _FirstRun extends StatelessWidget {
 }
 
 /// One profile's session: its own settings object, its own vocabulary.
-class _Session extends StatefulWidget {
-  const _Session({
+///
+/// Public so a test can build one. What it does that nothing else does is
+/// follow the profile row while the board is open, and the failure that
+/// caused — a rebuilt board set that does not appear until the app is closed
+/// and opened again — is invisible from either side of it.
+class Session extends StatefulWidget {
+  const Session({
     super.key,
     required this.db,
     required this.profile,
@@ -558,39 +586,57 @@ class _Session extends StatefulWidget {
   final void Function(Profile) onSwitchProfile;
 
   @override
-  State<_Session> createState() => _SessionState();
+  State<Session> createState() => _SessionState();
 }
 
-class _SessionState extends State<_Session> {
+class _SessionState extends State<Session> {
   late final _settings = ProfileSettings(widget.db, widget.profile.id);
   late final Future<VoidCallback> _loaded = openSession(
     widget.speech,
     _settings,
     logger: widget.logger,
   );
-  late final Stream<int> _vocabLevel = watchVocabLevel(
-    widget.db,
-    widget.profile.id,
-  );
+
+  /// The row as it stands. Held rather than read from [widget], which carries
+  /// the row as it was when the session opened.
+  late Profile _profile = widget.profile;
+
+  StreamSubscription<Profile>? _watching;
+
+  /// The board set a bake has already been asked for, so the same one is not
+  /// asked for twice.
+  String? _baking;
 
   @override
   void initState() {
     super.initState();
-    // After the settings are on the engine, because whether there is a bake to
-    // resume is a question about the pack the voice was just put on.
-    final vocabularyId = widget.profile.activeVocabularyId;
-    if (vocabularyId != null) {
-      unawaited(
-        _loaded.then(
-          (_) =>
-              resumeBaking(widget.speech, _settings, widget.db, vocabularyId),
-        ),
-      );
-    }
+    _bake(widget.profile.activeVocabularyId);
+    _watching = watchProfile(widget.db, widget.profile.id).listen((profile) {
+      _bake(profile.activeVocabularyId);
+      if (mounted) setState(() => _profile = profile);
+    });
+  }
+
+  /// Picks a board set's bake up, once per board set.
+  ///
+  /// Deferred until the settings are on the engine, because whether there is a
+  /// bake to resume is a question about the pack the voice was just put on.
+  /// Called again when the profile is pointed at a different board set: a
+  /// rebuild or an import replaces the words, and the bake the session started
+  /// was for the words it replaced.
+  void _bake(String? vocabularyId) {
+    if (vocabularyId == null || vocabularyId == _baking) return;
+    _baking = vocabularyId;
+    unawaited(
+      _loaded.then(
+        (_) => resumeBaking(widget.speech, _settings, widget.db, vocabularyId),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _watching?.cancel();
     // Already complete by the time a session ends. If it somehow is not, the
     // listener comes off a settings object nobody is holding any more.
     _loaded.then((close) => close());
@@ -599,7 +645,7 @@ class _SessionState extends State<_Session> {
 
   @override
   Widget build(BuildContext context) {
-    final vocabularyId = widget.profile.activeVocabularyId;
+    final vocabularyId = _profile.activeVocabularyId;
 
     if (vocabularyId == null) {
       return const FallbackBoard(detail: 'This profile has no board set.');
@@ -610,27 +656,27 @@ class _SessionState extends State<_Session> {
     // because it looks like it worked.
     return awaiting<VoidCallback>(
       future: _loaded,
-      then: (_) {
-        return StreamBuilder<int>(
-          stream: _vocabLevel,
-          initialData: widget.profile.vocabLevel,
-          builder: (context, level) => TalkScreen(
-            db: widget.db,
-            speech: widget.speech,
-            vocabularyId: vocabularyId,
-            logger: widget.logger,
-            auth: widget.auth,
-            resolver: widget.resolver,
-            registry: widget.registry,
-            fetcher: widget.fetcher,
-            settings: _settings,
-            profileId: widget.profile.id,
-            userName: widget.profile.displayName,
-            vocabLevel: level.data ?? widget.profile.vocabLevel,
-            onSwitchProfile: widget.onSwitchProfile,
-          ),
-        );
-      },
+      then: (_) => TalkScreen(
+        // Keyed on the board set, so pointing the profile at a new one builds
+        // a new screen. A screen reads its vocabulary once, when it is created,
+        // and would otherwise go on drawing the board a caregiver had just
+        // replaced — which is what made a rebuild look like it had done nothing
+        // until the app was closed and opened again.
+        key: ValueKey(vocabularyId),
+        db: widget.db,
+        speech: widget.speech,
+        vocabularyId: vocabularyId,
+        logger: widget.logger,
+        auth: widget.auth,
+        resolver: widget.resolver,
+        registry: widget.registry,
+        fetcher: widget.fetcher,
+        settings: _settings,
+        profileId: _profile.id,
+        userName: _profile.displayName,
+        vocabLevel: _profile.vocabLevel,
+        onSwitchProfile: widget.onSwitchProfile,
+      ),
     );
   }
 }

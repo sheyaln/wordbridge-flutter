@@ -72,7 +72,10 @@ class SymbolRegistry extends ChangeNotifier {
   /// Searches every enabled pack and merges the results, bundled first.
   ///
   /// Packs are queried concurrently, and one that fails or hangs contributes
-  /// nothing rather than emptying the drawer for the others.
+  /// nothing rather than emptying the drawer for the others. A pack that
+  /// answers *well* cannot empty it either: the merge is round-robin, so
+  /// bundled-first decides who is at the top of the results and not who is in
+  /// them at all. See [fairMerge].
   ///
   /// [packId] narrows it to one set, for somebody comparing what each one has
   /// for a word. **It does not reach a disabled pack.** Naming one explicitly
@@ -97,15 +100,7 @@ class SymbolRegistry extends ChangeNotifier {
       for (final pack in targets) _searchOne(pack, trimmed, locale, limit),
     ]);
 
-    final merged = <String, SymbolRef>{};
-    for (final refs in answers) {
-      for (final ref in refs) {
-        if (merged.length >= limit) break;
-        merged.putIfAbsent(ref.key, () => ref);
-      }
-      if (merged.length >= limit) break;
-    }
-    return merged.values.toList(growable: false);
+    return fairMerge(answers, limit);
   }
 
   Future<List<SymbolRef>> _searchOne(

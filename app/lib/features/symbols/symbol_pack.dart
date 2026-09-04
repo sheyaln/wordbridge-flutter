@@ -11,6 +11,17 @@ extension SymbolRefKey on SymbolRef {
   String get key => '$packId/$externalId';
 }
 
+/// The device's own emoji, named here rather than on the class that implements
+/// it.
+///
+/// The seeded board set puts emoji on its frame keys — home, back, the page
+/// arrows — and needs to say which pack they belong to. Reaching for
+/// `SystemEmojiPack.packId` to do it meant the seed imported a concrete pack,
+/// which is the boundary `tools/check_symbol_boundary.sh` exists to hold: app
+/// code depends on this interface and never on a pack. An id is a string, and
+/// a string does not need the class that serves it.
+const systemEmojiPackId = 'system-emoji';
+
 /// The packs a board consults for a word it has no chosen picture for.
 ///
 /// Deliberately only the curated one. That fallback runs with nobody looking —
@@ -36,6 +47,44 @@ const boardSymbolPackIds = ['core'];
 /// the fetch lands the chosen picture wins again: nothing here is written to
 /// the button, so this never becomes the answer.
 const symbolFallbacks = {'frame-53182': 'frame-1f504'};
+
+/// Merges several packs' — or several sets' — answers to one search so that no
+/// one of them can empty the budget before a later one is reached.
+///
+/// Concatenating them meant the first source with plenty to say was the only
+/// source heard. Two layers had the same shape and the same fault: the
+/// device's emoji index matches broadly and filled a sixty-result search on a
+/// common word by itself, so the picture sets a caregiver was actually looking
+/// for contributed nothing; and inside the fetching pack, the sets were walked
+/// in order until the budget ran out, so Stellar, Tawasol and OpenMoji were
+/// unreachable on any word Mulberry had a lot of. In both cases the result
+/// reads as a set with nothing for the word rather than as a set nobody asked.
+///
+/// Preference order still decides who comes *first* — each round is walked in
+/// the order given. It no longer decides who comes *only*.
+///
+/// Deduplicated by [SymbolRefKey.key], so a symbol two sources both carry is
+/// listed once, at the earlier source's position.
+List<SymbolRef> fairMerge(List<List<SymbolRef>> answers, int limit) {
+  if (limit <= 0) return const [];
+
+  final merged = <String, SymbolRef>{};
+  var deepest = 0;
+  for (final refs in answers) {
+    if (refs.length > deepest) deepest = refs.length;
+  }
+
+  for (var round = 0; round < deepest; round++) {
+    for (final refs in answers) {
+      if (merged.length >= limit) return merged.values.toList(growable: false);
+      if (round >= refs.length) continue;
+      final ref = refs[round];
+      merged.putIfAbsent(ref.key, () => ref);
+    }
+  }
+
+  return merged.values.toList(growable: false);
+}
 
 /// A source of symbols.
 ///

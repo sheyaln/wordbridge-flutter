@@ -261,8 +261,10 @@ void main() {
     test('only commercially clean sets are reachable', () {
       // ARASAAC and Sclera are CC BY-NC and belong behind their own opt-in
       // pack. This one may be bundled, sold, or shipped on hardware.
-      expect(GlobalSymbolsPack.sets.map((s) => s.slug), [
+      expect(GlobalSymbolsPack.commercialSets.map((s) => s.slug), [
         'mulberry',
+        'corona-symbols',
+        'additional-mulberry-symbols',
         'stellar-symbols',
         'tawasol',
         'openmoji',
@@ -280,7 +282,7 @@ void main() {
     });
 
     test('every search names the set it is asking', () {
-      for (final set in GlobalSymbolsPack.sets) {
+      for (final set in GlobalSymbolsPack.commercialSets) {
         final uri = GlobalSymbolsPack.searchUri('drink', set.slug);
         expect(uri.host, GlobalSymbolsPack.host);
         expect(uri.queryParameters['symbolset'], set.slug);
@@ -295,7 +297,7 @@ void main() {
       );
       addTearDown(pack.dispose);
 
-      for (final set in GlobalSymbolsPack.sets) {
+      for (final set in GlobalSymbolsPack.commercialSets) {
         expect(pack.attribution, contains(set.name));
       }
     });
