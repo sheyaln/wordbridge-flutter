@@ -398,7 +398,9 @@ class _BackupsScreenState extends State<BackupsScreen> {
                 // matters is the one that is somewhere else — a caregiver
                 // holding a replacement tablet needs to see that these are
                 // reachable from a device that has never held the board.
-                if (cloud != null && cloud.on && cloud.reachable) ...[
+                if (cloud != null &&
+                    cloud.reachable &&
+                    (cloud.on || cloud.backups.isNotEmpty)) ...[
                   const Divider(height: 1),
                   ListTile(
                     dense: true,

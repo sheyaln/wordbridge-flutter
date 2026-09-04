@@ -223,6 +223,20 @@ void main() {
       );
     });
 
+    testWidgets('still offers to delete copies after it is switched off', (
+      tester,
+    ) async {
+      cloud.view_ = _view(
+        on: false,
+        backups: [_copyAt(DateTime.utc(2026, 8, 3, 14, 22))],
+      );
+      await open(tester);
+
+      await reveal(tester, find.text('Remove every copy from iCloud'));
+
+      expect(find.text('Remove every copy from iCloud'), findsOneWidget);
+    });
+
     testWidgets('reads out a failure from a launch nobody was watching', (
       tester,
     ) async {

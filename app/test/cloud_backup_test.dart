@@ -418,6 +418,29 @@ void main() {
       },
     );
 
+    test('the copies stay reachable so they can still be deleted', () async {
+      await cloud.backUpNow();
+
+      await cloud.turnOff();
+      final view = await cloud.view();
+
+      expect(
+        view.backups,
+        hasLength(1),
+        reason: 'the only route to deleting them was to switch them back on',
+      );
+      expect(view.on, isFalse);
+    });
+
+    test('a device that never sent one does not go looking', () async {
+      await cloud.turnOff();
+
+      final view = await cloud.view();
+
+      expect(view.backups, isEmpty);
+      expect(view.reachable, isFalse);
+    });
+
     test('the board on the tablet survives it', () async {
       await addWord('trampoline');
       await cloud.backUpNow();

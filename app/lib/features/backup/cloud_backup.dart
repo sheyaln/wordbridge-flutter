@@ -434,18 +434,28 @@ class CloudBackupService {
   }
 
   /// Everything the backups screen needs, in one read.
+  ///
+  /// The account is looked at while the copies are switched off too, as long as
+  /// this device remembers making some. [turnOff] leaves them where they are on
+  /// purpose, and a caregiver who then decides they want them gone has to be
+  /// able to reach them — a screen that hid them behind the switch would leave
+  /// a family's only route to deleting them being to switch the copies back on.
+  ///
+  /// A device that never sent anything looks at nothing, which is what keeps a
+  /// tablet that said no from touching an account on every screen open.
   Future<CloudView> view() async {
     final answer = await store.answer();
     final remembered = await store.lastCopiedUp();
     final stored = await store.lastProblem();
+    final on = answer == true;
 
-    if (answer != true) {
+    if (!on && remembered == null) {
       return (
         answered: answer != null,
         on: false,
         label: destination.label,
         reachable: false,
-        lastCopiedUp: remembered,
+        lastCopiedUp: null,
         checked: false,
         backups: const <CloudBackup>[],
         problem: null,
@@ -456,8 +466,8 @@ class CloudBackupService {
     final backups = status.reachable ? await list() : const <CloudBackup>[];
 
     return (
-      answered: true,
-      on: true,
+      answered: answer != null,
+      on: on,
       label: destination.label,
       reachable: status.reachable,
       // The account's own answer where there is one, because a date this
@@ -468,7 +478,9 @@ class CloudBackupService {
           : remembered,
       checked: status.reachable,
       backups: backups,
-      problem: status.problem ?? stored,
+      // Only while it is on. A switch somebody turned off is not a state to
+      // keep reporting a failure about.
+      problem: on ? (status.problem ?? stored) : null,
     );
   }
 }
