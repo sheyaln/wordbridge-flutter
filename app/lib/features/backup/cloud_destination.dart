@@ -151,9 +151,14 @@ List<CloudPlace> cloudPlaces() {
 /// is nowhere yet.
 String cloudLabel([CloudPlace place = CloudPlace.account]) {
   if (Platform.isAndroid) return 'Google Drive';
-  if (Platform.isIOS || Platform.isMacOS) {
-    return place == CloudPlace.folder ? unpickedFolder : 'iCloud';
-  }
+  // Before the platform is recognised, not after it: the two places are told
+  // apart by what they *are* rather than by who is asking. Naming them from
+  // the platform first gave a host that is neither Apple nor Android one
+  // string for both, and the setup screen offers them as a list — so it drew
+  // two option cards reading "Keep a copy in your cloud storage" and asked
+  // somebody to choose between them.
+  if (place == CloudPlace.folder) return unpickedFolder;
+  if (Platform.isIOS || Platform.isMacOS) return 'iCloud';
   return 'your cloud storage';
 }
 

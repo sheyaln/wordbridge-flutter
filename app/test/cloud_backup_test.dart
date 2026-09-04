@@ -500,6 +500,29 @@ void main() {
   ///
   /// So: nothing is moved, nothing is deleted, and the old place is named on
   /// the screen until somebody deals with it.
+  group('what the places are called', () {
+    test('a folder names itself as one, whatever host is asking', () {
+      // The setup screen offers the places as a list, so two of them sharing
+      // a name is two option cards a caregiver is asked to choose between
+      // that read identically. Naming them from the platform first did
+      // exactly that on any host that is neither Apple nor Android — which is
+      // every CI runner, where five tests failed on it and nobody saw,
+      // because the format step was exiting before the suite ran.
+      //
+      // Android is the exception and not a bug: it offers one place, and the
+      // provider's own name is the honest one for it.
+      if (!Platform.isAndroid) {
+        expect(cloudLabel(CloudPlace.folder), unpickedFolder);
+        expect(cloudLabel(CloudPlace.account), isNot(unpickedFolder));
+      }
+    });
+
+    test('and no two places a device offers share one', () {
+      final offered = cloudPlaces();
+      expect(offered.map(cloudLabel).toSet(), hasLength(offered.length));
+    });
+  });
+
   group('choosing where the copies go', () {
     test('sends copies to the folder once one is chosen', () async {
       await addWord('trampoline');
