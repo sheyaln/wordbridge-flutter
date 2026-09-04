@@ -113,9 +113,12 @@ public class CloudBackup: NSObject, FlutterPlugin {
   /// What the container holds. Names and sizes only; the Dart side decides
   /// which of them are snapshots.
   ///
-  /// `totalFileSize` rather than `fileSize`, because a file that iCloud has
-  /// evicted from this device still has a full size and a zero local one — and
-  /// a list of backups showing 0 KB is a list nobody would trust.
+  /// `fileSize` first, `totalFileSize` only as a fallback. The second can
+  /// include metadata and is a displayable number rather than a byte count;
+  /// nothing decides whether a restore is whole from it — see `_wholeDatabase`
+  /// in cloud_backup.dart, which opens the file instead — but a caregiver
+  /// choosing between dates is shown it, and 0 KB is a list nobody would
+  /// trust.
   private func list() throws -> [[String: Any]] {
     let documents = try documents()
     let keys: [URLResourceKey] = [.nameKey, .totalFileSizeKey, .fileSizeKey]
@@ -128,7 +131,7 @@ public class CloudBackup: NSObject, FlutterPlugin {
 
     return entries.compactMap { url in
       let values = try? url.resourceValues(forKeys: Set(keys))
-      guard let bytes = values?.totalFileSize ?? values?.fileSize else { return nil }
+      guard let bytes = values?.fileSize ?? values?.totalFileSize else { return nil }
       return ["id": url.lastPathComponent, "name": url.lastPathComponent, "bytes": bytes]
     }
   }
@@ -161,8 +164,8 @@ public class CloudBackup: NSObject, FlutterPlugin {
   /// A snapshot the device has never opened is a placeholder until something
   /// asks for it, and copying a placeholder produces a file that looks like a
   /// backup and is not one. So the download is started, waited for, and only
-  /// then read — and the Dart side checks the length it ends up with anyway,
-  /// because a wait that timed out and a file that arrived are otherwise
+  /// then read — and the Dart side opens what it gets anyway, because a wait
+  /// that timed out and a file that arrived whole are otherwise
   /// indistinguishable from there.
   private func download(id: String, to path: String) throws {
     let source = try documents().appendingPathComponent(id)

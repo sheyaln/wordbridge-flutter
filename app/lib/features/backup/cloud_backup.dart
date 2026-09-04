@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart' as raw;
 
 import '../../db/database.dart';
 import 'backup_service.dart';
@@ -358,13 +359,18 @@ class CloudBackupService {
   /// snapshot locally, and the next thing to go wrong does not need a network
   /// or an account to be undone.
   ///
-  /// It is checked before it is used, by length as well as by header. A
-  /// connection that drops mid-download leaves a file whose first 64 bytes are
-  /// a perfectly good SQLite header, so [snapshotSchemaVersion] recognizes it
-  /// and every listing afterwards offers it as a way back — an unreadable
-  /// backup that is believed, which is the one outcome worse than no backup at
-  /// all. The account said how many bytes it was holding; anything else is
-  /// discarded before it can be found and trusted.
+  /// It is read all the way through before it is used. A connection that drops
+  /// mid-download leaves a file whose first 64 bytes are a perfectly good
+  /// SQLite header, so [snapshotSchemaVersion] recognizes it and every listing
+  /// afterwards offers it as a way back — an unreadable backup that is
+  /// believed, which is the one outcome worse than no backup at all.
+  ///
+  /// Checked by opening it rather than by comparing its length against the size
+  /// the account reported. Those two numbers are not the same thing: iCloud
+  /// reports a displayable size that can include metadata, and a file it has
+  /// evicted from this device reports differently again, so a length
+  /// comparison would refuse valid restores on the platform that needs them
+  /// most.
   Future<RestoreAttempt> restore(CloudBackup copy) async {
     File? fetched;
     try {
@@ -373,7 +379,7 @@ class CloudBackupService {
       await destination.download(copy, into);
 
       final version = await snapshotSchemaVersion(into);
-      if (version == null || await into.length() != copy.bytes) {
+      if (version == null || !_wholeDatabase(into)) {
         if (await into.exists()) await into.delete();
         return (
           restored: false,
@@ -401,6 +407,25 @@ class CloudBackupService {
             'That backup could not be fetched from ${destination.label}. '
             'Nothing has been changed. $e',
       );
+    }
+  }
+
+  /// Whether SQLite can read every page of the file, not just its header.
+  ///
+  /// `quick_check` is what tells a whole database from the first third of one.
+  /// Read-only, so a file that turns out to be damaged is not written to on the
+  /// way to finding out.
+  bool _wholeDatabase(File file) {
+    try {
+      final handle = raw.sqlite3.open(file.path, mode: raw.OpenMode.readOnly);
+      try {
+        final rows = handle.select('PRAGMA quick_check');
+        return rows.length == 1 && rows.first.values.first == 'ok';
+      } finally {
+        handle.close();
+      }
+    } catch (_) {
+      return false;
     }
   }
 
