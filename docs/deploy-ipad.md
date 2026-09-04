@@ -111,6 +111,14 @@ Until then the app answers "this tablet is not signed in to iCloud" on the
 backups screen and keeps taking local backups. That is the intended state for a
 build without the capability, not a bug to chase.
 
+**The other destination needs none of this.** Settings → Backups → *Where the
+copies go* → **A folder you choose** is `UIDocumentPickerViewController` in
+folder mode plus a security-scoped bookmark: no entitlement, no capability on
+the profile, no `Info.plist` key. It reaches iCloud Drive, Google Drive,
+Dropbox, OneDrive and anything else with a File Provider extension on the
+device, and it works on a free personal team. On a build with no iCloud
+capability it is the only destination that does anything.
+
 ### What to verify on hardware
 
 - **A copy actually arrives.** Back up now, then Files → iCloud Drive →
@@ -124,3 +132,19 @@ build without the capability, not a bug to chase.
 - **A file iCloud has evicted.** Restore something old enough to have been
   purged from local storage; `CloudBackup.swift` waits for the download, and
   the wait is the part a simulator cannot exercise.
+- **The folder picker, against a real provider.** Install Google Drive or
+  Dropbox, then Settings → Backups → *Where the copies go* → **A folder you
+  choose**. Check the row afterwards names the provider rather than "a folder";
+  `CloudFolder.name(of:)` reads that off the `Library/CloudStorage` path, which
+  only exists on a device with the extension installed.
+- **The bookmark across a relaunch and a reboot.** Force-quit, reopen, confirm
+  a copy still goes up without the picker reappearing. A bookmark taken outside
+  its security scope resolves fine on the first run and fails later, which is
+  the failure worth catching before somebody depends on it.
+- **A folder that goes away.** Uninstall the provider app, or revoke the
+  folder. The screen must say the folder can no longer be reached, keep taking
+  local backups, and offer *Choose a different folder* as the way back.
+- **Changing the destination.** Switch from iCloud to a folder with copies
+  already in iCloud. The warning must name them before the change, the iCloud
+  copies must still be in Files afterwards, and the screen must keep saying
+  where they are.

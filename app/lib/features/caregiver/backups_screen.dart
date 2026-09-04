@@ -134,6 +134,62 @@ class _BackupsScreenState extends State<BackupsScreen> {
     await _load();
   }
 
+  /// Sends copies somewhere else, once whoever asked knows what it leaves.
+  Future<void> _sendTo(CloudPlace place, {bool pick = false}) async {
+    final cloud = widget.cloud;
+    final view = _cloud;
+    if (cloud == null || view == null) return;
+
+    if (!await _agreeToLeave(view, place, pick: pick)) return;
+
+    setState(() => _busy = true);
+    final attempt = await cloud.sendTo(place, pick: pick);
+
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _problem = attempt.problem;
+    });
+    await _load();
+  }
+
+  /// Asks before copies stop going where they have been going.
+  ///
+  /// Not asked where there is nothing to leave behind. A confirmation about
+  /// nothing is what teaches somebody to dismiss the one that is about a
+  /// record of their child's speech sitting in an account they are about to
+  /// stop looking at.
+  Future<bool> _agreeToLeave(
+    CloudView view,
+    CloudPlace place, {
+    required bool pick,
+  }) async {
+    if (view.backups.isEmpty && view.lastCopiedUp == null) return true;
+
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Send backups to '
+          '${pick ? 'a different folder' : cloudPlaceTitle(view, place)} '
+          'instead?',
+        ),
+        content: Text(leavingWarning(view)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Keep using ${view.label}'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Change where they go'),
+          ),
+        ],
+      ),
+    );
+    return go == true;
+  }
+
   Future<void> _restoreFromCloud(CloudBackup copy, String label) async {
     final board = await describeBoard(widget.db);
     if (!mounted) return;
@@ -342,7 +398,13 @@ class _BackupsScreenState extends State<BackupsScreen> {
                   ),
                 ),
                 if (cloud != null)
-                  _CloudSection(view: cloud, busy: _busy, onChanged: _setCloud),
+                  _CloudSection(
+                    view: cloud,
+                    busy: _busy,
+                    onChanged: _setCloud,
+                    onPlace: _sendTo,
+                    onPick: () => _sendTo(CloudPlace.folder, pick: true),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: FilledButton.icon(
@@ -461,15 +523,21 @@ class _CloudSection extends StatelessWidget {
     required this.view,
     required this.busy,
     required this.onChanged,
+    required this.onPlace,
+    required this.onPick,
   });
 
   final CloudView view;
   final bool busy;
   final ValueChanged<bool> onChanged;
+  final ValueChanged<CloudPlace> onPlace;
+  final VoidCallback onPick;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final chooseable =
+        view.on && (view.places.length > 1 || view.place == CloudPlace.folder);
 
     return Column(
       children: [
@@ -478,10 +546,17 @@ class _CloudSection extends StatelessWidget {
           isThreeLine: true,
           secondary: Icon(view.on ? Icons.cloud_done : Icons.cloud_off),
           title: Text('Keep a copy in ${view.label}'),
+          // Two sentences rather than one with the name dropped into it. A
+          // folder is not an account somebody signed in to, and before one is
+          // chosen there is no name to put in the sentence at all.
           subtitle: Text(
-            'Copies go to the ${view.label} account already signed in on this '
-            'tablet. They stay in that account: we never receive them and '
-            'cannot read them.',
+            view.place == CloudPlace.folder
+                ? 'Copies go to a folder you choose, in whichever account you '
+                      'chose it from. They stay there: we never receive them '
+                      'and cannot read them.'
+                : 'Copies go to the ${view.label} account already signed in '
+                      'on this tablet. They stay in that account: we never '
+                      'receive them and cannot read them.',
           ),
           onChanged: busy ? null : onChanged,
         ),
@@ -504,9 +579,112 @@ class _CloudSection extends StatelessWidget {
             leading: Icon(Icons.error_outline, color: colors.error),
             title: Text(view.problem!),
           ),
+        if (chooseable) ...[
+          const ListTile(
+            dense: true,
+            title: Text(
+              'Where the copies go',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (view.places.length > 1)
+            for (final place in view.places)
+              ListTile(
+                leading: Icon(
+                  place == view.place
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                ),
+                title: Text(cloudPlaceTitle(view, place)),
+                subtitle: Text(cloudPlaceNote(place)),
+                isThreeLine: true,
+                onTap: busy || place == view.place
+                    ? null
+                    : () => onPlace(place),
+              ),
+          // Offered wherever copies go to a folder, including where that is
+          // the only place this device has. It is both "use a different one"
+          // and the only way back from a folder the tablet has lost, and
+          // without it that recovery is switching the whole feature off and
+          // on again.
+          if (view.place == CloudPlace.folder)
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: const Text('Choose a different folder'),
+              subtitle: const Text(
+                'Opens the picker again — to move to another provider, or to '
+                'point this tablet back at a folder it can no longer reach.',
+              ),
+              isThreeLine: true,
+              onTap: busy ? null : onPick,
+            ),
+        ],
+        if (view.leftBehind != null)
+          ListTile(
+            leading: const Icon(Icons.inventory_2_outlined),
+            title: Text('Older copies are still in ${view.leftBehind}'),
+            subtitle: Text(
+              'They stopped being added to when backups moved to '
+              '${view.label}, and are not listed here any more. Delete them '
+              'in ${view.leftBehind} itself, or switch back to it here and '
+              'use "Remove every copy".',
+            ),
+            isThreeLine: true,
+          ),
       ],
     );
   }
+}
+
+/// What to call one of the places on the chooser.
+///
+/// The place copies go to now names itself, because the platform reports the
+/// provider: a caregiver reads "Google Drive" rather than the name of a folder
+/// they chose eight months ago. The other one is named by what choosing it
+/// would do, there being nothing there yet to name.
+String cloudPlaceTitle(CloudView view, CloudPlace place) {
+  if (place == view.place && view.label != unpickedFolder) return view.label;
+  return place == CloudPlace.account
+      ? cloudLabel(CloudPlace.account)
+      : 'A folder you choose';
+}
+
+/// What choosing one of them gets, in the terms the choice is made in.
+///
+/// Neither is better. The container needs nobody to pick anything and comes
+/// back after the app is reinstalled; the folder reaches the account the
+/// family already keeps everything else in. Which of those matters is not
+/// something this app knows.
+String cloudPlaceNote(CloudPlace place) => switch (place) {
+  CloudPlace.account =>
+    'Wordbridge\'s own folder in the ${cloudLabel()} account already signed '
+        'in on this tablet. Nothing to choose, and it is still there after '
+        'the app is reinstalled.',
+  CloudPlace.folder =>
+    'Any folder this tablet can reach: Google Drive, Dropbox, OneDrive, or '
+        'the tablet\'s own storage. You choose it once, and copies go there '
+        'by themselves after that.',
+};
+
+/// What changing where the copies go costs, said before it happens.
+///
+/// The copies already made are not moved and not deleted — see
+/// [CloudBackupService.sendTo] — so this has to name them, say they are staying
+/// where they are, and say how to get rid of them. A family moving their
+/// backups to Drive would otherwise leave a record of a disabled person's
+/// speech in an iCloud account they have stopped looking at.
+String leavingWarning(CloudView view) {
+  final copies = switch (view.backups.length) {
+    0 => 'Any copies already in ${view.label} stay',
+    1 => 'The one copy already in ${view.label} stays',
+    final many => 'The $many copies already in ${view.label} stay',
+  };
+
+  return '$copies where they are. Wordbridge stops adding to them and '
+      'stops listing them here.\n\n'
+      'To get rid of them: delete them in ${view.label} itself, or come back '
+      'here, switch to ${view.label} again and use "Remove every copy".\n\n'
+      'The backups on this tablet are copied to the new place straight away.';
 }
 
 /// When a snapshot was taken, in the caregiver's own timezone.

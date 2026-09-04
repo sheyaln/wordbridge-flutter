@@ -26,10 +26,19 @@ typedef CloudAttempt = ({
 /// what this device remembers writing. Offline, only the second is available,
 /// and a screen that presented it as the first would be claiming a file is
 /// somewhere it has not looked.
+///
+/// [leftBehind] is the name of a place copies used to go to and no longer do.
+/// It is here rather than in a dialog nobody will see twice: a family who moved
+/// their backups from iCloud to Drive still has copies of a disabled person's
+/// speech sitting in iCloud, and a screen that stopped mentioning them the
+/// moment they stopped being listed would be hiding them.
 typedef CloudView = ({
   bool answered,
   bool on,
   String label,
+  CloudPlace place,
+  List<CloudPlace> places,
+  String? leftBehind,
   bool reachable,
   DateTime? lastCopiedUp,
   bool checked,
@@ -56,6 +65,7 @@ class CloudBackupStore {
   static const answerKey = 'cloudBackup';
   static const lastCopiedUpKey = 'cloudBackupAt';
   static const problemKey = 'cloudBackupProblem';
+  static const leftBehindKey = 'cloudBackupLeftIn';
 
   /// What a device set up from here is offered, with the answer preselected.
   ///
@@ -113,6 +123,18 @@ class CloudBackupStore {
   }
 
   Future<void> recordProblem(String problem) => _write(problemKey, problem);
+
+  /// What the place copies used to go to was called, while anything was left
+  /// there.
+  ///
+  /// A name rather than a [CloudPlace], because the only thing done with it is
+  /// reading it out to somebody. Two providers a caregiver reads the same name
+  /// for are the same place as far as that sentence goes, and the enum would
+  /// need the name carried beside it anyway.
+  Future<String?> leftBehind() => _value(leftBehindKey);
+
+  Future<void> rememberLeftBehind(String? label) =>
+      label == null ? _clear(leftBehindKey) : _write(leftBehindKey, label);
 
   /// Forgets that this device ever copied anything up.
   ///
@@ -172,9 +194,9 @@ class CloudBackupService {
 
   /// Says yes, and asks the platform for whatever it needs.
   ///
-  /// On Android that is a folder, and the picker it opens is the reason this
-  /// is a deliberate act on a screen rather than something a launch does. A
-  /// refusal is written down rather than thrown: the answer is stored either
+  /// Where copies go to a folder that is a picker, and the picker is the reason
+  /// this is a deliberate act on a screen rather than something a launch does.
+  /// A refusal is written down rather than thrown: the answer is stored either
   /// way, so a caregiver who dismissed the picker finds the reason on the
   /// screen they are already looking at instead of a switch that silently
   /// went back off.
@@ -200,6 +222,78 @@ class CloudBackupService {
   /// be the only surviving board. Removing them is a separate, named act —
   /// [forget].
   Future<void> turnOff() => store.setAnswer(false);
+
+  /// Sends copies somewhere else from now on, and says what that costs.
+  ///
+  /// [pick] opens the folder picker even where a folder is already held, which
+  /// is both "use a different one" and the way back from one that has gone.
+  ///
+  /// **What is already in the old place stays in the old place.** Moving it
+  /// would mean fetching every copy down and pushing it back up over whatever
+  /// connection the tablet has, and a move that failed halfway would leave a
+  /// family with their board in neither place. Deleting it would be the same
+  /// misreading of "somewhere else" that [turnOff] refuses: those copies are
+  /// the family's, and one of them may be the only surviving board. So they
+  /// stay — and because a copy of somebody's speech left quietly in an account
+  /// nobody is looking at any more is the thing this feature must not create,
+  /// the name of the old place is written down and the screen keeps saying it
+  /// until the copies go or the place is chosen again.
+  ///
+  /// The mirror runs immediately afterwards, so a tablet is not left with the
+  /// old place no longer being written to and the new one still empty.
+  Future<CloudAttempt> sendTo(CloudPlace place, {bool pick = false}) async {
+    // So that what is compared afterwards is where the platform says copies go
+    // now, not where it said they went when the screen was opened.
+    await destination.status();
+
+    final wasIn = destination.place;
+    final wasCalled = destination.label;
+    final leaving = await _holdsAnything() ? wasCalled : null;
+
+    final moved = await destination.use(place, pick: pick);
+
+    // A re-pick lands on the same place under the same name and is still a
+    // move. Anything else moved only if the platform says it did: a picker
+    // somebody dismissed changes nothing, and treating it as a move would
+    // throw away a date that is still true.
+    final changed = pick
+        ? moved.reachable
+        : destination.place != wasIn || destination.label != wasCalled;
+
+    if (!changed) {
+      if (moved.problem != null) await store.recordProblem(moved.problem!);
+      return (snapshot: null, copy: null, problem: moved.problem);
+    }
+
+    // Both described the old place. A date carried forward would claim a copy
+    // sits somewhere nothing has ever written to, and a failure carried forward
+    // would be reported against a place that never had it.
+    await store.forget();
+    await store.rememberLeftBehind(
+      leaving != null && leaving != destination.label ? leaving : null,
+    );
+
+    final mirrored = await _mirror();
+    return (
+      snapshot: null,
+      copy: mirrored.copy,
+      problem: mirrored.problem ?? moved.problem,
+    );
+  }
+
+  /// Whether the place copies go to now holds any of ours.
+  ///
+  /// Asked only to decide whether somebody is about to leave copies behind, so
+  /// a folder that cannot be read falls back to whether this device remembers
+  /// ever sending anything. Over-warning costs a sentence; under-warning leaves
+  /// a record of a disabled person's speech in an account nobody is watching.
+  Future<bool> _holdsAnything() async {
+    try {
+      return (await destination.list()).isNotEmpty;
+    } catch (_) {
+      return await store.lastCopiedUp() != null;
+    }
+  }
 
   /// Takes a snapshot and copies it up, because somebody pressed a button.
   ///
@@ -472,6 +566,7 @@ class CloudBackupService {
     final answer = await store.answer();
     final remembered = await store.lastCopiedUp();
     final stored = await store.lastProblem();
+    final left = await store.leftBehind();
     final on = answer == true;
 
     if (!on && remembered == null) {
@@ -479,6 +574,9 @@ class CloudBackupService {
         answered: answer != null,
         on: false,
         label: destination.label,
+        place: destination.place,
+        places: destination.places,
+        leftBehind: left == destination.label ? null : left,
         reachable: false,
         lastCopiedUp: null,
         checked: false,
@@ -494,6 +592,12 @@ class CloudBackupService {
       answered: answer != null,
       on: on,
       label: destination.label,
+      place: destination.place,
+      places: destination.places,
+      // Dropped once copies are going back to the place they were left in:
+      // they are listed again from there, and a line saying they are somewhere
+      // else would be pointing at the screen it is on.
+      leftBehind: left == destination.label ? null : left,
       reachable: status.reachable,
       // The account's own answer where there is one, because a date this
       // device remembers writing says nothing about a file somebody has since

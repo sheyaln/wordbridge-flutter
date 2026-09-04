@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
@@ -49,13 +50,13 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
         // Answered here rather than on the worker: it opens a picker in front
         // of whoever is holding the tablet, so it belongs on the thread that
         // owns the screen.
-        "connect" -> choose(result)
+        "connect" -> connect(call, result)
         else ->
           work.execute {
             try {
               val value =
                 when (call.method) {
-                  "reachable" -> folder() != null
+                  "place" -> where()
                   "list" -> list()
                   "upload" ->
                     upload(call.argument<String>("path")!!, call.argument<String>("name")!!)
@@ -116,6 +117,37 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
 
   private fun tree(): Uri = folder() ?: throw Refusal("folder", "No folder chosen.")
 
+  /**
+   * Where copies go, and whether one would arrive.
+   *
+   * There is one place on this tablet, so the answer never changes. It is sent
+   * anyway because the Dart side asks both platforms the same question — an
+   * iPad has two answers, and the shape of the reply is not the place to
+   * encode which platform this is.
+   *
+   * No name is offered. `cloudLabel` already knows what a folder chosen on
+   * Android is usually called, and a display name pulled from a content
+   * provider would be the provider's copy rather than the app's.
+   */
+  private fun where(): Map<String, Any> =
+    mapOf("place" to "folder", "reachable" to (folder() != null))
+
+  /**
+   * Sets up whatever is needed, opening the picker only where one is due.
+   *
+   * A folder already held is not asked for again. `pick` overrides that, which
+   * is how somebody moves to a different provider and the only way back from a
+   * folder whose permission the system has dropped.
+   */
+  private fun connect(call: MethodCall, result: MethodChannel.Result) {
+    val pick = call.argument<Boolean>("pick") ?: false
+    if (!pick && folder() != null) {
+      result.success(where())
+      return
+    }
+    choose(result)
+  }
+
   private fun choose(result: MethodChannel.Result) {
     if (pending != null) {
       result.error("failed", "A folder is already being chosen.", null)
@@ -136,9 +168,10 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
   /**
    * The picker's answer. Returns whether it was this plugin's.
    *
-   * A dismissed picker answers false rather than failing. Somebody who changed
-   * their mind has not hit an error, and the Dart side leaves the switch on
-   * with a line saying no folder has been chosen yet.
+   * A dismissed picker answers with the state as it stands rather than
+   * failing. Somebody who changed their mind has not hit an error, and the Dart
+   * side leaves the switch on with a line saying no folder has been chosen
+   * yet.
    */
   fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
     if (requestCode != REQUEST) return false
@@ -148,7 +181,7 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
 
     val tree = data?.data
     if (resultCode != Activity.RESULT_OK || tree == null) {
-      result.success(false)
+      result.success(where())
       return true
     }
 
@@ -160,7 +193,7 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
     )
     preferences().edit().putString(TREE, tree.toString()).apply()
 
-    result.success(true)
+    result.success(where())
     return true
   }
 
