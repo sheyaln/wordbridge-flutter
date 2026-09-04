@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../interop/board_files.dart';
+import '../interop/board_share.dart';
 
 /// Taking a board set out of wordbridge, and bringing one in.
 ///
@@ -22,6 +23,7 @@ class BoardFilesScreen extends StatefulWidget {
     required this.vocabularyId,
     required this.store,
     this.onImported,
+    this.share = shareBoardFile,
   });
 
   final WordbridgeDatabase db;
@@ -30,6 +32,9 @@ class BoardFilesScreen extends StatefulWidget {
 
   /// Told when a file became a person, so the list behind can redraw.
   final VoidCallback? onImported;
+
+  /// Where a file goes when somebody presses share.
+  final ShareBoardFile share;
 
   @override
   State<BoardFilesScreen> createState() => _BoardFilesScreenState();
@@ -56,16 +61,110 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _export() async {
+  Future<void> _export(ExportScope scope, {String? boardId}) async {
     setState(() => _busy = 'Exporting…');
+    ExportOutcome? outcome;
     try {
-      final file = await widget.store.exportVocabulary(widget.vocabularyId);
-      _say('Wrote ${file.name}.');
+      outcome = await widget.store.export(
+        vocabularyId: widget.vocabularyId,
+        scope: scope,
+        boardId: boardId,
+      );
     } catch (e) {
-      _say('The board set could not be exported: $e');
+      _say('That could not be exported: $e');
     }
     if (mounted) setState(() => _busy = null);
     await _refresh();
+
+    if (outcome == null || !mounted) return;
+    if (outcome.notes.isEmpty) {
+      _say('Wrote ${outcome.file.name}.');
+    } else {
+      await _showNotes('Exported, with these differences', outcome.notes);
+    }
+  }
+
+  /// Picks a board, then — only when it opens others — asks what to do about
+  /// them.
+  ///
+  /// The second question is not asked when there is nothing to ask about, and
+  /// it is asked before the file is written rather than reported after: a
+  /// caregiver emailing one page to a school is entitled to know that four of
+  /// its keys will open nothing on the other side.
+  Future<void> _exportOneBoard() async {
+    final boards = await widget.store.exportableBoards(widget.vocabularyId);
+    if (!mounted || boards.isEmpty) return;
+
+    final chosen = await showDialog<ExportableBoard>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Which board?'),
+        children: [
+          for (final board in boards)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(board),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(board.name),
+                subtitle: Text(
+                  board.opens == 0
+                      ? 'Opens no other board'
+                      : 'Opens ${board.opens} other board'
+                            '${board.opens == 1 ? '' : 's'}',
+                ),
+              ),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (chosen == null || !mounted) return;
+
+    if (chosen.opens == 0) {
+      await _export(ExportScope.board, boardId: chosen.id);
+      return;
+    }
+
+    final withLinked = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '"${chosen.name}" opens ${chosen.opens} other board'
+          '${chosen.opens == 1 ? '' : 's'}',
+        ),
+        content: Text(
+          'Take them too and you get one .obz holding '
+          '${chosen.opens + 1} boards, with the keys between them working.\n\n'
+          'Take this board alone and you get one .obf. The keys that opened '
+          'the other boards keep their names, so whoever imports it is told '
+          'which pages are missing — but those keys will not open anything.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('This board alone'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Take all ${chosen.opens + 1}'),
+          ),
+        ],
+      ),
+    );
+    if (withLinked == null || !mounted) return;
+
+    await _export(
+      withLinked ? ExportScope.category : ExportScope.board,
+      boardId: chosen.id,
+    );
+  }
+
+  Future<void> _share(BoardFile file, Rect? origin) async {
+    final problem = await widget.share(file, origin: origin);
+    if (problem != null) _say(problem);
   }
 
   Future<void> _import(BoardFile file) async {
@@ -93,7 +192,7 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
     if (outcome.notes.isEmpty) {
       _say('Imported as a new profile.');
     } else {
-      await _showNotes(outcome.notes);
+      await _showNotes('Imported, with these differences', outcome.notes);
     }
   }
 
@@ -116,10 +215,10 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
   /// A caregiver about to hand somebody a board needs to know a link went
   /// nowhere or a page arrived a different size, and they need to know it now
   /// rather than the first time a key does nothing.
-  Future<void> _showNotes(List<String> notes) => showDialog<void>(
+  Future<void> _showNotes(String title, List<String> notes) => showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Imported, with these differences'),
+      title: Text(title),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(child: Text(notes.join('\n\n'))),
@@ -177,8 +276,24 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
             ),
             isThreeLine: true,
             trailing: FilledButton(
-              onPressed: _busy == null ? _export : null,
+              onPressed: _busy == null
+                  ? () => _export(ExportScope.boardSet)
+                  : null,
               child: const Text('Export'),
+            ),
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.grid_view),
+            title: const Text('Export one board'),
+            subtitle: const Text(
+              'A single page, or a category with the pages it opens. For '
+              'sending somebody one board rather than a whole set.',
+            ),
+            isThreeLine: true,
+            trailing: FilledButton.tonal(
+              onPressed: _busy == null ? _exportOneBoard : null,
+              child: const Text('Choose'),
             ),
           ),
 
@@ -212,6 +327,18 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
                       tooltip: 'Delete "${file.name}"',
                       onPressed: _busy == null ? () => _delete(file) : null,
                     ),
+                    // Wrapped so the sheet can be anchored to this button
+                    // rather than to the screen: on iPad a popover with
+                    // nowhere to point does not open.
+                    Builder(
+                      builder: (context) => IconButton(
+                        icon: const Icon(Icons.share_outlined),
+                        tooltip: 'Send "${file.name}" somewhere',
+                        onPressed: _busy == null
+                            ? () => _share(file, _originOf(context))
+                            : null,
+                      ),
+                    ),
                     FilledButton.tonal(
                       onPressed: _busy == null ? () => _import(file) : null,
                       child: const Text('Import'),
@@ -234,6 +361,12 @@ class _BoardFilesScreenState extends State<BoardFilesScreen> {
       ),
     );
   }
+}
+
+Rect? _originOf(BuildContext context) {
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize) return null;
+  return box.localToGlobal(Offset.zero) & box.size;
 }
 
 /// Says what this is not, above the button that would otherwise be mistaken
