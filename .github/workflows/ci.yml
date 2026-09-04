@@ -204,6 +204,30 @@ jobs:
           flutter build apk --release "${defines[@]}"
           mv build/app/outputs/flutter-apk/app-release.apk wordbridge-aac.apk
 
+      # The other Android artifact, and the two are not interchangeable. The
+      # APK above is the sideload for people Play cannot reach; Play itself
+      # takes only a bundle, and splits it per device so the download a phone
+      # actually makes is smaller than either file here.
+      #
+      # Attached to the release rather than uploaded: publishing to a Play
+      # track needs a service-account credential this workflow does not have,
+      # and a build nobody can find is worse than one somebody has to upload
+      # by hand.
+      - name: Build the Play bundle
+        if: steps.gate.outputs.signed == 'true'
+        working-directory: app
+        env:
+          INTAKE_URL: ${{ secrets.WORDBRIDGE_INTAKE_URL }}
+          INTAKE_TOKEN: ${{ secrets.WORDBRIDGE_INTAKE_TOKEN }}
+        run: |
+          defines=()
+          if [ -n "$INTAKE_URL" ] && [ -n "$INTAKE_TOKEN" ]; then
+            defines+=(--dart-define=WORDBRIDGE_INTAKE_URL="$INTAKE_URL")
+            defines+=(--dart-define=WORDBRIDGE_INTAKE_TOKEN="$INTAKE_TOKEN")
+          fi
+          flutter build appbundle --release "${defines[@]}"
+          mv build/app/outputs/bundle/release/app-release.aab wordbridge-aac.aab
+
       # The keystore is on this runner's disk until the job ends. Removing it
       # costs nothing and means a later step added by somebody cannot read it.
       - name: Shred the keystore
@@ -218,6 +242,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" wordbridge-aac.apk \
+          gh release create "${{ github.ref_name }}" \
+            wordbridge-aac.apk wordbridge-aac.aab \
             --title "${{ github.ref_name }}" \
             --generate-notes
