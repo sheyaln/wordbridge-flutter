@@ -473,7 +473,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
           ),
 
           // The other half of the question, and a different one: the log above
-          // never leaves the tablet, and this does (§4.59).
+          // goes nowhere on its own, and this is sent to us (§4.59).
           _Section(
             title: 'Crash reports',
             note:

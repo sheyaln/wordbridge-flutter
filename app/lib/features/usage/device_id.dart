@@ -18,9 +18,10 @@ const deviceIdKey = 'deviceId';
 ///
 /// It is an opaque id and nothing else. It is not derived from anything the
 /// platform knows about the hardware or its owner, which matters because it
-/// travels: a backup carries the usage log, and a caregiver may copy a backup
-/// to iCloud Drive or Google Drive. What identifies the tablet has to be as
-/// uninteresting as possible wherever the file ends up.
+/// travels: a backup carries the usage log, and a backup is copied to the
+/// family's own iCloud or Google account where they have asked for that. What
+/// identifies the tablet has to be as uninteresting as possible wherever the
+/// file ends up.
 Future<String> deviceIdFor(WordbridgeDatabase db) async {
   final stored = await _stored(db);
   if (stored != null) return stored;

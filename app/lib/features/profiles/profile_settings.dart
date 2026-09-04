@@ -271,8 +271,14 @@ class ProfileSettings extends ChangeNotifier {
   /// degrades to a shrug. A profile that predates the question keeps its
   /// stored answer either way.
   ///
-  /// The recording never leaves the tablet. What is defaulted on is keeping a
-  /// local record, not sending one anywhere.
+  /// The recording never comes to us. What is defaulted on is keeping a local
+  /// record, not sending one anywhere.
+  ///
+  /// It can leave the tablet by exactly one route, and only where somebody
+  /// asked for it: a backup is the whole database, so a copy kept in the
+  /// family's own iCloud or Google account carries the log with it. See
+  /// `features/backup/cloud_backup.dart`, which is why that question is a
+  /// device-level one put at setup rather than a default.
   bool get usageTracking => _values['usageTracking'] as bool? ?? true;
 
   /// What a profile created without an answer is given.
