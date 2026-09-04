@@ -7,6 +7,7 @@ import 'package:wordbridge/db/ids.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/db/tables.dart';
 import 'package:wordbridge/features/editor/grid_migration.dart';
+import 'package:wordbridge/features/editor/pinning.dart';
 
 /// Rebuilding a board set at a different grid.
 ///
@@ -441,6 +442,109 @@ void main() {
         isTrue,
         reason: 'a rebuild must not undo a caregiver’s decision',
       );
+    });
+  });
+
+  /// §4.16. A pin is a decision about how a word is reached rather than a
+  /// location, so a rebuild has to carry it the way it carries a chosen
+  /// picture. The rows themselves cannot be carried: they hold the old grid's
+  /// coordinates, and a pinned column is a different height on a different
+  /// grid.
+  group('a pinned word', () {
+    /// A grid with a spare row in the pinned column. The default 7x12 fills it
+    /// exactly, so there is nothing to pin into.
+    Future<String> tallSeed() => seedCoreBoardSet(db, rows: 8, cols: 12);
+
+    Future<Button> wordIn(String vocab, String label) async {
+      final rows =
+          await (db.select(db.buttons)..where(
+                (b) =>
+                    b.vocabularyId.equals(vocab) &
+                    b.label.equals(label) &
+                    b.isSystem.equals(false) &
+                    b.pinnedFromId.isNull() &
+                    b.cellId.isNotNull(),
+              ))
+              .get();
+      expect(rows, isNotEmpty, reason: 'no "$label" in this board set');
+      return rows.first;
+    }
+
+    test('is pinned again on the rebuilt boards', () async {
+      final tall = await tallSeed();
+      await pinWord(db, await wordIn(tall, 'eat'));
+
+      final rebuilt = await GridMigration.apply(
+        db,
+        profileId: 'default',
+        vocabularyId: tall,
+        rows: 10,
+        cols: 12,
+      );
+
+      final eat = await wordIn(rebuilt, 'eat');
+      expect(
+        await pinnedRowOf(db, eat),
+        isNotNull,
+        reason: 'the rebuild dropped the pin',
+      );
+    });
+
+    test('and comes out one word, not one per board', () async {
+      // Carried as rows rather than as a pin, a caregiver's own pinned word
+      // was placed into the first free location of every rebuilt board — a
+      // dozen unrelated copies scattered through the reserve.
+      final tall = await tallSeed();
+      await pinWord(db, await wordIn(tall, 'eat'));
+
+      final rebuilt = await GridMigration.apply(
+        db,
+        profileId: 'default',
+        vocabularyId: tall,
+        rows: 10,
+        cols: 12,
+      );
+
+      final eat = await wordIn(rebuilt, 'eat');
+      final boards =
+          await (db.select(db.boards)..where(
+                (b) => b.vocabularyId.equals(rebuilt) & b.deletedAt.isNull(),
+              ))
+              .get();
+
+      final pins =
+          await (db.select(db.buttons)..where(
+                (b) =>
+                    b.vocabularyId.equals(rebuilt) & b.pinnedFromId.isNotNull(),
+              ))
+              .get();
+
+      expect(pins, hasLength(boards.length));
+      expect(pins.every((p) => p.pinnedFromId == eat.id), isTrue);
+    });
+
+    test('and the rebuild is not measured as a dozen words moving', () async {
+      // A pinned row is the same word at a second location, so counting each
+      // one would tell a caregiver a rebuild moves twelve words when it moves
+      // one.
+      final tall = await tallSeed();
+      final before = await GridMigration.preview(
+        db,
+        vocabularyId: tall,
+        rows: 10,
+        cols: 12,
+      );
+
+      await pinWord(db, await wordIn(tall, 'eat'));
+
+      final after = await GridMigration.preview(
+        db,
+        vocabularyId: tall,
+        rows: 10,
+        cols: 12,
+      );
+
+      expect(after.moving + after.staying, before.moving + before.staying);
     });
   });
 

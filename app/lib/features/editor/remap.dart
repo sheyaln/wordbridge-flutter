@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../db/board_builder.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
@@ -22,6 +23,13 @@ import 'placement_rules.dart';
 /// is a reversal rather than an edit, so pressing undo twice steps back two
 /// edits instead of undoing the undo.
 const _undoOfKey = 'undoOf';
+
+/// Names, in a delete event's `before_json`, the word's other locations.
+///
+/// A pinned word is one word at several locations (§4.16) and a delete takes it
+/// off all of them, so the record has to carry all of them or the undo can only
+/// put part of the word back.
+const _alsoAtKey = 'alsoAt';
 
 /// The JSON an edit event recorded, or empty when it recorded none.
 Map<String, Object?> _payload(String? json) {
@@ -400,6 +408,10 @@ class RemapService {
   /// has nothing to reclaim and re-hiding has nothing to give up. The asymmetry
   /// with [_undoDelete] is the product rather than an implementation detail.
   ///
+  /// Reaches the whole word, as [setHidden] does, or the undo would put a
+  /// pinned word back on the board by one route and leave it off by the
+  /// other.
+  ///
   /// Re-hiding one of the keys every board carries is refused for the reason
   /// [setHidden] refuses it, and the fact that the undo button is what asked
   /// makes no difference to somebody left on a board with no way off.
@@ -416,7 +428,9 @@ class RemapService {
     if (hidden && button.isSystem) return false;
 
     final ts = nowMs();
-    await (_db.update(_db.buttons)..where((b) => b.id.equals(buttonId))).write(
+    await writeToWord(
+      _db,
+      button,
       ButtonsCompanion(hidden: Value(hidden), updatedAt: Value(ts)),
     );
     await _recordUndo(
@@ -437,32 +451,58 @@ class RemapService {
   /// handed it to whatever came next, and taking it away again would cost that
   /// word the movement it is already being reached for.
   ///
+  /// Every location, where the word held more than one. A delete takes a
+  /// pinned word off all of them at once, so an undo that put back only the one
+  /// the toast named would hand a caregiver half a word and leave them to
+  /// notice which half.
+  ///
+  /// Nothing goes back unless all of it can. Checked before the first write,
+  /// for the reason the rest of this file gives: a half-applied undo is a
+  /// change nobody asked for, made by the control somebody pressed to get back
+  /// to where they were.
+  ///
   /// A removed board is recorded as a delete too, and is refused here because
   /// it names a board rather than one word at one location. A board's worth of
   /// words coming back is not one word going back to one cell, and reading it
   /// as one would put a single word back and call the board restored.
   Future<bool> _undoDelete(EditEvent event) async {
     final buttonId = event.buttonId;
-    final cellId = _payload(event.beforeJson)['cellId'] as String?;
+    final before = _payload(event.beforeJson);
+    final cellId = before['cellId'] as String?;
     if (buttonId == null || cellId == null) return false;
 
-    final button = await (_db.select(
-      _db.buttons,
-    )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
-    if (button == null || button.deletedAt == null) return false;
-    if (!await _isFree(cellId)) return false;
+    final restoring = <({String id, String? cellId})>[
+      (id: buttonId, cellId: cellId),
+      for (final entry in before[_alsoAtKey] as List? ?? const [])
+        if (entry is Map && entry['buttonId'] is String)
+          (id: entry['buttonId'] as String, cellId: entry['cellId'] as String?),
+    ];
+
+    for (final row in restoring) {
+      final button = await (_db.select(
+        _db.buttons,
+      )..where((b) => b.id.equals(row.id))).getSingleOrNull();
+      if (button == null || button.deletedAt == null) return false;
+      if (row.cellId case final String cell) {
+        if (!await _isFree(cell)) return false;
+      }
+    }
 
     final ts = nowMs();
-    await (_db.update(_db.buttons)..where((b) => b.id.equals(buttonId))).write(
-      ButtonsCompanion(
-        cellId: Value(cellId),
-        deletedAt: const Value(null),
-        updatedAt: Value(ts),
-      ),
-    );
-    await (_db.update(_db.cells)..where((c) => c.id.equals(cellId))).write(
-      const CellsCompanion(state: Value(CellState.occupied)),
-    );
+    for (final row in restoring) {
+      await (_db.update(_db.buttons)..where((b) => b.id.equals(row.id))).write(
+        ButtonsCompanion(
+          cellId: Value(row.cellId),
+          deletedAt: const Value(null),
+          updatedAt: Value(ts),
+        ),
+      );
+      if (row.cellId case final String cell) {
+        await (_db.update(_db.cells)..where((c) => c.id.equals(cell))).write(
+          const CellsCompanion(state: Value(CellState.occupied)),
+        );
+      }
+    }
     await _recordUndo(
       event: event,
       kind: EditKind.create,
@@ -517,12 +557,13 @@ class RemapService {
     return true;
   }
 
-  /// Puts back the picture a word had, on every copy of the key it is on.
+  /// Puts back the picture a word had, everywhere the choosing put it.
   ///
-  /// A picture chosen for one of the keys every board carries was written to
-  /// every copy of it as one edit, so taking it off has to reach every copy as
-  /// well — a key that looks like two different keys depending on which board
-  /// it is seen from is exactly the confusion the fixed frame prevents.
+  /// A picture chosen for one of the keys every board carries, or for a pinned
+  /// word, was written to every row of it as one edit, so taking it off has to
+  /// reach every row as well — one thing that looks like two different things
+  /// depending on which board it is seen from is exactly the confusion both
+  /// the fixed frame and the pin exist to prevent.
   ///
   /// Refused when the record does not say what the picture replaced. A key an
   /// AAC user finds by its picture is one they can be given the wrong picture
@@ -538,8 +579,11 @@ class RemapService {
     if (button == null) return false;
 
     final symbolId = before['symbolId'] as String?;
-    final siblings = await frameSiblings(_db, button);
-    final ids = [button.id, for (final b in siblings) b.id];
+    final ids = {
+      button.id,
+      for (final b in await frameSiblings(_db, button)) b.id,
+      for (final b in await wordFamily(_db, button)) b.id,
+    }.toList();
 
     final ts = nowMs();
     await (_db.update(_db.buttons)..where((b) => b.id.isIn(ids))).write(
@@ -600,6 +644,11 @@ class RemapService {
   /// the board, from somebody who cannot report that it happened. Their
   /// pictures stay editable — what a key looks like costs nothing, and helping
   /// somebody find it is the whole point.
+  ///
+  /// Whether a word is on the board is a fact about the word, so a pinned one
+  /// goes off every route to it at once. Half-hidden, it would be a word the
+  /// board refuses on the page it lives on and still offers from the pinned
+  /// column, which reads as the board having two minds about it.
   Future<void> setHidden({
     required String buttonId,
     required bool hidden,
@@ -619,8 +668,11 @@ class RemapService {
     final ts = nowMs();
 
     await _db.transaction(() async {
-      await (_db.update(_db.buttons)..where((b) => b.id.equals(buttonId)))
-          .write(ButtonsCompanion(hidden: Value(hidden), updatedAt: Value(ts)));
+      await writeToWord(
+        _db,
+        button,
+        ButtonsCompanion(hidden: Value(hidden), updatedAt: Value(ts)),
+      );
 
       await _db
           .into(_db.editEvents)
@@ -646,7 +698,13 @@ class RemapService {
   /// word had, from a user who has no way to say the board answered with
   /// something they did not mean.
   ///
-  /// The row is kept and dated rather than dropped. `usage_events` refers to
+  /// Every location the word holds, pinned ones included, and from whichever
+  /// one was tapped. A pin is a second route to a word rather than a second
+  /// word (§4.16), so a route left behind would lead somewhere the word no
+  /// longer is, from every board at once. Taking the pin back and keeping the
+  /// word is `unpinWord`, which the editor offers directly above this.
+  ///
+  /// The rows are kept and dated rather than dropped. `usage_events` refers to
   /// the location rather than to the word, and `edit_events` refers to both, so
   /// a hard delete would leave a history nothing could resolve — and would take
   /// the undo with it.
@@ -671,19 +729,26 @@ class RemapService {
       final ts = nowMs();
       final fromCellId = button.cellId;
 
-      await (_db.update(
-        _db.buttons,
-      )..where((b) => b.id.equals(buttonId))).write(
-        ButtonsCompanion(
-          cellId: const Value(null),
-          deletedAt: Value(ts),
-          updatedAt: Value(ts),
-        ),
-      );
+      final alsoAt = [
+        for (final other in await wordFamily(_db, button))
+          if (other.id != buttonId) (id: other.id, cellId: other.cellId),
+      ];
 
-      if (fromCellId != null) {
-        await (_db.update(_db.cells)..where((c) => c.id.equals(fromCellId)))
-            .write(const CellsCompanion(state: Value(CellState.emptyReserved)));
+      await (_db.update(_db.buttons)
+            ..where((b) => b.id.isIn([buttonId, for (final o in alsoAt) o.id])))
+          .write(
+            ButtonsCompanion(
+              cellId: const Value(null),
+              deletedAt: Value(ts),
+              updatedAt: Value(ts),
+            ),
+          );
+
+      final freed = [?fromCellId, for (final o in alsoAt) ?o.cellId];
+      if (freed.isNotEmpty) {
+        await (_db.update(_db.cells)..where((c) => c.id.isIn(freed))).write(
+          const CellsCompanion(state: Value(CellState.emptyReserved)),
+        );
       }
 
       await _db
@@ -697,7 +762,15 @@ class RemapService {
               buttonId: Value(buttonId),
               kind: EditKind.delete,
               beforeJson: Value(
-                jsonEncode({'cellId': fromCellId, 'label': button.label}),
+                jsonEncode({
+                  'cellId': fromCellId,
+                  'label': button.label,
+                  if (alsoAt.isNotEmpty)
+                    _alsoAtKey: [
+                      for (final o in alsoAt)
+                        {'buttonId': o.id, 'cellId': o.cellId},
+                    ],
+                }),
               ),
               motorImpactTaps: Value(impact.taps),
               changedAt: ts,

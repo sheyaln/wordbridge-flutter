@@ -17,6 +17,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../db/board_builder.dart';
 import '../../db/ids.dart';
 import '../../db/database.dart';
 import '../../db/tables.dart';
@@ -28,13 +29,22 @@ import '../../db/seed/core_board_set.dart';
 /// single board by a path that forgot. What a caregiver edited is what the
 /// audit trail records — the propagation is part of that one edit, not a
 /// separate edit to each board.
+///
+/// Two different reasons a row can have to receive it, and both are here. A
+/// frame key is one key that storage keeps once per board; a pinned word is
+/// one word with two routes to it (§4.16). Either way the person in front of
+/// the board is looking at a single thing, and a picture that landed on some
+/// of its rows would make that single thing look like several.
 Future<void> setButtonSymbol(
   WordbridgeDatabase db,
   Button button,
   String symbolId,
 ) async {
-  final siblings = await frameSiblings(db, button);
-  final ids = [button.id, for (final b in siblings) b.id];
+  final ids = {
+    button.id,
+    for (final b in await frameSiblings(db, button)) b.id,
+    for (final b in await wordFamily(db, button)) b.id,
+  }.toList();
 
   // Read before the write, because it is the thing the write destroys. An
   // edit recorded without what it replaced is an edit nothing can take back:

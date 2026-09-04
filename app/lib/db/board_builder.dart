@@ -81,6 +81,7 @@ Future<String> placeButton(
   int vocabLevel = 1,
   bool hidden = false,
   bool isSystem = false,
+  String? pinnedFromId,
 }) async {
   return db.transaction(() async {
     final cell = await (db.select(
@@ -114,6 +115,7 @@ Future<String> placeButton(
             vocabLevel: Value(vocabLevel),
             hidden: Value(hidden),
             isSystem: Value(isSystem),
+            pinnedFromId: Value(pinnedFromId),
             createdAt: ts,
             updatedAt: ts,
           ),
@@ -125,6 +127,56 @@ Future<String> placeButton(
 
     return buttonId;
   });
+}
+
+/// Every row that is the same word as this one (§4.16).
+///
+/// A pinned word and the word it was pinned from are one word at two
+/// locations, so this is the set an edit to what the word *says* has to reach:
+/// the row it was pinned from, and every row pinned from that. The word's own
+/// row comes first. Asked from either end and it answers the same, because the
+/// link points one way and this follows it both.
+///
+/// Removed rows are left out. A pin whose original was taken off a deleted
+/// board is no longer half of anything, and the rows it is still a copy of are
+/// the other pins.
+Future<List<Button>> wordFamily(WordbridgeDatabase db, Button button) async {
+  final originId = button.pinnedFromId ?? button.id;
+
+  final rows =
+      await (db.select(db.buttons)
+            ..where(
+              (b) => b.id.equals(originId) | b.pinnedFromId.equals(originId),
+            )
+            ..where((b) => b.deletedAt.isNull()))
+          .get();
+
+  return [
+    for (final row in rows)
+      if (row.id == originId) row,
+    for (final row in rows)
+      if (row.id != originId) row,
+  ];
+}
+
+/// Applies a change to the word rather than to the row it was made on.
+///
+/// [change] may not carry a `cellId`: where a word is belongs to the row, and
+/// a write that moved every pin at once would take away the second route that
+/// is the entire reason a pin exists.
+Future<void> writeToWord(
+  WordbridgeDatabase db,
+  Button button,
+  ButtonsCompanion change,
+) async {
+  assert(
+    !change.cellId.present,
+    'A location belongs to one row. Writing one here would move every pin of '
+    'the word at once; moving one of them goes through the remap path.',
+  );
+
+  final ids = [for (final b in await wordFamily(db, button)) b.id];
+  await (db.update(db.buttons)..where((b) => b.id.isIn(ids))).write(change);
 }
 
 /// Looks up a location by its coordinates on a board.

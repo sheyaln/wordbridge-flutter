@@ -28,6 +28,7 @@ import '../../db/seed/core_board_set.dart';
 import '../../db/seed/core_vocabulary.dart';
 import '../../db/tables.dart';
 import '../usage/usage_queries.dart';
+import 'pinning.dart';
 
 /// What changing the grid would cost, in the user's own history.
 class MigrationImpact {
@@ -261,6 +262,7 @@ class GridMigration {
     );
 
     await _carryOver(db, from: vocabularyId, to: rebuilt, ageBand: ageBand);
+    await _carryPins(db, from: vocabularyId, to: rebuilt);
 
     await (db.update(db.profiles)..where((p) => p.id.equals(profileId))).write(
       ProfilesCompanion(
@@ -372,6 +374,59 @@ class GridMigration {
     }
   }
 
+  /// Pins on the rebuilt boards whatever was pinned on the old ones.
+  ///
+  /// A pin is a decision about how a word is reached rather than a location, so
+  /// it survives a rebuild the way a chosen picture does: the word is found
+  /// again by name and pinned there. Carrying the rows themselves would carry
+  /// the old grid's coordinates, and a pinned column is a different height on
+  /// a different grid.
+  ///
+  /// A pin the new grid has no room for is not made, and the word keeps the
+  /// location it has — the same thing a rebuild already does to every word it
+  /// cannot place where it was.
+  static Future<void> _carryPins(
+    WordbridgeDatabase db, {
+    required String from,
+    required String to,
+  }) async {
+    final pins =
+        await (db.select(db.buttons)..where(
+              (b) =>
+                  b.vocabularyId.equals(from) &
+                  b.pinnedFromId.isNotNull() &
+                  b.deletedAt.isNull(),
+            ))
+            .get();
+    if (pins.isEmpty) return;
+
+    final origins =
+        await (db.select(db.buttons)..where(
+              (b) =>
+                  b.id.isIn({for (final p in pins) p.pinnedFromId!}.toList()) &
+                  b.deletedAt.isNull(),
+            ))
+            .get();
+
+    for (final origin in origins) {
+      final rebuilt =
+          await (db.select(db.buttons)..where(
+                (b) =>
+                    b.vocabularyId.equals(to) &
+                    b.label.equals(origin.label) &
+                    b.isSystem.equals(false) &
+                    b.pinnedFromId.isNull() &
+                    b.cellId.isNotNull() &
+                    b.deletedAt.isNull(),
+              ))
+              .get();
+      if (rebuilt.isEmpty) continue;
+
+      if (await refusalToPin(db, rebuilt.first) != null) continue;
+      await pinWord(db, rebuilt.first);
+    }
+  }
+
   /// Puts a caregiver's own word on the first free location, reading order.
   static Future<void> _placeIntoReserve(
     WordbridgeDatabase db, {
@@ -433,6 +488,12 @@ class GridMigration {
         ])..where(
           db.buttons.vocabularyId.equals(vocabularyId) &
               db.buttons.isSystem.equals(false) &
+              // A pinned row is the same word at a second location (§4.16),
+              // not a word of its own. Counted here it would report one word
+              // as a dozen moving; carried over it would scatter a caregiver's
+              // own word into the reserve of every rebuilt board. The pin
+              // itself is carried by `_carryPins`.
+              db.buttons.pinnedFromId.isNull() &
               // A removed board is not part of this board set any more. Its
               // words must neither be counted in what a rebuild would move nor
               // carried onto the rebuilt boards, which would put a board a

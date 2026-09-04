@@ -20,6 +20,7 @@ class WordDeleteSheet extends StatefulWidget {
     required this.label,
     required this.impact,
     required this.boardName,
+    this.alsoAt = 0,
   });
 
   final String label;
@@ -29,6 +30,15 @@ class WordDeleteSheet extends StatefulWidget {
   /// about to have a gap in it.
   final String boardName;
 
+  /// How many further locations this word holds, which is how many a pinned
+  /// word holds beyond the one being looked at (§4.16).
+  ///
+  /// Said out loud because the sentence above it — one location on one board
+  /// goes back into circulation — is not true of a pinned word, and a caregiver
+  /// who reads it and types DELETE has agreed to something smaller than what
+  /// happens.
+  final int alsoAt;
+
   static const word = 'DELETE';
 
   /// True when the caregiver typed the word and confirmed.
@@ -37,11 +47,16 @@ class WordDeleteSheet extends StatefulWidget {
     required String label,
     required RemapImpact impact,
     required String boardName,
+    int alsoAt = 0,
   }) async =>
       await showDialog<bool>(
         context: context,
-        builder: (_) =>
-            WordDeleteSheet(label: label, impact: impact, boardName: boardName),
+        builder: (_) => WordDeleteSheet(
+          label: label,
+          impact: impact,
+          boardName: boardName,
+          alsoAt: alsoAt,
+        ),
       ) ??
       false;
 
@@ -89,6 +104,15 @@ class _WordDeleteSheetState extends State<WordDeleteSheet> {
               '"${widget.label}" had. Hiding it instead keeps the location '
               'held, and nothing can take it.',
             ),
+            if (widget.alsoAt > 0) ...[
+              const SizedBox(height: 12),
+              Text(
+                '"${widget.label}" is pinned, so it is one word at '
+                '${widget.alsoAt + 1} locations and every one of them goes. To '
+                'take the pinned locations back and keep the word, unpin it '
+                'instead.',
+              ),
+            ],
             const SizedBox(height: 12),
             const Text(
               'This can be undone straight away, and only while nothing else '

@@ -234,7 +234,25 @@ void main() {
     // Forces the upgrade to run.
     await db.select(db.profiles).get();
 
-    expect(db.schemaVersion, 8);
+    expect(db.schemaVersion, 9);
+  });
+
+  test('and the column added at 9 arrives, linking nothing', () async {
+    // §4.16. A pin becomes the same word as the one it was pinned from, and
+    // this column is what says which rows those are. A device that predates it
+    // has pins that are merely identical rows, and nothing here guesses which
+    // — matching on the label would marry two words a caregiver spelled the
+    // same on purpose.
+    final db = openUpgraded();
+    addTearDown(db.close);
+
+    final columns = await db.customSelect('PRAGMA table_info(buttons)').get();
+    final names = {for (final row in columns) row.read<String>('name')};
+    expect(names, contains('pinned_from_id'));
+
+    final buttons = await db.select(db.buttons).get();
+    expect(buttons, isNotEmpty, reason: 'the premise');
+    expect(buttons.every((b) => b.pinnedFromId == null), isTrue);
   });
 
   test('and the column added at 7 is there and empty', () async {
