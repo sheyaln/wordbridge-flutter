@@ -47,6 +47,12 @@ class AutoSymbol {
 
       final pack = registry.packFor(ref.packId);
 
+      // The set that drew it, where the pack can say. Its licence and its
+      // credit are what belong on the row, because that row is what an export
+      // carries out of this device — and a pack of six sets would otherwise
+      // write all six credits onto one Mulberry picture (§4.72).
+      final set = _setOf(pack, ref);
+
       // Nothing waits for the bytes. Resolution queues the download and the
       // pack announces it when it lands; until then the button shows its word,
       // which is exactly what it would show if no picture existed at all.
@@ -65,8 +71,8 @@ class AutoSymbol {
               externalId: Value(ref.externalId),
               localUri: Value(uri),
               label: ref.label,
-              license: pack?.license ?? 'unknown',
-              attribution: pack?.attribution ?? '',
+              license: set?.license ?? pack?.license ?? 'unknown',
+              attribution: set?.attribution ?? pack?.attribution ?? '',
               createdAt: nowMs(),
             ),
           );
@@ -106,12 +112,35 @@ class AutoSymbol {
 
     for (final pack in registry.enabledPacks) {
       if (pack is GlyphSymbolPack || !pack.isBundled) continue;
-      for (final ref in await pack.search(label, limit: 12)) {
+      // The sets are handed down. Asked without them the pack answers from
+      // all of its own, and a word could be given a picture out of a set
+      // somebody switched off.
+      for (final ref in await pack.search(
+        label,
+        limit: 12,
+        sets: registry.enabledSetsOf(pack),
+      )) {
         if (_normalize(ref.label) == needle) return ref;
       }
     }
 
-    return fetcher?.bestMatch(label);
+    final fetcher = this.fetcher;
+    if (fetcher == null) return null;
+    return fetcher.bestMatch(label, sets: registry.enabledSetsOf(fetcher));
+  }
+
+  /// The set a symbol came from, where the pack keeps that. A pack that is one
+  /// set is that set; anything else answers null rather than guessing.
+  SymbolSet? _setOf(SymbolPack? pack, SymbolRef ref) {
+    if (pack == null) return null;
+    if (pack.sets.length == 1) return pack.sets.single;
+    if (pack is! AssembledSymbolPack) return null;
+
+    final source = pack.sourceOf(ref);
+    for (final set in pack.sets) {
+      if (set.slug == source) return set;
+    }
+    return null;
   }
 
   static String _normalize(String? text) =>

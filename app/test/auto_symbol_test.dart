@@ -170,6 +170,55 @@ void main() {
       expect((await buttonById(buttonId)).symbolId, isNotNull);
     });
 
+    test('nothing is taken from a set that is switched off', () async {
+      // The unattended path, which is where a set switched off matters most:
+      // nobody is looking, so a picture from a set this device was told not to
+      // use would arrive on a button and stay there unnoticed.
+      final pack = packReturning([(text: 'Nana', id: 99)]);
+      addTearDown(pack.dispose);
+      final registry = SymbolRegistry(packs: [pack]);
+      for (final set in GlobalSymbolsPack.commercialSets) {
+        registry.setSetEnabled(set.slug, false);
+      }
+
+      final buttonId = await addWord('Nana');
+      final attached = await AutoSymbol(
+        db: db,
+        registry: registry,
+        fetcher: pack,
+      ).attachTo(buttonId: buttonId, label: 'Nana');
+
+      expect(attached, isFalse);
+      expect((await buttonById(buttonId)).symbolId, isNull);
+    });
+
+    test('and the credit written down is the set that drew it', () async {
+      // Not the pack's own line, which names all six sets. That row is what
+      // an export carries out of this device (§4.72).
+      final pack = packReturning([(text: 'Nana', id: 99)]);
+      addTearDown(pack.dispose);
+
+      final buttonId = await addWord('Nana');
+      await AutoSymbol(
+        db: db,
+        registry: SymbolRegistry(packs: [pack]),
+        fetcher: pack,
+      ).attachTo(buttonId: buttonId, label: 'Nana');
+
+      final symbolId = (await buttonById(buttonId)).symbolId;
+      final symbol = await (db.select(
+        db.symbols,
+      )..where((s) => s.id.equals(symbolId!))).getSingle();
+
+      // Every set answers with the same hit here, and `bestMatch` walks them
+      // in preference order, so the first one is the one that drew it.
+      expect(
+        symbol.attribution,
+        GlobalSymbolsPack.commercialSets.first.attribution,
+      );
+      expect(symbol.license, GlobalSymbolsPack.commercialSets.first.license);
+    });
+
     test('a near miss leaves the button without a picture', () async {
       final pack = packReturning([(text: 'Notebook', id: 1)]);
       addTearDown(pack.dispose);
@@ -277,7 +326,9 @@ void main() {
       );
       addTearDown(pack.dispose);
 
-      expect(pack.allowsCommercialUse, isTrue);
+      for (final set in pack.sets) {
+        expect(set.allowsCommercialUse, isTrue);
+      }
       expect(pack.license, 'CC-BY-SA-4.0');
     });
 

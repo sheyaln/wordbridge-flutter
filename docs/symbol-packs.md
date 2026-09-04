@@ -5,61 +5,85 @@ Nothing outside that directory imports a concrete pack. The reason is
 licensing, not tidiness: see [NOTICE.md](../NOTICE.md) and the last section
 here.
 
-## What exists
+## Packs and sets
 
-| Pack | License | How it ships | Commercial use |
-|---|---|---|---|
-| `core` | CC BY-SA 4.0 | bundled, 274 pictures | yes |
-| Emoji from this device | Unicode-3.0 (the index only) | index bundled, pictures drawn by the OS | yes |
-| More pictures (Global Symbols) | CC BY-SA 4.0 | fetched on demand | yes |
-| ARASAAC | CC BY-NC-SA | optional download, off until switched on | **no** |
+A **pack** is how pictures arrive. A **set** is whose drawings they are, and it
+is the only unit anybody switches on or off. They are not the same thing and
+one set can be served by two packs.
 
-`core` is one set assembled from four sources through Global Symbols, and its
-manifest carries the credit for each picture individually. The sources are not
-packs of their own:
-
-| Source of a `core` picture | License | Credit |
+| Pack | Serves | How |
 |---|---|---|
-| Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org> |
-| Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee |
-| Tawasol Symbols | CC BY-SA 4.0 | © Mada, Qatar. <http://tawasolsymbols.org> |
-| OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> |
+| `core` | Stellar Symbols, OpenMoji | bundled, 264 pictures |
+| `system-emoji` | Device emoji | index bundled, pictures drawn by the OS |
+| `globalsymbols` | Mulberry, Mulberry Plus, Mulberry Additional, Stellar, Tawasol, OpenMoji | fetched on demand |
+| `globalsymbols-nc` | AAC Image Library | fetched, off until switched on |
+| `arasaac` | ARASAAC | fetched, off until switched on |
+
+| Set | License | Credit | Commercial use |
+|---|---|---|---|
+| Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org> | yes |
+| Mulberry Plus Collection | CC BY-SA 4.0 | © Mulberry and Global Symbols | yes |
+| Mulberry Additional Symbols | CC BY-SA 4.0 | © Verlag Karin Kestner GmbH. <https://www.kestner.de> | yes |
+| Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee | yes |
+| Tawasol Symbols | CC BY-SA 4.0 | © Mada, Qatar. <http://tawasolsymbols.org> | yes |
+| OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> | yes |
+| Device emoji | Unicode-3.0 (index only) | © Unicode, Inc. | yes |
+| ARASAAC | CC BY-NC-SA | © Sergio Palao, Government of Aragón | **no** |
+| AAC Image Library | CC BY-NC-SA 4.0 | © AAC Image Library | **no** |
+
+Stellar and OpenMoji appear in two packs. Their records live once, in
+`symbol_sets.dart`, so the one switch a caregiver sees governs the shipped
+picture and the fetched one alike. Written out twice they would be two sets
+with one name, and switching "OpenMoji" off would silence the search while the
+shipped board carried on drawing OpenMoji.
 
 A symbol set may be added only when its license permits redistribution.
 A set licensed for use only inside the software of whoever publishes it is
 never bundled, imported, or reproduced here.
 
-Attribution for every pack must stay reachable from inside the running app,
-not just from this repository. `SymbolPack.attribution` carries the string, and
-the Symbol credits screen reads it along with the per symbol credits in the
-`core` manifest.
+Attribution for every set must stay reachable from inside the running app, not
+just from this repository. `SymbolSet.attribution` carries the string, and the
+Symbol credits screen lists every set that is switched on. A set that is off
+draws nothing anywhere and is not listed.
 
 ## Bundled, fetched, and optional
 
-**Bundled** packs ship in the binary under `assets/symbols/<pack>/`. They are
-enabled by default because their licenses permit commercial use, so shipping
-them enabled costs a downstream fork nothing. `core` and the emoji index are
-the only two, and both are declared under `flutter: assets:` in
-`app/pubspec.yaml`. `BundledSymbolPack` degrades to an empty pack when its
+**Bundled** packs ship in the binary under `assets/symbols/<pack>/`. `core` and
+the emoji index are the only two, and both are declared under `flutter: assets:`
+in `app/pubspec.yaml`. `BundledSymbolPack` degrades to an empty pack when its
 manifest is absent, so the app renders label only buttons rather than failing.
+Its manifest's per symbol `set` field decides whether a shipped picture may be
+drawn, so a switch a caregiver flips changes the board they already have.
 
-**Fetched on demand** is the Global Symbols pack, which reaches the same four
-CC BY-SA sets over the network so a caregiver adding a word does not have to
-wait for a release to get a picture for it. It is enabled by default, because
-commercial use is permitted and nothing about it is restricted; what it costs
-is a network call, and it fails soft when there is none.
+**Fetched on demand** is the Global Symbols pack, which reaches six CC BY-SA
+sets over the network so a caregiver adding a word does not have to wait for a
+release to get a picture for it. What it costs is a network call, and it fails
+soft when there is none. Downloads are filed under
+`symbols/globalsymbols/<set-slug>/`, because the API answers with a catalogue
+number and the path is the only record of which set drew a file that survives a
+relaunch.
 
-**Optional** packs are CC BY-NC. `SymbolRegistry` keeps them completely inert,
+**Optional** sets are CC BY-NC. `SymbolRegistry` keeps them completely inert,
 not searched, not resolved, not drawn, until a person turns them on. Opting out
 again stops resolving images already on disk. The restriction then attaches to
 the user's choice rather than to this project's distribution. `ArasaacPack` is
 registered in `main.dart` and reachable from caregiver settings under Pictures,
 off until somebody turns it on.
 
-The default for a pack a person has never touched is its own
-`allowsCommercialUse`, not a saved list. A pack added in a later release
-therefore gets the correct default rather than inheriting a choice set that
-predates it.
+### How a set is switched
+
+`SymbolRegistry` holds the answers, keyed by set slug, and hands the enabled
+subset down on every call: `search(..., sets:)` and `resolve(..., sets:)`. A
+pack never keeps a copy, so the two cannot disagree, and a set that is off
+costs **no request** rather than being filtered out of an answer already paid
+for. A pack whose every set is off is not called at all — that is all
+`isEnabled` and `enabledPacks` mean now.
+
+The default for a set nobody has touched is its own `allowsCommercialUse`, not
+a saved list. Only deliberate answers are written to `app_state`, so a set
+added in a later release gets the correct default rather than inheriting a
+choice map that predates it: a noncommercial set shipped tomorrow is off
+tomorrow, and a seventh CC BY-SA set is on.
 
 ## The device's own emoji
 
@@ -125,7 +149,10 @@ elsewhere. Per device convenience, not a portable symbol set.
    with no assets is not a pack: it answers every search with nothing while the
    credits screen implies the app carries a symbol library it does not.
 5. Add a `BundledSymbolPack` entry to `bundledSymbolPacks()` in
-   `bundled_pack.dart` with the license identifier and attribution string.
+   `bundled_pack.dart` with the license identifier, attribution string, and the
+   `SymbolSet` records its manifest files symbols under. A slug in the manifest
+   that the pack does not declare is a set nobody can switch off;
+   `symbol_sets_test.dart` fails the build for either half of that.
 6. Add the pack to the tables in `NOTICE.md` and above.
 
 No code generation, no index build. A manifest and its images are the whole
@@ -133,8 +160,9 @@ installation.
 
 ## Adding a downloadable pack
 
-Implement `DownloadingSymbolPack`, set `allowsCommercialUse` to match the
-license, and follow what `global_symbols_pack.dart` and `arasaac_pack.dart` do:
+Implement `DownloadingSymbolPack`, declare its `SymbolSet` records with
+`allowsCommercialUse` matching the license, and follow what
+`global_symbols_pack.dart` and `arasaac_pack.dart` do:
 
 - Store under `getApplicationDocumentsDirectory()/symbols/<pack-id>/`. **Never
   the cache directory.** The OS evicts caches under storage pressure, and an
@@ -161,9 +189,12 @@ one.
 https://globalsymbols.com/api/v1/labels/search?query={q}&symbolset={slug}&language=eng&limit={n}
 ```
 
-- Set slugs, in preference order: `mulberry`, `stellar-symbols`, `tawasol`,
-  `openmoji`. Mulberry leads because it is a purpose built AAC set with a
-  consistent drawn style; the rest fill its gaps in abstract core vocabulary.
+- Set slugs, in preference order: `mulberry`, `corona-symbols`,
+  `additional-mulberry-symbols`, `stellar-symbols`, `tawasol`, `openmoji`.
+  Mulberry leads because it is a purpose built AAC set with a consistent drawn
+  style, and its two extension sets follow it because they are drawn to match;
+  the rest fill its gaps in abstract core vocabulary. The same slugs are what
+  the bundled manifest files each picture under.
 - Records carry `text` and a nested `picto` with `id` and `image_url`.
 - `image_url` decides the extension on disk, PNG or SVG.
 - `tools/fetch_symbols.dart` uses the same source to build the bundled `core`

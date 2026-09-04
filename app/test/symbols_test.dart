@@ -41,7 +41,7 @@ void main() {
         reason: 'a CC BY-NC pack must not be queried before the user opts in',
       );
 
-      registry.setEnabled('arasaac', true);
+      registry.setSetEnabled('arasaac', true);
 
       expect(await registry.search('water'), hasLength(1));
       expect(arasaac.searchCount, 1);
@@ -60,7 +60,7 @@ void main() {
       expect(await registry.resolve(ref), isNull);
       expect(arasaac.resolveCount, 0);
 
-      registry.setEnabled('arasaac', true);
+      registry.setSetEnabled('arasaac', true);
 
       expect(await registry.resolve(ref), '/documents/symbols/arasaac/1.png');
     });
@@ -80,7 +80,7 @@ void main() {
 
       expect(await registry.resolve(ref), isNotNull);
 
-      registry.setEnabled('arasaac', false);
+      registry.setSetEnabled('arasaac', false);
       expect(await registry.resolve(ref), isNull);
     });
 
@@ -97,14 +97,14 @@ void main() {
         _FakePack(id: 'arasaac', allowsCommercialUse: false, isBundled: false),
       ];
       final registry = SymbolRegistry(packs: packs)
-        ..setEnabled('arasaac', true);
+        ..setSetEnabled('arasaac', true);
 
       final restored = SymbolRegistry(packs: packs, choices: registry.choices);
       expect(restored.isEnabled('arasaac'), isTrue);
     });
 
     test('an unknown pack cannot be enabled into existence', () {
-      final registry = SymbolRegistry()..setEnabled('sclera', true);
+      final registry = SymbolRegistry()..setSetEnabled('sclera', true);
       expect(registry.isEnabled('sclera'), isFalse);
       expect(registry.choices, isEmpty);
     });
@@ -419,6 +419,7 @@ void main() {
         name: 'Mulberry Symbols',
         license: 'CC-BY-SA',
         attribution: 'Mulberry Symbols.',
+        sets: const [_mulberry],
       );
 
       expect(await pack.manifest(), isEmpty);
@@ -655,13 +656,15 @@ void main() {
       }
     });
 
-    test('every bundled pack permits commercial use', () {
+    test('every bundled set permits commercial use', () {
       for (final pack in bundledSymbolPacks()) {
-        expect(
-          pack.allowsCommercialUse,
-          isTrue,
-          reason: '${pack.id} may not ship inside the app',
-        );
+        for (final set in pack.sets) {
+          expect(
+            set.allowsCommercialUse,
+            isTrue,
+            reason: '${set.slug} may not ship inside the app',
+          );
+        }
         expect(pack.isBundled, isTrue);
       }
     });
@@ -669,7 +672,7 @@ void main() {
     test('ARASAAC is non-commercial and never bundled', () {
       final pack = ArasaacPack();
       addTearDown(pack.dispose);
-      expect(pack.allowsCommercialUse, isFalse);
+      expect(pack.sets.single.allowsCommercialUse, isFalse);
       expect(pack.isBundled, isFalse);
       expect(pack.license, contains('NC'));
     });
@@ -1027,11 +1030,22 @@ void main() {
   });
 }
 
+/// One set for the fake bundled packs, so a manifest that files a symbol
+/// under `mulberry` is filing it under a set the pack declares.
+const _mulberry = (
+  slug: 'mulberry',
+  name: 'Mulberry Symbols',
+  attribution: 'Mulberry Symbols.',
+  license: 'CC-BY-SA',
+  allowsCommercialUse: true,
+);
+
 BundledSymbolPack _bundledWith(Map<String, String> assets) => BundledSymbolPack(
   id: 'mulberry',
   name: 'Mulberry Symbols',
   license: 'CC-BY-SA',
   attribution: 'Mulberry Symbols.',
+  sets: const [_mulberry],
   bundle: _FakeAssetBundle({
     for (final entry in assets.entries) entry.key: utf8.encode(entry.value),
   }),
@@ -1093,8 +1107,18 @@ class _FakePack implements SymbolPack {
   @override
   String get attribution => '$id attribution';
 
-  @override
   final bool allowsCommercialUse;
+
+  @override
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: allowsCommercialUse,
+    ),
+  ];
 
   @override
   final bool isBundled;
@@ -1112,6 +1136,7 @@ class _FakePack implements SymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) {
     searchCount++;
     if (hangs) return Completer<List<SymbolRef>>().future;
@@ -1120,7 +1145,7 @@ class _FakePack implements SymbolPack {
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) {
     resolveCount++;
     if (hangs) return Completer<String?>().future;
     if (throws) throw StateError('$id is broken');
@@ -1144,7 +1169,15 @@ class _FakeDownloadPack implements DownloadingSymbolPack {
   String get attribution => '$id attribution';
 
   @override
-  bool get allowsCommercialUse => false;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: false,
+    ),
+  ];
 
   @override
   bool get isBundled => false;
@@ -1166,10 +1199,11 @@ class _FakeDownloadPack implements DownloadingSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => const [];
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => uri;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => uri;
 
   @override
   Future<void> dispose() => _controller.close();

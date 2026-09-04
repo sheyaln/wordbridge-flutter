@@ -2,13 +2,21 @@ import 'package:flutter/foundation.dart';
 
 import 'symbol_pack.dart';
 
-/// The packs the app knows about, and which of them may currently be used.
+/// The symbol sets the app knows about, and which of them may currently be
+/// used.
 ///
-/// This class exists for one rule: a pack whose license forbids commercial use
+/// This class exists for one rule: a set whose license forbids commercial use
 /// is inert until a person explicitly turns it on. Not merely hidden from the
-/// picker: not searched, not resolved, not drawn. ARASAAC is
-/// CC BY-NC; fetching one on a user's instruction is their choice to make,
-/// while shipping one enabled by default would make it ours.
+/// picker: not searched, not resolved, not drawn. ARASAAC and the AAC Image
+/// Library are CC BY-NC-SA; fetching one on a user's instruction is their
+/// choice to make, while shipping one enabled by default would make it ours.
+///
+/// **Sets are the unit, not packs.** A pack is how pictures arrive; a set is
+/// whose drawings they are. One set can be served by two packs — Stellar ships
+/// inside `core` and is also searchable through Global Symbols — and a switch
+/// that governed only one of those would be lying about what it turned off. So
+/// packs are never switched here. A pack is asked for the sets that are on,
+/// and skipped entirely when none of them is.
 class SymbolRegistry extends ChangeNotifier {
   SymbolRegistry({
     Iterable<SymbolPack> packs = const [],
@@ -24,9 +32,9 @@ class SymbolRegistry extends ChangeNotifier {
   /// Insertion-ordered, which is what makes combined search results stable.
   final _packs = <String, SymbolPack>{};
 
-  /// Only packs a person has deliberately switched. Anything absent falls back
-  /// to its license, so a pack added in a later release gets the correct
-  /// default rather than inheriting a saved set that predates it.
+  /// Only sets a person has deliberately switched, keyed by slug. Anything
+  /// absent falls back to its license, so a set added in a later release gets
+  /// the correct default rather than inheriting a saved map that predates it.
   final _choices = <String, bool>{};
 
   /// How long a single pack may hold up a combined search.
@@ -49,23 +57,77 @@ class SymbolRegistry extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isEnabled(String packId) {
-    final pack = _packs[packId];
-    if (pack == null) return false;
-    return _choices[packId] ?? pack.allowsCommercialUse;
+  /// Every set any registered pack can serve, deduplicated by slug.
+  ///
+  /// In pack order, which puts what ships before what is fetched and the
+  /// noncommercial sets last: the order of what a set costs to use, which is
+  /// the order somebody deciding reads them in.
+  List<SymbolSet> get sets {
+    final found = <String, SymbolSet>{};
+    for (final pack in _packs.values) {
+      for (final set in pack.sets) {
+        found.putIfAbsent(set.slug, () => set);
+      }
+    }
+    return List.unmodifiable(found.values);
   }
 
-  void setEnabled(String packId, bool enabled) {
-    if (!_packs.containsKey(packId)) return;
-    if (_choices[packId] == enabled) return;
-    _choices[packId] = enabled;
+  SymbolSet? setFor(String slug) {
+    for (final pack in _packs.values) {
+      for (final set in pack.sets) {
+        if (set.slug == slug) return set;
+      }
+    }
+    return null;
+  }
+
+  /// Which packs can serve [slug], bundled ones first.
+  ///
+  /// More than one where a set both ships and is fetched, which is the case
+  /// that makes a set rather than a pack the thing worth switching.
+  List<SymbolPack> packsOffering(String slug) {
+    final offering = _packs.values.where(
+      (p) => p.sets.any((s) => s.slug == slug),
+    );
+    return [
+      ...offering.where((p) => p.isBundled),
+      ...offering.where((p) => !p.isBundled),
+    ];
+  }
+
+  bool isSetEnabled(String slug) {
+    final set = setFor(slug);
+    if (set == null) return false;
+    return _choices[slug] ?? set.allowsCommercialUse;
+  }
+
+  void setSetEnabled(String slug, bool enabled) {
+    if (setFor(slug) == null) return;
+    if (_choices[slug] == enabled) return;
+    _choices[slug] = enabled;
     notifyListeners();
   }
 
-  /// Enabled packs, bundled ones first.
+  /// The slugs [pack] may currently be asked for.
+  Set<String> enabledSetsOf(SymbolPack pack) => {
+    for (final set in pack.sets)
+      if (isSetEnabled(set.slug)) set.slug,
+  };
+
+  /// Whether a pack has anything left to offer.
+  ///
+  /// Derived, never stored. A pack whose every set is off is a pack with
+  /// nothing to say, and keeping a second answer to that question is how the
+  /// two come to disagree.
+  bool isEnabled(String packId) {
+    final pack = _packs[packId];
+    return pack != null && enabledSetsOf(pack).isNotEmpty;
+  }
+
+  /// Packs with at least one set switched on, bundled ones first.
   ///
   /// Order is the preference: where a bundled pack and a downloadable one both
-  /// match a word, the license-clean local image should be the one offered.
+  /// match a word, the local image should be the one offered.
   List<SymbolPack> get enabledPacks {
     final enabled = _packs.values.where((p) => isEnabled(p.id));
     return [
@@ -74,7 +136,7 @@ class SymbolRegistry extends ChangeNotifier {
     ];
   }
 
-  /// Searches every enabled pack and merges the results, bundled first.
+  /// Searches every enabled set and merges the results, bundled first.
   ///
   /// Packs are queried concurrently, and one that fails or hangs contributes
   /// nothing rather than emptying the drawer for the others. A pack that
@@ -82,27 +144,35 @@ class SymbolRegistry extends ChangeNotifier {
   /// bundled-first decides who is at the top of the results and not who is in
   /// them at all. See [fairMerge].
   ///
-  /// [packId] narrows it to one set, for somebody comparing what each one has
-  /// for a word. **It does not reach a disabled pack.** Naming one explicitly
-  /// is the obvious way around the rule this class exists for — a pack that is
-  /// off is not searched, and asking for it by name returns nothing rather
-  /// than an exception, because the caller that would hit this is a filter
-  /// holding a pack somebody has just switched off.
+  /// [setSlug] narrows it to one set, for somebody comparing what each one has
+  /// for a word. **It does not reach a set that is switched off.** Naming one
+  /// explicitly is the obvious way around the rule this class exists for — a
+  /// set that is off is not searched, and asking for it by name returns
+  /// nothing rather than an exception, because the caller that would hit this
+  /// is a filter holding a set somebody has just switched off.
   Future<List<SymbolRef>> search(
     String query, {
     String locale = 'en',
     int limit = 24,
     String? packId,
+    String? setSlug,
   }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty || limit <= 0) return const [];
 
-    final targets = packId == null
-        ? enabledPacks
-        : enabledPacks.where((p) => p.id == packId).toList(growable: false);
+    final targets = <({SymbolPack pack, Set<String> sets})>[];
+    for (final pack in enabledPacks) {
+      if (packId != null && pack.id != packId) continue;
+      final allowed = enabledSetsOf(pack)
+        ..removeWhere((s) => setSlug != null && s != setSlug);
+      if (allowed.isEmpty) continue;
+      targets.add((pack: pack, sets: allowed));
+    }
     if (targets.isEmpty) return const [];
+
     final answers = await Future.wait([
-      for (final pack in targets) _searchOne(pack, trimmed, locale, limit),
+      for (final target in targets)
+        _searchOne(target.pack, trimmed, locale, limit, target.sets),
     ]);
 
     return fairMerge(answers, limit);
@@ -113,10 +183,11 @@ class SymbolRegistry extends ChangeNotifier {
     String query,
     String locale,
     int limit,
+    Set<String> sets,
   ) async {
     try {
       return await pack
-          .search(query, locale: locale, limit: limit)
+          .search(query, locale: locale, limit: limit, sets: sets)
           .timeout(searchBudget);
     } catch (_) {
       return const [];
@@ -124,16 +195,21 @@ class SymbolRegistry extends ChangeNotifier {
   }
 
   /// Resolves through the owning pack, or returns null if that pack is unknown
-  /// or disabled.
+  /// or has nothing switched on.
   ///
-  /// A disabled pack stops resolving even for images already on disk. Opting
-  /// out of a non-commercial pack has to actually remove it from the app,
-  /// otherwise the opt-in meant nothing.
+  /// A set that is off stops resolving even for images already on the device.
+  /// Opting out of a noncommercial set has to actually remove it from the app,
+  /// otherwise the opt-in meant nothing — and for the rest, most of what a new
+  /// device draws came out of the binary, so a switch that spared those would
+  /// read as one that does nothing.
   Future<String?> resolve(SymbolRef ref) async {
     final pack = _packs[ref.packId];
-    if (pack == null || !isEnabled(pack.id)) return null;
+    if (pack == null) return null;
+
+    final allowed = enabledSetsOf(pack);
+    if (allowed.isEmpty) return null;
     try {
-      return await pack.resolve(ref);
+      return await pack.resolve(ref, sets: allowed);
     } catch (_) {
       return null;
     }

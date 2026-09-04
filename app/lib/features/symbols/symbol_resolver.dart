@@ -199,7 +199,15 @@ class SymbolResolver {
       if (pack == null) continue;
 
       try {
-        for (final ref in await pack.search(needle, limit: 4)) {
+        // The sets are handed down rather than left to the pack, which answers
+        // from all of its own otherwise — and the board would then draw a set
+        // somebody switched off. Not through `registry.search`, whose budget
+        // is a second ceiling on top of this method's own.
+        for (final ref in await pack.search(
+          needle,
+          limit: 4,
+          sets: registry.enabledSetsOf(pack),
+        )) {
           if (ref.label.toLowerCase().trim() != needle) continue;
           final resolved = await resolve(ref);
           if (resolved.image != null) return resolved;

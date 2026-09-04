@@ -395,11 +395,11 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 
     await _developer.load();
 
-    // Only answers somebody actually gave. A pack nobody has decided about
+    // Only answers somebody actually gave. A set nobody has decided about
     // stays on its license's default, which is what keeps a noncommercial set
     // off until it is switched on deliberately.
     for (final choice in (await loadSymbolChoices(_db)).entries) {
-      _symbols.setEnabled(choice.key, choice.value);
+      _symbols.setSetEnabled(choice.key, choice.value);
     }
 
     final profile = await _profiles.resume();

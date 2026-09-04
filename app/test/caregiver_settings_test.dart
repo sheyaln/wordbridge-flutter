@@ -12,7 +12,11 @@ import 'package:wordbridge/features/backup/backup_service.dart';
 import 'package:wordbridge/features/backup/snapshot.dart';
 import 'package:wordbridge/features/caregiver/about_screen.dart';
 import 'package:wordbridge/features/caregiver/caregiver_home.dart';
+import 'package:wordbridge/features/symbols/bundled_pack.dart';
+import 'package:wordbridge/features/symbols/global_symbols_pack.dart';
+import 'package:wordbridge/features/symbols/symbol_pack.dart';
 import 'package:wordbridge/features/symbols/symbol_registry.dart';
+import 'package:wordbridge/features/symbols/system_emoji_pack.dart';
 import 'package:wordbridge/features/symbols/symbol_resolver.dart';
 import 'package:wordbridge/features/interop/board_files.dart';
 import 'package:wordbridge/features/profiles/profile_settings.dart';
@@ -667,6 +671,42 @@ void main() {
       await open(tester, 'Pictures');
       expect(find.text('Picture sets'), findsOneWidget);
       expect(find.text('Browse pictures'), findsOneWidget);
+      await back(tester);
+      await closeHome(tester);
+    });
+
+    testWidgets('and the sets screen names the sets, not the packs', (
+      tester,
+    ) async {
+      // §4.79. It listed "Wordbridge AAC core symbols" and "More pictures",
+      // which are how the pictures arrive rather than whose drawings they are.
+      // Nobody chooses between those; somebody choosing wants Mulberry
+      // drawings and not emoji.
+      final registry = SymbolRegistry(
+        packs: [
+          ...bundledSymbolPacks(),
+          SystemEmojiPack(),
+          GlobalSymbolsPack(),
+        ],
+      );
+      addTearDown(() {
+        for (final pack in registry.packs.whereType<DownloadingSymbolPack>()) {
+          pack.dispose();
+        }
+      });
+
+      await pumpSettings(tester, registry: registry);
+      await open(tester, 'Pictures');
+      await tester.tap(find.text('Picture sets'));
+      await settle(tester);
+
+      for (final set in registry.sets) {
+        expect(find.text(set.name), findsOneWidget, reason: set.slug);
+      }
+      expect(find.text('More pictures'), findsNothing);
+      expect(find.text('Wordbridge AAC core symbols'), findsNothing);
+
+      await back(tester);
       await back(tester);
       await closeHome(tester);
     });

@@ -38,7 +38,7 @@ class _PictureBrowserState extends State<PictureBrowser> {
   bool _searched = false;
 
   /// Which set the results are from, or null for all of them.
-  String? _packId;
+  String? _setSlug;
 
   @override
   void dispose() {
@@ -48,9 +48,12 @@ class _PictureBrowserState extends State<PictureBrowser> {
 
   /// Only the sets that are switched on.
   ///
-  /// A chip for a pack that is off would offer a search that returns nothing,
-  /// and read as an empty catalog rather than as a pack somebody turned off.
-  List<SymbolPack> get _packs => widget.registry.enabledPacks;
+  /// A chip for a set that is off would offer a search that returns nothing,
+  /// and read as an empty catalog rather than as a set somebody turned off.
+  List<SymbolSet> get _sets => [
+    for (final set in widget.registry.sets)
+      if (widget.registry.isSetEnabled(set.slug)) set,
+  ];
 
   Future<void> _search() async {
     final q = _query.text.trim();
@@ -63,7 +66,7 @@ class _PictureBrowserState extends State<PictureBrowser> {
     }
 
     setState(() => _searching = true);
-    final hits = await widget.registry.search(q, limit: 120, packId: _packId);
+    final hits = await widget.registry.search(q, limit: 120, setSlug: _setSlug);
     if (!mounted) return;
     setState(() {
       _results = hits;
@@ -72,8 +75,8 @@ class _PictureBrowserState extends State<PictureBrowser> {
     });
   }
 
-  Future<void> _filterTo(String? packId) async {
-    setState(() => _packId = packId);
+  Future<void> _filterTo(String? setSlug) async {
+    setState(() => _setSlug = setSlug);
     if (_query.text.trim().isNotEmpty) await _search();
   }
 
@@ -119,7 +122,7 @@ class _PictureBrowserState extends State<PictureBrowser> {
 
   @override
   Widget build(BuildContext context) {
-    final packs = _packs;
+    final sets = _sets;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Browse pictures')),
@@ -144,7 +147,7 @@ class _PictureBrowserState extends State<PictureBrowser> {
             ),
           ),
 
-          if (packs.length > 1)
+          if (sets.length > 1)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -154,17 +157,17 @@ class _PictureBrowserState extends State<PictureBrowser> {
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
                       label: const Text('All sets'),
-                      selected: _packId == null,
+                      selected: _setSlug == null,
                       onSelected: (_) => _filterTo(null),
                     ),
                   ),
-                  for (final pack in packs)
+                  for (final set in sets)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(pack.name),
-                        selected: _packId == pack.id,
-                        onSelected: (_) => _filterTo(pack.id),
+                        label: Text(set.name),
+                        selected: _setSlug == set.slug,
+                        onSelected: (_) => _filterTo(set.slug),
                       ),
                     ),
                 ],
@@ -210,8 +213,8 @@ class _PictureBrowserState extends State<PictureBrowser> {
 ///
 /// An assembled pack knows which upstream set each symbol came from and what
 /// that set asks to be called. Falling back to the pack's own line is right for
-/// a pack that is one set; for the bundled one it names all four, which beside
-/// a single drawing credits three people who had nothing to do with it.
+/// a pack that is one set; for a pack of several it names all of them, which
+/// beside a single drawing credits people who had nothing to do with it.
 String? _creditFor(SymbolPack? pack, SymbolRef ref) {
   if (pack == null) return null;
   if (pack is AssembledSymbolPack) {

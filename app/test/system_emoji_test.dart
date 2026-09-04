@@ -175,7 +175,7 @@ void main() {
       final pack = SystemEmojiPack();
       final registry = SymbolRegistry(packs: [pack]);
 
-      expect(pack.allowsCommercialUse, isTrue);
+      expect(pack.sets.single.allowsCommercialUse, isTrue);
       expect(registry.isEnabled(SystemEmojiPack.packId), isTrue);
     });
 
@@ -243,14 +243,28 @@ void main() {
       expect(decoded['attributions']['cldr'], contains('CLDR'));
     });
 
-    test('the credits screen reaches that notice', () {
-      expect(
-        const SymbolCredits().packs,
-        contains(SystemEmojiPack.packId),
-        reason:
-            'the Unicode license asks for its notice to travel with the '
-            'data, and in an app that means a screen somebody can open',
+    testWidgets('and the credits screen says so', (tester) async {
+      // The Unicode license asks for its notice to travel with the data, and
+      // in an app that means a screen somebody can open. The credits are
+      // listed per set now, so what has to carry it is the set.
+      final pack = SystemEmojiPack();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SymbolCredits(
+            registry: SymbolRegistry(packs: [pack]),
+            // No manifests: those are read for how many of a set ship, and
+            // this pack ships no pictures at all. What is under test is that
+            // the notice travels with the set.
+            manifests: const [],
+          ),
+        ),
       );
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+
+      expect(find.text(SystemEmojiPack.set.name), findsOneWidget);
+      expect(find.textContaining('Unicode CLDR'), findsOneWidget);
     });
   });
 
@@ -451,7 +465,15 @@ class _FakeGlyphPack implements GlyphSymbolPack {
   String get attribution => 'glyphs attribution';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   bool get isBundled => true;
@@ -461,13 +483,15 @@ class _FakeGlyphPack implements GlyphSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     searchCount++;
     return refs;
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => '\u{1f415}';
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async =>
+      '\u{1f415}';
 }
 
 class _FakePack implements SymbolPack {
@@ -489,7 +513,15 @@ class _FakePack implements SymbolPack {
   String get attribution => 'core attribution';
 
   @override
-  bool get allowsCommercialUse => true;
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: true,
+    ),
+  ];
 
   @override
   bool get isBundled => true;
@@ -499,8 +531,9 @@ class _FakePack implements SymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async => refs;
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => uri;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => uri;
 }

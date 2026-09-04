@@ -68,14 +68,25 @@ class ArasaacPack implements DownloadingSymbolPack {
 
   /// Required wherever an ARASAAC symbol appears. Reproduced from NOTICE.md.
   @override
-  String get attribution =>
-      'Author of the pictographic symbols: Sergio Palao. '
-      'Origin: ARASAAC (https://arasaac.org). '
-      'License: CC (BY-NC-SA). '
-      'Owner: Government of Aragón (Spain).';
+  String get attribution => set.attribution;
+
+  /// Its own source, so one set — and the reason the whole file is deletable.
+  /// A fork that is sold drops it, and with it the only way this set could be
+  /// switched on.
+  static const set = (
+    slug: 'arasaac',
+    name: 'ARASAAC',
+    attribution:
+        'Author of the pictographic symbols: Sergio Palao. '
+        'Origin: ARASAAC (https://arasaac.org). '
+        'License: CC (BY-NC-SA). '
+        'Owner: Government of Aragón (Spain).',
+    license: 'CC-BY-NC-SA',
+    allowsCommercialUse: false,
+  );
 
   @override
-  bool get allowsCommercialUse => false;
+  List<SymbolSet> get sets => const [set];
 
   @override
   bool get isBundled => false;
@@ -121,9 +132,11 @@ class ArasaacPack implements DownloadingSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty || limit <= 0) return const [];
+    if (sets != null && !sets.contains(set.slug)) return const [];
 
     // bestsearch is ARASAAC's curated answer for the whole phrase and is
     // usually both shorter and better ordered. The broad search is the
@@ -145,8 +158,9 @@ class ArasaacPack implements DownloadingSymbolPack {
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) async {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async {
     if (ref.packId != id) return null;
+    if (sets != null && !sets.contains(set.slug)) return null;
 
     final file = await _fileFor(ref.externalId);
     if (file == null) return null;

@@ -86,12 +86,46 @@ List<SymbolRef> fairMerge(List<List<SymbolRef>> answers, int limit) {
   return merged.values.toList(growable: false);
 }
 
+/// One symbol set, and the thing a person actually switches on and off.
+///
+/// Not a pack. Whether a picture ships inside the binary or is fetched when a
+/// word needs one is a fact about how this app is built, and somebody deciding
+/// whether they want Mulberry drawings on a board should not have to hold it
+/// in their head. **A set can be served by both**: Stellar and OpenMoji
+/// pictures ship inside `core` and are also searchable through Global Symbols,
+/// and one switch governs both or it is lying about what it does.
+///
+/// [slug] is Global Symbols' own identifier, because it is also what the
+/// bundled manifest records against each symbol and what the search API is
+/// asked for. One identifier, no mapping table to get wrong.
+typedef SymbolSet = ({
+  String slug,
+  String name,
+
+  /// Human-readable, shown in-app. Every license in use here requires the
+  /// credit to be reachable from inside the running app, not just from the
+  /// repository.
+  String attribution,
+
+  /// SPDX-ish identifier, e.g. `CC-BY-SA-4.0`.
+  String license,
+
+  /// False means the set may not be bundled, sold, or shipped on hardware that
+  /// is sold. [SymbolRegistry] keeps such a set inert until somebody turns it
+  /// on, so the restriction attaches to that choice.
+  bool allowsCommercialUse,
+});
+
 /// A source of symbols.
 ///
 /// Application code depends on this interface and never on a concrete pack.
 /// The reason is licensing, not tidiness: ARASAAC is CC BY-NC-SA and
 /// cannot ship in a build that is sold, so a commercial fork has to be able to
 /// delete those files and still compile. See NOTICE.md.
+///
+/// A pack is plumbing. It is how pictures arrive — out of the binary, off the
+/// network, out of the platform's font — and it is not what anybody chooses
+/// between. [sets] is.
 abstract interface class SymbolPack {
   /// Stable across releases — it is written into `symbols.pack_id` rows and is
   /// how a stored symbol finds its way back to a pack after a cache wipe.
@@ -99,34 +133,53 @@ abstract interface class SymbolPack {
 
   String get name;
 
-  /// SPDX-ish identifier, e.g. `CC-BY-SA-4.0`.
+  /// SPDX-ish identifier for the pack as a whole. A pack that serves several
+  /// sets under one license; where they differ, the set's own is the answer.
   String get license;
 
-  /// Human-readable, shown in-app. Every license in use here requires the
-  /// credit to be reachable from inside the running app, not just from the
-  /// repository.
+  /// The whole pack's credit, which for a pack of several sets names all of
+  /// them. Beside one picture that is a list rather than a credit — use
+  /// [AssembledSymbolPack.creditFor] there.
   String get attribution;
-
-  /// False means the pack may not be bundled, sold, or shipped on hardware
-  /// that is sold. [SymbolRegistry] keeps such packs inert until a user turns
-  /// them on, so the restriction attaches to that choice.
-  bool get allowsCommercialUse;
 
   /// True if the images ship inside the application binary.
   bool get isBundled;
 
+  /// The sets this pack can serve, in preference order.
+  ///
+  /// One entry for a pack that is its own source. Two packs may name the same
+  /// set, and must use the same slug when they do.
+  List<SymbolSet> get sets;
+
+  /// [sets] restricts the search to those slugs; null asks everything the pack
+  /// has.
+  ///
+  /// **In-app callers pass it.** [SymbolRegistry] works out which sets are
+  /// switched on and hands them down, so a set that is off costs no request
+  /// at all rather than being filtered back out of an answer that was already
+  /// paid for.
   Future<List<SymbolRef>> search(
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   });
 
   /// An asset key for a bundled pack, an absolute file path for a downloaded
   /// one, or null when no image is on the device.
   ///
+  /// [sets] is the same restriction as on [search], and it is what makes a set
+  /// that is off stop *drawing* rather than merely stop being searched. A
+  /// switch that left the shipped board untouched would read as one that does
+  /// nothing, since most of what a new device shows came out of the binary.
+  ///
+  /// A pack that cannot say which set a symbol belongs to draws it. That is
+  /// the honest answer rather than a guess either way, and it is why the packs
+  /// that can — see [AssembledSymbolPack] — are the ones this matters for.
+  ///
   /// Implementations must not throw and must not wait on the network: this is
   /// called while a grid is being built.
-  Future<String?> resolve(SymbolRef ref);
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets});
 }
 
 /// A pack assembled from several upstream sets, which therefore knows which
@@ -148,10 +201,10 @@ abstract interface class AssembledSymbolPack implements SymbolPack {
 
   /// The credit for the set [ref] came from, rather than for the whole pack.
   ///
-  /// A pack assembled from four upstream sets has an `attribution` that names
-  /// all four. Beside one picture that is not a credit, it is a list — and it
-  /// tells somebody looking at a Mulberry drawing who made the OpenMoji ones
-  /// (§4.72).
+  /// A pack assembled from several upstream sets has an `attribution` that
+  /// names all of them. Beside one picture that is not a credit, it is a list
+  /// — and it tells somebody looking at a Mulberry drawing who made the
+  /// OpenMoji ones (§4.72).
   String? creditFor(SymbolRef ref);
 }
 

@@ -22,8 +22,18 @@ class _Pack implements SymbolPack {
   /// word to the labels this pack has for it.
   final Map<String, List<String>> words;
 
-  @override
   final bool allowsCommercialUse;
+
+  @override
+  List<SymbolSet> get sets => [
+    (
+      slug: id,
+      name: name,
+      attribution: attribution,
+      license: license,
+      allowsCommercialUse: allowsCommercialUse,
+    ),
+  ];
 
   /// Every query this pack was actually asked, which is how "the filter did
   /// not reach it" is checked rather than assumed.
@@ -41,6 +51,7 @@ class _Pack implements SymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     asked.add(query);
     return [
@@ -50,21 +61,21 @@ class _Pack implements SymbolPack {
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) async => null;
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async => null;
 }
 
 /// A pack assembled from several upstream sets, like the bundled one.
 class _Assembled extends _Pack implements AssembledSymbolPack {
-  _Assembled(super.id, super.name, {super.words, required this.sets});
+  _Assembled(super.id, super.name, {super.words, required this.sources});
 
   /// label to the upstream set that drew it.
-  final Map<String, String> sets;
+  final Map<String, String> sources;
 
   @override
   String get attribution => 'Assembled from Mulberry, OpenMoji and Tawasol';
 
   @override
-  String? sourceOf(SymbolRef ref) => sets[ref.label];
+  String? sourceOf(SymbolRef ref) => sources[ref.label];
 
   @override
   String? creditFor(SymbolRef ref) {
@@ -265,7 +276,7 @@ void main() {
         words: {
           'cat': ['cat drawing'],
         },
-        sets: {'cat drawing': 'Mulberry'},
+        sources: {'cat drawing': 'Mulberry'},
       );
       final registry = SymbolRegistry(packs: [assembled]);
 

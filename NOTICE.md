@@ -29,17 +29,57 @@ assigned.
 wordbridge never links a symbol pack directly; packs are loaded behind a
 `SymbolPack` interface so they can be swapped or removed wholesale.
 
+**A set is the unit, not a pack.** A pack is how pictures arrive — out of the
+binary, off the network, out of the platform's own font. A set is whose
+drawings they are, and it is what a caregiver switches on and off and what a
+licence attaches to. One set can be served by two packs: Stellar and OpenMoji
+pictures both ship inside `core` *and* are searchable through Global Symbols.
+The set records live in `features/symbols/symbol_sets.dart`, referenced by both
+packs, so one switch governs both halves.
+
+### The sets, and where each one comes from
+
+| Set | License | How it reaches the device | Commercial use |
+|---|---|---|---|
+| Stellar Symbols | CC BY-SA 4.0 | 111 pictures bundled in `core`, the rest fetched | yes |
+| OpenMoji | CC BY-SA 4.0 | 153 pictures bundled in `core`, the rest fetched | yes |
+| Device emoji | Unicode-3.0 (index only) | drawn by the platform's own font | yes |
+| Mulberry Symbols | CC BY-SA 4.0 | fetched | yes |
+| Mulberry Plus Collection | CC BY-SA 4.0 | fetched | yes |
+| Mulberry Additional Symbols | CC BY-SA 4.0 | fetched | yes |
+| Tawasol | CC BY-SA 4.0 | fetched | yes |
+| ARASAAC | CC BY-NC-SA 4.0 | fetched, **off** until switched on | **no** |
+| AAC Image Library | CC BY-NC-SA 4.0 | fetched, **off** until switched on | **no** |
+
+Credits, in full:
+
+| Set | Credit |
+|---|---|
+| Stellar Symbols | © Colin McNamee |
+| OpenMoji | © OpenMoji Project. <https://openmoji.org> |
+| Mulberry Symbols | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org> |
+| Mulberry Plus Collection | © Mulberry and Global Symbols. <https://globalsymbols.com> |
+| Mulberry Additional Symbols | © Verlag Karin Kestner GmbH. <https://www.kestner.de> |
+| Tawasol | © Mada, Qatar. <http://tawasolsymbols.org> |
+| AAC Image Library | © AAC Image Library. <https://aacil.neocities.org> |
+
+**Every one of these is credited inside the running app**, on the Symbol
+credits screen, which lists the sets that are switched on rather than the packs
+whose images ship. That distinction is the licence: the six fetched sets ship
+no manifest, so a screen that read manifests credited them nowhere at all while
+a caregiver could search them, pick one and put it on a board.
+
+A set that is switched off is not credited, and does not need to be. The
+registry refuses to resolve it — for a fetched file already on the device and
+for a bundled picture alike — so nothing of it is appearing anywhere.
+
 ### Bundled, commercial use permitted
 
-**One pack ships: `core`.** It is a single set of 264 pictures drawn from the
-two sources below via Global Symbols, and its manifest carries the credit for
-each picture individually. The sources are **not** shipped as packs of their
-own. This app does not carry Stellar, or OpenMoji, in full.
-
-| Source of a `core` picture | License | Notes |
-|---|---|---|
-| Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee. Purpose-built for core vocabulary |
-| OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> |
+**One pack ships: `core`.** It is 264 pictures drawn from Stellar and OpenMoji
+via Global Symbols, and its manifest records which of the two drew each one.
+That field is not decoration: it is what decides whether a shipped picture may
+be drawn when somebody switches Stellar or OpenMoji off. This app does not
+carry either set in full.
 
 **Two sets, and a word neither has ships without a picture.** A board
 assembled from six sets is six house styles on one screen, and the reader it is
@@ -50,26 +90,21 @@ picture yet".
 
 Mulberry, Mulberry Plus, Mulberry Additional and Tawasol were bundled until
 that decision and are no longer. They remain reachable at runtime through the
-**More pictures** pack, so a caregiver adding their own word can still find a
+Global Symbols API, so a caregiver adding their own word can still find a
 picture for it; what changed is only what ships.
 
-Attribution for these must remain reachable from inside the app, and is: the
-Symbol credits screen reads the same manifest.
-
-A pack with no assets is not a pack. Adding one of these sources back as a pack
-of its own means shipping its images and declaring the asset directory in
-`pubspec.yaml`, otherwise the credits screen claims a symbol library the app
-does not carry.
+A pack with no assets is not a pack. Bundling one of these sets means shipping
+its images and declaring the asset directory in `pubspec.yaml`.
 
 ### Fetched on demand, commercial use permitted
 
-The **More pictures** pack reaches six CC BY-SA sets — the two above plus
-Mulberry, Mulberry Plus, Mulberry Additional and Tawasol — through the
-Global Symbols API (<https://globalsymbols.com>) so a caregiver adding a word
-does not have to wait for a release to get a picture for it. Images are cached
-in application documents. The attributions in the table above apply to them
-identically, and `GlobalSymbolsPack.attribution` carries all six plus the
-Global Symbols credit.
+`GlobalSymbolsPack` reaches six CC BY-SA sets through the Global Symbols API
+(<https://globalsymbols.com>) so a caregiver adding a word does not have to
+wait for a release to get a picture for it. Images are cached in application
+documents, in a directory per set — the API answers with a catalogue number and
+nothing else, so the path is the only record of which set drew a file that
+survives the app being closed, and without it a set switched off would go on
+drawing every picture chosen before somebody switched it off.
 
 ### The device's own emoji, **codepoints only, never glyphs**
 
@@ -105,22 +140,27 @@ update. That is inherent and is not a bug.
 chooses them, so the restriction attaches to that choice rather than to this
 project's distribution.
 
-| Pack | License | Reached as |
+| Set | License | Served by |
 |---|---|---|
-| ARASAAC | CC BY-NC-SA 4.0 | `arasaac` |
+| ARASAAC | CC BY-NC-SA 4.0 | `ArasaacPack` |
 | AAC Image Library | CC BY-NC-SA 4.0 | `globalsymbols-nc` — © AAC Image Library, <https://aacil.neocities.org> |
 
 `globalsymbols-nc` is `GlobalSymbolsPack.nonCommercial()`: the same class and
-the same API as the **More pictures** pack, reaching a separate
-`nonCommercialSets` list. Two lists rather than one list with a licence field,
-because a list where the licence is a field is a list somebody filters wrong
-once. `SymbolRegistry.isEnabled` falls back to `allowsCommercialUse` for any
-pack nobody has answered about, so both of these arrive **off** in a release
-without anyone migrating a stored settings map.
+the same API as the commercial pack, reaching a separate `nonCommercialSets`
+list. Two lists rather than one list with a licence field, because a list where
+the licence is a field is a list somebody filters wrong once — but every entry
+carries `allowsCommercialUse: false` as well, and *that* is what the registry
+reads. `SymbolRegistry.isSetEnabled` falls back to it for any set nobody has
+answered about, so both of these arrive **off** in a release without anyone
+migrating a stored settings map. A set added in a later release gets the same
+treatment: correct from its licence, never inherited from what was stored
+before it existed.
 
 A fork that is sold drops these by removing the `nonCommercial` constructor and
 `nonCommercialSets`, and the `ArasaacPack` file. Nothing outside `main.dart`
-names either.
+names either, and neither set record lives in `symbol_sets.dart` — the
+noncommercial ones stay with the pack that reaches them precisely so this is a
+deletion rather than an edit to a shared list that has to be got right.
 
 ARASAAC attribution, required wherever its symbols appear:
 

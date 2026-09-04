@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
 
 import 'symbol_pack.dart';
+import 'symbol_sets.dart';
 
 /// A symbol pack shipped inside the application binary.
 ///
@@ -22,6 +23,7 @@ class BundledSymbolPack implements AssembledSymbolPack {
     required this.name,
     required this.license,
     required this.attribution,
+    required this.sets,
     AssetBundle? bundle,
   }) : _bundle = bundle ?? rootBundle;
 
@@ -37,14 +39,17 @@ class BundledSymbolPack implements AssembledSymbolPack {
   @override
   final String attribution;
 
-  final AssetBundle _bundle;
-
-  /// Only packs whose license permits commercial use are ever bundled, so this
-  /// is a property of being bundled rather than of any particular pack. A
-  /// non-commercial pack that reached this class would be a distribution
-  /// problem, not a configuration one.
+  /// Which sets this pack's pictures were drawn from.
+  ///
+  /// Declared rather than read out of the manifest, because a switch has to
+  /// exist before the first search loads one. `bundled_symbols_test.dart` pins
+  /// these slugs to the manifest's own: a set declared here that the manifest
+  /// files nothing under is a switch that governs nothing, and a slug the
+  /// manifest uses and this list omits is a set nobody can turn off.
   @override
-  bool get allowsCommercialUse => true;
+  final List<SymbolSet> sets;
+
+  final AssetBundle _bundle;
 
   @override
   bool get isBundled => true;
@@ -63,13 +68,6 @@ class BundledSymbolPack implements AssembledSymbolPack {
   /// [sourceOf] is synchronous because it is read while a tile is being built,
   /// so it answers null before the first search rather than blocking on a load.
   final Map<String, String> _sources = {};
-
-  /// Each upstream set's own credit line, keyed by set name.
-  ///
-  /// The pack's `attribution` names all four at once, which is right on a
-  /// credits screen and wrong beside a single picture: it would tell somebody
-  /// looking at one drawing who made the other three (§4.72).
-  final Map<String, String> _credits = {};
 
   /// Memoized including the empty result, so a missing pack costs one failed
   /// asset lookup per launch rather than one per keystroke in the search box.
@@ -104,17 +102,6 @@ class BundledSymbolPack implements AssembledSymbolPack {
         }
       }
 
-      // Each upstream set's own credit, which the credits screen already reads
-      // out of this file. Kept here too so one picture can be credited to the
-      // people who actually drew it (§4.72).
-      final attributions = decoded['attributions'];
-      if (attributions is Map) {
-        for (final entry in attributions.entries) {
-          if (entry.key is String && entry.value is String) {
-            _credits[entry.key as String] = entry.value as String;
-          }
-        }
-      }
       return files;
     } catch (_) {
       return const {};
@@ -127,8 +114,11 @@ class BundledSymbolPack implements AssembledSymbolPack {
 
   @override
   String? creditFor(SymbolRef ref) {
-    final set = sourceOf(ref);
-    return set == null ? null : _credits[set];
+    final source = sourceOf(ref);
+    for (final set in sets) {
+      if (set.slug == source) return set.attribution;
+    }
+    return null;
   }
 
   @override
@@ -136,6 +126,7 @@ class BundledSymbolPack implements AssembledSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty || limit <= 0) return const [];
@@ -150,6 +141,7 @@ class BundledSymbolPack implements AssembledSymbolPack {
     final substring = <SymbolRef>[];
 
     for (final entry in entries.entries) {
+      if (!_allowed(entry.key, sets)) continue;
       final ref = (packId: id, externalId: entry.value, label: entry.key);
       if (entry.key == needle) {
         exact.add(ref);
@@ -167,9 +159,27 @@ class BundledSymbolPack implements AssembledSymbolPack {
     ].take(limit).toList(growable: false);
   }
 
+  /// Whether a word's picture belongs to a set that is switched on.
+  ///
+  /// A word the manifest files under no set is drawn. That is the flat
+  /// `{"word": "file.svg"}` form, which carries no set to switch off, and
+  /// refusing it would blank a pack for saying less about itself.
+  bool _allowed(String word, Set<String>? sets) {
+    if (sets == null) return true;
+    final source = _sources[word];
+    return source == null || sets.contains(source);
+  }
+
   @override
-  Future<String?> resolve(SymbolRef ref) async {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async {
     if (ref.packId != id) return null;
+
+    // Loaded before the set is read, not after. `_sources` is filled by the
+    // manifest pass, and a board draws itself before anything has searched —
+    // so asking first would let every picture through on the launch that
+    // matters and gate them on the next one.
+    await manifest();
+    if (!_allowed(ref.label.toLowerCase().trim(), sets)) return null;
 
     final key = assetKeyFor(ref.externalId);
     try {
@@ -186,8 +196,8 @@ class BundledSymbolPack implements AssembledSymbolPack {
 
 /// The packs wordbridge ships.
 ///
-/// Both permit commercial use. Nothing may be added to this list without that
-/// being true of it as well — see NOTICE.md.
+/// Every set they draw from permits commercial use. Nothing may be added to
+/// this list without that being true of it as well — see NOTICE.md.
 List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
   // Generated by tools/fetch_symbols.dart, and the only pack whose images ship.
   //
@@ -207,6 +217,9 @@ List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
         'Assembled from Stellar Symbols and OpenMoji via Global Symbols. '
         'Both CC BY-SA. Credits for each symbol are listed in the pack '
         'manifest and on the Symbol credits screen.',
+    // The same two records the fetching pack reaches, so one switch governs
+    // the shipped picture and the searchable one.
+    sets: const [stellarSymbolsSet, openmojiSet],
     bundle: bundle,
   ),
 ];

@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'drawable.dart';
 import 'symbol_pack.dart';
+import 'symbol_sets.dart';
 
 /// Symbol sets fetched on demand from Global Symbols.
 ///
@@ -17,12 +18,17 @@ import 'symbol_pack.dart';
 ///
 /// **Two packs, one class, and the licence is what separates them.** The
 /// default constructor reaches [commercialSets] — all CC BY-SA: attribution
-/// and share-alike, commercial use permitted — and is on by default.
-/// [GlobalSymbolsPack.nonCommercial] reaches [nonCommercialSets] and is off
-/// until somebody turns it on, because non-commercial is not an open-source
-/// licence and it contaminates every path by which this app could be sold or
-/// shipped on hardware. ARASAAC and Sclera stay behind their own opt-in pack
-/// for the same reason.
+/// and share-alike, commercial use permitted — and every one of those sets is
+/// on by default. [GlobalSymbolsPack.nonCommercial] reaches
+/// [nonCommercialSets], whose sets are off until somebody turns them on,
+/// because non-commercial is not an open-source licence and it contaminates
+/// every path by which this app could be sold or shipped on hardware. ARASAAC
+/// and Sclera stay behind their own opt-in pack for the same reason.
+///
+/// Which of its sets it may ask is decided elsewhere and handed in: see
+/// [SymbolRegistry.enabledSetsOf]. Two of them, Stellar and OpenMoji, also
+/// ship inside the bundled pack, and a switch this class kept for itself
+/// would govern only the half of a set that arrives over the network.
 ///
 /// Two different jobs, with two different standards of proof:
 ///
@@ -36,7 +42,7 @@ import 'symbol_pack.dart';
 /// substring match: "all" returns Ball, "not" returns Notebook, "she" returns
 /// Sheep. A blank button honestly says "no picture yet"; a plausible wrong one
 /// is a lie the user cannot contradict.
-class GlobalSymbolsPack implements DownloadingSymbolPack {
+class GlobalSymbolsPack implements DownloadingSymbolPack, AssembledSymbolPack {
   /// The commercially-clean pack: bundled-quality sets, on by default.
   GlobalSymbolsPack({
     http.Client? client,
@@ -46,7 +52,6 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   }) : id = 'globalsymbols',
        name = 'More pictures',
        license = 'CC-BY-SA-4.0',
-       allowsCommercialUse = true,
        sets = commercialSets,
        _client = client ?? http.Client(),
        _documentsDirectory =
@@ -56,14 +61,14 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   /// therefore a different answer about whether it may be used at all.
   ///
   /// Off until somebody says otherwise, and that is not a policy this class
-  /// enforces — [SymbolRegistry.isEnabled] falls back to
-  /// [allowsCommercialUse] for any pack nobody has answered about, so a pack
+  /// enforces — [SymbolRegistry.isSetEnabled] falls back to a set's own
+  /// `allowsCommercialUse` for any set nobody has answered about, so a set
   /// added in a release arrives correctly off without anybody migrating a
   /// stored settings map.
   ///
-  /// A separate pack rather than more entries in [commercialSets], because the
-  /// licence attaches to the pack and a fork that is sold has to be able to
-  /// delete this one whole.
+  /// A separate pack rather than more entries in [commercialSets], because a
+  /// fork that is sold has to be able to delete this constructor and its list
+  /// whole.
   GlobalSymbolsPack.nonCommercial({
     http.Client? client,
     Future<Directory> Function()? documentsDirectory,
@@ -72,7 +77,6 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   }) : id = 'globalsymbols-nc',
        name = 'More pictures (non-commercial)',
        license = 'CC-BY-NC-SA-4.0',
-       allowsCommercialUse = false,
        sets = nonCommercialSets,
        _client = client ?? http.Client(),
        _documentsDirectory =
@@ -80,70 +84,29 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
 
   static const host = 'globalsymbols.com';
 
-  /// In preference order. Mulberry leads because it is a purpose-built AAC set
-  /// with a consistent drawn style, and its own two extension sets follow it
-  /// because they are drawn to match; the rest fill its gaps in abstract core
-  /// vocabulary. Mixing styles costs visual consistency, and a blank button
-  /// costs more.
-  static const commercialSets =
-      <({String slug, String name, String attribution})>[
-        (
-          slug: 'mulberry',
-          name: 'Mulberry Symbols',
-          attribution:
-              'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
-              'CC BY-SA 4.0. https://mulberrysymbols.org',
-        ),
-        (
-          slug: 'corona-symbols',
-          name: 'Mulberry Plus Collection',
-          attribution:
-              'Mulberry Plus Collection © Mulberry and Global Symbols. '
-              'CC BY-SA 4.0. https://globalsymbols.com',
-        ),
-        (
-          slug: 'additional-mulberry-symbols',
-          name: 'Mulberry Additional Symbols',
-          attribution:
-              'Mulberry Additional Symbols © Verlag Karin Kestner GmbH. '
-              'CC BY-SA 4.0. https://www.kestner.de',
-        ),
-        (
-          slug: 'stellar-symbols',
-          name: 'Stellar Symbols',
-          attribution: 'Stellar Symbols © Colin McNamee. CC BY-SA 4.0.',
-        ),
-        (
-          slug: 'tawasol',
-          name: 'Tawasol',
-          attribution:
-              'Tawasol Symbols © Mada, Qatar. CC BY-SA 4.0. '
-              'http://tawasolsymbols.org',
-        ),
-        (
-          slug: 'openmoji',
-          name: 'OpenMoji',
-          attribution:
-              'OpenMoji © OpenMoji Project. CC BY-SA 4.0. '
-              'https://openmoji.org',
-        ),
-      ];
+  /// Declared in `symbol_sets.dart`, because Stellar and OpenMoji are also
+  /// bundled and one switch has to govern both the shipped picture and the
+  /// searchable one.
+  static const commercialSets = globalSymbolsCommercialSets;
 
   /// Sets that may not be bundled, sold, or shipped on hardware that is sold.
   ///
-  /// Kept apart from [commercialSets] rather than flagged inside it. A list
-  /// where the licence is a field is a list somebody filters wrong once; two
-  /// lists cannot be got wrong by forgetting to look.
-  static const nonCommercialSets =
-      <({String slug, String name, String attribution})>[
-        (
-          slug: 'aac-image-library',
-          name: 'AAC Image Library',
-          attribution:
-              'AAC Image Library © AAC Image Library. CC BY-NC-SA 4.0. '
-              'https://aacil.neocities.org',
-        ),
-      ];
+  /// Kept apart from [commercialSets] rather than flagged inside it, and here
+  /// rather than beside the others, so a fork that is sold deletes a file and
+  /// a constructor rather than editing a list correctly. Every entry carries
+  /// `allowsCommercialUse: false` as well, which is what the registry actually
+  /// reads: two lists is the arrangement, the flag is the enforcement.
+  static const nonCommercialSets = <SymbolSet>[
+    (
+      slug: 'aac-image-library',
+      name: 'AAC Image Library',
+      attribution:
+          'AAC Image Library © AAC Image Library. CC BY-NC-SA 4.0. '
+          'https://aacil.neocities.org',
+      license: 'CC-BY-NC-SA-4.0',
+      allowsCommercialUse: false,
+    ),
+  ];
 
   final http.Client _client;
   final Future<Directory> Function() _documentsDirectory;
@@ -168,6 +131,14 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   final _checked = <String>{};
   final _urls = <String, String>{};
 
+  /// Which set each symbol came from, by external id.
+  ///
+  /// Learned from a search, and re-learned from the directory a download was
+  /// filed in — see [_onDisk] — so it survives a relaunch. Without that,
+  /// switching a set off would blank its pictures for one session and let
+  /// them back the next, which is worse than either answer on its own.
+  final _sets = <String, String>{};
+
   Future<Directory>? _cachedDirectory;
 
   /// What the symbol directory held when it was last listed, by external id.
@@ -182,11 +153,30 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   @override
   final String license;
 
-  @override
-  final bool allowsCommercialUse;
-
   /// Which sets this pack reaches, in preference order.
-  final List<({String slug, String name, String attribution})> sets;
+  @override
+  final List<SymbolSet> sets;
+
+  /// The sets a lookup may ask, given what is switched on.
+  ///
+  /// A set that is off costs no request, which is the whole shape of it:
+  /// switching sets off makes the picker cheaper and never dearer. Filtering
+  /// the answers instead would have paid for six requests to show four sets.
+  Iterable<SymbolSet> _asked(Set<String>? allowed) =>
+      allowed == null ? sets : sets.where((s) => allowed.contains(s.slug));
+
+  @override
+  String? sourceOf(SymbolRef ref) =>
+      ref.packId == id ? _sets[ref.externalId] : null;
+
+  @override
+  String? creditFor(SymbolRef ref) {
+    final source = sourceOf(ref);
+    for (final set in sets) {
+      if (set.slug == source) return set.attribution;
+    }
+    return null;
+  }
 
   @override
   String get attribution => [
@@ -231,22 +221,26 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     String query, {
     String locale = 'en',
     int limit = 24,
+    Set<String>? sets,
   }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty || limit <= 0) return const [];
 
+    final asked = _asked(sets).toList(growable: false);
+    if (asked.isEmpty) return const [];
+
     final depth = limit.clamp(1, maxSetResults);
     final answers = await Future.wait([
-      for (final set in sets) _labels(trimmed, set.slug, limit: depth),
+      for (final set in asked) _labels(trimmed, set.slug, limit: depth),
     ]);
 
     return fairMerge([
-      for (final entries in answers)
+      for (var i = 0; i < asked.length; i++)
         [
           // Every entry is turned into a ref, including ones the merge will
           // drop: that is what records the URL each one is downloadable from,
           // and a result the caller pages past today may be chosen tomorrow.
-          for (final entry in entries) ?_refFrom(entry),
+          for (final entry in answers[i]) ?_refFrom(entry, asked[i].slug),
         ],
     ], limit);
   }
@@ -254,14 +248,14 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   /// The one symbol whose label *is* this word, or null.
   ///
   /// What the app is allowed to attach to a button by itself.
-  Future<SymbolRef?> bestMatch(String word) async {
+  Future<SymbolRef?> bestMatch(String word, {Set<String>? sets}) async {
     final needle = _normalize(word);
     if (needle.isEmpty) return null;
 
-    for (final set in sets) {
+    for (final set in _asked(sets)) {
       for (final entry in await _labels(word, set.slug)) {
         if (_normalize(entry['text'] as String?) != needle) continue;
-        final ref = _refFrom(entry);
+        final ref = _refFrom(entry, set.slug);
         if (ref != null) return ref;
       }
     }
@@ -269,10 +263,20 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   }
 
   @override
-  Future<String?> resolve(SymbolRef ref) async {
+  Future<String?> resolve(SymbolRef ref, {Set<String>? sets}) async {
     if (ref.packId != id) return null;
 
+    // Listed before the set is read: the listing is what teaches this pack
+    // which set a symbol it downloaded last month belongs to.
     final held = await _held(ref);
+
+    final source = sourceOf(ref);
+    // A symbol whose set is unknown has neither been searched for nor
+    // downloaded here, so there is no URL to fetch it from and nothing to
+    // draw either way.
+    if (source == null) return null;
+    if (sets != null && !sets.contains(source)) return null;
+
     if (held != null) return await _usable(ref, held) ? held.path : null;
 
     final target = await _targetFor(ref);
@@ -338,7 +342,7 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     }
   }
 
-  SymbolRef? _refFrom(Map<String, dynamic> entry) {
+  SymbolRef? _refFrom(Map<String, dynamic> entry, String setSlug) {
     final picto = entry['picto'];
     final text = entry['text'];
     if (picto is! Map || text is! String) return null;
@@ -348,16 +352,24 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     if (pictoId is! int || imageUrl is! String) return null;
 
     _urls['$pictoId'] = imageUrl;
+    _sets['$pictoId'] = setSlug;
     return (packId: id, externalId: '$pictoId', label: text);
   }
 
   /// Application documents, never the cache directory. Both platforms evict
   /// caches under storage pressure without asking, and a user whose symbols
   /// vanish mid-conversation has lost their voice, not a thumbnail.
-  Future<Directory?> _directory() async {
+  ///
+  /// A directory per set, and that is not tidiness. The API answers with a
+  /// catalogue number and nothing else, so a file's own path is the only
+  /// record of which set drew it that survives the app being closed — and
+  /// without it a set switched off would go on drawing every picture chosen
+  /// before somebody switched it off.
+  Future<Directory?> _directory([String? setSlug]) async {
     try {
       final documents = await (_cachedDirectory ??= _documentsDirectory());
-      return Directory(p.join(documents.path, 'symbols', id));
+      final root = p.join(documents.path, 'symbols', id);
+      return Directory(setSlug == null ? root : p.join(root, setSlug));
     } catch (_) {
       _cachedDirectory = null;
       return null;
@@ -383,14 +395,19 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
 
     final found = <String, File>{};
     try {
-      final directory = await _directory();
-      if (directory != null && directory.existsSync()) {
-        for (final entry in directory.listSync().whereType<File>()) {
-          final name = p.basenameWithoutExtension(entry.path);
-          // Partial downloads are named `<id>.<ext>.part`, which leaves the
-          // extension as the stem and would file them under the symbol's name.
-          if (p.extension(entry.path) == '.part') continue;
-          found.putIfAbsent(name, () => entry);
+      final root = await _directory();
+      if (root != null && root.existsSync()) {
+        for (final set in root.listSync().whereType<Directory>()) {
+          final slug = p.basename(set.path);
+          for (final entry in set.listSync().whereType<File>()) {
+            final name = p.basenameWithoutExtension(entry.path);
+            // Partial downloads are named `<id>.<ext>.part`, which leaves the
+            // extension as the stem and would file them under the symbol's
+            // name.
+            if (p.extension(entry.path) == '.part') continue;
+            found.putIfAbsent(name, () => entry);
+            _sets.putIfAbsent(name, () => slug);
+          }
         }
       }
     } catch (_) {
@@ -406,9 +423,10 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   /// there is nothing to download and no way to know what to call the result.
   Future<File?> _targetFor(SymbolRef ref) async {
     final url = _urls[ref.externalId];
-    if (url == null) return null;
+    final source = _sets[ref.externalId];
+    if (url == null || source == null) return null;
 
-    final directory = await _directory();
+    final directory = await _directory(source);
     if (directory == null) return null;
 
     return File(
