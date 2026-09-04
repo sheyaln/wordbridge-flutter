@@ -580,6 +580,23 @@ class _FirstRun extends StatelessWidget {
                   style: TextStyle(color: Colors.black54),
                 ),
               ),
+              // Said here because here is where the decision is made. A copy
+              // in a browser is somewhere to find out whether this app suits
+              // somebody; it is not somewhere to keep their voice, and the
+              // difference is not visible from the board.
+              if (!hostKeepsFiles) ...[
+                const SizedBox(height: 16),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'This copy runs in your browser and is kept there. '
+                    'Somebody who comes to rely on it should have it on '
+                    'their own device.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.black45, fontSize: 13),
+                  ),
+                ),
+              ],
               const SizedBox(height: 28),
               FilledButton(
                 onPressed: () async {

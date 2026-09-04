@@ -66,6 +66,39 @@ jobs:
         working-directory: .
         run: ./tools/check_symbol_boundary.sh
 
+  # `flutter test` compiles for the VM, so it says nothing about whether the
+  # browser target still builds. That target is a different set of libraries —
+  # every `dart:io` and `dart:ffi` call sits behind a conditional import, and
+  # the web half of a seam is compiled by nothing else in this workflow. A
+  # change to the native half that forgets the other one fails here rather
+  # than the next time somebody opens the demo.
+  #
+  # The voice is not fetched. `tools/fetch_web_voice.sh` pulls 141 MB from a
+  # GitHub release and none of it is code; what is being checked is that the
+  # app compiles and that the worker is where the app looks for it.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Generate database code
+        run: dart run build_runner build
+
+      - run: flutter build web --release
+
+      - name: The worker and sqlite are where the app looks for them
+        run: |
+          for f in kokoro_worker.js drift_worker.js sqlite3.wasm; do
+            test -s "build/web/$f" || { echo "missing $f" >&2; exit 1; }
+          done
+
   # The report intake (§4.53) is built and tested in its own repository, which
   # is where its source lives. A job here would check out this one and find no
   # `intake` directory to run in.

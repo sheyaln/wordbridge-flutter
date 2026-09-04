@@ -1,7 +1,9 @@
 # Wordbridge AAC
 
 A free, open source AAC app. Runs on a tablet, shows a grid of words and
-pictures, speaks whatever is pressed.
+pictures, speaks whatever is pressed. It also builds for a browser, so it can
+be tried without installing anything — see [The browser build](docs/web.md)
+for what that copy can and cannot do.
 
 This app was developed with the assistance of generative AI. It is said here,
 on the About screen inside the app, and in the footer of the website, because
@@ -79,7 +81,12 @@ Render tests carry the `golden` tag and are checked locally; a Linux runner
 rasterizes text differently, so CI runs `flutter test --concurrency=1
 --exclude-tags golden`.
 
-Deploying: [Deploying to an iPad](docs/deploy-ipad.md).
+For a browser, `flutter build web` and serve the directory. The neural voice
+is 141 MB and is fetched once by `tools/fetch_web_voice.sh` rather than
+committed; without it the board still speaks, in the browser's own voice.
+
+Deploying: [Deploying to an iPad](docs/deploy-ipad.md),
+[The browser build](docs/web.md).
 
 ## License
 
