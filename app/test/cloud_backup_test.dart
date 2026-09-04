@@ -414,6 +414,44 @@ void main() {
     });
   });
 
+  group('switching it on', () {
+    test('asks the platform for a folder only when there is not one', () async {
+      await cloud.turnOn();
+      expect(account.connects, 0, reason: 'a picker was opened for nothing');
+
+      account.reachable = false;
+      await cloud.turnOn();
+
+      expect(account.connects, 1);
+      expect(await cloud.on, isTrue);
+    });
+
+    test(
+      'a picker somebody dismissed leaves the reason on the screen',
+      () async {
+        account.reachable = false;
+        account.connectSucceeds = false;
+
+        await cloud.turnOn();
+
+        expect(
+          await cloud.on,
+          isTrue,
+          reason: 'the answer they gave was thrown away',
+        );
+        expect((await cloud.view()).problem, isNotNull);
+      },
+    );
+
+    test('nothing at launch ever opens one', () async {
+      account.reachable = false;
+
+      await cloud.keepUpToDate();
+
+      expect(account.connects, 0);
+    });
+  });
+
   group('the platform side', () {
     const channel = MethodChannel(PlatformCloudDestination.channelName);
     late PlatformCloudDestination destination;
@@ -492,6 +530,13 @@ class _Account implements CloudDestination {
   bool reachable = true;
   CloudRefusal? refuseUpload;
 
+  /// How many times somebody was asked for whatever the platform needs — a
+  /// folder, on Android. Never at launch, only when the switch is thrown.
+  int connects = 0;
+
+  /// Whether being asked actually produces one.
+  bool connectSucceeds = true;
+
   /// A download that stops halfway, which is what a tablet losing its
   /// connection mid-restore actually produces.
   bool truncateDownloads = false;
@@ -503,6 +548,13 @@ class _Account implements CloudDestination {
   @override
   Future<CloudStatus> status() async =>
       (reachable: reachable, problem: reachable ? null : notSignedIn(label));
+
+  @override
+  Future<CloudStatus> connect() async {
+    connects++;
+    if (connectSucceeds) reachable = true;
+    return status();
+  }
 
   @override
   Future<List<CloudBackup>> list() async {

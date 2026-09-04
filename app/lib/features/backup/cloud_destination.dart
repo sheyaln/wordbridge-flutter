@@ -41,6 +41,19 @@ abstract class CloudDestination {
   /// Whether a copy written now would arrive.
   Future<CloudStatus> status();
 
+  /// Asks for whatever the platform needs before a copy can be written.
+  ///
+  /// iCloud needs nothing: the account is the device's own and the app's
+  /// container comes with it. Android needs a folder, picked once through the
+  /// system document picker — this app holds no Google credential of its own
+  /// and never will, so the caregiver names the place and the system hands
+  /// back a permission scoped to it.
+  ///
+  /// Called when somebody switches the copies on, and never on its own. It can
+  /// put a picker in front of whoever is holding the tablet, which must not be
+  /// something a launch does.
+  Future<CloudStatus> connect();
+
   /// What the account holds, newest first, ignoring anything that is not one
   /// of ours.
   Future<List<CloudBackup>> list();
@@ -122,6 +135,21 @@ class PlatformCloudDestination implements CloudDestination {
   Future<CloudStatus> status() async {
     try {
       final reachable = await _channel.invokeMethod<bool>('reachable') ?? false;
+      return (
+        reachable: reachable,
+        problem: reachable ? null : notSignedIn(label),
+      );
+    } on PlatformException catch (e) {
+      return (reachable: false, problem: refusalFor(e, label).message);
+    } on MissingPluginException {
+      return (reachable: false, problem: notAvailableHere);
+    }
+  }
+
+  @override
+  Future<CloudStatus> connect() async {
+    try {
+      final reachable = await _channel.invokeMethod<bool>('connect') ?? false;
       return (
         reachable: reachable,
         problem: reachable ? null : notSignedIn(label),

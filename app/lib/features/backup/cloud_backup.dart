@@ -169,7 +169,28 @@ class CloudBackupService {
 
   Future<bool> get on async => await store.answer() == true;
 
-  Future<void> turnOn() => store.setAnswer(true);
+  /// Says yes, and asks the platform for whatever it needs.
+  ///
+  /// On Android that is a folder, and the picker it opens is the reason this
+  /// is a deliberate act on a screen rather than something a launch does. A
+  /// refusal is written down rather than thrown: the answer is stored either
+  /// way, so a caregiver who dismissed the picker finds the reason on the
+  /// screen they are already looking at instead of a switch that silently
+  /// went back off.
+  Future<void> turnOn() async {
+    await store.setAnswer(true);
+
+    try {
+      if ((await destination.status()).reachable) return;
+      final connected = await destination.connect();
+      if (!connected.reachable && connected.problem != null) {
+        await store.recordProblem(connected.problem!);
+      }
+    } catch (_) {
+      // The switch is on and the next copy will report for itself. Nothing
+      // here is worth failing the act of saying yes.
+    }
+  }
 
   /// Stops copies going up. Nothing already in the account is touched.
   ///

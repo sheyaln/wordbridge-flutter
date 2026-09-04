@@ -478,6 +478,10 @@ class _NoAccount implements CloudDestination {
       (reachable: false, problem: 'No account.');
 
   @override
+  Future<CloudStatus> connect() async =>
+      (reachable: false, problem: 'No account.');
+
+  @override
   Future<List<CloudBackup>> list() async => const [];
 
   @override
