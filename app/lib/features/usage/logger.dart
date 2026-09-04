@@ -43,6 +43,12 @@ class UsageLogger {
   final _pending = <UsageEventsCompanion>[];
   Timer? _flushTimer;
 
+  /// Selections written down but not yet on disk.
+  ///
+  /// Only ever read by a screen asking what this logger is holding. Nothing on
+  /// the write path consults it, so a reader costs a selection nothing.
+  int get pending => _pending.length;
+
   /// Non-fatal write failures, surfaced in caregiver settings rather than
   /// thrown at the user.
   int droppedEvents = 0;

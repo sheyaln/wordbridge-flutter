@@ -11,6 +11,8 @@ import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
 import '../auth/caregiver_gesture.dart';
 import '../backup/backup_service.dart';
+import '../developer/developer_mode.dart';
+import '../developer/developer_screen.dart';
 import '../editor/board_delete.dart';
 import '../editor/board_delete_sheet.dart';
 import '../editor/board_editor.dart';
@@ -65,6 +67,7 @@ class CaregiverHome extends StatefulWidget {
     this.onViewAll,
     this.crashes,
     this.sender,
+    this.developer,
   });
 
   final WordbridgeDatabase db;
@@ -102,6 +105,11 @@ class CaregiverHome extends StatefulWidget {
   /// not offered rather than offered and inert.
   final bool viewAll;
   final ValueChanged<bool>? onViewAll;
+
+  /// Whether this tablet is a development tablet. Absent on a build with no
+  /// such thing, and the section and the gesture are then not offered rather
+  /// than offered and inert.
+  final DeveloperMode? developer;
 
   @override
   State<CaregiverHome> createState() => _CaregiverHomeState();
@@ -159,6 +167,7 @@ class _CaregiverHomeState extends State<CaregiverHome> {
           sender: widget.sender,
           registry: widget.registry,
           resolver: widget.resolver,
+          developer: widget.developer,
           onChanged: () => setState(() {}),
         ),
       },
@@ -639,6 +648,7 @@ class _Settings extends StatelessWidget {
     this.sender,
     this.registry,
     this.resolver,
+    this.developer,
   });
 
   final WordbridgeDatabase db;
@@ -658,6 +668,7 @@ class _Settings extends StatelessWidget {
   final SpeechEngine? speech;
   final String? userName;
   final ProfileSettings? settings;
+  final DeveloperMode? developer;
   final VoidCallback onChanged;
   final bool viewAll;
   final ValueChanged<bool>? onViewAll;
@@ -1225,9 +1236,36 @@ class _Settings extends StatelessWidget {
       icon: Icons.info_outline,
       title: 'About',
       description: 'This version of the app, and its credits',
-      opens: (context) => Navigator.of(context)
-          .push(MaterialPageRoute<void>(builder: (_) => const AboutScreen())),
+      opens: (context) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AboutScreen(developerMode: developer),
+        ),
+      ),
     ),
+    // Last, and only once somebody has deliberately switched it on from the
+    // version line inside About. A row that stood here permanently would be a
+    // row a caregiver reads on their way past, and this is not addressed to
+    // them.
+    if (developer != null && developer!.enabled)
+      _Section(
+        icon: Icons.developer_mode,
+        title: 'Developer',
+        description: 'Overlays, the motor plan check, and what is running',
+        state: 'On',
+        opens: (context) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => DeveloperScreen(
+              db: db,
+              vocabularyId: vocabularyId,
+              profileId: profileId,
+              developer: developer!,
+              logger: logger,
+              speech: speech,
+              registry: registry,
+            ),
+          ),
+        ),
+      ),
   ];
 }
 
