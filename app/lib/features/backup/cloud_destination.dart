@@ -137,7 +137,7 @@ class PlatformCloudDestination implements CloudDestination {
       final reachable = await _channel.invokeMethod<bool>('reachable') ?? false;
       return (
         reachable: reachable,
-        problem: reachable ? null : notSignedIn(label),
+        problem: reachable ? null : noDestination(label),
       );
     } on PlatformException catch (e) {
       return (reachable: false, problem: refusalFor(e, label).message);
@@ -152,7 +152,7 @@ class PlatformCloudDestination implements CloudDestination {
       final reachable = await _channel.invokeMethod<bool>('connect') ?? false;
       return (
         reachable: reachable,
-        problem: reachable ? null : notSignedIn(label),
+        problem: reachable ? null : noDestination(label),
       );
     } on PlatformException catch (e) {
       return (reachable: false, problem: refusalFor(e, label).message);
@@ -245,9 +245,7 @@ class PlatformCloudDestination implements CloudDestination {
 /// the same rule `problemFor` follows for the report intake.
 CloudRefusal refusalFor(PlatformException e, String label) => switch (e.code) {
   'signIn' => CloudRefusal(notSignedIn(label)),
-  'folder' => const CloudRefusal(
-    'No folder has been chosen for backups yet. Choose one under Backups.',
-  ),
+  'folder' => const CloudRefusal(noFolderChosen),
   'space' => CloudRefusal(
     'There is no room left in $label for this backup. Nothing on this device '
     'has changed.',
@@ -261,6 +259,20 @@ CloudRefusal refusalFor(PlatformException e, String label) => switch (e.code) {
   ),
   _ => CloudRefusal(didNotArrive(label)),
 };
+
+/// What to say when the platform reported only that a copy cannot be written.
+///
+/// Two platforms, two entirely unrelated fixes, and the platform side has no
+/// business writing the app's own copy — so the sentence is chosen from the
+/// same place the label is. An Android tablet that cannot take a copy has
+/// almost always not been given a folder; an iPad that cannot is signed out of
+/// iCloud. Telling an Android caregiver to sign in to Google Drive sends them
+/// to a screen where nothing is wrong.
+String noDestination(String label) =>
+    Platform.isAndroid ? noFolderChosen : notSignedIn(label);
+
+const noFolderChosen =
+    'No folder has been chosen for backups yet. Choose one under Backups.';
 
 String notSignedIn(String label) =>
     'This tablet is not signed in to $label. Sign in through the device '

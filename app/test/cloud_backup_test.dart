@@ -581,6 +581,15 @@ void main() {
       );
     });
 
+    test('says what to fix, and it is not the same thing on both', () async {
+      // The platform can only say "no". Telling an Android caregiver to sign
+      // in to Google Drive sends them to a screen where nothing is wrong.
+      expect(
+        noDestination('iCloud'),
+        Platform.isAndroid ? noFolderChosen : notSignedIn('iCloud'),
+      );
+    });
+
     test('and refuses a folder it was never given', () async {
       answer((call) async => throw PlatformException(code: 'folder'));
 
