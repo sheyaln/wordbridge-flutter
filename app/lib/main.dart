@@ -8,6 +8,7 @@ import 'db/database.dart';
 import 'features/auth/pin.dart';
 import 'features/backup/backup_service.dart';
 import 'features/backup/pre_migration.dart';
+import 'features/developer/developer_mode.dart';
 import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
 import 'features/profiles/profile_settings.dart';
@@ -301,6 +302,14 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   /// from it. Nothing is offered a logger before `_bootstrap` has finished:
   /// the screen holds a spinner until it does.
   UsageLogger? _logger;
+
+  /// Read once, at startup, and held for the life of the app.
+  ///
+  /// Device scoped rather than per profile, so it does not belong to a
+  /// session and is not rebuilt when somebody switches profile. The read
+  /// cannot fail loudly — see [DeveloperMode.load] — so nothing here has to
+  /// guard the board against it.
+  late final _developer = DeveloperMode(_db);
   late final _auth = PinAuth(_db);
   late final _profiles = ProfileRepository(_db);
   late final _backup = BackupService(_db);
@@ -349,6 +358,8 @@ class _WordbridgeAppState extends State<WordbridgeApp>
     // After the snapshot, because this is the first query and therefore the
     // thing that opens the database.
     _logger = UsageLogger(_db, deviceId: await deviceIdFor(_db));
+
+    await _developer.load();
 
     // Only answers somebody actually gave. A pack nobody has decided about
     // stays on its license's default, which is what keeps a noncommercial set
@@ -442,6 +453,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _logger?.dispose();
+    _developer.dispose();
     _resolver.dispose();
     _globalSymbols.dispose();
     _db.close();
@@ -474,6 +486,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
             resolver: _resolver,
             registry: _symbols,
             fetcher: _globalSymbols,
+            developer: _developer,
             onSwitchProfile: _use,
           );
         },
@@ -544,6 +557,7 @@ class _Session extends StatefulWidget {
     required this.resolver,
     required this.registry,
     required this.fetcher,
+    required this.developer,
     required this.onSwitchProfile,
   });
 
@@ -555,6 +569,7 @@ class _Session extends StatefulWidget {
   final SymbolResolver resolver;
   final SymbolRegistry registry;
   final GlobalSymbolsPack fetcher;
+  final DeveloperMode developer;
   final void Function(Profile) onSwitchProfile;
 
   @override
@@ -624,6 +639,7 @@ class _SessionState extends State<_Session> {
             registry: widget.registry,
             fetcher: widget.fetcher,
             settings: _settings,
+            developer: widget.developer,
             profileId: widget.profile.id,
             userName: widget.profile.displayName,
             vocabLevel: level.data ?? widget.profile.vocabLevel,

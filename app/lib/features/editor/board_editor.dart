@@ -46,6 +46,7 @@ class BoardEditor extends StatefulWidget {
     this.resolver,
     this.userName,
     this.placing,
+    this.openCellId,
   });
 
   final WordbridgeDatabase db;
@@ -69,6 +70,19 @@ class BoardEditor extends StatefulWidget {
   /// their head, which is exactly the board they are moving the word to.
   final Button? placing;
 
+  /// A location to act on as soon as the board is loaded, as though it had
+  /// been tapped.
+  ///
+  /// For arriving from somewhere that already knows the location — the
+  /// developer sheet, which is opened by holding that exact cell on the talk
+  /// screen. Without it the caregiver is handed a grid and asked to find the
+  /// square they were just looking at, which on an 84 cell board means
+  /// counting rows.
+  ///
+  /// It opens what a tap would open and nothing more, so there is one route
+  /// into adding a word and one set of refusals guarding it.
+  final String? openCellId;
+
   @override
   State<BoardEditor> createState() => _BoardEditorState();
 }
@@ -89,6 +103,13 @@ class _BoardEditorState extends State<BoardEditor> {
     _load();
   }
 
+  /// Whether the location this editor was opened on has already been acted on.
+  ///
+  /// A load happens again after a row move and after a row is named, and
+  /// reopening the add-a-word sheet on each of those would be a prompt nobody
+  /// asked for on top of the work they just did.
+  bool _opened = false;
+
   Future<void> _load() async {
     final vocab = await (widget.db.select(
       widget.db.vocabularies,
@@ -100,12 +121,34 @@ class _BoardEditorState extends State<BoardEditor> {
               ..where((b) => b.id.equals(widget.boardId))
               ..where((b) => b.deletedAt.isNull()))
             .getSingle();
-    if (mounted) {
-      setState(() {
-        _vocab = vocab;
-        _board = board;
-      });
+    if (!mounted) return;
+    setState(() {
+      _vocab = vocab;
+      _board = board;
+    });
+
+    if (widget.openCellId != null && !_opened) {
+      _opened = true;
+      await _openRequestedCell(widget.openCellId!);
     }
+  }
+
+  /// Acts on the location this editor was opened for, if it is still there.
+  ///
+  /// Read fresh rather than passed in, because between the hold on the talk
+  /// screen and this frame the location may have been filled — and the tap
+  /// path already knows what to do about that.
+  Future<void> _openRequestedCell(String cellId) async {
+    final db = widget.db;
+    final row = await (db.select(db.cells).join([
+      leftOuterJoin(db.buttons, db.buttons.cellId.equalsExp(db.cells.id)),
+    ])..where(db.cells.id.equals(cellId))).getSingleOrNull();
+    if (row == null || !mounted) return;
+
+    await _onCellTapped((
+      cell: row.readTable(db.cells),
+      button: row.readTableOrNull(db.buttons),
+    ));
   }
 
   Stream<List<PlacedCell>> get _cells {

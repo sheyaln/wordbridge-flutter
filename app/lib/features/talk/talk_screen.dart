@@ -19,6 +19,8 @@ import '../auth/corner_hold_target.dart';
 import '../auth/pin.dart';
 import '../auth/pin_gate.dart';
 import '../caregiver/caregiver_home.dart';
+import '../developer/cell_sheet.dart';
+import '../developer/developer_mode.dart';
 import '../grid/grid_surface.dart';
 import '../grid/region_label_strip.dart';
 import '../grid/region_labels.dart';
@@ -76,6 +78,7 @@ class TalkScreen extends StatefulWidget {
     this.registry,
     this.fetcher,
     this.settings,
+    this.developer,
     this.profileId = 'default',
     this.userName,
     this.vocabLevel = 3,
@@ -91,6 +94,13 @@ class TalkScreen extends StatefulWidget {
   final SymbolRegistry? registry;
   final GlobalSymbolsPack? fetcher;
   final ProfileSettings? settings;
+
+  /// Whether this tablet is a development tablet.
+  ///
+  /// Absent everywhere it is not wired, and the board is then exactly the
+  /// board that ships: nothing is drawn over it and no location can be held.
+  final DeveloperMode? developer;
+
   final String profileId;
   final String? userName;
 
@@ -496,6 +506,10 @@ class TalkScreenState extends State<TalkScreen> {
     // Whether the strip is drawn is read during build, so a caregiver turning
     // it on has to reach the board without going back out and in again.
     widget.settings?.addListener(_onSettingsChanged);
+    // Same reason as the settings listener: what the board draws over itself
+    // is read during build, so a switch thrown in caregiver mode has to reach
+    // the board without the screen being rebuilt from scratch.
+    widget.developer?.addListener(_onDeveloperChanged);
     _load();
   }
 
@@ -516,6 +530,10 @@ class TalkScreenState extends State<TalkScreen> {
     _refreshSuggestions();
   }
 
+  void _onDeveloperChanged() {
+    if (mounted) setState(() {});
+  }
+
   void _onUtteranceChanged() {
     if (mounted) setState(() {});
     _refreshSuggestions();
@@ -527,6 +545,7 @@ class TalkScreenState extends State<TalkScreen> {
     _walkTimer?.cancel();
     _utterance.removeListener(_onUtteranceChanged);
     widget.settings?.removeListener(_onSettingsChanged);
+    widget.developer?.removeListener(_onDeveloperChanged);
     super.dispose();
   }
 
@@ -1158,6 +1177,38 @@ class TalkScreenState extends State<TalkScreen> {
         button.action == ButtonAction.speakBar) {}
   }
 
+  /// Opens what is behind a held location.
+  ///
+  /// Wrapped, because this is the talk screen. Everything it reaches — a board
+  /// row, a picture picker, an engine — can fail, and a throw on this screen
+  /// is caught by `ErrorWidget.builder` and replaces the whole board with the
+  /// fallback one. A developer tool must not be able to do that to somebody
+  /// who is talking, so a failure here is a line at the bottom of the screen
+  /// and the board carries on.
+  Future<void> _openDeveloperCell(PlacedCell placed) async {
+    try {
+      await DeveloperCellSheet.show(
+        context,
+        db: widget.db,
+        vocabularyId: widget.vocabularyId,
+        placed: placed,
+        vocabLevel: widget.vocabLevel,
+        speech: widget.speech,
+        registry: widget.registry,
+        resolver: widget.resolver,
+        fetcher: widget.fetcher,
+        userName: widget.userName,
+        isAvailable: _isAvailable,
+        onViewAll: setViewAll,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('That location would not open: $e')),
+      );
+    }
+  }
+
   Future<void> _openCaregiver() async {
     final unlocked = await PinGate.show(context, widget.auth);
     if (!unlocked || !mounted) return;
@@ -1178,6 +1229,7 @@ class TalkScreenState extends State<TalkScreen> {
           onSwitchProfile: widget.onSwitchProfile,
           viewAll: _viewAll,
           onViewAll: setViewAll,
+          developer: widget.developer,
         ),
       ),
     );
@@ -1226,6 +1278,15 @@ class TalkScreenState extends State<TalkScreen> {
                 // caregiver who forgets would otherwise hand somebody a board
                 // with every hidden word on it and nothing to say why.
                 if (_viewAll) _ViewAllStrip(onStop: () => setViewAll(false)),
+                // Same argument as the view-all strip, and the same shape. A
+                // board with figures written over it and locations that open
+                // when held is not the board this person learned, and the one
+                // control it puts within their reach has to be the one that
+                // puts it back.
+                if (widget.developer?.enabled ?? false)
+                  _DeveloperStrip(
+                    onStop: () => widget.developer!.setEnabled(false),
+                  ),
                 // Above the grid and below the sentence, where it reads as
                 // part of the sentence being built rather than part of the
                 // board. Absent entirely when off, so a profile that does not
@@ -1279,6 +1340,8 @@ class TalkScreenState extends State<TalkScreen> {
                                 pairHold: _entry.pairHold,
                                 onPairHold: _openCaregiver,
                                 pointAt: _pointAt,
+                                developer: widget.developer?.view,
+                                onDeveloperHold: _openDeveloperCell,
                               ),
                             );
 
@@ -1793,6 +1856,47 @@ class _ViewAllStrip extends StatelessWidget {
               ),
             ),
             TextButton(onPressed: onStop, child: const Text('Stop')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Says the board is in developer mode, and takes it out from where it is
+/// being looked at.
+///
+/// Deliberately in the way, for the reason the view-all strip is: what it
+/// guards against is a tablet handed back with overlays on it and nothing to
+/// say why the board looks different. Unlike view-all this survives a restart,
+/// which makes the strip the whole safety argument rather than half of it.
+class _DeveloperStrip extends StatelessWidget {
+  const _DeveloperStrip({required this.onStop});
+
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+        child: Row(
+          children: [
+            Icon(
+              Icons.developer_mode,
+              size: 20,
+              color: colors.onErrorContainer,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Developer mode is on',
+                style: TextStyle(color: colors.onErrorContainer),
+              ),
+            ),
+            TextButton(onPressed: onStop, child: const Text('Turn off')),
           ],
         ),
       ),

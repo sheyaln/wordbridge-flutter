@@ -31,6 +31,21 @@ class GridGeometry {
     return Rect.fromLTWH(left, top, width, height);
   }
 
+  /// Which location a point on the surface falls in, or null for the gutter
+  /// around and between the cells.
+  ///
+  /// The inverse of [rectFor], and derived from the same two numbers rather
+  /// than by walking the rectangles: a reverse lookup that rounded differently
+  /// would answer with a location next to the one under the finger, which on
+  /// this grid is a different word.
+  ({int row, int col})? locationAt(Offset point) {
+    final col = ((point.dx - gutter) / (cellWidth + gutter)).floor();
+    final row = ((point.dy - gutter) / (cellHeight + gutter)).floor();
+    if (row < 0 || col < 0 || row >= rows || col >= cols) return null;
+
+    return rectFor(row, col).contains(point) ? (row: row, col: col) : null;
+  }
+
   /// Minimum comfortable target: 44pt (Apple HIG) / 48dp (Material).
   static const minTouchTarget = 48.0;
 
