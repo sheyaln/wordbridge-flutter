@@ -35,6 +35,12 @@ String deviceVoiceLine(String? name, String? locale) {
   return locale == null ? name : '$name · $locale';
 }
 
+/// The device voice's controls, worded for whichever voice is speaking.
+///
+/// A builder rather than a list, because half of what these say is which of the
+/// two voices hears them, and [NeuralVoiceSection] is what knows.
+typedef DeviceVoiceControls = List<Widget> Function({required bool neuralOn});
+
 /// How this profile sounds — both voices, on one screen.
 ///
 /// One question is being answered here: what does this person sound like. It
@@ -43,6 +49,11 @@ String deviceVoiceLine(String? name, String? locale) {
 /// voice off — as though it were the alternative rather than what the neural
 /// voice falls back to for every word not yet made (§4.5). Configuring it is
 /// never irrelevant, so it is never hidden.
+///
+/// The choice between the two voices heads the screen and the settings for
+/// whichever one was chosen come first under it. It used to sit two screens of
+/// dials down, so a caregiver configured a voice at length before finding out
+/// which one was doing the talking.
 ///
 /// Every control previews itself the moment it moves. A caregiver setting a
 /// voice for someone else cannot judge it from a number, and the person it is
@@ -202,8 +213,14 @@ class _VoiceScreenState extends State<VoiceScreen> {
     if (mounted) setState(() {});
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// The device voice's own controls, in the order they are met.
+  ///
+  /// Of the four dials only speed reaches the neural voice — `useNeuralVoice`
+  /// is handed `speechRate` and nothing else — so where both voices are on the
+  /// screen the notes have to say which of them each dial moves. Otherwise a
+  /// caregiver drags pitch, hears nothing change in the voice that is actually
+  /// speaking, and concludes the dial is broken.
+  List<Widget> _deviceControls({required bool neuralOn}) {
     final tone = _settings.tone;
     final heard = applyTone(
       tone,
@@ -214,8 +231,83 @@ class _VoiceScreenState extends State<VoiceScreen> {
     final toneLabel = tone == Tone.normal ? null : tone.label;
     final rateCeiling = tone.rateCeiling;
 
+    return [
+      ListTile(
+        leading: const Icon(Icons.record_voice_over_outlined),
+        title: const Text('Which voice'),
+        subtitle: Text(
+          deviceVoiceLine(_settings.voiceName, _settings.voiceLocale),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _openDeviceVoices,
+      ),
+
+      const VoiceHeader('Tone'),
+      RadioGroup<Tone>(
+        groupValue: _settings.tone,
+        onChanged: (value) async {
+          if (value == null) return;
+          await _set('tone', value.name);
+          await _previewDevice();
+        },
+        child: Column(
+          children: [
+            for (final tone in Tone.values)
+              RadioListTile<Tone>(value: tone, title: Text(tone.label)),
+          ],
+        ),
+      ),
+      VoiceNote(
+        neuralOn
+            ? 'The tone the device voice speaks in. The neural voice is not '
+                  'given it.'
+            : 'The tone the device voice speaks in.',
+      ),
+
+      const VoiceHeader('Speed, pitch and volume'),
+      _Dial(
+        label: 'Speed',
+        value: _settings.speechRate,
+        heard: heard.rate,
+        toneLabel: toneLabel,
+        min: VoiceScreen.speedMin,
+        max: VoiceScreen.speedMax,
+        ceiling: rateCeiling < VoiceScreen.speedMax ? rateCeiling : null,
+        onChanged: (v) => _set('speechRate', v),
+        onSettled: _previewDevice,
+      ),
+      _Dial(
+        label: 'Pitch',
+        value: _settings.speechPitch,
+        heard: heard.pitch,
+        toneLabel: toneLabel,
+        min: VoiceScreen.pitchMin,
+        max: VoiceScreen.pitchMax,
+        onChanged: (v) => _set('speechPitch', v),
+        onSettled: _previewDevice,
+      ),
+      _Dial(
+        label: 'Volume',
+        value: _settings.speechVolume,
+        heard: heard.volume,
+        toneLabel: toneLabel,
+        min: VoiceScreen.volumeMin,
+        max: VoiceScreen.volumeMax,
+        onChanged: (v) => _set('speechVolume', v),
+        onSettled: _previewDevice,
+      ),
+      VoiceNote(
+        neuralOn
+            ? 'Volume is a proportion of the device volume. Of these three, '
+                  'speed is the only one the neural voice is given.'
+            : 'Volume is a proportion of the device volume.',
+      ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final neural = _neural;
-    final neuralOn = neural != null && _settings.neuralVoice;
 
     return Scaffold(
       appBar: AppBar(
@@ -230,84 +322,29 @@ class _VoiceScreenState extends State<VoiceScreen> {
       ),
       body: ListView(
         children: [
-          // The device's own voice first, and the neural one below it. It is
-          // what ships, what speaks by default, and what an early access voice
-          // falls back to — a screen that opened on the experiment read as
-          // though the experiment were the arrangement.
-          const VoiceHeader('Device voice'),
-          if (neuralOn)
-            const VoiceNote('The text to speech voice used by this device.'),
-          ListTile(
-            leading: const Icon(Icons.record_voice_over_outlined),
-            title: const Text('Which voice'),
-            subtitle: Text(
-              deviceVoiceLine(_settings.voiceName, _settings.voiceLocale),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _openDeviceVoices,
-          ),
-
-          const VoiceHeader('Tone'),
-          RadioGroup<Tone>(
-            groupValue: _settings.tone,
-            onChanged: (value) async {
-              if (value == null) return;
-              await _set('tone', value.name);
-              await _previewDevice();
-            },
-            child: Column(
-              children: [
-                for (final tone in Tone.values)
-                  RadioListTile<Tone>(value: tone, title: Text(tone.label)),
-              ],
-            ),
-          ),
-          const VoiceNote('The tone the device voice speaks in.'),
-
-          const VoiceHeader('Speed, pitch and volume'),
-          _Dial(
-            label: 'Speed',
-            value: _settings.speechRate,
-            heard: heard.rate,
-            toneLabel: toneLabel,
-            min: VoiceScreen.speedMin,
-            max: VoiceScreen.speedMax,
-            ceiling: rateCeiling < VoiceScreen.speedMax ? rateCeiling : null,
-            onChanged: (v) => _set('speechRate', v),
-            onSettled: _previewDevice,
-          ),
-          _Dial(
-            label: 'Pitch',
-            value: _settings.speechPitch,
-            heard: heard.pitch,
-            toneLabel: toneLabel,
-            min: VoiceScreen.pitchMin,
-            max: VoiceScreen.pitchMax,
-            onChanged: (v) => _set('speechPitch', v),
-            onSettled: _previewDevice,
-          ),
-          _Dial(
-            label: 'Volume',
-            value: _settings.speechVolume,
-            heard: heard.volume,
-            toneLabel: toneLabel,
-            min: VoiceScreen.volumeMin,
-            max: VoiceScreen.volumeMax,
-            onChanged: (v) => _set('speechVolume', v),
-            onSettled: _previewDevice,
-          ),
-          const VoiceNote('Volume is a proportion of the device volume.'),
-
           if (neural != null)
+            // Which voice speaks is the first question on the screen, so the
+            // section that asks it lays the whole body out and is handed the
+            // device controls to place. The alternative was a chooser at the
+            // top wired to state two widgets below it.
             NeuralVoiceSection(
               speech: neural,
               settings: _settings,
               db: widget.db!,
               vocabularyId: widget.vocabularyId!,
+              deviceControls: _deviceControls,
               onChanged: () {
                 if (mounted) setState(() {});
               },
-            ),
+            )
+          else ...[
+            // One voice, so there is nothing to choose between, and a chooser
+            // with a single row is not a choice — it is a claim that something
+            // was decided. What the chooser is for is that no voice speaks
+            // unnamed, and the header does that on its own.
+            const VoiceHeader('Device voice'),
+            ..._deviceControls(neuralOn: false),
+          ],
           const SizedBox(height: 32),
         ],
       ),
