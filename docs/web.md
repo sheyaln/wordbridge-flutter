@@ -80,9 +80,24 @@ isolate.
 So `kokoro_worker.js` holds the module, the weights and the synthesis, and
 only samples cross back.
 
-The first press of a word speaks in the browser's own voice while the model
-works; every press after it is the cached clip. There is no bake here — a
-pack that dies with the page is not worth half an hour of filling.
+### Hearing it
+
+The voice is opt-in, the same as on a tablet, and the route to it is the same:
+
+1. Press and hold the top-left corner of the sentence bar for two seconds.
+2. Set a caregiver PIN — any four to six digits, first time only.
+3. **Speech** → **Wordbridge voice** → **Download the voice**. 141 MB.
+4. Back to the board.
+
+**The first press of a word speaks in the browser's own voice.** That is the
+ladder working, not failing: synthesis takes longer than the budget the press
+is allowed to wait, so the word is said in whatever voice can say it
+immediately — and the clip is filed as it lands. Press the same word again and
+it is Kokoro. The sentence bar behaves the same way.
+
+To have every word ready in advance, **Words made in advance** → **Start** on
+the same screen. It is minutes of work and it is not started on its own: a
+pack that dies with the page is not worth filling without being asked.
 
 ## What a browser cannot have
 

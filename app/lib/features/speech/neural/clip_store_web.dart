@@ -41,11 +41,14 @@ class ClipStore {
 
   /// Whether a word baked into this pack is still here next time.
   ///
-  /// No. Which is why nothing pre-fills it: a bake is thirty minutes of
-  /// synthesis, and thirty minutes spent on a pack that dies with the page
-  /// would be spent again on the next visit, for words this person may never
-  /// press. Filled as they are said instead — the first press of a word waits
-  /// or falls back, and every press after it is instant.
+  /// No. Which is why nothing pre-fills it *on its own*: a bake is half an
+  /// hour of synthesis, and half an hour spent on a pack that dies with the
+  /// page would be spent again on the next visit, for words this person may
+  /// never press. It is still offered on the caregiver screen, because
+  /// somebody who is going to use the board for the next hour may well want
+  /// it. Otherwise the pack fills as words are said: the first press of a word
+  /// falls back to the device voice and files what the model makes, and every
+  /// press after it is instant.
   bool get survivesTheSession => false;
 
   Future<AudioClip?> read(String text) async => _clips[text];
