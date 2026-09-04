@@ -35,6 +35,24 @@ enum BoardOrientation {
 /// vocabulary to be visible at once. The trade is real in both directions —
 /// bigger buttons mean fewer words on screen and more navigation.
 enum IconSize {
+  /// Small enough for a phone, and it exists for phones.
+  ///
+  /// At 68pt an iPhone SE lays out 3x9 in landscape and the seed needs four
+  /// rows, so the whole line refused every option a caregiver could pick —
+  /// which is why the app was iPad-only. 60pt puts an SE at 4x10 and every
+  /// current iPhone above that.
+  ///
+  /// It costs more than the number suggests and the description has to say so:
+  /// forty cells against the iPad's eighty-four, and a pinned question column
+  /// of `rows - 1` that holds three of the six question words rather than all
+  /// of them. That is a real reduction in what is one movement away, and it is
+  /// still a board somebody has in their pocket.
+  extraSmall(
+    60,
+    'Extra small',
+    'For a phone. Fewer words, and fewer of the '
+        'question words pinned beside them.',
+  ),
   small(68, 'Small', 'Most words visible. Needs accurate pointing.'),
   medium(88, 'Medium', 'A balance of vocabulary and target size.'),
   large(116, 'Large', 'Easier to hit. Fewer words on each board.'),

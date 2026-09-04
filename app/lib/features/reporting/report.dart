@@ -19,8 +19,8 @@ const reportSchema = 1;
 /// Kept in step with `pubspec.yaml` by `report_payload_test.dart`, which reads
 /// the file. Declared rather than looked up so that no plugin sits between the
 /// app and its own version number.
-const appVersion = '0.3.0';
-const appBuild = '4';
+const appVersion = '0.3.1';
+const appBuild = '5';
 
 enum ReportKind {
   crash('Something crashed', 'A fault the app caught and recovered from'),

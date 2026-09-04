@@ -810,8 +810,12 @@ class _SizeOption extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Container(
-                    width: 8.0 + IconSize.values.indexOf(size) * 9,
-                    height: 8.0 + IconSize.values.indexOf(size) * 9,
+                    // Off the target it stands for, not off its position in
+                    // the list. Indexing meant a tier added below the smallest
+                    // made every other dot a step bigger while the icons they
+                    // describe had not changed at all.
+                    width: size.targetLogicalPixels * 36 / 152,
+                    height: size.targetLogicalPixels * 36 / 152,
                     decoration: BoxDecoration(
                       color: Colors.black38,
                       borderRadius: BorderRadius.circular(3),

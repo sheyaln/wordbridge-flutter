@@ -150,6 +150,58 @@ void main() {
     );
   });
 
+  group('every device the app is offered on can build a board', () {
+    // The app declares TARGETED_DEVICE_FAMILY "1,2", so the store offers it
+    // to phones. A phone that installs it, walks a caregiver through setup and
+    // then refuses every icon size is worse than one the store called
+    // incompatible: the second is a disappointment in the App Store, the first
+    // is a person who has been told this is their voice and cannot get a board
+    // out of it.
+    //
+    // The floor is four rows by six columns. At 68pt an iPhone SE lays out
+    // 3x9 in landscape and fails by exactly one row, which is why `extraSmall`
+    // exists and why this group is the test that keeps it.
+    const phones = {
+      'iPhone SE 3': Size(375, 667),
+      'iPhone 13 mini': Size(375, 812),
+      'iPhone 15/16': Size(393, 852),
+      'iPhone 16 Pro': Size(402, 874),
+      'iPhone 16 Pro Max': Size(430, 932),
+    };
+
+    for (final entry in phones.entries) {
+      test('${entry.key} has one it can use', () {
+        final usable = GridChoice.options(entry.value)
+            .where((o) => o.isUsable)
+            .toList();
+
+        expect(
+          usable,
+          isNotEmpty,
+          reason:
+              'setup on a ${entry.key} refuses every option, so the app '
+              'installs and cannot produce a board',
+        );
+      });
+    }
+
+    test('and the smallest phone needs the smallest tier to get there', () {
+      // Names why `extraSmall` is in the enum. If a later change makes 68pt
+      // fit an SE, this fails and the tier can be reconsidered — which is the
+      // only honest way to retire it.
+      const se = Size(375, 667);
+      final withoutExtraSmall = GridChoice.options(se)
+          .where((o) => o.isUsable && o.iconSize != IconSize.extraSmall);
+
+      expect(
+        withoutExtraSmall,
+        isEmpty,
+        reason:
+            'an iPhone SE can now build a board without the extra small tier',
+      );
+    });
+  });
+
   test('cells end up at least as big as the size that was chosen', () {
     // The target is a floor, not a ceiling: leftover space is shared out
     // between the cells rather than left as margin, so the buttons a caregiver
