@@ -385,6 +385,7 @@ class PlatformCloudDestination implements CloudDestination {
 /// the same rule `problemFor` follows for the report intake.
 CloudRefusal refusalFor(PlatformException e, String label) => switch (e.code) {
   'signIn' => CloudRefusal(notSignedIn(label)),
+  'capability' => CloudRefusal(noCapability(label)),
   'folder' => const CloudRefusal(noFolderChosen),
   'gone' => CloudRefusal(folderGone(label)),
   'space' => CloudRefusal(
@@ -418,6 +419,23 @@ const noFolderChosen =
 String notSignedIn(String label) =>
     'This tablet is not signed in to $label. Sign in through the device '
     'settings, and backups will start going up.';
+
+/// Signed in, and the app still cannot see the account.
+///
+/// Kept apart from [notSignedIn] because the two send a caregiver to
+/// completely different places, and one of them is a place where nothing is
+/// wrong. This build was never given the iCloud capability, so the account is
+/// there and the container is not — nothing about the device or the sign-in
+/// can change that, and a caregiver who goes looking will find iCloud working
+/// perfectly everywhere else on the iPad and conclude the app is lying.
+///
+/// It says what still works, because that is what somebody standing there
+/// needs: this is not a backup that has stopped, it is one route to the
+/// account that was never open.
+String noCapability(String label) =>
+    'This copy of Wordbridge AAC cannot reach $label, even though the tablet '
+    'is signed in — the app was built without it. Backups on this device '
+    'still work, and a folder can be chosen instead under Backups.';
 
 /// A folder that was chosen and is not there any more.
 ///

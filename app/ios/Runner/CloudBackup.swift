@@ -215,11 +215,24 @@ final class CloudContainer: CloudStore {
   /// Throws `signIn` rather than returning nil for the ordinary case: an iPad
   /// signed out of iCloud, which is a thing a caregiver can fix and the most
   /// common reason copies stop arriving.
+  ///
+  /// The two failures are told apart, and that is the whole reason this is not
+  /// one `guard`. A missing token means no account, which a caregiver fixes in
+  /// device settings. A token with no container means *this build* was never
+  /// given the iCloud capability — the account is signed in and the app cannot
+  /// see it — and sending somebody to device settings for that is sending them
+  /// to a screen where nothing is wrong. It was reported as a bug exactly that
+  /// way: "it says the tablet is not signed in to iCloud even though the
+  /// device IS signed in".
   private func documents() throws -> URL {
-    guard FileManager.default.ubiquityIdentityToken != nil,
-      let container = FileManager.default.url(forUbiquityContainerIdentifier: nil)
-    else {
+    guard FileManager.default.ubiquityIdentityToken != nil else {
       throw CloudRefusal(code: "signIn", detail: "No iCloud account on this device.")
+    }
+
+    guard let container = FileManager.default.url(forUbiquityContainerIdentifier: nil)
+    else {
+      throw CloudRefusal(
+        code: "capability", detail: "This build carries no iCloud container.")
     }
 
     let documents = container.appendingPathComponent("Documents", isDirectory: true)

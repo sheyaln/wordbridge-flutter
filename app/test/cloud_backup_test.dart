@@ -791,6 +791,37 @@ void main() {
       expect(noDestination('Google Drive', CloudPlace.folder), noFolderChosen);
     });
 
+    test('and signed in is not the same as unreachable', () async {
+      // Reported from a real iPad: "it says the tablet is not signed in to
+      // iCloud even though the device IS signed in". Both were true. The
+      // account was there and this build had never been given the iCloud
+      // capability, so the container was not — and the app blamed the one
+      // thing the caregiver had already done correctly.
+      //
+      // The native side tells the two apart now, so the sentences have to as
+      // well, and the one for a missing capability must not send anybody to
+      // device settings.
+      final signedOut = refusalFor(PlatformException(code: 'signIn'), 'iCloud');
+      final noContainer = refusalFor(
+        PlatformException(code: 'capability'),
+        'iCloud',
+      );
+
+      expect(signedOut.message, notSignedIn('iCloud'));
+      expect(noContainer.message, noCapability('iCloud'));
+      expect(noContainer.message, isNot(signedOut.message));
+      expect(
+        noContainer.message,
+        isNot(contains('not signed in')),
+        reason: 'it still blames the sign-in that is not the problem',
+      );
+      expect(
+        noContainer.message,
+        contains('signed in'),
+        reason: 'it does not say the account is fine, so the caregiver checks',
+      );
+    });
+
     test('reports where copies go and what the platform calls it', () async {
       answer(
         (call) async => call.method == 'place'
