@@ -56,6 +56,10 @@ What leaves it, and what does not:
 - Voice measurements are off until somebody turns them on.
 - A bug report or an idea is shown whole before it is sent, and somebody
   presses send.
+- Backups are on the device, and a copy can also go to the family's own iCloud
+  or Google account. Asked at setup, per device, and never switched on by an
+  update. It goes to their account and never to us: there is no server of ours
+  involved and no credential of ours in the app.
 
 ## Build
 
