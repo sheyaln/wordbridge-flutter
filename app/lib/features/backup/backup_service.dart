@@ -196,6 +196,20 @@ class BackupService {
     return directory;
   }
 
+  /// Where a snapshot of this name belongs, folder created.
+  ///
+  /// For fetching one back from the account it was copied to: it lands in the
+  /// same folder under the same name, so from that point on it is an ordinary
+  /// snapshot and every restore, prune and listing here treats it as one. The
+  /// alternative was a second folder for fetched copies, which would have made
+  /// "where the backups are" a question with two answers.
+  ///
+  /// [name] is trusted to be one of ours. Only [snapshotFileName] produces
+  /// these, and [snapshotTakenAt] has already rejected anything else by the
+  /// time a caller has a name to pass.
+  Future<File> fileFor(String name) async =>
+      File(p.join((await _directory()).path, name));
+
   /// Copies the database, then prunes back to [keep].
   ///
   /// SQLite writes the copy itself rather than anything here reading the file,
