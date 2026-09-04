@@ -571,11 +571,18 @@ class _BoardEditorState extends State<BoardEditor> {
       return;
     }
 
+    // Every other location the same word holds. A pinned word is one word at
+    // a dozen of them, and the sheet says so rather than describing the
+    // deletion of one cell.
+    final alsoAt = (await wordFamily(widget.db, button)).length - 1;
+    if (!mounted) return;
+
     final confirmed = await WordDeleteSheet.show(
       context,
       label: button.label,
       impact: impact,
       boardName: _board?.name ?? 'this board',
+      alsoAt: alsoAt,
     );
     if (!confirmed || !mounted) return;
 

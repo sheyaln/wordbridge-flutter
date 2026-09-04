@@ -483,16 +483,17 @@ void main() {
   });
 
   group('a snapshot from before an update', () {
-    /// Winds a snapshot back to schema 5, which had neither of the two
-    /// columns later versions added to `boards`.
+    /// Winds a snapshot back to schema 5, which had none of the columns later
+    /// versions added.
     ///
-    /// Both have to go, or the upgrade runs into its own work: a file that
-    /// claims to be version 5 while carrying a version 7 column is not a
-    /// version 5 file, and the migration is right to fall over on it.
+    /// Every one of them has to go, or the upgrade runs into its own work: a
+    /// file that claims to be version 5 while carrying a version 7 column is
+    /// not a version 5 file, and the migration is right to fall over on it.
     void makeItOlder(Snapshot snapshot) {
       editSnapshot(snapshot, (handle) {
         handle.execute('ALTER TABLE boards DROP COLUMN band_map');
         handle.execute('ALTER TABLE boards DROP COLUMN line_names');
+        handle.execute('ALTER TABLE buttons DROP COLUMN pinned_from_id');
         handle.userVersion = 5;
       });
     }

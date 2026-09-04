@@ -58,7 +58,7 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   WordbridgeDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,6 +156,17 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
         // at a default cannot shorten every button on a board somebody has
         // already learned.
         await _recordStripsAsOff(this);
+      }
+
+      if (from < 9) {
+        // §4.16. A pinned word and the word it was pinned from become one
+        // word, and this is the column that says which rows those are.
+        //
+        // Nothing is linked up on the way through. Pins made before this were
+        // rows that merely started out identical, and the only thing left to
+        // match them on is the label — which is exactly the guess this column
+        // exists to stop anything making.
+        await m.addColumn(buttons, buttons.pinnedFromId);
       }
     },
     beforeOpen: (details) async {

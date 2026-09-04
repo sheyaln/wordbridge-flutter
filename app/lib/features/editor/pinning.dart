@@ -14,6 +14,15 @@
 /// what pinning is for. Two routes to one word is also already how this board
 /// works: `where` is in the pinned column and reachable nowhere else.
 ///
+/// **A copy of the location, not of the word.** The two rows are one word and
+/// `buttons.pinned_from_id` is what says so: every edit to what the word says
+/// or looks like reaches all of them, and only the location is per-row,
+/// because a second location is the whole point. Before that link a pin was a
+/// second word that happened to start out identical, so a caregiver who fixed
+/// the picture on one was left with a board carrying two — and the person
+/// reading it had no way to say that the short route and the long route had
+/// stopped agreeing.
+///
 /// **Only the pinned column, never the system row.** §4.16 originally offered
 /// the gap at column 2 of the system row as the one spare location at 7×12.
 /// §4.43 closed that row to words, and its reasoning is exactly why: the gap is
@@ -150,31 +159,22 @@ Future<bool> livesInPinnedColumn(WordbridgeDatabase db, Button button) async {
 /// They want opposite things. Unpinning `where` would take away the only route
 /// to it, which is a deletion wearing the word unpin. Unpinning a copy of
 /// `eat` gives a reserved location back and leaves `eat` exactly where it has
-/// always been. What separates them is whether the word exists outside this
-/// column at all.
+/// always been. What separates them is whether the word still has somewhere
+/// else to be reached.
+///
+/// So the original has to be there and placed, not merely named. A board
+/// removal marks every word on it deleted, and the pin of a word whose only
+/// other location went with that board is the one route left to it — offering
+/// to unpin that is offering the deletion again, wearing the same word.
 Future<bool> isPinnedCopy(WordbridgeDatabase db, Button button) async {
-  if (button.isSystem) return false;
-  if (!await livesInPinnedColumn(db, button)) return false;
+  final originId = button.pinnedFromId;
+  if (originId == null) return false;
 
-  final vocabulary = await (db.select(
-    db.vocabularies,
-  )..where((v) => v.id.equals(button.vocabularyId))).getSingleOrNull();
-  if (vocabulary == null) return false;
+  final origin = await (db.select(
+    db.buttons,
+  )..where((b) => b.id.equals(originId))).getSingleOrNull();
 
-  final col = pinnedColumn(vocabulary);
-  final elsewhere =
-      await (db.select(db.buttons).join([
-            innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
-          ])..where(
-            db.buttons.vocabularyId.equals(vocabulary.id) &
-                db.buttons.deletedAt.isNull() &
-                db.buttons.label.equals(button.label) &
-                db.buttons.isSystem.equals(false) &
-                db.cells.col.equals(col).not(),
-          ))
-          .get();
-
-  return elsewhere.isNotEmpty;
+  return origin != null && origin.deletedAt == null && origin.cellId != null;
 }
 
 /// Which row of the pinned column this button occupies, or null if it is not
@@ -198,11 +198,17 @@ Future<int?> rowInPinnedColumn(WordbridgeDatabase db, Button button) async {
   return cell.row;
 }
 
-/// Where this word's pinned copy sits, or null if it has none.
+/// Which row of the pinned column this word holds, or null if it holds none.
 ///
-/// Matched on the label in the pinned column, which is what makes them the
-/// same word — the copies are separate rows because a location is a row, the
-/// same storage fact the frame keys live with.
+/// Followed through the link rather than matched on the label, because the
+/// link is what makes two rows one word. A label match answered for any other
+/// word spelled the same, and answered wrongly the moment one of them was
+/// renamed.
+///
+/// A question word answers with its own row. It was never pinned from
+/// anything, but §4.16's observation is that it is ordinary vocabulary that
+/// happens to be pinned, and the row it holds in that column is the row it
+/// holds.
 Future<int?> pinnedRowOf(WordbridgeDatabase db, Button button) async {
   final vocabulary = await (db.select(
     db.vocabularies,
@@ -210,14 +216,15 @@ Future<int?> pinnedRowOf(WordbridgeDatabase db, Button button) async {
   if (vocabulary == null) return null;
 
   final col = pinnedColumn(vocabulary);
+  final originId = button.pinnedFromId ?? button.id;
+
   final rows =
       await (db.select(db.buttons).join([
             innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
           ])..where(
-            db.buttons.vocabularyId.equals(vocabulary.id) &
+            (db.buttons.id.equals(originId) |
+                    db.buttons.pinnedFromId.equals(originId)) &
                 db.buttons.deletedAt.isNull() &
-                db.buttons.label.equals(button.label) &
-                db.buttons.isSystem.equals(false) &
                 db.cells.col.equals(col),
           ))
           .get();
@@ -236,10 +243,14 @@ String pinCost({required String label, required int boards}) =>
     '${boards == 1 ? 'board' : '$boards boards'} in this set. Nothing already '
     'placed moves, and "$label" keeps the location it has now as well.';
 
-/// Copies a word into the pinned column on every board.
+/// Gives a word a second location in the pinned column on every board.
 ///
 /// Additive by construction: every location it fills was reserved and empty on
 /// every board, so nothing anybody has learned moves.
+///
+/// Each new row is linked back to the word it came from, which is what stops
+/// this being a copy of the word as well as of the location: from here on an
+/// edit to either reaches both.
 ///
 /// Throws where [refusalToPin] would have refused. The screen asks first; this
 /// asks again, because a rule enforced only by the screen that shows it is a
@@ -279,6 +290,8 @@ Future<void> pinWord(WordbridgeDatabase db, Button button) async {
         symbolId: button.symbolId,
         partOfSpeech: button.partOfSpeech,
         vocabLevel: button.vocabLevel,
+        hidden: button.hidden,
+        pinnedFromId: button.id,
       );
     }
 

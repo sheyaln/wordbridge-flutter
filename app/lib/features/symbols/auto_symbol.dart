@@ -14,6 +14,7 @@ library;
 
 import 'package:drift/drift.dart';
 
+import '../../db/board_builder.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
@@ -70,7 +71,18 @@ class AutoSymbol {
             ),
           );
 
-      await (db.update(db.buttons)..where((b) => b.id.equals(buttonId))).write(
+      // Reaches the word rather than the row, because this runs unwatched and
+      // can land after the word has been pinned (§4.16). A picture that
+      // arrived on the original only would leave the pinned column showing the
+      // same word blank.
+      final button = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
+      if (button == null) return false;
+
+      await writeToWord(
+        db,
+        button,
         ButtonsCompanion(symbolId: Value(symbolId), updatedAt: Value(nowMs())),
       );
 

@@ -275,6 +275,21 @@ class Buttons extends Table with _Timestamps {
   /// home/back/clear/backspace — edit-locked behind an advanced toggle.
   BoolColumn get isSystem => boolean().withDefault(const Constant(false))();
 
+  /// The word this row is a second location for (§4.16), or null where it is
+  /// the only one.
+  ///
+  /// Pinning copies a *location*, never a word: the word keeps the route it
+  /// had and gains a shorter one, so the rows are two places to reach one
+  /// thing. This is what says so, and it is what makes an edit to either row
+  /// an edit to both. Without it a caregiver who fixed the picture on the
+  /// pinned copy left the original showing the old one, and the board carried
+  /// two things that looked identical and said different things.
+  ///
+  /// A link rather than a matching label, because a label is not an identity.
+  /// Two words may deliberately be spelled the same, and the one moment a
+  /// label-matched pin would come apart is the moment somebody renames one.
+  TextColumn get pinnedFromId => text().nullable().references(Buttons, #id)();
+
   @override
   Set<Column> get primaryKey => {id};
 }
