@@ -47,7 +47,11 @@ else
 fi
 
 echo "Building release…"
-flutter build ios --release "${DEFINES[@]}"
+# `${DEFINES[@]}` on its own is an unbound variable under `set -u` when the
+# array is empty, which is bash 3.2 — the bash macOS ships. Without intake
+# configured the build stopped here with an error about a variable the script
+# had just assigned.
+flutter build ios --release ${DEFINES[@]+"${DEFINES[@]}"}
 
 echo "Installing…"
 # devicectl has been seen to drop the connection mid-install and still exit 0,
