@@ -39,7 +39,15 @@ String deviceVoiceLine(String? name, String? locale) {
 ///
 /// A builder rather than a list, because half of what these say is which of the
 /// two voices hears them, and [NeuralVoiceSection] is what knows.
-typedef DeviceVoiceControls = List<Widget> Function({required bool neuralOn});
+///
+/// [onSpeedSettled] is how the Speed dial reaches the neural voice. The dial
+/// belongs to the device voice and sits on this screen, but speed is baked
+/// into a neural pack rather than applied at playback, so letting go of it is
+/// an event only [NeuralVoiceSection] can answer.
+typedef DeviceVoiceControls = List<Widget> Function({
+  required bool neuralOn,
+  Future<void> Function()? onSpeedSettled,
+});
 
 /// How this profile sounds — both voices, on one screen.
 ///
@@ -220,7 +228,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
   /// screen the notes have to say which of them each dial moves. Otherwise a
   /// caregiver drags pitch, hears nothing change in the voice that is actually
   /// speaking, and concludes the dial is broken.
-  List<Widget> _deviceControls({required bool neuralOn}) {
+  List<Widget> _deviceControls({
+    required bool neuralOn,
+    Future<void> Function()? onSpeedSettled,
+  }) {
     final tone = _settings.tone;
     final heard = applyTone(
       tone,
@@ -274,7 +285,14 @@ class _VoiceScreenState extends State<VoiceScreen> {
         max: VoiceScreen.speedMax,
         ceiling: rateCeiling < VoiceScreen.speedMax ? rateCeiling : null,
         onChanged: (v) => _set('speechRate', v),
-        onSettled: _previewDevice,
+        // Asked before it is heard. Where the neural voice is on, letting go
+        // of this dial can mean re-making every word in the pack, and the
+        // answer to that question decides which speed the preview should be
+        // spoken at — including when the answer is "put it back".
+        onSettled: () async {
+          if (onSpeedSettled != null) await onSpeedSettled();
+          await _previewDevice();
+        },
       ),
       _Dial(
         label: 'Pitch',

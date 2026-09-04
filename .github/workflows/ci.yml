@@ -36,8 +36,9 @@ jobs:
       # than on someone's device six months into learning that position.
       # Serial on purpose. Parallel workers intermittently trip over each
       # other's in-memory databases, and a test suite that fails once in ten
-      # runs teaches people to re-run it rather than read it. The whole suite
-      # takes about five seconds.
+      # runs teaches people to re-run it rather than read it. Serial over
+      # ~1900 tests is minutes, not the five seconds this said when it was
+      # written.
       # The golden tag is excluded, and not because those tests are optional.
       # The goldens are written on macOS; Linux rasterizes text differently, so
       # all eight fail on this runner whether or not anything changed. They are

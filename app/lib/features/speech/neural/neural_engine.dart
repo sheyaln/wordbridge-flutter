@@ -109,6 +109,22 @@ class NeuralSpeechEngine implements SpeechEngine {
 
   NeuralVoice get voice => _voice;
 
+  /// The speed the open pack was baked at.
+  ///
+  /// Deliberately not `ProfileSettings.speechRate`. The two part company the
+  /// moment the dial moves, and that gap is the whole of what the voice screen
+  /// has to reconcile: a pack made at 1.0 is a pack made at 1.0 until
+  /// something re-points this engine at another one.
+  double get speed => _speed;
+
+  /// The pack this engine would be on at [speed], for a screen deciding
+  /// whether a dial has changed anything.
+  ///
+  /// Speed is rounded into the name, so two positions of a slider can be one
+  /// pack and a caregiver should not be asked to re-make 1231 words because a
+  /// thumb moved a thousandth.
+  String packIdAt(double speed) => ClipStore.idFor(_voice.id, speed);
+
   ClipStore? get clips => _clips;
 
   BakeJob? get bake => _bake;

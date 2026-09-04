@@ -243,6 +243,73 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     if (mounted) await _getGoing();
   }
 
+  /// The Speed dial, let go of.
+  ///
+  /// Speed is not a playback rate here. Kokoro is *given* it at generation, so
+  /// every clip in a pack was made at one speed and a different speed is a
+  /// different pack. Moving this dial is therefore the same event as changing
+  /// the voice, and it gets the same answer: said before it is paid for.
+  ///
+  /// It used not to be. The dial wrote `speechRate` and stopped there —
+  /// nothing re-pointed the engine, so the board went on speaking out of the
+  /// old pack for the rest of the session while the screen said speed "applies
+  /// to both". The next launch asked for the pack at the new speed, found an
+  /// empty one, and fell back to the device voice on every word; choosing a
+  /// voice after that ran `pruneOtherVoices`, which deleted the only copy. An
+  /// hour of synthesis thrown away by a slider, with nothing anywhere having
+  /// said it would be.
+  Future<void> _speedSettled() async {
+    if (!_settings.neuralVoice) return;
+
+    // Rounded into the pack name, so a thumb that moved a thousandth has not
+    // changed anything and must not be made to look as though it had.
+    final was = _speech.speed;
+    final now = _settings.speechRate;
+    if (_speech.packIdAt(now) == _speech.packIdAt(was)) return;
+
+    final baked = _speech.clips?.count ?? 0;
+    if (baked > 0) {
+      final agreed = await _confirm(
+        title: 'Speak at the new speed?',
+        body:
+            'Speed is made into each word rather than applied when it plays, '
+            'so the $baked words already made are at the old speed and will '
+            'not be used at the new one. Making them again takes about '
+            '${_bakeMinutes(_words?.length ?? 0)} in the background, and '
+            'until then anything not ready speaks in the device voice. The '
+            'old ones are kept, so going back to that speed brings them back.',
+        action: 'Change',
+        dismiss: 'Keep the old speed',
+      );
+      if (!agreed) {
+        // One speed, both voices — which is what the screen says. Refusing the
+        // re-bake puts the dial back rather than leaving the device voice at
+        // the new speed and the neural voice at the old one.
+        await _set('speechRate', was);
+        widget.onChanged();
+        return;
+      }
+    }
+
+    await _speech.useNeuralVoice(
+      enabled: true,
+      voiceId: _settings.neuralVoiceId,
+      speed: now,
+    );
+    // Deliberately no `pruneOtherVoices` here, unlike a voice change. A speed
+    // is a dial somebody nudges and reconsiders, and the pack it moved off is
+    // the whole of what they would be reconsidering — leaving it on disk makes
+    // going back instant and is the only reason the question above can promise
+    // it. A voice change is the discrete decision that clears them out.
+    if (mounted) setState(() => _bake = null);
+    widget.onChanged();
+    await _refresh();
+
+    // Either a pack with nothing in it, or the one they came from. Both want
+    // the same answer: fill whatever is missing.
+    if (mounted) await _getGoing();
+  }
+
   /// The voices, on a page of their own.
   ///
   /// A dozen radio rows above the sections that say how much is ready and how
@@ -397,8 +464,9 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
           onTap: _openVoicePicker,
         ),
         const VoiceNote(
-          'Speed is set with the device voice below and applies to both. '
-          'Pitch, volume and tone do not reach this one.',
+          'Speed is set with the device voice below and applies to both — but '
+          'this voice has it made into each word, so changing it means making '
+          'them all again. Pitch, volume and tone do not reach this one.',
         ),
 
         const VoiceHeader('Words made in advance'),
@@ -461,7 +529,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
           'Speaks any word the neural voice has not made yet, and anything it '
           'cannot make in time.',
         ),
-      ...widget.deviceControls(neuralOn: on),
+      ...widget.deviceControls(neuralOn: on, onSpeedSettled: _speedSettled),
     ];
 
     return Column(
