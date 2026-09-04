@@ -95,6 +95,8 @@ Future<String> seedCoreBoardSet(
         ),
       );
 
+  // The row, but not yet the pointer at this vocabulary. Attaching happens at
+  // the very end — see the note there.
   if (attachToProfile) {
     await db
         .into(db.profiles)
@@ -102,20 +104,12 @@ Future<String> seedCoreBoardSet(
           ProfilesCompanion.insert(
             id: profileId,
             displayName: profileId,
-            activeVocabularyId: Value(vocabId),
             vocabLevel: Value(ageBand.startingLevel),
             createdAt: ts,
             updatedAt: ts,
           ),
           mode: InsertMode.insertOrIgnore,
         );
-
-    await (db.update(db.profiles)..where((p) => p.id.equals(profileId))).write(
-      ProfilesCompanion(
-        activeVocabularyId: Value(vocabId),
-        updatedAt: Value(ts),
-      ),
-    );
   }
 
   // The root board pages like any other. Words the grid cannot hold go to a
@@ -188,6 +182,25 @@ Future<String> seedCoreBoardSet(
     boardId: homePages.first,
     name: userName,
   );
+
+  // Last, and that is the whole point of where it sits.
+  //
+  // A profile's `active_vocabulary_id` is watched: the session follows it and
+  // swaps the board the moment it changes. Pointing at this vocabulary before
+  // the boards existed published a board set that was still being written —
+  // `root_board_id` was null for the whole of the build, so the screen that
+  // arrived had no board to draw and sat on a spinner that nothing would ever
+  // clear. Rebuilding from the shipped vocabulary hung exactly there.
+  //
+  // Attaching here means a watcher sees the vocabulary only once it is whole.
+  if (attachToProfile) {
+    await (db.update(db.profiles)..where((p) => p.id.equals(profileId))).write(
+      ProfilesCompanion(
+        activeVocabularyId: Value(vocabId),
+        updatedAt: Value(ts),
+      ),
+    );
+  }
 
   return vocabId;
 }
@@ -793,7 +806,14 @@ const frameKeyEmoji = {
 /// Same mechanism as the fixed keys: a chosen `symbolId` resolves through
 /// `resolveChosen`, which never consults the pack list, so this is a decision
 /// rather than a match that might drift when the pack changes.
-const wordEmoji = {'go': ('1f7e2', 'green circle')};
+/// Empty, and kept for the mechanism rather than its contents.
+///
+/// `go` was here, taking the green circle everybody reads as *go* instead of
+/// the drawing the pack had. It came out when the board narrowed to one symbol
+/// set: an emoji is a second house style like any other, and the argument for
+/// picking it — that it reads better than what Mulberry had — was an argument
+/// about a set that is no longer bundled.
+const wordEmoji = <String, (String, String)>{};
 
 /// The symbol id for a word that was given one, or null for a word that takes
 /// whatever the pack has for it.

@@ -228,7 +228,7 @@ void main() {
       expect(inTheSheet(find.text('Kind')), findsOneWidget);
       expect(inTheSheet(find.text('Something is wrong')), findsOneWidget);
       expect(inTheSheet(find.text('the finder is slow')), findsOneWidget);
-      expect(inTheSheet(find.text('0.1.0')), findsOneWidget);
+      expect(inTheSheet(find.text(appVersion)), findsOneWidget);
       expect(inTheSheet(find.text('iPad11,1')), findsOneWidget);
 
       await tester.scrollUntilVisible(

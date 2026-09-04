@@ -35,6 +35,7 @@ import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
+import 'fallback_board.dart';
 import 'find_a_word.dart';
 import 'route_walk.dart';
 import 'type_a_word.dart';
@@ -553,10 +554,37 @@ class TalkScreenState extends State<TalkScreen> {
     super.dispose();
   }
 
+  /// Why the board cannot be drawn, where it cannot be. Null while it still
+  /// might be, which is what the spinner means.
+  String? _refusal;
+
+  /// Reads the board set this screen was given, and says so when it cannot.
+  ///
+  /// **Every failure here has to end somewhere other than the spinner.** The
+  /// screen draws a spinner whenever it has no board yet, and nothing re-runs
+  /// this — so a throw, or a vocabulary that is not finished being written,
+  /// used to leave a person holding a tablet that turned on and then did
+  /// nothing at all. That is worse than an error: an error can be reported.
   Future<void> _load() async {
+    try {
+      await _read();
+    } catch (error) {
+      if (mounted) setState(() => _refusal = '$error');
+    }
+  }
+
+  Future<void> _read() async {
     final vocab = await (widget.db.select(
       widget.db.vocabularies,
     )..where((v) => v.id.equals(widget.vocabularyId))).getSingle();
+
+    // A board set is written before it is pointed at, so this should not
+    // happen. It did: seeding attached the profile first and set this last,
+    // and the screen arrived mid-build. Refusing is how that stays visible if
+    // it ever comes back.
+    if (vocab.rootBoardId == null) {
+      throw StateError('This board set has no home board yet.');
+    }
 
     // Read once for the whole vocabulary. A board's regions are decided when it
     // is built and never change afterwards, so re-reading them as the user
@@ -1291,6 +1319,10 @@ class TalkScreenState extends State<TalkScreen> {
   Widget build(BuildContext context) {
     final vocab = _vocab;
     final boardId = _currentBoardId;
+
+    if (_refusal case final refusal?) {
+      return FallbackBoard(detail: refusal);
+    }
 
     if (vocab == null || boardId == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));

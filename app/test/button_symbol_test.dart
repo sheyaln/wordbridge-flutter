@@ -682,8 +682,10 @@ void main() {
       );
 
       // Let the search and the resolver's own ceilings on a pack that never
-      // answers expire, so nothing is left pending at teardown.
-      await tester.pump(const Duration(seconds: 6));
+      // answers expire, so nothing is left pending at teardown. Longer than
+      // `SymbolRegistry.searchBudget`, which is what governs here — a pack
+      // that never replies is cut off by that and by nothing else.
+      await tester.pump(const Duration(seconds: 12));
     });
 
     testWidgets('the preview is what the board draws, not what any pack has', (

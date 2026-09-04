@@ -165,8 +165,11 @@ void main() {
   });
 
   test('the green circle is the picture for "go"', () async {
-    // A chosen symbol, not a keyword match: the pack has a drawing for "go"
-    // and a green circle is what people already read as go.
+    // No chosen symbol. `go` carried an emoji — a green circle, on the
+    // argument that it reads as *go* better than the drawing the pack had —
+    // and that argument was about a pack the board no longer bundles. The
+    // board draws from two sets now and an emoji is a third house style, so
+    // `go` takes whatever those two carry for the word like every other word.
     final go =
         await (db.select(db.buttons)..where(
               (b) => b.vocabularyId.equals(vocabId) & b.label.equals('go'),
@@ -175,14 +178,14 @@ void main() {
 
     expect(go, isNotEmpty);
     for (final button in go) {
-      expect(button.symbolId, 'word-1f7e2');
+      expect(
+        button.symbolId,
+        isNull,
+        reason:
+            'a word with a chosen symbol is a word the picker cannot fix '
+            'by changing the pack',
+      );
     }
-
-    final symbol = await (db.select(
-      db.symbols,
-    )..where((s) => s.id.equals('word-1f7e2'))).getSingleOrNull();
-    expect(symbol, isNotNull);
-    expect(symbol!.externalId, '1f7e2');
   });
 
   test('every direction has a word, "under" included', () async {

@@ -31,19 +31,27 @@ wordbridge never links a symbol pack directly; packs are loaded behind a
 
 ### Bundled, commercial use permitted
 
-**One pack ships: `core`.** It is a single set of 381 pictures assembled from
-the sources below via Global Symbols, and its manifest carries the credit for
+**One pack ships: `core`.** It is a single set of 264 pictures drawn from the
+two sources below via Global Symbols, and its manifest carries the credit for
 each picture individually. The sources are **not** shipped as packs of their
-own. This app does not carry Mulberry, or OpenMoji, or any of them, in full.
+own. This app does not carry Stellar, or OpenMoji, in full.
 
 | Source of a `core` picture | License | Notes |
 |---|---|---|
-| Mulberry Symbols | CC BY-SA 4.0 | © Garry Paxton 2008-2017, Steve Lee 2018-. <https://mulberrysymbols.org>. Upstream marks the set unmaintained. |
-| Mulberry Plus Collection | CC BY-SA 4.0 | © Mulberry and Global Symbols. <https://globalsymbols.com> |
-| Mulberry Additional Symbols | CC BY-SA 4.0 | © Verlag Karin Kestner GmbH. <https://www.kestner.de> |
-| Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee |
+| Stellar Symbols | CC BY-SA 4.0 | © Colin McNamee. Purpose-built for core vocabulary |
 | OpenMoji | CC BY-SA 4.0 | © OpenMoji Project. <https://openmoji.org> |
-| Tawasol Symbols | CC BY-SA 4.0 | © Mada, Qatar. Arabic focused. <http://tawasolsymbols.org> |
+
+**Two sets, and a word neither has ships without a picture.** A board
+assembled from six sets is six house styles on one screen, and the reader it is
+drawn for cannot be told that a change of style means nothing. The gaps —
+roughly 295 of the 558 shipped words — are drawn by hand rather than filled
+from whatever set happened to have the word. A blank button honestly says "no
+picture yet".
+
+Mulberry, Mulberry Plus, Mulberry Additional and Tawasol were bundled until
+that decision and are no longer. They remain reachable at runtime through the
+**More pictures** pack, so a caregiver adding their own word can still find a
+picture for it; what changed is only what ships.
 
 Attribution for these must remain reachable from inside the app, and is: the
 Symbol credits screen reads the same manifest.
@@ -55,7 +63,8 @@ does not carry.
 
 ### Fetched on demand, commercial use permitted
 
-The **More pictures** pack reaches the same six CC BY-SA sets through the
+The **More pictures** pack reaches six CC BY-SA sets — the two above plus
+Mulberry, Mulberry Plus, Mulberry Additional and Tawasol — through the
 Global Symbols API (<https://globalsymbols.com>) so a caregiver adding a word
 does not have to wait for a release to get a picture for it. Images are cached
 in application documents. The attributions in the table above apply to them
