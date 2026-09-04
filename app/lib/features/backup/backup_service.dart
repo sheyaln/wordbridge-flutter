@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqlite3/sqlite3.dart' as raw;
 
 import '../../db/database.dart';
+import '../../db/sqlite_file.dart';
 import 'snapshot.dart';
 
 /// A snapshot that was taken, or the reason one was not.
@@ -239,14 +238,8 @@ class BackupService {
   /// beside the database, and the database on its own is then a file that needs
   /// a rollback nobody copied. Opening it is the recovery, so the copy is
   /// written by a connection that has already performed it.
-  Future<SnapshotAttempt> snapshotFile(File source) => _write((destination) {
-    final handle = raw.sqlite3.open(source.path);
-    try {
-      handle.execute('VACUUM INTO ?', [destination]);
-    } finally {
-      handle.close();
-    }
-  });
+  Future<SnapshotAttempt> snapshotFile(File source) =>
+      _write((destination) => copyDatabaseFile(source, destination));
 
   /// Names a snapshot, has [copy] write it, reads it back, and prunes.
   ///
@@ -416,7 +409,9 @@ class BackupService {
 
         // `forTesting` is simply the constructor that takes an executor;
         // nothing about this is a test.
-        final staged = WordbridgeDatabase.forTesting(NativeDatabase(upgraded));
+        final staged = WordbridgeDatabase.forTesting(
+          openDatabaseFile(upgraded),
+        );
         try {
           await staged.customSelect('SELECT 1').getSingle();
         } finally {

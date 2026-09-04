@@ -1,5 +1,7 @@
 import 'package:flutter_tts/flutter_tts.dart';
 
+import 'audio_output.dart';
+
 /// Speech output, behind an interface.
 ///
 /// The concrete engine is a single-maintainer package. Nothing outside this
@@ -91,12 +93,7 @@ class FlutterTtsEngine implements SpeechEngine {
 
   @override
   Future<void> init() async {
-    // Without this an iPad with the ringer switch off is silent, which for an
-    // AAC device means a user who cannot speak. Not optional.
-    await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
-      IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
-      IosTextToSpeechAudioCategoryOptions.duckOthers,
-    ], IosTextToSpeechAudioMode.defaultMode);
+    await prepareAudioOutput(_tts);
 
     await _tts.awaitSpeakCompletion(true);
     await setVolume(1.0);
@@ -163,15 +160,12 @@ class FlutterTtsEngine implements SpeechEngine {
     if (voice.identifier != null) 'identifier': voice.identifier!,
   });
 
-  /// Turns "1.0 means normal" into the number the plugin wants.
+  /// Turns "1.0 means normal" into the number this host's synthesizer wants.
   ///
-  /// The plugin's own scale puts ordinary speech at **0.5** on both platforms:
-  /// iOS passes the number straight to `AVSpeechUtterance.rate`, whose default
-  /// is 0.5 and whose maximum is 1.0, and the Android side doubles it before
-  /// handing it to a synthesizer whose normal is 1.0. Sending 1.0 for "normal
-  /// speed" therefore asks both of them for double, which is too fast to make
-  /// any of the words out.
-  static double engineRate(double rate) => (rate * 0.5).clamp(0.0, 1.0);
+  /// The two disagree by a factor of two — see `speechRateFor` — and a caller
+  /// that has to know which one it is talking to will eventually get it wrong
+  /// in the direction of unusably fast.
+  static double engineRate(double rate) => speechRateFor(rate);
 
   @override
   Future<void> setRate(double rate) => _tts.setSpeechRate(engineRate(rate));

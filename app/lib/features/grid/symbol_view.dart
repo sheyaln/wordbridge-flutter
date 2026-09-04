@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_resolver.dart';
+import 'symbol_file.dart';
 
 /// Draws a button's picture, or nothing at all.
 ///
@@ -156,15 +156,9 @@ class SymbolPicture extends StatelessWidget {
         fit: BoxFit.contain,
         errorBuilder: (_, _, _) => const SizedBox.shrink(),
       ),
-      (SymbolImageKind.file, true) => SvgPicture.file(
-        File(image.uri),
-        fit: BoxFit.contain,
-        placeholderBuilder: (_) => const SizedBox.shrink(),
-      ),
-      (SymbolImageKind.file, false) => Image.file(
-        File(image.uri),
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      (SymbolImageKind.file, final isSvg) => symbolFromFile(
+        image.uri,
+        isSvg: isSvg,
       ),
     };
   }

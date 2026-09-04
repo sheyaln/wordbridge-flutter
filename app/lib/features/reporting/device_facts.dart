@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/services.dart';
 
+import '../../platform/host.dart';
 import 'report.dart';
 
 /// Which hardware this is, for the two questions that cannot be answered
@@ -40,8 +40,8 @@ class DeviceModel {
 
 /// Everything about the tablet that goes in a report.
 Future<DeviceFacts> deviceFacts({DeviceModel? models}) async => (
-  platform: Platform.operatingSystem,
-  osVersion: Platform.operatingSystemVersion,
+  platform: hostName,
+  osVersion: hostVersion,
   model: await (models ?? DeviceModel()).model(),
   locale: PlatformDispatcher.instance.locale.toString(),
 );

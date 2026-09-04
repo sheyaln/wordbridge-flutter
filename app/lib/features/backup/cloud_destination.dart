@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../platform/host.dart';
 import 'snapshot.dart';
 
 /// A backup sitting in the account signed in on this device.
@@ -136,6 +137,7 @@ class CloudRefusal implements Exception {
 /// the only route to a family's Google Drive that does not put an OAuth client
 /// of ours in the middle.
 List<CloudPlace> cloudPlaces() {
+  if (!hostBacksUpOffDevice) return const [];
   if (Platform.isIOS || Platform.isMacOS) {
     return const [CloudPlace.account, CloudPlace.folder];
   }
@@ -150,6 +152,7 @@ List<CloudPlace> cloudPlaces() {
 /// instruction rather than a location, because at the moment it is shown there
 /// is nowhere yet.
 String cloudLabel([CloudPlace place = CloudPlace.account]) {
+  if (!hostBacksUpOffDevice) return 'your cloud storage';
   if (Platform.isAndroid) return 'Google Drive';
   // Before the platform is recognised, not after it: the two places are told
   // apart by what they *are* rather than by who is asking. Naming them from

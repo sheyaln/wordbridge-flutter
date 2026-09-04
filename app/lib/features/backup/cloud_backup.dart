@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sqlite3/sqlite3.dart' as raw;
 
 import '../../db/database.dart';
+import '../../db/sqlite_file.dart';
 import 'backup_service.dart';
 import 'cloud_destination.dart';
 import 'snapshot.dart';
@@ -509,19 +509,7 @@ class CloudBackupService {
   /// `quick_check` is what tells a whole database from the first third of one.
   /// Read-only, so a file that turns out to be damaged is not written to on the
   /// way to finding out.
-  bool _wholeDatabase(File file) {
-    try {
-      final handle = raw.sqlite3.open(file.path, mode: raw.OpenMode.readOnly);
-      try {
-        final rows = handle.select('PRAGMA quick_check');
-        return rows.length == 1 && rows.first.values.first == 'ok';
-      } finally {
-        handle.close();
-      }
-    } catch (_) {
-      return false;
-    }
-  }
+  bool _wholeDatabase(File file) => databaseIsWhole(file);
 
   Future<void> _discard(File? partial) async {
     try {

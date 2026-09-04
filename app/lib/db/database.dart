@@ -52,7 +52,23 @@ Future<File> boardDatabaseFile() async => File(
   ],
 )
 class WordbridgeDatabase extends _$WordbridgeDatabase {
-  WordbridgeDatabase() : super(driftDatabase(name: databaseName));
+  WordbridgeDatabase() : super(driftDatabase(name: databaseName, web: _web));
+
+  /// Where a browser keeps the board, and what it runs SQLite with.
+  ///
+  /// Both files sit beside `index.html` and are served from the same origin as
+  /// the app: `sqlite3.wasm` is SQLite itself, and `drift_worker.js` is the
+  /// worker drift puts the database behind so a query does not block the
+  /// board. Ignored on a device, where `drift_flutter` opens a file instead.
+  ///
+  /// The storage underneath is the browser's — origin-private files where
+  /// there are any, IndexedDB where there are not — and it is the browser's to
+  /// clear. Nothing here can promise otherwise, which is why `hostKeepsFiles`
+  /// says so and the web build says it on screen.
+  static final _web = DriftWebOptions(
+    sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+    driftWorker: Uri.parse('drift_worker.js'),
+  );
 
   /// In-memory instance for tests.
   WordbridgeDatabase.forTesting(super.executor);
