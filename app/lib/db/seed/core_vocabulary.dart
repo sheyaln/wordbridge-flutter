@@ -435,9 +435,16 @@ final homeBands = <Band<SeedWord>>[
       // "where", so the move costs nothing it was not already costing and buys
       // a heading that describes it.
       //
-      // Still tagged a preposition. Fitzgerald colors by word class, and the
-      // color should not change because the neighbours did.
-      w('for', PartOfSpeech.preposition, level: 2),
+      // Tagged a conjunction, which is what colors it. It was left a
+      // preposition on the argument that Fitzgerald colors by word class and
+      // the color should not follow the neighbours — but the neighbours are
+      // what a person reads. One pink key in a row of white ones says the
+      // board made a mistake, and the reader who most needs the color coding
+      // is the one least able to be told it is fine. "for" is a coordinating
+      // conjunction as well as a preposition — it is the F in "for, and, nor,
+      // but, or, yet, so" — so this is the truth about the word, not a lie
+      // told for the sake of the palette.
+      w('for', PartOfSpeech.conjunction, level: 2),
     ],
   ),
 

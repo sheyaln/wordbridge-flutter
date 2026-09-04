@@ -1,7 +1,7 @@
 name: wordbridge
 description: "Free, open-source AAC with customizable motor planning."
 publish_to: 'none'
-version: 0.0.2+2
+version: 0.2.0+3
 
 environment:
   sdk: ^3.13.1
