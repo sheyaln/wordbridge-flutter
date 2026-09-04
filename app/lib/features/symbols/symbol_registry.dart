@@ -13,7 +13,7 @@ class SymbolRegistry extends ChangeNotifier {
   SymbolRegistry({
     Iterable<SymbolPack> packs = const [],
     Map<String, bool> choices = const {},
-    this.searchBudget = const Duration(seconds: 5),
+    this.searchBudget = const Duration(seconds: 10),
   }) {
     for (final pack in packs) {
       _packs[pack.id] = pack;
@@ -30,6 +30,11 @@ class SymbolRegistry extends ChangeNotifier {
   final _choices = <String, bool>{};
 
   /// How long a single pack may hold up a combined search.
+  ///
+  /// Must exceed what a downloading pack allows itself, or this cancels work
+  /// that had already arrived and reports it as an empty catalog. At five
+  /// seconds against a pack that allowed itself six, the fetching pack could
+  /// never contribute a result at all.
   final Duration searchBudget;
 
   List<SymbolPack> get packs => List.unmodifiable(_packs.values);

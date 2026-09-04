@@ -42,6 +42,7 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     http.Client? client,
     Future<Directory> Function()? documentsDirectory,
     this.requestTimeout = const Duration(seconds: 6),
+    this.searchTimeout = const Duration(seconds: 3),
   }) : id = 'globalsymbols',
        name = 'More pictures',
        license = 'CC-BY-SA-4.0',
@@ -67,6 +68,7 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     http.Client? client,
     Future<Directory> Function()? documentsDirectory,
     this.requestTimeout = const Duration(seconds: 6),
+    this.searchTimeout = const Duration(seconds: 3),
   }) : id = 'globalsymbols-nc',
        name = 'More pictures (non-commercial)',
        license = 'CC-BY-NC-SA-4.0',
@@ -146,6 +148,17 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
   final http.Client _client;
   final Future<Directory> Function() _documentsDirectory;
   final Duration requestTimeout;
+
+  /// What one set gets to answer a search in, and deliberately much shorter
+  /// than [requestTimeout] and shorter still than [SymbolRegistry.searchBudget].
+  ///
+  /// Every set is asked at once and `Future.wait` waits for the slowest, so one
+  /// set that hangs used to hold the whole pack for the full request timeout —
+  /// past the registry's budget, which then threw away every set that had
+  /// already answered. The pack contributed nothing to the picker at all, and
+  /// silently, because a budget overrun is caught and read as "no results".
+  /// Bounded here, a slow set drops out on its own and the others still count.
+  final Duration searchTimeout;
 
   final _available = StreamController<SymbolRef>.broadcast();
   final _inFlight = <String, Future<void>>{};
@@ -313,7 +326,7 @@ class GlobalSymbolsPack implements DownloadingSymbolPack {
     try {
       final response = await _client
           .get(searchUri(query, setSlug, limit: limit))
-          .timeout(requestTimeout);
+          .timeout(searchTimeout);
       if (response.statusCode != 200) return const [];
 
       final body = jsonDecode(utf8.decode(response.bodyBytes));
