@@ -27,6 +27,8 @@ class GridSurface extends StatefulWidget {
     required this.vocabLevel,
     required this.colorConvention,
     required this.onSelect,
+    this.onLongPress,
+    this.longPressable,
     this.showHidden = false,
     this.viewAll = false,
     this.resolver,
@@ -63,6 +65,20 @@ class GridSurface extends StatefulWidget {
 
   final ColorConvention colorConvention;
   final void Function(PlacedCell) onSelect;
+
+  /// Held down rather than pressed, where a key offers something a press does
+  /// not.
+  ///
+  /// Reached only through [longPressable], and that gate is the whole point.
+  /// An `InkWell` that has a long-press handler *consumes* the long press
+  /// rather than firing its tap, so wiring this to every cell stopped every
+  /// word on the board from speaking when it was pressed slowly — which is
+  /// how an unsteady hand presses everything.
+  final void Function(PlacedCell)? onLongPress;
+  final bool Function(Button)? longPressable;
+
+  /// Which keys have anything behind a hold. Everything else is left with no
+  /// long-press handler at all, so its gesture handling is untouched.
 
   /// Absent in tests and wherever pictures are not wanted; the grid then
   /// renders labels only, which is a complete, working board.
@@ -138,6 +154,8 @@ class _GridSurfaceState extends State<GridSurface> {
         symbolPackIds: widget.symbolPackIds,
         isAvailable: widget.isAvailable,
         onSelect: _select,
+        onLongPress: widget.onLongPress,
+        longPressable: widget.longPressable,
       ),
       overlay: (geometry) => [
         if (widget.pointAt case final at?)
@@ -205,6 +223,8 @@ class _Cell extends StatelessWidget {
     required this.symbolPackIds,
     required this.isAvailable,
     required this.onSelect,
+    this.onLongPress,
+    this.longPressable,
   });
 
   final PlacedCell placed;
@@ -216,6 +236,8 @@ class _Cell extends StatelessWidget {
   final List<String> symbolPackIds;
   final bool Function(Button)? isAvailable;
   final void Function(PlacedCell) onSelect;
+  final void Function(PlacedCell)? onLongPress;
+  final bool Function(Button)? longPressable;
 
   bool get _isMasked {
     final b = placed.button;
@@ -283,6 +305,11 @@ class _Cell extends StatelessWidget {
         // perceptible, and responsiveness is what makes a device feel like a
         // voice. Release and dwell modes are per-profile settings.
         onTap: () => onSelect(placed),
+        // Null unless this particular key has something behind a hold, so an
+        // ordinary word's gesture handling is untouched.
+        onLongPress: onLongPress == null || longPressable?.call(button) != true
+            ? null
+            : () => onLongPress!(placed),
         borderRadius: BorderRadius.circular(6),
         child: Padding(
           padding: const EdgeInsets.all(4),

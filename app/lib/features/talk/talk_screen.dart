@@ -1146,6 +1146,42 @@ class TalkScreenState extends State<TalkScreen> {
     await _sayWord(inflected);
   }
 
+  /// Held on a key, where holding it offers something pressing it does not.
+  ///
+  /// Only the cycle key answers. Every other location returns immediately, so
+  /// a hand resting on a word does exactly what it did before — which matters
+  /// more here than the feature does: a user whose reach is slow must not
+  /// discover that a slow press means something else.
+  ///
+  /// The cycle key turns the wheel one page per press, which is the right
+  /// gesture for somebody who knows where they are going and a poor one for
+  /// somebody hunting: eight categories behind up to three presses, with no
+  /// way to see what is there. Holding shows all of them at once. Nothing
+  /// moves — this is a second route to boards that keep their locations, the
+  /// same bargain pinning makes.
+  Future<void> _onLongPress(PlacedCell placed) async {
+    final button = placed.button;
+    if (button == null || button.action != ButtonAction.cycleCategories) return;
+
+    final wheel = _wheel;
+    if (wheel == null || wheel.entries.isEmpty) return;
+
+    final chosen = await showModalBottomSheet<({String name, String boardId})>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _AllCategories(entries: wheel.entries),
+    );
+
+    if (chosen == null || !mounted) return;
+
+    setState(() {
+      _stepTo(chosen.boardId, chosen.name);
+      _previousBoardId = _currentBoardId;
+      _currentBoardId = chosen.boardId;
+      _settle();
+    });
+  }
+
   void _record(PlacedCell placed, Button button) {
     widget.logger.log(
       profileId: widget.profileId,
@@ -1280,6 +1316,10 @@ class TalkScreenState extends State<TalkScreen> {
                                 viewAll: _viewAll,
                                 colorConvention: vocab.colorConvention,
                                 onSelect: _onSelect,
+                                onLongPress: _onLongPress,
+                                longPressable: (button) =>
+                                    button.action ==
+                                    ButtonAction.cycleCategories,
                                 pairHold: _entry.pairHold,
                                 onPairHold: _openCaregiver,
                                 pointAt: _pointAt,
@@ -1705,6 +1745,58 @@ class _BarButton extends StatelessWidget {
                   ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Every category at once, for a hold on the cycle key.
+///
+/// A list of names rather than a picture grid. The pictures on the category
+/// keys are what a user navigates by and they are already on the board; this
+/// is the caregiver-shaped view of the same thing, reached deliberately, and
+/// what it has to be is readable.
+class _AllCategories extends StatelessWidget {
+  const _AllCategories({required this.entries});
+
+  final List<({String name, String boardId})> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            title: Text(
+              'All categories',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text('The same boards the category keys open.'),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: GridView.extent(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(16),
+              maxCrossAxisExtent: 200,
+              childAspectRatio: 2.4,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              children: [
+                for (final entry in entries)
+                  FilledButton.tonal(
+                    onPressed: () => Navigator.of(context).pop(entry),
+                    child: Text(
+                      entry.name,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
