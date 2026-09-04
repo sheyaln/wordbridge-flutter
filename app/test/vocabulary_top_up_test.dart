@@ -503,6 +503,55 @@ void main() {
     }
   });
 
+  test('a wheel already turning takes every category that ships after it', () async {
+    // The state every device in the field is in: a board set built before the
+    // last few categories existed, on the shipped 7x12 grid, where the wheel
+    // was already turning before any of them arrived.
+    //
+    // A turning wheel is what makes this safe — it has no last slot to run out
+    // of, so appending is one more press of a key that is already there. The
+    // refusal case is a row that is exactly full with no cycle key, and it has
+    // a test of its own below.
+    //
+    // Three because three shipped together, read off the end of the list
+    // rather than named, so this keeps asking the question after the next
+    // batch.
+    final shippedLast = categoryNames.skip(categoryNames.length - 3).toList();
+
+    for (final name in shippedLast) {
+      await unship(db, vocabId, name);
+    }
+
+    final was = await frameOf(db, vocabId);
+    expect(
+      was.cycleCol,
+      isNotNull,
+      reason: 'the premise: this grid turned the wheel before they arrived',
+    );
+    final before = await fingerprint(db);
+
+    final preview = await topUpVocabulary(
+      db,
+      vocabularyId: vocabId,
+      dryRun: true,
+    );
+    expect(preview.addedBoards, shippedLast);
+    expect(
+      preview.refusedBoards,
+      isEmpty,
+      reason: 'a board nothing could open, on the grid the app ships',
+    );
+
+    final applied = await topUpVocabulary(db, vocabularyId: vocabId);
+    expect(applied.addedBoards, shippedLast);
+    expect(applied.refusedBoards, isEmpty);
+
+    final now = await fingerprint(db);
+    for (final entry in before.entries) {
+      expect(now[entry.key], entry.value, reason: '${entry.key} moved');
+    }
+  });
+
   /// A category that shipped after the board set was built.
   ///
   /// Adding a whole board displaces nothing — that is what makes it the safest
