@@ -24,13 +24,16 @@ import '../developer/developer_mode.dart';
 import '../grid/grid_surface.dart';
 import '../grid/region_label_strip.dart';
 import '../grid/region_labels.dart';
+import '../grid/symbol_view.dart';
 import '../prediction/prediction_strip.dart';
 import '../prediction/word_prediction.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
+import '../symbols/symbol_pack.dart';
 import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
+import '../../theme/fitzgerald.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
 import '../utterance/utterance.dart';
@@ -1213,10 +1216,14 @@ class TalkScreenState extends State<TalkScreen> {
     final wheel = _wheel;
     if (wheel == null || wheel.entries.isEmpty) return;
 
-    final chosen = await showModalBottomSheet<({String name, String boardId})>(
+    final chosen = await showDialog<({String name, String boardId})>(
       context: context,
-      showDragHandle: true,
-      builder: (context) => _AllCategories(entries: wheel.entries),
+      builder: (context) => _AllCategories(
+        entries: wheel.entries,
+        resolver: widget.resolver,
+        colorConvention:
+            _vocab?.colorConvention ?? ColorConvention.modifiedFitzgerald,
+      ),
     );
 
     if (chosen == null || !mounted) return;
@@ -1847,51 +1854,147 @@ class _BarButton extends StatelessWidget {
 
 /// Every category at once, for a hold on the cycle key.
 ///
-/// A list of names rather than a picture grid. The pictures on the category
-/// keys are what a user navigates by and they are already on the board; this
-/// is the caregiver-shaped view of the same thing, reached deliberately, and
-/// what it has to be is readable.
+/// A grid, and centred, because it is standing in for the row of category
+/// keys and has to read as the same kind of thing. The first version was a
+/// sheet of text buttons up from the bottom edge, which put the categories in
+/// a different shape, a different place and a different visual language from
+/// the keys they duplicate — so a user who had learned the pictures on the
+/// system row arrived at a list of words and had to read their way back to
+/// them.
+///
+/// Each cell draws what its key draws: the same picture, resolved from the
+/// category's name the same way, in the same system colour at the same corner
+/// radius. Nothing here is a shortcut to a board the wheel cannot reach — it
+/// is the identical set, laid out so it can be seen at once instead of turned
+/// to.
 class _AllCategories extends StatelessWidget {
-  const _AllCategories({required this.entries});
+  const _AllCategories({
+    required this.entries,
+    required this.resolver,
+    required this.colorConvention,
+  });
 
   final List<({String name, String boardId})> entries;
+  final SymbolResolver? resolver;
+  final ColorConvention colorConvention;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const ListTile(
-            title: Text(
-              'All categories',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text('The same boards the category keys open.'),
-          ),
-          const Divider(height: 1),
-          Flexible(
-            child: GridView.extent(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(16),
-              maxCrossAxisExtent: 200,
-              childAspectRatio: 2.4,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              children: [
-                for (final entry in entries)
-                  FilledButton.tonal(
-                    onPressed: () => Navigator.of(context).pop(entry),
-                    child: Text(
-                      entry.name,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
+    // Null is the system colour, which is what a category key is drawn in.
+    // Taken from the same function the board uses rather than written down
+    // here, so the two cannot come apart.
+    final color = Fitzgerald.colorFor(colorConvention, null);
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 620),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'All categories',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: GridView.extent(
+                  shrinkWrap: true,
+                  // Square, like the locations on the board. A category that
+                  // read as a wide bar here and a square key there would be
+                  // two different things to learn.
+                  maxCrossAxisExtent: 150,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  children: [
+                    for (final entry in entries)
+                      _CategoryCell(
+                        name: entry.name,
+                        color: color,
+                        resolver: resolver,
+                        onTap: () => Navigator.of(context).pop(entry),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One category, drawn the way its key on the system row is drawn.
+class _CategoryCell extends StatelessWidget {
+  const _CategoryCell({
+    required this.name,
+    required this.color,
+    required this.resolver,
+    required this.onTap,
+  });
+
+  final String name;
+  final Color color;
+  final SymbolResolver? resolver;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolver = this.resolver;
+
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Center(
+            // The wheel gives a slot its picture from the name it is showing
+            // rather than from the button underneath, and so does this: same
+            // input, same resolver, same picture. A build with no resolver
+            // draws the word, which is what the board does too.
+            child: resolver == null
+                ? FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  )
+                : SymbolView(
+                    resolver: resolver,
+                    label: name,
+                    packIds: boardSymbolPackIds,
+                  ),
+          ),
+        ),
       ),
     );
   }

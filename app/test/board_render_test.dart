@@ -322,6 +322,28 @@ void main() {
     );
   });
 
+  testWidgets('every category at once, held from the cycle key', (
+    tester,
+  ) async {
+    // What a hold on `more categories` puts on the screen. Asserted as a
+    // picture because what was asked for is a shape: centred, square cells,
+    // the pictures the keys carry — and none of those is a thing a finder can
+    // check. The version before this was a sheet of text buttons up from the
+    // bottom edge, and it read as a settings list rather than as the row of
+    // keys it stands in for.
+    await pump(tester);
+
+    await tester.longPress(find.text(cycleCategoriesLabel));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/all_categories.png'),
+    );
+  });
+
   testWidgets('the board with the widest row labels, named', (tester) async {
     // `time` carries the widest labels in the set — "days of the week",
     // "parts of the day" — and §4.29 is the standing reminder that a label

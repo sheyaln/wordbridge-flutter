@@ -5,6 +5,10 @@ import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/seed/core_board_set.dart';
 import 'package:wordbridge/features/auth/pin.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
+import 'package:wordbridge/features/grid/symbol_view.dart';
+import 'package:wordbridge/db/seed/core_vocabulary.dart';
+import 'package:wordbridge/features/symbols/symbol_registry.dart';
+import 'package:wordbridge/features/symbols/symbol_resolver.dart';
 import 'package:wordbridge/features/talk/talk_screen.dart';
 import 'package:wordbridge/features/usage/logger.dart';
 
@@ -68,7 +72,16 @@ void main() {
   // Deliberately not closed: closing inside a widget test waits on work the
   // fake clock never runs.
 
-  Future<void> pumpBoard(WidgetTester tester, _SilentSpeech speech) async {
+  SymbolResolver newResolver() => SymbolResolver(
+    registry: SymbolRegistry(packs: const []),
+    db: db,
+  );
+
+  Future<void> pumpBoard(
+    WidgetTester tester,
+    _SilentSpeech speech, {
+    SymbolResolver? resolver,
+  }) async {
     tester.view.physicalSize = const Size(2048, 1536);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
@@ -83,6 +96,7 @@ void main() {
           auth: PinAuth(db, storage: _FakeSecretStore()),
           profileId: 'p1',
           vocabLevel: 3,
+          resolver: resolver,
         ),
       ),
     );
@@ -119,6 +133,51 @@ void main() {
             'times and cannot be found by looking',
       );
     }
+
+    await teardownBoard(tester);
+  });
+
+  testWidgets('and draws each of them the way its key is drawn', (
+    tester,
+  ) async {
+    // The pictures are the point. A category key on the system row takes its
+    // picture from the name it is showing rather than from the button
+    // underneath, and this has to do the same or the sheet is a list of words
+    // standing in for a row of pictures — which is what somebody who
+    // navigates by picture would arrive at, having held a key to find their
+    // way faster.
+    //
+    // Asserted on the wiring rather than on pixels: a resolver reaches the
+    // network and the asset bundle, and what matters here is that every
+    // category is drawn through the same widget the board draws through, with
+    // its own name and no chosen symbol to override the pack.
+    final speech = _SilentSpeech();
+    await pumpBoard(tester, speech, resolver: newResolver());
+
+    await tester.longPress(find.text(cycleCategoriesLabel));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final drawn = tester
+        .widgetList<SymbolView>(
+          find.descendant(
+            of: find.byType(Dialog),
+            matching: find.byType(SymbolView),
+          ),
+        )
+        .toList();
+
+    expect(
+      drawn.map((v) => v.label),
+      containsAll(categoryNames),
+      reason: 'a category is on the sheet without the picture its key carries',
+    );
+    expect(
+      drawn.every((v) => v.symbolId == null),
+      isTrue,
+      reason: 'a slot drew a chosen symbol rather than the name it is showing',
+    );
 
     await teardownBoard(tester);
   });
