@@ -49,7 +49,9 @@ Everything needed to speak is on the device, so nothing waits on a network.
 What leaves it, and what does not:
 
 - Usage tracking is on by default and asked about at setup. It records the
-  location, never the word, and it never leaves the device.
+  location, never the word, and it never comes to us. It leaves the device by
+  one route only, if somebody asked for it: inside a backup, into their own
+  account.
 - Crash reports are on by default and asked about at setup. They go out on the
   next launch, never during the crash, carrying a stack trace with quoted text
   and file paths removed.
