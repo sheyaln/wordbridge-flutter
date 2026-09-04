@@ -806,14 +806,17 @@ const frameKeyEmoji = {
 /// Same mechanism as the fixed keys: a chosen `symbolId` resolves through
 /// `resolveChosen`, which never consults the pack list, so this is a decision
 /// rather than a match that might drift when the pack changes.
-/// Empty, and kept for the mechanism rather than its contents.
+/// Ordinary words whose picture is chosen rather than matched by keyword.
 ///
-/// `go` was here, taking the green circle everybody reads as *go* instead of
-/// the drawing the pack had. It came out when the board narrowed to one symbol
-/// set: an emoji is a second house style like any other, and the argument for
-/// picking it — that it reads better than what Mulberry had — was an argument
-/// about a set that is no longer bundled.
-const wordEmoji = <String, (String, String)>{};
+/// The curated pack matches on the word, and for most words that is the right
+/// answer. A handful are better served by something the pack has no entry for
+/// — `go` wants the green circle everybody already reads as *go*, not a
+/// drawing of somebody walking.
+///
+/// Same mechanism as the fixed keys: a chosen `symbolId` resolves through
+/// `resolveChosen`, which never consults the pack list, so this is a decision
+/// rather than a match that might drift when the pack changes.
+const wordEmoji = {'go': ('1f7e2', 'green circle')};
 
 /// The symbol id for a word that was given one, or null for a word that takes
 /// whatever the pack has for it.

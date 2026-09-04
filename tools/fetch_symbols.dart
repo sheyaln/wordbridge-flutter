@@ -20,33 +20,62 @@ const _outDir = 'app/assets/symbols/core';
 /// of several hundred behind it.
 const _requestTimeout = Duration(seconds: 25);
 
-/// The two sets the shipped board draws from.
+/// Symbol sets to draw from, in preference order. **Every one must permit
+/// commercial use** — see NOTICE.md. ARASAAC and Sclera are excluded on
+/// purpose: they are CC BY-NC and may only ever be opt-in downloads.
 ///
-/// **Stellar first, OpenMoji behind it, and a word neither has ships without a
-/// picture.** A board assembled from six sets is six house styles on one
-/// screen, and the reader it is drawn for cannot be told that the change of
-/// style means nothing. Stellar is purpose-built for exactly the abstract core
-/// vocabulary a board is built around; OpenMoji is one consistent hand across
-/// the concrete nouns Stellar has no entry for. Everything else gets drawn
-/// rather than filled from whatever set happened to have the word.
+/// **Stellar leads.** It is small — a few hundred pictures against Mulberry's
+/// 3,436 — and drawn for exactly the abstract core vocabulary Mulberry is
+/// weakest on, so putting it first costs almost nothing on the concrete nouns
+/// it has no entry for and wins the words a board is built around. Preferring
+/// it by order rather than by naming words means a picture it adds later is
+/// picked up by re-running this, instead of by somebody noticing.
 ///
-/// This costs coverage and is meant to: it took the bundle from six sets to
-/// two, and what neither carries is label-only until somebody draws it. A
-/// blank button honestly says "no picture yet".
-///
-/// The other sets are not gone — [GlobalSymbolsPack] still reaches all six at
-/// runtime, so a caregiver adding their own word can still find a picture for
-/// it. What changed is only what *ships*.
-///
-/// Every entry must permit commercial use — see NOTICE.md. ARASAAC and Sclera
-/// are excluded on purpose: they are CC BY-NC and may only ever be opt-in
-/// downloads.
+/// Mulberry follows, with its own two extension sets behind it because they
+/// are drawn to match it. It is strong on concrete nouns and weak on abstract
+/// core vocabulary — its 3,436 symbols contain no "stop", "you", "not" or
+/// "want" — so later entries fill those gaps. Mixing styles is a real cost to
+/// visual consistency, but a pre-literate user faced with a blank button pays
+/// more.
 const _sets = <({String slug, int id, String name, String attribution})>[
   (
     slug: 'stellar-symbols',
     id: 133,
     name: 'Stellar Symbols',
     attribution: 'Stellar Symbols © Colin McNamee. CC BY-SA 4.0.',
+  ),
+  (
+    slug: 'mulberry',
+    id: 13,
+    name: 'Mulberry Symbols',
+    attribution:
+        'Mulberry Symbols © Garry Paxton 2008-2017, Steve Lee 2018-. '
+        'CC BY-SA 4.0. https://mulberrysymbols.org',
+  ),
+  // Mulberry's own two extension sets, drawn to match it. Ahead of everything
+  // else because a picture in the same house style as the set beside it is
+  // worth more than a nearer word in a different one.
+  (
+    slug: 'corona-symbols',
+    id: 86,
+    name: 'Mulberry Plus Collection',
+    attribution:
+        'Mulberry Plus Collection © Mulberry and Global Symbols. '
+        'CC BY-SA 4.0. https://globalsymbols.com',
+  ),
+  (
+    slug: 'additional-mulberry-symbols',
+    id: 205,
+    name: 'Mulberry Additional Symbols',
+    attribution:
+        'Mulberry Additional Symbols © Verlag Karin Kestner GmbH. '
+        'CC BY-SA 4.0. https://www.kestner.de',
+  ),
+  (
+    slug: 'tawasol',
+    id: 15,
+    name: 'Tawasol',
+    attribution: 'Tawasol Symbols © Mada, Qatar. CC BY-SA 4.0. http://tawasolsymbols.org',
   ),
   (
     slug: 'openmoji',
@@ -147,38 +176,52 @@ const _searchCandidates = <String, List<String>>{
 
 /// Words whose picture was chosen by a person rather than found by name.
 ///
-/// **Only Stellar and OpenMoji picks survive.** Eight more were pinned here —
-/// `see` to Mulberry's eyes, `napkin` to Mulberry's tissues, `spoon`, `juice`,
-/// `plane`, `pool`, `pee` and `friend` — and every one named a set the board
-/// no longer ships. They are not lost so much as superseded: those words are
-/// on the list to be drawn, and a pin to a set that is not bundled would
-/// quietly put a third house style back on the board.
+/// The search matches a set's label against the word, which is right when a
+/// set names the concept the way the board does and useless when it does not:
+/// no set has a "tell" at all, every set's "see" is the same drawing as its
+/// "look", and the picture of a napkin worth having is filed under "Tissues".
 ///
-/// Keyed by the upstream catalog number, because that is what a set calls its
-/// own picture and the only handle that survives a label being reworded.
+/// **Keyed by the upstream catalog number**, because that is what a set calls
+/// its own picture and the only handle that survives a label being reworded.
 /// [query] exists only to find the page the number is on — there is no
 /// fetch-by-id endpoint, so a search still has to name something the set
 /// indexes.
+///
+/// A choice made by looking at the pictures belongs here rather than in the
+/// manifest. In the manifest it is indistinguishable from something the tool
+/// found, and the next run that re-fetches the word silently undoes it — which
+/// is exactly what nearly happened to the seventeen picked by hand in
+/// `4354a08` the first time the set order changed underneath them.
 const _chosen = <String, ({String query, int pictoId})>{
-  // Stellar.
-  'feelings': (query: 'emotions', pictoId: 53191),
-  'period': (query: 'period cycle', pictoId: 54311),
-  'wait': (query: 'Please wait', pictoId: 53003),
-
-  // OpenMoji. Ten of Haley's fifteen from `4354a08` named this set and stand;
-  // the other five named Mulberry or Tawasol and are on the list to be drawn.
+  // Picked by hand from the pictures themselves (4354a08).
   'far': (query: 'Distance', pictoId: 44201),
+  'feelings': (query: 'emotions', pictoId: 53191),
+  'friend': (query: 'friends', pictoId: 7946),
   'girl': (query: 'Girl', pictoId: 41151),
+  'juice': (query: 'Orange Juice', pictoId: 5214),
   'meeting': (query: 'Meeting', pictoId: 41061),
   'name': (query: 'European Name Badge', pictoId: 44139),
+  'pee': (query: 'Toilet', pictoId: 5984),
+  'period': (query: 'period cycle', pictoId: 54311),
+  'plane': (query: 'Aeroplane', pictoId: 3130),
+  'pool': (query: 'Swim', pictoId: 5859),
   'think': (query: 'Thinking Face', pictoId: 40773),
   'town': (query: 'Cityscape', pictoId: 42987),
   'us': (query: 'Group', pictoId: 44206),
+  'wait': (query: 'Please wait', pictoId: 53003),
   'walk': (query: 'Man Walking', pictoId: 42087),
+
   // The speaker the talk button draws, for the word that means saying
   // something to somebody.
   'tell': (query: 'speaker', pictoId: 43279),
+  // Eyes, which is what "see" is once the looking is taken out of it. It was
+  // the "look" drawing, so a board carrying both words carried one picture
+  // twice.
+  'see': (query: 'eye', pictoId: 4174),
+  // A napkin is filed under what it is made of.
+  'napkin': (query: 'tissue', pictoId: 5977),
   'knife': (query: 'knife', pictoId: 42935),
+  'spoon': (query: 'spoon', pictoId: 5765),
 };
 
 Future<void> main(List<String> args) async {
