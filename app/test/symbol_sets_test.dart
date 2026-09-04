@@ -330,9 +330,12 @@ void main() {
       }
     });
 
-    testWidgets('a set switched off is not credited', (tester) async {
-      // It draws nothing anywhere, including for a picture already on a
-      // button, so there is nothing appearing that a credit is owed for.
+    testWidgets('a set switched off is credited all the same', (tester) async {
+      // It draws nothing today, which is an argument for leaving it out and
+      // the wrong one: it is still in the app, one switch away, and the
+      // licenses ask for credit for what shipped rather than for whatever is
+      // switched on this afternoon. A credit that depends on a setting is a
+      // credit somebody can turn off.
       final fetcher = GlobalSymbolsPack();
       addTearDown(fetcher.dispose);
       final registry = SymbolRegistry(packs: [fetcher])
@@ -340,22 +343,26 @@ void main() {
 
       await pumpCredits(tester, registry);
 
-      expect(find.text(tawasolSet.name), findsNothing);
+      expect(find.text(tawasolSet.name), findsOneWidget);
+      expect(find.text(tawasolSet.attribution), findsOneWidget);
       expect(find.text(mulberrySet.name), findsOneWidget);
     });
 
-    testWidgets('and a noncommercial set only once somebody turns it on', (
-      tester,
-    ) async {
+    testWidgets('and a noncommercial set, which ships off', (tester) async {
+      // Off by default and credited anyway. The credit says whose drawings
+      // this app can reach, and ARASAAC's is the one the license is most
+      // specific about.
       final arasaac = ArasaacPack();
       addTearDown(arasaac.dispose);
       final registry = SymbolRegistry(packs: [arasaac]);
 
-      await pumpCredits(tester, registry);
-      expect(find.text(ArasaacPack.set.name), findsNothing);
+      expect(
+        registry.isSetEnabled('arasaac'),
+        isFalse,
+        reason: 'the premise: noncommercial sets ship switched off',
+      );
 
-      registry.setSetEnabled('arasaac', true);
-      await pumpCredits(tester, registry, pass: 'second');
+      await pumpCredits(tester, registry);
       expect(find.text(ArasaacPack.set.name), findsOneWidget);
       expect(find.textContaining('Sergio Palao'), findsOneWidget);
     });

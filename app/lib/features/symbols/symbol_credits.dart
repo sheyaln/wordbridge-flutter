@@ -103,15 +103,24 @@ class _SymbolCreditsState extends State<SymbolCredits> {
       ];
     }
 
+    // Every set the app knows about, switched on or not.
+    //
+    // A set that is off draws nothing today, which is an argument for leaving
+    // it out and the wrong one: it is still *in* the app, one switch away, and
+    // a person who turns it back on has been reaching its pictures all along
+    // from the same install. The licenses ask for credit wherever the symbols
+    // appear, and a screen that lists only what happens to be switched on this
+    // afternoon makes the credit a function of a setting rather than of what
+    // was shipped. Crediting a set nobody is currently drawing from costs a
+    // line; not crediting one somebody is costs the license.
     return [
       for (final set in registry.sets)
-        if (registry.isSetEnabled(set.slug))
-          (
-            name: set.name,
-            license: set.license,
-            text: set.attribution,
-            count: counts[set.slug] ?? 0,
-          ),
+        (
+          name: set.name,
+          license: set.license,
+          text: set.attribution,
+          count: counts[set.slug] ?? 0,
+        ),
     ];
   }
 

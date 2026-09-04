@@ -69,9 +69,12 @@ whose images ship. That distinction is the licence: the six fetched sets ship
 no manifest, so a screen that read manifests credited them nowhere at all while
 a caregiver could search them, pick one and put it on a board.
 
-A set that is switched off is not credited, and does not need to be. The
-registry refuses to resolve it — for a fetched file already on the device and
-for a bundled picture alike — so nothing of it is appearing anywhere.
+**Every set the app knows about is credited, switched on or not.** A set that
+is off draws nothing today — the registry refuses to resolve it, for a fetched
+file already on the device and for a bundled picture alike — but it is still in
+the app, one switch away, and the licences ask for credit for what shipped
+rather than for whatever happens to be enabled this afternoon. A credit that
+depends on a setting is a credit somebody can turn off.
 
 ### Bundled, commercial use permitted
 
