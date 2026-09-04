@@ -12,7 +12,16 @@ import '../speech/neural/neural_voice.dart';
 import '../speech/neural/voice_model.dart';
 import 'voice_screen.dart';
 
-/// The neural voice, and everything it costs, below the device's own voice.
+/// The whole body of the voice screen, where there are two voices to choose
+/// between.
+///
+/// The choice heads it, then the settings of whichever voice was chosen, then
+/// the other's. Anything else puts a caregiver through a screen of dials before
+/// telling them which voice those dials belong to.
+///
+/// The device controls are handed in by [VoiceScreen] rather than built here,
+/// so the half of the screen that a build with no neural engine still shows is
+/// written once.
 ///
 /// Every number a caregiver is shown here is one somebody has to live with:
 /// how much disk, how long the bake, how much of the board can be said in the
@@ -21,9 +30,9 @@ import 'voice_screen.dart';
 ///
 /// A section rather than a screen of its own, because "which voice speaks" is
 /// one question and it used to be asked on two pages that did not mention each
-/// other. It sits **below** the device voice under [VoiceScreen], and is
-/// labeled early access where it sits: this is the experiment, and a screen that
-/// opened on it read as though the experiment were the arrangement.
+/// other. Early access is said at the row where the voice is picked: this is
+/// the experiment, and a screen that opened on it read as though the experiment
+/// were the arrangement.
 class NeuralVoiceSection extends StatefulWidget {
   const NeuralVoiceSection({
     super.key,
@@ -31,6 +40,7 @@ class NeuralVoiceSection extends StatefulWidget {
     required this.settings,
     required this.db,
     required this.vocabularyId,
+    required this.deviceControls,
     required this.onChanged,
   });
 
@@ -39,8 +49,11 @@ class NeuralVoiceSection extends StatefulWidget {
   final WordbridgeDatabase db;
   final String vocabularyId;
 
-  /// Told when the voice that speaks changes, so the device half below can say
-  /// whether it is the voice or the fallback.
+  /// The other voice's controls, asked for once the choice is known.
+  final DeviceVoiceControls deviceControls;
+
+  /// Told when the voice that speaks changes, so the screen holding this
+  /// redraws with it.
   final VoidCallback onChanged;
 
   @override
@@ -330,137 +343,174 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     return agreed ?? false;
   }
 
+  /// What the neural row says about itself, including whatever is in its way.
+  ///
+  /// A row that cannot be picked and does not say why reads as a feature that
+  /// was withdrawn. And a profile restored onto a tablet with no model carries
+  /// the setting without anything behind it, so that row has to admit that the
+  /// device voice is doing the talking.
+  String _neuralLine({required bool on}) {
+    final name = neuralVoiceById(_settings.neuralVoiceId).name;
+    if (!_speech.canPlay) {
+      return '$name. This device cannot play one, so the board goes on '
+          'speaking with the device voice.';
+    }
+    if (!_installed) {
+      return on
+          ? '$name. Not downloaded, so the board is speaking with the device '
+                'voice until it is.'
+          : '$name. Not downloaded yet — '
+                '${_megabytes(_speech.models.published.downloadBytes)} below.';
+    }
+    return '$name. Closer to a human speaker than text to speech. Words made '
+        'in advance play instantly; anything else is synthesized as it is '
+        'chosen.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final on = _settings.neuralVoice;
     final words = _words?.length ?? 0;
     final baked = _speech.clips?.count ?? 0;
 
-    // Nothing to choose between until there is a second voice on the tablet,
-    // and nothing to choose at all where a buffer cannot be played back.
+    // Nothing to pick until there is a second voice on the tablet, and nothing
+    // to pick at all where a buffer cannot be played back. The row stays on
+    // screen either way and says which of the two it is.
     final chooseable = _installed && _speech.canPlay;
+
+    // What the neural voice has to show for itself, as against what a profile
+    // merely asked for.
+    final speaking = on && _installed;
+
+    final neuralBlock = <Widget>[
+      const VoiceHeader('Neural voice'),
+      if (speaking) ...[
+        ListTile(
+          leading: const Icon(Icons.graphic_eq_outlined),
+          title: const Text('Which voice'),
+          subtitle: Text(
+            '${neuralVoiceById(_settings.neuralVoiceId).name} · '
+            '${neuralVoiceById(_settings.neuralVoiceId).accent} · '
+            '${kokoroVoices.length} to choose from',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: _openVoicePicker,
+        ),
+        const VoiceNote(
+          'Speed is set with the device voice below and applies to both. '
+          'Pitch, volume and tone do not reach this one.',
+        ),
+
+        const VoiceHeader('Words made in advance'),
+        _BakeTile(
+          baked: baked,
+          words: words,
+          job: _bake,
+          busy: _busy,
+          onStart: _startBake,
+          onPause: () => _bake?.pause(),
+        ),
+
+        const VoiceHeader('Times the device voice was used instead'),
+        _FallbackTile(count: _speech.fallbackCount, recent: _speech.fallbacks),
+
+        const VoiceHeader('How long synthesis may take'),
+        ListTile(
+          title: Text('${_settings.synthesisBudget}'),
+          subtitle: Text(
+            _settings.synthesisBudgetMeasured
+                ? 'Measured on this device. Anything slower than this falls '
+                      'back to the device voice.'
+                : 'A safe default for the slowest supported device. Measure '
+                      'for this device\'s own figure, usually lower.',
+          ),
+          isThreeLine: true,
+          trailing: FilledButton.tonal(
+            onPressed: _busy == null ? _measure : null,
+            child: const Text('Measure'),
+          ),
+        ),
+
+        const VoiceHeader('The download'),
+      ],
+      _ModelTile(
+        published: _speech.models.published,
+        installed: _installed,
+        onDisk: _onDisk,
+        partial: _partial,
+        progress: _progress,
+        onInstall: _startInstall,
+        onDelete: _deleteModel,
+      ),
+
+      // The same switch that appears under Reports, not a second copy of it
+      // (§4.59). Disabled while the device voice is speaking, because there
+      // are no neural timings to send.
+      if (chooseable)
+        VoiceMeasurementSwitch(
+          settings: _settings,
+          available: on,
+          onChanged: () => setState(() {}),
+        ),
+    ];
+
+    final deviceBlock = <Widget>[
+      const VoiceHeader('Device voice'),
+      if (on)
+        const VoiceNote(
+          'Speaks any word the neural voice has not made yet, and anything it '
+          'cannot make in time.',
+        ),
+      ...widget.deviceControls(neuralOn: on),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const VoiceHeader('Neural voice'),
+        // The choice, at the top, and it is a choice rather than a switch.
+        // "Use the neural voice", off, names one of the two voices and leaves
+        // the other unnamed — and the unnamed one is the one that is speaking.
+        // It heads the screen because everything under it belongs to one voice
+        // or the other, and below the dials it let a caregiver configure a
+        // voice for two screens before finding out which one was talking.
+        const VoiceHeader('Which voice speaks'),
+        RadioGroup<bool>(
+          groupValue: on,
+          onChanged: (chosen) {
+            if (chosen != null && chosen != on) {
+              unawaited(_setEnabled(chosen));
+            }
+          },
+          child: Column(
+            children: [
+              RadioListTile<bool>(
+                value: false,
+                title: const Text('Device voice'),
+                subtitle: Text(
+                  deviceVoiceLine(_settings.voiceName, _settings.voiceLocale),
+                ),
+              ),
+              RadioListTile<bool>(
+                value: true,
+                // Named even where it cannot be picked, so the screen never
+                // carries a voice with no name on it. What stands in the way
+                // rides the row rather than a tile somewhere under it.
+                enabled: chooseable,
+                title: const Text('Neural voice'),
+                subtitle: Text(_neuralLine(on: on)),
+                isThreeLine: true,
+              ),
+            ],
+          ),
+        ),
         const _PreAlpha(),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text('Sounds closer to a human speaker than text to speech.'),
-        ),
 
-        if (!_speech.canPlay)
-          const ListTile(
-            leading: Icon(Icons.error_outline),
-            title: Text('This device cannot play a neural voice'),
-            subtitle: Text('The board continues to use text to speech.'),
-          ),
-
-        // The choice, and it is a choice rather than a switch. "Use the neural
-        // voice", off, names one of the two voices and leaves the other
-        // unnamed — and the unnamed one is the one that is speaking.
-        if (chooseable) ...[
-          const VoiceHeader('Which voice speaks'),
-          RadioGroup<bool>(
-            groupValue: on,
-            onChanged: (chosen) {
-              if (chosen != null && chosen != on) {
-                unawaited(_setEnabled(chosen));
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<bool>(
-                  value: false,
-                  title: const Text('Device voice'),
-                  subtitle: Text(
-                    _settings.voiceName == null
-                        ? 'Text to speech, configured above.'
-                        : '${_settings.voiceName}, configured above.',
-                  ),
-                ),
-                RadioListTile<bool>(
-                  value: true,
-                  title: const Text('Neural voice'),
-                  subtitle: Text(
-                    '${neuralVoiceById(_settings.neuralVoiceId).name}. Words '
-                    'synthesized in advance play instantly. Anything else is '
-                    'synthesized on selection.',
-                  ),
-                  isThreeLine: true,
-                ),
-              ],
-            ),
-          ),
-
-          // The same switch that appears under Reports, not a second copy of
-          // it (§4.59). Disabled while the device voice is speaking, because
-          // there are no neural timings to send.
-          VoiceMeasurementSwitch(
-            settings: _settings,
-            available: on,
-            onChanged: () => setState(() {}),
-          ),
-        ],
-
-        const VoiceHeader('Downloading the neural voice'),
-        _ModelTile(
-          published: _speech.models.published,
-          installed: _installed,
-          onDisk: _onDisk,
-          partial: _partial,
-          progress: _progress,
-          onInstall: _startInstall,
-          onDelete: _deleteModel,
-        ),
-
-        if (_installed && on) ...[
-          ListTile(
-            leading: const Icon(Icons.graphic_eq_outlined),
-            title: const Text('Which voice'),
-            subtitle: Text(
-              '${neuralVoiceById(_settings.neuralVoiceId).name} · '
-              '${neuralVoiceById(_settings.neuralVoiceId).accent} · '
-              '${kokoroVoices.length} to choose from',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _openVoicePicker,
-          ),
-
-          const VoiceHeader('Words made in advance'),
-          _BakeTile(
-            baked: baked,
-            words: words,
-            job: _bake,
-            busy: _busy,
-            onStart: _startBake,
-            onPause: () => _bake?.pause(),
-          ),
-
-          const VoiceHeader('Times the device voice was used instead'),
-          _FallbackTile(
-            count: _speech.fallbackCount,
-            recent: _speech.fallbacks,
-          ),
-
-          const VoiceHeader('How long synthesis may take'),
-          ListTile(
-            title: Text('${_settings.synthesisBudget}'),
-            subtitle: Text(
-              _settings.synthesisBudgetMeasured
-                  ? 'Measured on this device. Anything slower than this falls '
-                        'back to the device voice.'
-                  : 'A safe default for the slowest supported device. Measure '
-                        'for this device\'s own figure, usually lower.',
-            ),
-            isThreeLine: true,
-            trailing: FilledButton.tonal(
-              onPressed: _busy == null ? _measure : null,
-              child: const Text('Measure'),
-            ),
-          ),
-        ],
+        // The chosen voice's own settings first. Somebody has just been asked
+        // which voice speaks, and the next thing under the answer has to be
+        // the voice they answered with.
+        ...(on
+            ? [...neuralBlock, ...deviceBlock]
+            : [...deviceBlock, ...neuralBlock]),
 
         if (_busy != null)
           ListTile(
@@ -559,12 +609,13 @@ class _VoicePickerState extends State<_VoicePicker> {
   }
 }
 
-/// Says what this is before anything on the screen is touched.
+/// Says what this is, against the row where it is picked.
 ///
-/// Not a disclaimer in small print at the bottom. A caregiver is deciding how
+/// Not a disclaimer in small print at the bottom: a caregiver is deciding how
 /// somebody else will sound, and the person it is for may not be able to say
-/// it came out wrong — so what is uncertain about it goes above the choice,
-/// not below it.
+/// it came out wrong. Not a banner over the whole screen either, now that the
+/// choice heads it — somebody who has settled on the device voice would read
+/// that as the arrangement being the experiment.
 class _PreAlpha extends StatelessWidget {
   const _PreAlpha();
 
