@@ -15,7 +15,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # Deep, because the test step diffs against the commit this push started
+      # from. A shallow checkout has one commit and every push would run the
+      # whole suite — which is safe, and is not what this is for.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: subosito/flutter-action@v2
         with:
@@ -34,11 +39,18 @@ jobs:
       # motor_plan_invariant_test.dart is the reason this job blocks merges.
       # If a change moves a word that already had a home, it fails here rather
       # than on someone's device six months into learning that position.
-      # Serial on purpose. Parallel workers intermittently trip over each
-      # other's in-memory databases, and a test suite that fails once in ten
-      # runs teaches people to re-run it rather than read it. Serial over
-      # ~1900 tests is minutes, not the five seconds this said when it was
-      # written.
+      #
+      # Not serial any more. It was, on the grounds that parallel workers
+      # tripped over each other's in-memory databases — measured over three
+      # consecutive full runs on 2026-09-04 and they do not: 1945 tests, zero
+      # failures, 2m27s against 6m15s. If that ever comes back it comes back
+      # as a flake, so it is written down here rather than only in a commit.
+      #
+      # Not all of them either, except on a tag. `ci_tests.sh` runs what the
+      # change can reach and says which files those are; the rules for when it
+      # gives up and runs everything are in the script, and a tag is one of
+      # them. Nothing ships on a subset.
+      #
       # The golden tag is excluded, and not because those tests are optional.
       # The goldens are written on macOS; Linux rasterizes text differently, so
       # all eight fail on this runner whether or not anything changed. They are
@@ -46,7 +58,8 @@ jobs:
       # draw text as boxes, so what they prove is geometry and a person has to
       # look at the PNG.
       - name: Test
-        run: flutter test --concurrency=1 --exclude-tags golden
+        working-directory: .
+        run: ./tools/ci_tests.sh "${{ github.event.before }}"
 
       # Keeps the non-commercial symbol packs droppable — see NOTICE.md.
       - name: Symbol pack license boundary
@@ -151,9 +164,13 @@ jobs:
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        # Paths are relative to `app/`, which is where `defaults.run` puts
+        # every step in this file. Written from the repository root they
+        # reached `app/app/android` and the job died on the first line of the
+        # first tag that had a keystore to restore.
         run: |
-          echo "$KEYSTORE" | base64 --decode > app/android/upload-keystore.jks
-          cat > app/android/key.properties <<EOF
+          echo "$KEYSTORE" | base64 --decode > android/upload-keystore.jks
+          cat > android/key.properties <<EOF
           storeFile=upload-keystore.jks
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
@@ -191,7 +208,7 @@ jobs:
       # costs nothing and means a later step added by somebody cannot read it.
       - name: Shred the keystore
         if: always()
-        run: rm -f app/android/upload-keystore.jks app/android/key.properties
+        run: rm -f android/upload-keystore.jks android/key.properties
 
       # A fixed asset name, so the website can link to
       # releases/latest/download/wordbridge.apk and never be edited again.
@@ -200,6 +217,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" app/wordbridge.apk \
+          gh release create "${{ github.ref_name }}" wordbridge.apk \
             --title "${{ github.ref_name }}" \
             --generate-notes
