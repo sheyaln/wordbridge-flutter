@@ -74,8 +74,10 @@ class _BenchState extends State<Bench> {
     // The last run's results go before this one starts, so pulling the file
     // can never hand back an answer to a question that was already changed.
     final previous = File(
-      p.join((await getApplicationDocumentsDirectory()).path,
-          'neural-bench.txt'),
+      p.join(
+        (await getApplicationDocumentsDirectory()).path,
+        'neural-bench.txt',
+      ),
     );
     if (previous.existsSync()) previous.deleteSync();
     try {
@@ -86,9 +88,8 @@ class _BenchState extends State<Bench> {
       _note('$stack');
     }
     final documents = await getApplicationDocumentsDirectory();
-    await File(
-      p.join(documents.path, 'neural-bench.txt'),
-    ).writeAsString(_lines.join('\n'));
+    await File(p.join(documents.path, 'neural-bench.txt'))
+        .writeAsString(_lines.join('\n'));
     setState(() {
       _running = false;
       _done = true;
@@ -127,8 +128,7 @@ class _BenchState extends State<Bench> {
     }
     _note('model ${(files.model.lengthSync() / 1000000).round()} MB');
 
-    final needsModel =
-        wants('sweep') || wants('question') || wants('tap');
+    final needsModel = wants('sweep') || wants('question') || wants('tap');
 
     var started = DateTime.now();
     final synthesizer = KokoroSynthesizer(files);
@@ -151,7 +151,8 @@ class _BenchState extends State<Bench> {
     final words = unit.split(' ');
     final measured = <int, int>{};
     for (final n in wants('sweep') ? [1, 2, 3, 5, 8, 12, 16, 24] : <int>[]) {
-      final text = [for (var i = 0; i < n; i++) words[i % words.length]].join(' ');
+      final text = [for (var i = 0; i < n; i++) words[i % words.length]]
+          .join(' ');
       final runs = <int>[];
       for (var run = 0; run < 3; run++) {
         started = DateTime.now();
@@ -202,7 +203,9 @@ class _BenchState extends State<Bench> {
       );
 
       final short = await synthesizer.generate(text: 'I', sid: 1, trim: false);
-      _note('the word "I" synthesizes to ${clipDuration(short).inMilliseconds} ms');
+      _note(
+        'the word "I" synthesizes to ${clipDuration(short).inMilliseconds} ms',
+      );
 
       // The tap path, which is the one that must not have got slower.
       final store = await ClipStore.open(
@@ -270,8 +273,10 @@ class _BenchState extends State<Bench> {
         '${(neural / 5 - wordAudio).round()} ms is the app)',
       );
 
-      _note('a whole 1231-word bake at these rates: '
-          '${(1231 * measured[1]! / 60000).round()} minutes');
+      _note(
+        'a whole 1231-word bake at these rates: '
+        '${(1231 * measured[1]! / 60000).round()} minutes',
+      );
 
       await store.delete();
       await store.close();
@@ -293,7 +298,9 @@ class _BenchState extends State<Bench> {
   /// The same words, on the same voice, with and without the mark. Systematic
   /// error in the pitch estimate cancels; what is left is the difference.
   Future<void> _questionMark(KokoroSynthesizer synthesizer) async {
-    _note('--- does the mark carry tone? (loaded: ${synthesizer.isLoaded}) ---');
+    _note(
+      '--- does the mark carry tone? (loaded: ${synthesizer.isLoaded}) ---',
+    );
     _note('rise = mean f0 of the last 200 ms, minus the mean over the whole');
 
     const pairs = [
@@ -385,7 +392,9 @@ class _BenchState extends State<Bench> {
       }
     }
 
-    _note('${phase.name}: ${DateTime.now().difference(phaseStarted).inSeconds} s');
+    _note(
+      '${phase.name}: ${DateTime.now().difference(phaseStarted).inSeconds} s',
+    );
     _note(
       'install end to end: '
       '${DateTime.now().difference(started).inSeconds} s',

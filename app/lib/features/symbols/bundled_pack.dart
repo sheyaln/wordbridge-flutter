@@ -221,12 +221,7 @@ List<BundledSymbolPack> bundledSymbolPacks({AssetBundle? bundle}) => [
     // records the fetching pack reaches, so one switch governs the shipped
     // picture and the searchable one — and a set left out here is a picture
     // that ships and can never be drawn.
-    sets: const [
-      mulberrySet,
-      stellarSymbolsSet,
-      tawasolSet,
-      openmojiSet,
-    ],
+    sets: const [mulberrySet, stellarSymbolsSet, tawasolSet, openmojiSet],
     bundle: bundle,
   ),
 ];
