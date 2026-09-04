@@ -228,11 +228,13 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
         if (out == null) throw Refusal("failed", "The folder would not open for writing.")
         source.inputStream().use { it.copyTo(out) }
       }
-    } catch (e: java.io.IOException) {
-      // Half a database is worse than none: it would be listed, offered, and
-      // believed. The Dart side checks the length it gets back on the way in
-      // too, but the file should not survive the failure that made it.
+    } catch (e: Exception) {
+      // Any failure, not only an IO one. Half a database is worse than none:
+      // it would be listed, offered and believed. The Dart side checks the
+      // length it gets back on the way in as well, but a file that a failed
+      // write left behind should not survive the failure that made it.
       DocumentsContract.deleteDocument(activity.contentResolver, created)
+      if (e is Refusal) throw e
       throw Refusal(if (outOfSpace(e)) "space" else "offline", e.toString())
     }
 
@@ -268,7 +270,7 @@ class CloudBackup(private val activity: Activity, messenger: BinaryMessenger) {
     DocumentsContract.deleteDocument(activity.contentResolver, documentUri(id))
   }
 
-  private fun outOfSpace(e: java.io.IOException): Boolean =
+  private fun outOfSpace(e: Exception): Boolean =
     e.message?.contains("space", ignoreCase = true) == true
 
   private companion object {

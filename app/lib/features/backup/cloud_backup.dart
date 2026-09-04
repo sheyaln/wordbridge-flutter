@@ -235,19 +235,26 @@ class CloudBackupService {
 
     try {
       Snapshot? taken;
+      String? refused;
       if (await _stale()) {
         final attempt = await backup.takeSnapshot();
         taken = attempt.snapshot;
-        if (attempt.problem != null) {
-          await store.recordProblem(attempt.problem!);
-        }
+        refused = attempt.problem;
       }
 
       final mirrored = await _mirror();
-      if (taken == null && mirrored.copy == null && mirrored.problem == null) {
+
+      // Written down after the mirror rather than before it. A successful
+      // upload clears the stored problem, and a tablet that could not write
+      // its own backup still has one worth keeping — the copies in the account
+      // being fine says nothing about the device somebody is holding.
+      if (refused != null) await store.recordProblem(refused);
+
+      final problem = refused ?? mirrored.problem;
+      if (taken == null && mirrored.copy == null && problem == null) {
         return null;
       }
-      return (snapshot: taken, copy: mirrored.copy, problem: mirrored.problem);
+      return (snapshot: taken, copy: mirrored.copy, problem: problem);
     } catch (_) {
       return _fail(didNotArrive(destination.label));
     }
@@ -289,7 +296,13 @@ class CloudBackupService {
       for (final snapshot in local.take(BackupService.keep)) {
         final name = p.basename(snapshot.path);
         if (alreadyUp.contains(name)) continue;
-        newest ??= await destination.upload(File(snapshot.path), name);
+
+        final copy = await destination.upload(File(snapshot.path), name);
+        // Newest first, so the first one written is the one the screen reports
+        // as the last backup. Every other missing one still goes up: switching
+        // this on is meant to put what the device already has into the
+        // account, not to start the history over from today.
+        newest ??= copy;
       }
 
       await _prune();

@@ -140,6 +140,21 @@ void main() {
       expect(account.uploaded, first);
     });
 
+    test('carries up everything the device already had, not just one', () async {
+      // Switching this on for the first time is somebody saying "keep what I
+      // have safe", and their board's history is the five dates already on the
+      // tablet.
+      await cloud.turnOff();
+      for (var i = 0; i < 3; i++) {
+        await backup.takeSnapshot();
+      }
+
+      await cloud.turnOn();
+      await cloud.keepUpToDate();
+
+      expect(account.files, hasLength(3));
+    });
+
     test('is never written when nobody has been asked', () async {
       final unasked = CloudBackupService(
         backup: backup,
