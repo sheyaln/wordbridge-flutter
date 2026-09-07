@@ -104,6 +104,44 @@ void main() {
       expect(bar.words, ['12', 'apples']);
     });
 
+    test("the bar is fed what the board's keys actually carry", () {
+      // The regression this covers: every other test here builds the bar out
+      // of digits by hand, and the app was putting the spoken word in. So the
+      // word behind the second press was "one", never a numeral, and the join
+      // could not fire however hard the setting was switched on.
+      //
+      // The numbers board labels its keys `1`..`10` and speaks `one`..`ten`,
+      // which is what these two pairs are.
+      final bar = UtteranceBar();
+      bar.add(numeralBarText('1', 'one', joining: true));
+      expect(bar.words, ['1'], reason: 'the digits go in the bar, not "one"');
+
+      expect(
+        bar.joinNumber(numeralBarText('5', 'five', joining: true)),
+        'fifteen',
+      );
+      expect(bar.words, ['15']);
+    });
+
+    test('and with joining off the spoken word goes in unchanged', () {
+      // The behaviour the setting is a choice against. Somebody counting two
+      // things presses 1 then 2 and means one two, and the bar has to read
+      // that back to them.
+      final bar = UtteranceBar();
+      bar.add(numeralBarText('1', 'one', joining: false));
+      bar.add(numeralBarText('2', 'two', joining: false));
+
+      expect(bar.words, ['one', 'two']);
+      expect(bar.text, 'one two');
+    });
+
+    test('a key that is not a numeral is never rewritten', () {
+      // `joinNumbers` is on for the whole board, not for one row of it, so
+      // the rule has to leave every other key alone.
+      expect(numeralBarText('more', 'more', joining: true), 'more');
+      expect(numeralBarText('3rd', 'third', joining: true), 'third');
+    });
+
     test('a joined number is marked so no ending is applied to it', () {
       // The ending keys rewrite the last word, and "12ed" is not a word. The
       // join marks the entry inflected for exactly that reason, the same way

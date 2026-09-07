@@ -25,6 +25,25 @@ bool isNumeral(String text) {
   return true;
 }
 
+/// What a pressed key writes into the sentence, which is not what it says.
+///
+/// A numeral key is labelled `1` and speaks "one", and joining works on the
+/// digits: `1` and `2` concatenate, "one" and "two" do not. So while joining
+/// is on the bar has to hold the digits, or the entry behind the second press
+/// is never a numeral and [UtteranceBar.joinNumber] has nothing to join.
+///
+/// **This is the bug this function exists as.** The talk screen put the spoken
+/// word into the bar for every key, numerals included, so the setting could be
+/// switched on and nothing would ever happen. Every unit test around the join
+/// built its bar out of digits by hand and so agreed with itself about a
+/// sentence the app never produced.
+///
+/// With joining off the spoken word goes in, unchanged. The bar reads "one
+/// two", which is the behaviour that setting is a choice against, and digits
+/// there would be a silent change to what a sentence looks like.
+String numeralBarText(String label, String message, {required bool joining}) =>
+    joining && isNumeral(label) ? label : message;
+
 /// How many digits may be joined into one number.
 ///
 /// Four covers a year, a house number, a price in pence and every age anybody

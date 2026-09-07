@@ -36,6 +36,7 @@ import '../symbols/symbol_resolver.dart';
 import '../../theme/fitzgerald.dart';
 import '../usage/logger.dart';
 import '../utterance/morphology.dart';
+import '../utterance/numbers.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
 import 'fallback_board.dart';
@@ -867,7 +868,7 @@ class TalkScreenState extends State<TalkScreen> {
         final collapsed = contracted ?? joined;
         final repaired = collapsed != null
             ? null
-            : _utterance.add(button.message, pos: button.partOfSpeech);
+            : _utterance.add(_barText(button), pos: button.partOfSpeech);
         _markReached(button.label);
         await _sayWord(collapsed ?? _withRepair(repaired, button));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
@@ -1160,6 +1161,18 @@ class TalkScreenState extends State<TalkScreen> {
 
   /// Whether `1` then `2` is twelve (§4.74).
   bool get _joinsNumbers => widget.settings?.joinNumbers ?? false;
+
+  /// What a pressed key puts in the bar, which is not always what it says.
+  ///
+  /// The rule and the reason are in [numeralBarText]. What is *spoken* is
+  /// untouched either way: the press says "one", and the join says the number
+  /// it made. A sentence spoken whole reads "15" to the engine, which says
+  /// fifteen — which is the point.
+  String _barText(Button button) => numeralBarText(
+    button.label,
+    button.message,
+    joining: _joinsNumbers && button.action == ButtonAction.speak,
+  );
 
   /// Inflects the last word, or appends an agreeing form of "to be".
   ///
