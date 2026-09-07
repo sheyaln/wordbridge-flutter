@@ -1581,11 +1581,12 @@ class _UtteranceBarView extends StatelessWidget {
               // person cannot see — a key whose behavior depends on history is
               // the one thing this board never has.
               _BarMenu(
-                // Both marks, because the control carries both. One of them
-                // would read as the key doing that one thing, and a person who
-                // wanted the other would have no reason to press it.
+                // Every mark it carries, because it carries all of them. One
+                // of them on the face would read as the key doing that one
+                // thing, and a person who wanted another would have no reason
+                // to press it.
                 face: (color) => Text(
-                  '?!',
+                  '?!.',
                   style: TextStyle(
                     fontSize: 27,
                     height: 1.1,
@@ -1605,6 +1606,18 @@ class _UtteranceBarView extends StatelessWidget {
                     mark: '!',
                     label: 'Say it like you mean it',
                     icon: Icons.priority_high_rounded,
+                  ),
+                  // Last, so the two already learned keep the positions they
+                  // were learned in. A full stop is the mark that does not
+                  // change the sentence, which is why it is not first: the
+                  // reason to open this list is usually one of the two above,
+                  // and this is here for the sentence that has to end flat —
+                  // a statement after a run of questions, a refusal that is
+                  // not a shout.
+                  (
+                    mark: '.',
+                    label: 'End it flat',
+                    icon: Icons.fiber_manual_record,
                   ),
                 ],
                 onChosen: onPunctuate,

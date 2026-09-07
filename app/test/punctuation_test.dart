@@ -49,6 +49,30 @@ void main() {
     expect(bar.text, 'stop!');
   });
 
+  test('a full stop is one of the marks the bar offers', () {
+    // The mark that changes nothing about the sentence, which is why it is not
+    // the first one reached for and why it still has to be there: a statement
+    // after a run of questions, a refusal that is not a shout. Engines read a
+    // sentence-final stop for falling intonation the same way they read a
+    // question mark for a rising one.
+    bar.add('I');
+    bar.add('am');
+    bar.add('finished');
+    bar.punctuate('.');
+
+    expect(bar.text, 'I am finished.');
+  });
+
+  test('and it swaps with the other marks like they swap with each other', () {
+    bar.add('go');
+    bar.punctuate('.');
+    bar.punctuate('?');
+    expect(bar.text, 'go?');
+
+    bar.punctuate('.');
+    expect(bar.text, 'go.');
+  });
+
   test('an empty sentence takes no mark', () {
     // A lone question mark is not a question, and speaking one says nothing.
     bar.punctuate('?');
