@@ -176,8 +176,60 @@ class _Label extends StatelessWidget {
   final String text;
   final bool large;
 
+  /// The width to lay the label out in before it is scaled down.
+  ///
+  /// **A word must never break inside itself.** Flutter breaks between words
+  /// where it can and inside one where it cannot, so a label laid out in a box
+  /// narrower than its longest word comes back as "comput" over "er" —
+  /// unreadable, and for a reader who is learning the word, wrong. Two words
+  /// on two lines is a label; one word on two lines is a defect.
+  ///
+  /// So the floor is the longest single word, measured. Whatever that costs in
+  /// scale is paid by the `FittedBox` above, which shrinks the whole label to
+  /// fit the cell — a small word set small is still one word.
+  ///
+  /// Doubling the cell width is the ceiling, and it is why a phrase wraps at
+  /// all: laid out in a box as wide as it likes, a phrase never wraps and is
+  /// shrunk to a single unreadable line instead.
+  ///
+  /// Measured against the style the word is actually drawn in — the ambient
+  /// default merged with this one, at the reader's own text scale. Measuring a
+  /// bare [TextStyle] instead is short by a couple of pixels, because the font
+  /// it picks is not the font on the screen, and a couple of pixels is the
+  /// whole margin between a word that fits and a word that is cut in half.
+  double _wrapWidth(BuildContext context, double available, TextStyle style) {
+    final cell = available.isFinite ? available * 2 : 200.0;
+    final drawn = DefaultTextStyle.of(context).style.merge(style);
+    final scaler = MediaQuery.textScalerOf(context);
+
+    var longest = 0.0;
+    for (final word in text.split(RegExp(r'\s+'))) {
+      if (word.isEmpty) continue;
+      final painter = TextPainter(
+        text: TextSpan(text: word, style: drawn),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout();
+      // Rounded up. A fractional shortfall breaks the word just as completely
+      // as a whole pixel does.
+      final width = painter.width.ceilToDouble();
+      if (width > longest) longest = width;
+      painter.dispose();
+    }
+
+    return longest > cell ? longest : cell;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final style = TextStyle(
+      // Without a picture the word carries the whole button, so it is set
+      // larger rather than left floating at caption size.
+      fontSize: large ? 22 : 13,
+      fontWeight: large ? FontWeight.w600 : FontWeight.w500,
+      color: Colors.black87,
+    );
+
     // A `FittedBox` hands its child unbounded width, so text inside one never
     // wraps: it lays out on a single line and is then scaled down to fit. For
     // a word that is fine. For a phrase it is not — "I use a computer voice to
@@ -192,24 +244,9 @@ class _Label extends StatelessWidget {
         fit: BoxFit.scaleDown,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            // Wider than the cell on purpose. At exactly the cell's width a
-            // word longer than the line breaks in the middle of itself —
-            // "comput" over "er" — because that is what Flutter does when a
-            // word will not fit. Laying out in a wider box keeps words whole,
-            // and the scale down that follows is what makes it fit.
-            maxWidth: box.maxWidth.isFinite ? box.maxWidth * 2 : 200,
+            maxWidth: _wrapWidth(context, box.maxWidth, style),
           ),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              // Without a picture the word carries the whole button, so it is
-              // set larger rather than left floating at caption size.
-              fontSize: large ? 22 : 13,
-              fontWeight: large ? FontWeight.w600 : FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
+          child: Text(text, textAlign: TextAlign.center, style: style),
         ),
       ),
     );
