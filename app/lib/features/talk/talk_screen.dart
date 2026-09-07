@@ -1159,6 +1159,9 @@ class TalkScreenState extends State<TalkScreen> {
   /// Whether "can" and "not" are spoken as "can't" (§4.42).
   bool get _contracts => widget.settings?.contractions ?? true;
 
+  /// Whether a word already in the sentence can be tapped and worked on.
+  bool get _editsSegments => widget.settings?.segmentEditing ?? false;
+
   /// Whether `1` then `2` is twelve (§4.74).
   bool get _joinsNumbers => widget.settings?.joinNumbers ?? false;
 
@@ -1364,6 +1367,7 @@ class TalkScreenState extends State<TalkScreen> {
                   onFind: _findWord,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
+                  editableSegments: _editsSegments,
                 ),
                 // A board showing words it does not normally show has to say
                 // so, and be turnable off from where it is being looked at. A
@@ -1518,10 +1522,14 @@ class _UtteranceBarView extends StatelessWidget {
     required this.onFind,
     required this.onBackspace,
     required this.onClear,
+    required this.editableSegments,
   });
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
+
+  /// Whether a tap on the sentence selects a word rather than speaking it.
+  final bool editableSegments;
 
   /// A voice is being made right now, so the speak key shows a ring.
   final bool speaking;
@@ -1656,17 +1664,27 @@ class _UtteranceBarView extends StatelessWidget {
               const SizedBox(width: _separation),
 
               Expanded(
-                child: GestureDetector(
-                  onTap: empty ? null : onSpeak,
-                  behavior: HitTestBehavior.opaque,
-                  child: _SentenceStrip(text: utterance.text),
-                ),
+                child: editableSegments
+                    // No wrapping gesture detector. Every word is its own
+                    // target here, and one over the whole strip would take the
+                    // tap before the word under the finger ever saw it.
+                    ? _SentenceStrip.editable(utterance)
+                    : GestureDetector(
+                        onTap: empty ? null : onSpeak,
+                        behavior: HitTestBehavior.opaque,
+                        child: _SentenceStrip(text: utterance.text),
+                      ),
               ),
 
               const SizedBox(width: _separation),
               _BarButton(
                 icon: Icons.backspace_outlined,
-                tooltip: 'Delete last word',
+                // What it deletes depends on where the caret is, and saying
+                // "last" while a word in the middle is selected would name the
+                // wrong one.
+                tooltip: utterance.isEditingSegment
+                    ? 'Delete the selected word'
+                    : 'Delete last word',
                 onPressed: empty ? null : onBackspace,
               ),
               const SizedBox(width: 4),
@@ -1699,9 +1717,23 @@ class _UtteranceBarView extends StatelessWidget {
 /// above it claims taps, so the ordinary press is unchanged and the scroll is
 /// there for the sentence that has run past the edge.
 class _SentenceStrip extends StatefulWidget {
-  const _SentenceStrip({required this.text});
+  const _SentenceStrip({required this.text}) : utterance = null;
+
+  /// The sentence with every word its own target (§4.76).
+  ///
+  /// Takes the bar rather than its text, because a word cannot be tapped
+  /// without knowing which index it is — and the caret has to be drawn where
+  /// the next key will actually land, not where a re-split of the sentence
+  /// guesses it would.
+  const _SentenceStrip.editable(UtteranceBar this.utterance) : text = '';
 
   final String text;
+
+  /// Null when the sentence is one block of text, which is the default.
+  final UtteranceBar? utterance;
+
+  /// What is written on the strip, whichever way it was handed over.
+  String get sentence => utterance?.text ?? text;
 
   @override
   State<_SentenceStrip> createState() => _SentenceStripState();
@@ -1710,10 +1742,24 @@ class _SentenceStrip extends StatefulWidget {
 class _SentenceStripState extends State<_SentenceStrip> {
   final _scroll = ScrollController();
 
+  static const _style = TextStyle(fontSize: 26, fontWeight: FontWeight.w500);
+
+  /// The sentence at the last build, so a rebuild that changed nothing does
+  /// not scroll. The widget itself is rebuilt on every notification from the
+  /// bar, including the one that only moved the caret.
+  String? _shown;
+
   @override
   void didUpdateWidget(_SentenceStrip old) {
     super.didUpdateWidget(old);
-    if (old.text != widget.text) _toTheEnd();
+    final now = widget.sentence;
+    if (_shown == now) return;
+    _shown = now;
+    // Only while the bar is growing at its end. A person who has gone back to
+    // a word in the middle is looking at that word, and yanking the strip to
+    // the far end on each key would take it off the screen.
+    if (widget.utterance?.isEditingSegment ?? false) return;
+    _toTheEnd();
   }
 
   @override
@@ -1733,6 +1779,8 @@ class _SentenceStripState extends State<_SentenceStrip> {
 
   @override
   Widget build(BuildContext context) {
+    final utterance = widget.utterance;
+
     return SingleChildScrollView(
       controller: _scroll,
       scrollDirection: Axis.horizontal,
@@ -1741,15 +1789,119 @@ class _SentenceStripState extends State<_SentenceStrip> {
       padding: const EdgeInsets.only(right: 8),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(
-          widget.text,
-          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w500),
-          maxLines: 1,
-          softWrap: false,
-        ),
+        child: utterance == null
+            ? Text(widget.text, style: _style, maxLines: 1, softWrap: false)
+            : _Segments(utterance: utterance, style: _style),
       ),
     );
   }
+}
+
+/// The sentence as one target per word, plus the caret between them.
+///
+/// **The words are laid out from the bar's own entries**, not by splitting the
+/// spoken text. A contraction, a joined number and a phrase key are each one
+/// entry and several written words, and splitting on spaces would offer three
+/// targets for "I use a computer voice to talk" that delete different amounts
+/// of it. One entry, one target, one delete.
+///
+/// Spacing follows the same rule the spoken sentence does: a mark joins the
+/// word in front of it without a space, so the bar reads "you want that?" and
+/// the mark is still its own target.
+class _Segments extends StatelessWidget {
+  const _Segments({required this.utterance, required this.style});
+
+  final UtteranceBar utterance;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = utterance.entries;
+    final selected = utterance.isEditingSegment
+        ? utterance.selectedIndex
+        : null;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // The caret in front of the whole sentence, which is where deleting
+        // the first word leaves it. Without it a person who has just deleted
+        // it has no sign of where the next word is about to go.
+        if (utterance.isEditingSegment && utterance.caret == 0) _caretBar(),
+        for (var i = 0; i < entries.length; i++) ...[
+          // The word space, less the padding the chips already carry.
+          if (i > 0 && !UtteranceBar.isPunctuation(entries[i].text))
+            const SizedBox(width: 2),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => utterance.selectAt(i),
+            // The target, which is not the highlight. The grid's minimum is
+            // 44pt and a word in the bar is a target like any other — "I" is
+            // three characters' worth of pixels and nobody is going to hit it.
+            //
+            // Height costs nothing: the bar is 80 tall and the sentence sat in
+            // the middle of it with the rest empty. Width is spent only on the
+            // words narrower than a finger, which is where it was needed.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: 44,
+                minHeight: utteranceBarHeight - 16,
+              ),
+              child: Center(
+                widthFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: i == selected
+                        ? const Color(0xFFDCEDC8)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  // Around the word rather than around the target, so the
+                  // highlight marks the word and not the space a finger needs.
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      entries[i].text,
+                      style: style,
+                      maxLines: 1,
+                      softWrap: false,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (utterance.isEditingSegment && utterance.caret == i + 1)
+            _caretBar(),
+        ],
+        // The way back to the end of the sentence, for the case tapping the
+        // selected word does not cover: the caret in front of the first word,
+        // where there is no selected word to tap. Wide enough to be a target
+        // and invisible until it is needed.
+        if (utterance.isEditingSegment)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: utterance.toEnd,
+            child: const SizedBox(width: 44, height: utteranceBarHeight - 16),
+          ),
+      ],
+    );
+  }
+
+  /// Where the next word lands.
+  ///
+  /// Drawn rather than blinking. An animation on the one part of the screen a
+  /// person is reading back to check what they said is movement competing with
+  /// the words, and this has to be legible rather than attention-seeking.
+  Widget _caretBar() => Container(
+    width: 2,
+    height: style.fontSize! * 1.1,
+    margin: const EdgeInsets.symmetric(horizontal: 3),
+    color: const Color(0xFF1B5E20),
+  );
 }
 
 /// A bar control that offers a short list rather than doing one thing.

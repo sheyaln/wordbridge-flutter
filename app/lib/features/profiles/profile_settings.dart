@@ -245,6 +245,24 @@ class ProfileSettings extends ChangeNotifier {
   /// a caregiver who knows which the person at the tablet is doing.
   bool get joinNumbers => _values['joinNumbers'] as bool? ?? false;
 
+  /// Whether a word already in the sentence can be tapped and worked on.
+  ///
+  /// Off by default, and the default matters more here than it does for most
+  /// of these. With it off the bar is what it has always been: a tap anywhere
+  /// on the sentence speaks it, and every key adds to the end. With it on a
+  /// tap selects a word instead, and the person who meant to hear their
+  /// sentence back has to find the speak key to do it.
+  ///
+  /// That is a real cost, so it is a choice. What it buys is the repair: going
+  /// back to "go" in "go +ing to the shop", deleting the ending and choosing
+  /// another, then returning to the end and carrying on — rather than clearing
+  /// eight words to fix the second one.
+  ///
+  /// Safe as a getter default and safe on a board built before it existed. It
+  /// changes what a tap on the *bar* does and never what a key on the grid
+  /// does, so no motor plan is touched either way.
+  bool get segmentEditing => _values['segmentEditing'] as bool? ?? false;
+
   /// Who presses the keys on the way to a word the finder found (§4.47).
   ///
   /// The key waits, by default. The board pressing the keys itself shows

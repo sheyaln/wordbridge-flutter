@@ -458,6 +458,43 @@ void main() {
     );
   });
 
+  testWidgets('a word in the sentence, selected and waiting', (tester) async {
+    // Segment editing end to end, which is the only way to see it: the
+    // utterance bar is private to the talk screen, so a picture of the screen
+    // is what says the caret is drawn where the next key will land and the
+    // selected word is marked.
+    await settings.set('segmentEditing', true);
+    await pump(tester);
+
+    // Three words off the home board, at the locations the shipped layout puts
+    // them: `I`, `want`, `more`.
+    for (final at in ['0:0', '0:3', '4:2']) {
+      await tester.tap(find.byKey(ValueKey(at)));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    // The bar sits above the grid, so the first match is the one in the
+    // sentence and the second is the key it came from.
+    final inTheBar = find.text('want');
+    expect(
+      inTheBar,
+      findsNWidgets(2),
+      reason: 'the word is not both in the sentence and on the board',
+    );
+
+    await tester.tap(inTheBar.first);
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/sentence_segment_selected.png'),
+    );
+  });
+
   testWidgets('the health board, with its rows named', (tester) async {
     // Renamed from `body`, and with a row of words for what a person is added
     // between the medicine cupboard and the symptoms. Both are worth a

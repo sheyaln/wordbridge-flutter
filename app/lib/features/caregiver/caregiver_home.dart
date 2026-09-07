@@ -1116,6 +1116,23 @@ class _Settings extends StatelessWidget {
             },
           ),
         if (settings != null)
+          SwitchListTile(
+            value: settings!.segmentEditing,
+            title: const Text('Let words in the sentence be tapped and fixed'),
+            subtitle: const Text(
+              'When enabled, tapping a word in the sentence selects it: the '
+              'delete key removes that word, the next key chosen replaces it, '
+              'and tapping it again returns to the end of the sentence. When '
+              'disabled, tapping the sentence speaks it and every key adds to '
+              'the end. No key on the board moves either way.',
+            ),
+            isThreeLine: true,
+            onChanged: (v) async {
+              await settings!.set('segmentEditing', v);
+              onChanged();
+            },
+          ),
+        if (settings != null)
           _CopulaMode(settings: settings!, onChanged: onChanged),
         if (settings != null)
           SwitchListTile(
