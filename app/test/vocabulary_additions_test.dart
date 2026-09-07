@@ -81,7 +81,7 @@ void main() {
     });
 
     test('butt is on the body board, not behind the adult page', () async {
-      final child = (await layout(rows: 7, cols: 12))['body']!;
+      final child = (await layout(rows: 7, cols: 12))['health']!;
       expect(child, contains('butt'));
     });
 
@@ -134,7 +134,7 @@ void main() {
         'play',
         'feelings',
         'places',
-        'body',
+        'health',
         'doing',
         'numbers',
       ]);
@@ -212,20 +212,33 @@ void main() {
   });
 
   group('the user’s own name', () {
-    test('lands beside the pronouns on the shipped grid', () async {
-      final home = (await layout(rows: 7, cols: 12, userName: 'Maya'))['home']!;
+    test('lands beside the key that asks for one', () async {
+      // On the people board, in the row `name` closes — not on the root board
+      // among the pronouns, where it used to go. A proper noun in the middle
+      // of a closed set of pronouns drew in their color and took the reserve
+      // that band holds for the personal vocabulary it is not.
+      final people = (await layout(
+        rows: 7,
+        cols: 12,
+        userName: 'Maya',
+      ))['people']!;
 
-      expect(home, contains('Maya'));
+      expect(people, contains('Maya'));
       expect(
-        home['Maya']!.col,
-        lessThanOrEqualTo(home['they']!.col),
-        reason: 'the name is not in the pronoun band it was meant for',
+        people['Maya']!.row,
+        people['name']!.row,
+        reason: 'the name is not on the row the key that asks for one is on',
       );
     });
 
-    test('is absent when nobody has a name set', () async {
-      final home = (await layout(rows: 7, cols: 12))['home']!;
+    test('is not on the root board any more', () async {
+      final home = (await layout(rows: 7, cols: 12, userName: 'Maya'))['home']!;
       expect(home.keys, isNot(contains('Maya')));
+    });
+
+    test('is absent when nobody has a name set', () async {
+      final people = (await layout(rows: 7, cols: 12))['people']!;
+      expect(people.keys, isNot(contains('Maya')));
     });
 
     test('displaces nothing, at any grid', () async {

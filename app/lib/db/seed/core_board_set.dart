@@ -179,7 +179,7 @@ Future<String> seedCoreBoardSet(
   await placeUserName(
     db,
     vocabularyId: vocabId,
-    boardId: homePages.first,
+    boardId: categoryPages['people']!.first,
     name: userName,
   );
 
@@ -205,12 +205,26 @@ Future<String> seedCoreBoardSet(
   return vocabId;
 }
 
-/// Puts the person's own name beside the pronouns, if there is room for it.
+/// Puts the person's own name beside the key that asks for one.
 ///
 /// The single most personal word on any board, and the one a shipped
-/// vocabulary can never guess. It goes in the pronoun band because that is
-/// what it is — the word for the person saying it — and beside `I` and `you`
-/// rather than on a page of its own.
+/// vocabulary can never guess. It goes on the people board, in the row that
+/// ends with `name` — so the word for the person saying it sits next to the
+/// word that asks who somebody is, and a caregiver adding the rest of a
+/// family's names has them all in one place.
+///
+/// It used to go on the root board, beside the pronouns. That put it one
+/// movement from everywhere, which is the argument for it, and it also put the
+/// one word on the board that is a proper noun into the middle of the closed
+/// set of pronouns — where it drew in the pronoun color, took the reserve the
+/// pronoun band holds for exactly the personal vocabulary it is *not*, and
+/// answered "who" with a name nobody else on that row is.
+///
+/// **[_nameBands] in order, first with room wins.** `people` is the row the
+/// key that asks for a name closes, and `names` is the row held open for a
+/// family's own. Either is the right neighbourhood; the first is the better
+/// one, and on a grid too narrow to leave that row a spare cell the second
+/// still puts the name among people rather than nowhere.
 ///
 /// **Placed afterwards rather than seeded as a band item, on purpose.** The
 /// bands are what setup measures a grid against (`boardSetRefusal`), and a name
@@ -219,9 +233,9 @@ Future<String> seedCoreBoardSet(
 /// layout already left free and never asks for one.
 ///
 /// **No free location means no cell**, rather than a location invented
-/// somewhere else. A name that lands beside the pronouns on one device and on
-/// page two of another is one word with a different motor path per device,
-/// which is the thing this board does not do.
+/// somewhere else. A name that lands beside `name` on one device and on page
+/// two of another is one word with a different motor path per device, which is
+/// the thing this board does not do.
 Future<String?> placeUserName(
   WordbridgeDatabase db, {
   required String vocabularyId,
@@ -237,29 +251,39 @@ Future<String?> placeUserName(
   if (board == null) return null;
 
   final regions = BoardRegions.decode(board.bandMap);
-  final pronouns = regions?.bands
-      .where((b) => b.name == 'pronouns')
-      .firstOrNull;
-  if (regions == null || pronouns == null) return null;
+  if (regions == null) return null;
 
-  final free = await _freeCellInLines(
-    db,
-    boardId: boardId,
-    axis: regions.axis,
-    first: pronouns.first,
-    last: pronouns.last,
-  );
-  if (free == null) return null;
+  for (final wanted in _nameBands) {
+    final band = regions.bands.where((b) => b.name == wanted).firstOrNull;
+    if (band == null) continue;
 
-  return placeButton(
-    db,
-    vocabularyId: vocabularyId,
-    cellId: free.id,
-    label: label,
-    message: label,
-    partOfSpeech: PartOfSpeech.pronoun,
-  );
+    final free = await _freeCellInLines(
+      db,
+      boardId: boardId,
+      axis: regions.axis,
+      first: band.first,
+      last: band.last,
+    );
+    if (free == null) continue;
+
+    return placeButton(
+      db,
+      vocabularyId: vocabularyId,
+      cellId: free.id,
+      label: label,
+      message: label,
+      // A name is what a pronoun stands in for, and coding it as one is what
+      // puts it in the same color as `I` and `you` — the class of word it
+      // belongs to even on a board of nouns.
+      partOfSpeech: PartOfSpeech.pronoun,
+    );
+  }
+
+  return null;
 }
+
+/// Where a person's own name goes, best first.
+const _nameBands = ['people', 'names'];
 
 /// The first reserved location inside a run of lines, reading the way the band
 /// was filled.
