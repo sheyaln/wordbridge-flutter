@@ -84,6 +84,15 @@ const _spokenAs = <String, String>{
   'out': 'places you go',
   'people': 'words for people',
   'referring': 'who you mean',
+  // "about me" reads as a heading rather than as what the row holds, and
+  // "what it is" says nothing at all until you have read the row under it.
+  'about me': 'who I am',
+  'what it is': 'words for feelings',
+  'measuring': 'size',
+  'how big': 'big and small',
+  'how far': 'far and near',
+  'how fast': 'fast and slow',
+  'how heavy': 'heavy and light',
 };
 
 /// What to write over a band.
@@ -101,6 +110,7 @@ List<String> get namesToOffer => ({
   'fruit',
   'snacks',
   'body',
+  'health',
   'clothes',
   'feelings',
   'family',

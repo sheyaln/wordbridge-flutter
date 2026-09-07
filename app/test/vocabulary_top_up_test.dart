@@ -565,14 +565,14 @@ void main() {
     // turning case has its own group below.
     //
     // The width follows the number of shipped categories — a row holds
-    // `cols - 5` of them — so it was 14 for nine, 15 for ten and is 18 for
-    // thirteen. That is the premise, not the subject: a narrower grid here
-    // does not make the test harder, it makes it a different test that the
-    // group below already runs.
+    // `cols - 5` of them — so it was 14 for nine, 15 for ten, 18 for thirteen
+    // and is 19 for fourteen. That is the premise, not the subject: a narrower
+    // grid here does not make the test harder, it makes it a different test
+    // that the group below already runs.
     setUp(() async {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
-      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 18);
+      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 19);
     });
 
     test('the board arrives, with its words in it', () async {
@@ -597,12 +597,13 @@ void main() {
         words.keys,
         containsAll(['wash', 'sit', 'ask', 'remember', 'hold', 'share']),
       );
-      // The board's own verbs, the `how` adverbs §4.42 added to it and the
-      // noun "question" that `ask` and `answer` needed, plus the six question
-      // words every board carries in its pinned column. Arithmetic, not
-      // behavior: a word added to the shipped vocabulary moves this number
-      // and nothing else.
-      expect(words.keys, hasLength(54 + 6));
+      // The board's own verbs, the `how` adverbs §4.42 added to it, the noun
+      // "question" that `ask` and `answer` needed and the three verbs added
+      // since — `charge`, `use` and `order` — plus the six question words
+      // every board carries in its pinned column. Arithmetic, not behavior: a
+      // word added to the shipped vocabulary moves this number and nothing
+      // else.
+      expect(words.keys, hasLength(57 + 6));
       expect(
         result.added.where((a) => a.board == 'doing').map((a) => a.label),
         containsAll(['wash', 'breathe', 'cry']),

@@ -518,7 +518,9 @@ void main() {
         'play',
         'feelings',
         'places',
-        'body',
+        // Renamed from `body`, at the index it always sat at. A rename changes
+        // the word over a key; only a reorder would change what the key opens.
+        'health',
       ]);
       // The tail is where new boards land, and the only place they may. Each
       // one appended here left every key already learned opening exactly what
@@ -531,6 +533,7 @@ void main() {
         'weather',
         'clothing',
         'animals',
+        'measurement',
       ]);
     });
 
@@ -603,10 +606,10 @@ void main() {
         reason: 'a strip of the doing board was never placed',
       );
       // One fewer since `cook` moved to `food` (§4.42), one more for the noun
-      // `question` that `ask` and `answer` needed. Arithmetic, not behavior:
-      // a word joining or leaving the shipped board moves this number and
-      // nothing else.
-      expect(labels, hasLength(48));
+      // `question` that `ask` and `answer` needed, and three more for
+      // `charge`, `use` and `order`. Arithmetic, not behavior: a word joining
+      // or leaving the shipped board moves this number and nothing else.
+      expect(labels, hasLength(51));
     });
 
     test('the 7x12 food board is exactly where it ships', () async {

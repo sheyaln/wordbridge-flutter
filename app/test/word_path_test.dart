@@ -299,7 +299,7 @@ void main() {
       expect(found.map((f) => f.label), contains('back'));
       expect(
         found.singleWhere((f) => f.label == 'back').boardId,
-        await boardNamed('body'),
+        await boardNamed('health'),
       );
     });
 
@@ -342,7 +342,7 @@ void main() {
       expect(found, hasLength(2));
       expect(
         {for (final path in found) path.boardId},
-        {await boardNamed('people'), await boardNamed('body')},
+        {await boardNamed('people'), await boardNamed('health')},
       );
     });
 

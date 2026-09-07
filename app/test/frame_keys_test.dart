@@ -230,12 +230,13 @@ void main() {
       // chosen one is ignored — this is the case where it is not.
       //
       // The width follows the number of shipped categories — a system row
-      // holds `cols - 5` of them — so it was 14 for nine, 15 for ten and is 18
-      // for thirteen. `showsEveryCategory` below is the premise, and it is
-      // asserted rather than assumed for exactly this reason.
+      // holds `cols - 5` of them — so it was 14 for nine, 15 for ten, 18 for
+      // thirteen and is 19 for fourteen. `showsEveryCategory` below is the
+      // premise, and it is asserted rather than assumed for exactly this
+      // reason.
       final wide = WordbridgeDatabase.forTesting(NativeDatabase.memory());
       addTearDown(wide.close);
-      final id = await seedCoreBoardSet(wide, rows: 7, cols: 18);
+      final id = await seedCoreBoardSet(wide, rows: 7, cols: 19);
 
       final frame = SystemFrame.parse(
         (await (wide.select(

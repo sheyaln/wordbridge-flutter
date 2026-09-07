@@ -199,7 +199,7 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         ],
       ),
     ],
-    'body': [
+    'health': [
       // An adult who cannot say "medication" or name a body part to a doctor
       // is dependent on someone else's guess about their own body.
       Band(
@@ -208,13 +208,16 @@ final _extras = <AgeBand, Map<String, List<Band<SeedWord>>>>{
         startsLine: false,
         items: [
           ...nouns(['pain', 'medication'], level: 1),
+          // `charger` is not here any more. It is on `objects` / `things I
+          // use`, with the other things a person carries, and it is there for
+          // every profile rather than only for adults — a child's chair and a
+          // child's talker run flat too.
           ...nouns([
             'shower',
             'period',
             'dentist',
             'wheelchair',
             'glasses',
-            'charger',
           ], level: 2),
         ],
       ),

@@ -342,6 +342,17 @@ final homeBands = <Band<SeedWord>>[
       w('could', PartOfSpeech.verb, level: 3, pageRank: 26),
       w('would', PartOfSpeech.verb, level: 3, pageRank: 26),
       w('should', PartOfSpeech.verb, level: 3, pageRank: 26),
+      // The verb a person needs for their own equipment and for everything
+      // anybody hands them — a chair, a lift, a toilet, a talker. Without it
+      // "can I use that" has to be built out of "can" and a noun and hope.
+      //
+      // "use" and "order" are not here, and the reason is arithmetic rather
+      // than judgement. This band overflows onto page two at 7x12, where its
+      // width is however many columns the surplus needs — twelve words is two
+      // columns and the pairs read across them, know/think over say/tell over
+      // see/come over give/feel. Fourteen words is three columns, and every
+      // one of those pairs comes apart. Both verbs are on `doing`, with the
+      // groups they belong to.
     ],
   ),
 
@@ -445,6 +456,16 @@ final homeBands = <Band<SeedWord>>[
       // but, or, yet, so" — so this is the truth about the word, not a lie
       // told for the sake of the palette.
       w('for', PartOfSpeech.conjunction, level: 2),
+      // Accompaniment, which none of the spatial prepositions cover: "go with
+      // me", "I want to come with you". It belongs in the preposition band
+      // above and there is no room for it there at any grid this board ships
+      // on, so it is here with the other words whose job is to join two parts
+      // of a sentence — which is what this one does.
+      //
+      // Seventh in a six-deep band, so at 7x12 it reads on page two behind
+      // "for", exactly as "for" reads on page two there. Accepted for the same
+      // reason: one movement further away costs less than the column.
+      w('with', PartOfSpeech.preposition, level: 2),
     ],
   ),
 
@@ -503,6 +524,15 @@ final homeBands = <Band<SeedWord>>[
       // wheelchair, a queue, a page or a walk.
       w('forward', PartOfSpeech.preposition, level: 3),
       w('backward', PartOfSpeech.preposition, level: 3),
+      // "there" is not here, and "with" is not here. Both belong in this band
+      // by word class and neither fits: the band is exactly twelve deep, which
+      // is exactly two columns at 7x12, and a thirteenth word costs it a whole
+      // column — which at that size took `under`, `left`, `right` and `off`
+      // off page one and moved `yes`, `no` and `don't` a column sideways.
+      // Two words are not worth four words and a displacement.
+      //
+      // "there" is on `places` / `where`, with the other adverbs that answer
+      // the question. "with" is in `articles` below, with the joining words.
     ],
   ),
 
@@ -534,6 +564,17 @@ final homeBands = <Band<SeedWord>>[
       // draw it should page it, and marking it would refuse that grid outright
       // over one word.
       w('maybe', PartOfSpeech.adverb),
+      // Beside "maybe", which is the other answer a person needs when yes and
+      // no are both wrong. "almost" is the one that answers "are you
+      // finished?" honestly, and without it the truthful answer is "no".
+      //
+      // Paged at the comparative rank, which is the last thing off this board.
+      // The band is exactly six deep and 7x12 gives it one column, so a
+      // seventh word at the band's own rank made it ask for two — and the
+      // column it would have taken came off `places`, which lost `under`,
+      // `left`, `right` and `off` from page one to pay for it. Ranked here it
+      // takes itself to page two instead and every other word stays put.
+      w('almost', PartOfSpeech.adverb, level: 2, pageRank: comparativePageRank),
     ],
   ),
 
@@ -648,7 +689,12 @@ const categoryNames = [
   'play',
   'feelings',
   'places',
-  'body',
+  // Renamed from `body`. The board was already more than the parts — the
+  // toilet, the medicine cupboard, the emergency key — and naming it for the
+  // parts sent people to it for a body part and nowhere else. Renaming a
+  // category changes the word over a key, not the key: this name sits at the
+  // same index it always did, so the wheel opens exactly what it opened.
+  'health',
   'doing',
   // Appended, which is what makes it safe: the wheel is a window onto this
   // list in order, so a name added at the end leaves every key already learned
@@ -662,6 +708,10 @@ const categoryNames = [
   'weather',
   'clothing',
   'animals',
+  // Appended, with the same guarantee as every name above it: the wheel is a
+  // window onto this list in order, so a name at the end leaves every key
+  // already learned opening what it always opened.
+  'measurement',
 ];
 
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
@@ -779,7 +829,19 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'people',
       shedRank: 4,
-      items: nouns(['boy', 'girl', 'man', 'woman', 'name'], level: 2),
+      items: nouns([
+        'boy',
+        'girl',
+        'man',
+        'woman',
+        'name',
+        // The board's own name, and the word for one of whoever is on it.
+        // Appended, so the five above keep the locations they were learned in
+        // — and the person's own name is placed in the free cell after these,
+        // which is what puts it beside the key that asks for one.
+        'person',
+        'people',
+      ], level: 2),
     ),
 
     // Object pronouns, after the nouns rather than before them: the root
@@ -1108,6 +1170,22 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       ],
     ),
 
+    // The nouns the board had none of, and the board's own name among them.
+    // Rows run in Fitzgerald order — whole utterances, verbs, nouns, then the
+    // adjectives that modify them — so this sits between the verbs above and
+    // the feelings below and each class keeps a contiguous block of color.
+    //
+    // "feeling" is what a person needs to talk *about* how they are rather
+    // than only to report it: "I have a feeling", "that is a bad feeling".
+    Band(
+      name: 'what it is',
+      shedRank: 7,
+      items: [
+        ...nouns(['feeling'], level: 2),
+        ...nouns(['feelings', 'mood'], level: 3),
+      ],
+    ),
+
     Band(
       name: 'feeling',
       shedRank: 1,
@@ -1219,6 +1297,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...nouns(['home', 'school'], level: 1),
         ...nouns(['shop'], level: 2),
         ...nouns(['park'], level: 1),
+        // The board's own name. Without it a person can name the places on
+        // the board and cannot ask about one that is not.
+        ...nouns(['place'], level: 2),
       ],
     ),
 
@@ -1267,9 +1348,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     // Answers to "where" that are not a place: adverbs, not nouns, because
     // "upstairs's" and "away is" are what coding them as nouns produced.
     // Adverb also keeps them clear of the preposition color, which the
-    // modified scheme shares with social. "far" and "near" close the row —
-    // adjectives, but the same question, and a row of their own would cost the
-    // caregiver reserve below it.
+    // modified scheme shares with social.
+    //
+    // "far" and "near" used to close this row. They are on `measurement` now,
+    // with the rest of the words that answer how big and how far — two
+    // adjectives on the end of a row of adverbs were a color break as well as
+    // the wrong home, and one word has one home (§4.42).
     Band(
       name: 'where',
       shedRank: 2,
@@ -1277,7 +1361,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...adverbs(['outside'], level: 1),
         ...adverbs(['inside', 'away'], level: 2),
         ...adverbs(['upstairs', 'downstairs'], level: 3),
-        ...adjectives(['far', 'near'], level: 3),
+        // "here" is on the root board and "there" never was anywhere, so a
+        // person could say where they are and not where anything else goes —
+        // and "put it there" is the sentence that needs it. It is here rather
+        // than beside "here" because the root board's preposition column is
+        // exactly full at 7x12 and a thirteenth word costs it a column.
+        ...adverbs(['there'], level: 2),
       ],
     ),
 
@@ -1290,7 +1379,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     ),
   ],
 
-  'body': [
+  // Called `body` until it was renamed. Naming a board of parts, toileting,
+  // the medicine cupboard and the emergency key after the parts alone sent
+  // people to it for a body part and for nothing else.
+  'health': [
     // One phrase and the rest of the row held open. This is the fastest cell
     // on the board and the class of button a caregiver adds to most.
     Band(
@@ -1361,6 +1453,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // vocabulary, which is a different question.
         ...nouns(['back', 'butt'], level: 2),
         ...nouns(['chest', 'neck', 'heart', 'skin'], level: 3),
+        // The whole of what the parts around it belong to, and the board's
+        // old name. "my body" is how a person says a thing is theirs to
+        // decide about, which is a sentence none of the parts build.
+        ...nouns(['body'], level: 2),
       ],
     ),
 
@@ -1385,6 +1481,35 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'allergic',
         ], level: 2),
         ...nouns(['emergency'], level: 1),
+      ],
+    ),
+
+    // What a person is, in their own words, on the board they are asked about
+    // themselves on. Somebody who cannot say "autism" is described in the
+    // third person in front of them at every appointment they attend, with no
+    // way to name what is being discussed and no way to disagree with it.
+    //
+    // Both words, because they are not the same word. "autism" is what is on
+    // the form and what a stranger says; "autistic" is the identity-first
+    // term most autistic adults ask to be described with. A board carrying
+    // only the clinical one would be picking a side on the user's behalf.
+    //
+    // Tagged as nouns throughout, including the two that are adjectives.
+    // Fitzgerald colors by word class and the band owns a row: coloring three
+    // of six cells differently would read as the board having made a mistake,
+    // and this row is a group rather than a sentence being built out of. The
+    // `care` band above already does the same with "allergic".
+    Band(
+      name: 'about me',
+      shedRank: 6,
+      items: [
+        ...nouns(['autism', 'autistic'], level: 2),
+        ...nouns(['neurodivergent'], level: 2),
+        ...nouns(['disability', 'disabled'], level: 3),
+        ...nouns(['diagnosis', 'therapy'], level: 3),
+        // The board's own name, and the word for the subject of every
+        // appointment the words above are said at.
+        ...nouns(['health'], level: 2),
       ],
     ),
 
@@ -1441,6 +1566,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['wake'], level: 3),
         ...verbs(['rest'], level: 2),
         ...verbs(['breathe'], level: 3),
+        // The chair, the talker, the phone. Equipment running flat is a
+        // communication outage for the person it belongs to, and until this
+        // there was no word that got somebody to do something about it
+        // before it happened. The noun is on `objects`, with the other
+        // things a person uses.
+        ...verbs(['charge'], level: 2),
       ],
     ),
 
@@ -1465,6 +1596,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 2,
       items: [
         ...verbs(['ask', 'answer', 'talk'], level: 2),
+        // Asking somebody whose job it is to bring it: a meal, a drink, a
+        // delivery. "want" on the root board is the wish and this is the act,
+        // and at a counter they are not the same sentence.
+        ...verbs(['order'], level: 3),
         // The noun the two verbs beside it take. "ask" and "answer" were both
         // here and the thing being asked and answered was not, so a person
         // could say they were asking without naming what — and "I have a
@@ -1495,6 +1630,13 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['hold'], level: 2),
         ...verbs(['drop'], level: 3),
         ...verbs(['find'], level: 2),
+        // For a person's own equipment and for everything anybody hands them
+        // — a chair, a lift, a toilet, a talker. Without it "can I use that"
+        // has to be built out of "can" and a noun and hope. It belongs on the
+        // root board with the other core verbs and there is no room for it
+        // there: that band overflows at 7x12, and two more words re-wrap the
+        // overflow and take its pairs apart.
+        ...verbs(['use'], level: 2),
         // `cook` is not here. It moved to `food` / `eating`, beside the food
         // it acts on (§4.42) — displacing for anybody who had learned it on
         // this board, which is why it is a seed change reaching new profiles
@@ -1588,6 +1730,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // "whole" beside "half", which is the pair a quantity is usually
         // described against: half the sandwich, the whole sandwich.
         ...adjectives(['both', 'half', 'whole'], level: 3),
+        // The board's own name, and the word for the numbers this board is
+        // not: a phone number, a house number, a bus number.
+        ...nouns(['number'], level: 2),
       ],
     ),
 
@@ -1652,6 +1797,16 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'glasses',
           'watch',
         ], level: 3),
+        // Moved off the adult preset's `self care` row, where it was the one
+        // thing among the medication and the wheelchair that is not health
+        // vocabulary — and where every profile that is not an adult had no
+        // word for it at all. Level 2 here, because a person whose chair or
+        // talker is running flat needs the noun as much as the verb.
+        ...nouns(['charger'], level: 2),
+        // The board's own name, more or less: nobody looks for a "thing" by
+        // asking for an object. It is the word for whatever is not on the
+        // board, which is what a naming board most needs.
+        ...nouns(['thing'], level: 2),
       ],
     ),
 
@@ -1812,6 +1967,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...nouns(['sun', 'rain'], level: 2),
         ...nouns(['snow', 'wind', 'cloud'], level: 3),
         ...nouns(['sky', 'storm'], level: 3),
+        // The board's own name, and what all of it answers: "what is the
+        // weather" is the question, and until this the board could answer it
+        // without being able to ask it.
+        ...nouns(['weather'], level: 2),
       ],
     ),
 
@@ -1874,6 +2033,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['shoes', 'coat'], level: 2),
         ...nouns(['shirt', 'pants', 'socks', 'hat'], level: 3),
+        // The board's own name. A garment nobody has named yet is "clothes",
+        // and so is the whole pile of them.
+        ...nouns(['clothes'], level: 2),
       ],
     ),
 
@@ -1931,6 +2093,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['dog', 'cat'], level: 2),
         ...nouns(['fish', 'bird', 'rabbit'], level: 3),
+        // The board's own name, and the word for the one at the window that
+        // is not on the board.
+        ...nouns(['animal'], level: 2),
       ],
     ),
 
@@ -1957,6 +2122,96 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 3,
       items: [
         ...nouns(['bug', 'spider', 'bee', 'butterfly'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // How big, how far, how fast, how heavy. Nothing on the board answered any
+  // of them: "big" and "small" are the two adjectives a child is asked for
+  // most and neither had a location anywhere, and `far` and `near` were two
+  // adjectives on the end of a row of adverbs on `places`.
+  //
+  // They are here rather than on the boards they describe because a
+  // measurement is not about one subject — the same "big" is said about a
+  // dog, a queue, a portion and a room, and a copy on each of those boards is
+  // one word with four homes and no obvious one (§4.42).
+  //
+  // Opposites sit side by side and a band owns a row, so each row is one
+  // question and its two answers: a pair learned as a pair rather than as two
+  // positions that happen to mean opposite things.
+  //
+  // Nouns first and the adjectives after them, which is the Fitzgerald order
+  // every other mixed board runs in, so a class holds a contiguous block of
+  // rows and therefore of color.
+  'measurement': [
+    Band(
+      name: 'measuring',
+      shedRank: 4,
+      items: [
+        // What a person asks about before they have a word for the answer —
+        // "what size", "the wrong size" — and the board's own name behind it.
+        ...nouns(['size'], level: 2),
+        ...nouns(['measurement'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'how big',
+      shedRank: 0,
+      items: [
+        // Level 1, and the only level-1 pair on this board. A child is asked
+        // to choose between a big one and a small one before they are asked
+        // anything else here.
+        ...adjectives(['big', 'small'], level: 1),
+        ...adjectives(['long', 'short'], level: 2),
+        ...adjectives(['tall', 'wide', 'thin'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'how far',
+      shedRank: 1,
+      items: [
+        // Moved here from `places` / `where`. Level 2 rather than the 3 they
+        // drew at there: "too far" is a refusal a person needs long before
+        // they need to name a library.
+        ...adjectives(['far', 'near'], level: 2),
+        ...adjectives(['close', 'deep'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'how fast',
+      shedRank: 2,
+      items: [
+        // "too fast" and "too slow" are whole utterances on `feelings`, where
+        // they are complaints about what is being done to somebody. These are
+        // the adjectives, which describe anything at all — and the pair a
+        // person needs to ask for a change of pace rather than to protest one.
+        ...adjectives(['fast', 'slow'], level: 2),
+      ],
+    ),
+
+    Band(
+      name: 'how heavy',
+      shedRank: 3,
+      items: [
+        // "light" is also on `objects` / `around the house`, where it is the
+        // one on the ceiling. Two buttons, one label, two meanings — which is
+        // what the word does in English, and separating them by board and by
+        // region is how a board carries a homograph, exactly as `right` is
+        // carried on the root board and on `feelings`. Nothing keys behavior
+        // off the label, so the two do not interfere.
+        ...adjectives(['heavy', 'light'], level: 2),
+        ...adjectives(['full', 'empty'], level: 2),
       ],
     ),
 

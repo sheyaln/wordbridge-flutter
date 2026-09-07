@@ -265,7 +265,20 @@ void main() {
       // boards sit there: what earned level 2 is what a day is negotiated in
       // — whether it is raining, whether the seam itches, and the two animals
       // a household talks to.
-      expect(shippedWordsAtMost(2), inInclusiveRange(200, 340));
+      //
+      // Raised again from 340 to 380 for the `measurement` board, for the
+      // words on `health` for what a person is, and for the name of each
+      // category as a word on the board it names. That took it to 344.
+      //
+      // Thirty-three words, and they are level 2 for one reason: every one of
+      // them is what a day is *negotiated* in rather than what it is named
+      // with. "big" and "small" are the choice a child is offered before any
+      // other; "far" is a refusal; "autism" is the word being said about
+      // somebody in front of them; and a person who cannot say "clothes",
+      // "weather" or "animal" cannot ask about the one that is not on the
+      // board. Level 3 is still comfortably twice this and `each step is a
+      // real step` pins the gap at both ends.
+      expect(shippedWordsAtMost(2), inInclusiveRange(200, 380));
     });
 
     test('level 3 is everything', () {

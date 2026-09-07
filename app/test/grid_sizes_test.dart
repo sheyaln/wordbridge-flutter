@@ -226,7 +226,7 @@ void main() {
           'play',
           'feelings',
           'places',
-          'body',
+          'health',
         ]);
       });
 

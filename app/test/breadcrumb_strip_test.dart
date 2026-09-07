@@ -54,7 +54,7 @@ void main() {
 
     await show(
       tester,
-      route: [crumb('body'), crumb('more words'), crumb('more words')],
+      route: [crumb('health'), crumb('more words'), crumb('more words')],
       destination: 'buttocks',
     );
     final long = tester.getSize(find.byType(BreadcrumbStrip)).height;
@@ -64,12 +64,20 @@ void main() {
   });
 
   testWidgets('a deep route reads in the order it was walked', (tester) async {
+    // On a wider surface than the 800x600 the test binding defaults to,
+    // because this test is about the order and the one below is about what a
+    // narrow strip drops. At 800 the head of this trail is elided and the two
+    // tests would be checking the same thing.
+    await tester.binding.setSurfaceSize(const Size(1200, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     await show(
       tester,
-      route: [crumb('body'), crumb('more words'), crumb('more words')],
+      route: [crumb('health'), crumb('more words'), crumb('more words')],
       destination: 'buttocks',
+      width: 1100,
     );
-    expect(trail(tester), 'home → body → more words → more words → buttocks');
+    expect(trail(tester), 'home → health → more words → more words → buttocks');
   });
 
   testWidgets('a trail too wide loses its head, never its destination', (
@@ -112,11 +120,11 @@ void main() {
   testWidgets('it keeps every step it has room for', (tester) async {
     await show(
       tester,
-      route: [crumb('body'), crumb('more words')],
+      route: [crumb('health'), crumb('more words')],
       destination: 'buttocks',
       width: 800,
     );
-    expect(trail(tester), 'home → body → more words → buttocks');
+    expect(trail(tester), 'home → health → more words → buttocks');
     expect(trail(tester), isNot(startsWith('…')));
   });
 
@@ -137,7 +145,7 @@ void main() {
   testWidgets('no crumb answers a finger', (tester) async {
     await show(
       tester,
-      route: [crumb('body'), crumb('more words')],
+      route: [crumb('health'), crumb('more words')],
       destination: 'buttocks',
     );
 

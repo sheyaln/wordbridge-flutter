@@ -129,8 +129,39 @@ void main() {
     }
   }
 
-  /// Opens a category by pressing the key that navigates to it, the way a user
-  /// reaches it.
+  /// Opens a category the way a person does: by turning the wheel to it and
+  /// pressing its slot.
+  ///
+  /// A category past the last slot has no navigate button of its own anywhere
+  /// in the database — the slot is re-pointed at render time — so this is not
+  /// a convenience over [openBoard]. It is the only route there is.
+  Future<void> openCategory(WidgetTester tester, String name) async {
+    final vocab = await (db.select(
+      db.vocabularies,
+    )..where((v) => v.id.equals(vocabularyId))).getSingle();
+    final frame = SystemFrame.parse(vocab.systemCellMap)!;
+
+    final index = frame.categories.indexWhere((c) => c.name == name);
+    expect(index, isNonNegative, reason: 'the $name board is not on the wheel');
+
+    Future<void> settle() async {
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    final slots = frame.categoryCols.length;
+    for (var turn = 0; turn < index ~/ slots; turn++) {
+      await tester.tap(find.byKey(ValueKey('${frame.row}:${frame.cycleCol}')));
+      await settle();
+    }
+
+    await tester.tap(
+      find.byKey(ValueKey('${frame.row}:${frame.categoryCols[index % slots]}')),
+    );
+    await settle();
+  }
+
   /// A word on [boardId] that is on no other board, so its presence proves
   /// which board is being looked at.
   Future<String> landmarkOn(String boardId) async {
@@ -403,36 +434,42 @@ void main() {
     await settings.set('regionLabels', true);
     await pump(tester);
 
-    final vocab = await (db.select(
-      db.vocabularies,
-    )..where((v) => v.id.equals(vocabularyId))).getSingle();
-    final frame = SystemFrame.parse(vocab.systemCellMap)!;
-
-    final index = frame.categories.indexWhere((c) => c.name == 'clothing');
-    expect(
-      index,
-      isNonNegative,
-      reason: 'the clothing board is not on the wheel',
-    );
-
-    final slots = frame.categoryCols.length;
-    for (var turn = 0; turn < index ~/ slots; turn++) {
-      await tester.tap(find.byKey(ValueKey('${frame.row}:${frame.cycleCol}')));
-      for (var i = 0; i < 8; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-    }
-
-    await tester.tap(
-      find.byKey(ValueKey('${frame.row}:${frame.categoryCols[index % slots]}')),
-    );
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await openCategory(tester, 'clothing');
 
     await expectLater(
       find.byType(TalkScreen),
       matchesGoldenFile('goldens/clothing_labeled.png'),
+    );
+  });
+
+  testWidgets('the measurement board, with its rows named', (tester) async {
+    // The board added last, and the one of the set with something to get
+    // wrong: a noun row above four rows of adjectives, so Fitzgerald order is
+    // a picture rather than an argument. The clothing board's first draft led
+    // with its nouns and put an orange row between two blue ones, and the
+    // golden is what showed it.
+    await settings.set('regionLabels', true);
+    await pump(tester);
+    await openCategory(tester, 'measurement');
+
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/measurement_labeled.png'),
+    );
+  });
+
+  testWidgets('the health board, with its rows named', (tester) async {
+    // Renamed from `body`, and with a row of words for what a person is added
+    // between the medicine cupboard and the symptoms. Both are worth a
+    // picture: the row is tagged as nouns throughout so it draws as one block
+    // of color, and the rename has to leave the key it is on where it was.
+    await settings.set('regionLabels', true);
+    await pump(tester);
+    await openCategory(tester, 'health');
+
+    await expectLater(
+      find.byType(TalkScreen),
+      matchesGoldenFile('goldens/health_labeled.png'),
     );
   });
 }
