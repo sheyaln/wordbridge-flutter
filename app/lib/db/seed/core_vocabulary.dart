@@ -714,6 +714,26 @@ const categoryNames = [
   'measurement',
 ];
 
+/// Categories that have been renamed, old name to new.
+///
+/// A rename changes the word over a key and nothing else: the name keeps its
+/// index in [categoryNames], so the wheel opens exactly what it opened.
+///
+/// **A board set built before the rename does not know that.** It carries the
+/// old name in its boards table and in the frame it recorded, and everything
+/// that matches a category by name — the top-up above all — reads the new name
+/// as a category it does not have. Left to itself it would build a second
+/// board beside the one already there, take a system-row column to open it,
+/// and leave the person with the body board they learned and a health board
+/// holding the same words.
+///
+/// So a rename is two things: the entry above changes, and the old name is
+/// recorded here so a board set carrying it can be brought forward.
+///
+/// Append only, and never a chain: the value is always a current entry of
+/// [categoryNames], so one lookup is always enough.
+const renamedCategories = <String, String>{'body': 'health'};
+
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
 ///
 /// Word class is the coarse grouping. Strips run top to bottom in Fitzgerald

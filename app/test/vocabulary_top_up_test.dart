@@ -44,6 +44,28 @@ Future<Map<String, String>> fingerprint(WordbridgeDatabase db) async {
   return out;
 }
 
+/// Where every button sits, keyed by the cell rather than by the board's name.
+///
+/// [fingerprint] keys on the board name and records the name of the board a
+/// key opens, which is exactly what a rename changes. This asks the other
+/// question: did anything move.
+Future<Map<String, String>> positions(WordbridgeDatabase db) async {
+  final rows = await (db.select(db.buttons).join([
+    innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+  ])).get();
+
+  return {
+    for (final r in rows)
+      r.readTable(db.cells).id: [
+        r.readTable(db.cells).row,
+        r.readTable(db.cells).col,
+        r.readTable(db.buttons).hidden,
+        r.readTable(db.buttons).vocabLevel,
+        r.readTable(db.buttons).targetBoardId ?? '',
+      ].join('|'),
+  };
+}
+
 Future<SystemFrame> frameOf(WordbridgeDatabase db, String vocabId) async {
   final vocab = await (db.select(
     db.vocabularies,
@@ -1148,6 +1170,139 @@ void main() {
       await tester.tap(find.text('Not now'));
       await settle(tester);
       await closeHome(tester);
+    });
+  });
+
+  /// A category that was renamed after the board set was built.
+  ///
+  /// The board is still there and the key still opens it; only the word over
+  /// it changed. Everything in a top-up matches a category by name, so without
+  /// this the new name reads as a category the board set does not have — and
+  /// the safest change available, adding a board, becomes the one thing a
+  /// top-up may never do: a second board holding the same words, on a key that
+  /// was not there yesterday.
+  group('a category that was renamed', () {
+    /// Puts a board set back to the name it carried before the rename, which
+    /// is what a device that has been running since then actually holds.
+    Future<void> unrename(String from, String to) async {
+      final pages = await (db.select(
+        db.boards,
+      )..where((b) => b.name.equals(to) | b.name.like('$to %'))).get();
+
+      for (final board in pages) {
+        await (db.update(db.boards)..where((b) => b.id.equals(board.id))).write(
+          BoardsCompanion(
+            name: Value('$from${board.name.substring(to.length)}'),
+          ),
+        );
+      }
+
+      final vocab = await (db.select(
+        db.vocabularies,
+      )..where((v) => v.id.equals(vocabId))).getSingle();
+      final frame = SystemFrame.parse(vocab.systemCellMap)!;
+
+      await (db.update(
+        db.vocabularies,
+      )..where((v) => v.id.equals(vocabId))).write(
+        VocabulariesCompanion(
+          systemCellMap: Value(
+            frame
+                .copyWith(
+                  categories: [
+                    for (final c in frame.categories)
+                      (name: c.name == to ? from : c.name, boardId: c.boardId),
+                  ],
+                )
+                .toJson(),
+          ),
+        ),
+      );
+    }
+
+    test('is brought forward rather than built again', () async {
+      await unrename('body', 'health');
+      expect(
+        await (db.select(db.boards)..where((b) => b.name.equals('body'))).get(),
+        isNotEmpty,
+        reason: 'the fixture did not put the old name back',
+      );
+
+      final result = await topUpVocabulary(db, vocabularyId: vocabId);
+
+      expect(
+        result.addedBoards,
+        isEmpty,
+        reason: 'the renamed board was read as a category that went missing',
+      );
+      expect(
+        await (db.select(db.boards)..where((b) => b.name.equals('body'))).get(),
+        isEmpty,
+        reason: 'the old name is still on a board',
+      );
+      expect(
+        await (db.select(
+          db.boards,
+        )..where((b) => b.name.equals('health'))).get(),
+        hasLength(1),
+        reason: 'one board, not two',
+      );
+    });
+
+    test(
+      'and the wheel keeps the name at the index it always sat at',
+      () async {
+        await unrename('body', 'health');
+        final before = await frameOf(db, vocabId);
+
+        await topUpVocabulary(db, vocabularyId: vocabId);
+        final after = await frameOf(db, vocabId);
+
+        expect(after.categories.map((c) => c.name).toList(), [
+          for (final c in before.categories)
+            c.name == 'body' ? 'health' : c.name,
+        ]);
+        // The same board behind it, so the key opens what it always opened.
+        expect(
+          after.categories.map((c) => c.boardId),
+          before.categories.map((c) => c.boardId),
+        );
+        expect(after.categoryCols, before.categoryCols);
+      },
+    );
+
+    test('nothing on the renamed board moves', () async {
+      await unrename('body', 'health');
+      final before = await positions(db);
+
+      await topUpVocabulary(db, vocabularyId: vocabId);
+      final after = await positions(db);
+
+      // Every cell, by its id rather than by the name of the board it is on,
+      // because the name is the one thing that is meant to change.
+      expect(after, before);
+    });
+
+    test('a preview does not write the rename', () async {
+      // A caregiver reading what a top-up would do has not agreed to anything.
+      await unrename('body', 'health');
+
+      final preview = await topUpVocabulary(
+        db,
+        vocabularyId: vocabId,
+        dryRun: true,
+      );
+
+      expect(
+        preview.addedBoards,
+        isEmpty,
+        reason: 'the preview would offer a board the real run would not add',
+      );
+      expect(
+        await (db.select(db.boards)..where((b) => b.name.equals('body'))).get(),
+        isNotEmpty,
+        reason: 'a dry run renamed a board',
+      );
     });
   });
 }

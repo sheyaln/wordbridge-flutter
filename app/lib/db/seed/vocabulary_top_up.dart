@@ -20,6 +20,7 @@ import 'package:drift/drift.dart';
 
 import '../board_builder.dart';
 import '../database.dart';
+import '../ids.dart';
 import '../tables.dart';
 import 'age_presets.dart';
 import 'band_layout.dart';
@@ -66,7 +67,7 @@ Future<VocabularyTopUp> topUpVocabulary(
   bool? profanity,
   bool dryRun = false,
 }) async {
-  final vocab = await (db.select(
+  var vocab = await (db.select(
     db.vocabularies,
   )..where((v) => v.id.equals(vocabularyId))).getSingle();
 
@@ -78,6 +79,17 @@ Future<VocabularyTopUp> topUpVocabulary(
             ..where((b) => b.vocabularyId.equals(vocabularyId))
             ..where((b) => b.deletedAt.isNull()))
           .get();
+
+  // Before anything is counted as missing. A category that was renamed is
+  // still here under its old name, and everything below matches by name.
+  final renamed = await _applyRenames(
+    db,
+    vocab: vocab,
+    boards: boards,
+    dryRun: dryRun,
+  );
+  vocab = renamed.vocab;
+  boards = renamed.boards;
 
   final added = <({String label, String board, int row, int col})>[];
   final blocked = <({String label, String board, String occupant})>[];
@@ -224,6 +236,109 @@ Future<VocabularyTopUp> topUpVocabulary(
     blocked: blocked,
     addedBoards: newBoards.addedBoards,
     refusedBoards: newBoards.refusedBoards,
+  );
+}
+
+/// Brings a board set's category names forward, so a rename is not read as a
+/// board that went missing (§4.42).
+///
+/// Two places carry the name and both have to move together: the board row a
+/// person navigates to, and the recorded frame the wheel is a window onto. A
+/// board renamed without its frame entry is a board the wheel stops offering;
+/// a frame entry renamed without its board is a key that opens nothing.
+///
+/// The pages come too. A board that overflowed is `body 2`, `body 3`, and
+/// `pageName` will look for `health 2` the moment anything asks.
+///
+/// The key that opens it is relabelled too. The talk screen already draws that
+/// key from the frame rather than from the button underneath — the slot shows a
+/// different category on each turn of the wheel — so this changes nothing on
+/// screen. It is for everywhere that does read the button: an exported board
+/// file, and the editor a caregiver opens to look at what is on the row.
+///
+/// **Nothing moves.** A row's name is not a location: the board keeps its id,
+/// every button on it keeps its cell, and the frame keeps the name at the index
+/// it always sat at — so every key already learned opens what it always
+/// opened, which is what makes this safe to do without asking.
+///
+/// Under [dryRun] the rename is applied in memory and never written, so the
+/// preview a caregiver reads counts the same words the real run would place.
+Future<({Vocabulary vocab, List<Board> boards})> _applyRenames(
+  WordbridgeDatabase db, {
+  required Vocabulary vocab,
+  required List<Board> boards,
+  required bool dryRun,
+}) async {
+  /// The name this board should carry now, or null if it already does.
+  String? renameOf(String name) {
+    for (final entry in renamedCategories.entries) {
+      if (name == entry.key) return entry.value;
+      if (name.startsWith('${entry.key} ')) {
+        return '${entry.value}${name.substring(entry.key.length)}';
+      }
+    }
+    return null;
+  }
+
+  final wanted = <String, String>{};
+  for (final b in boards) {
+    final to = renameOf(b.name);
+    if (to != null) wanted[b.id] = to;
+  }
+  if (wanted.isEmpty) return (vocab: vocab, boards: boards);
+
+  final frame = SystemFrame.parse(vocab.systemCellMap);
+  final settled = frame?.copyWith(
+    categories: [
+      for (final c in frame.categories)
+        (name: renamedCategories[c.name] ?? c.name, boardId: c.boardId),
+    ],
+  );
+
+  if (!dryRun) {
+    for (final entry in wanted.entries) {
+      await (db.update(db.boards)..where((b) => b.id.equals(entry.key))).write(
+        BoardsCompanion(name: Value(entry.value), updatedAt: Value(nowMs())),
+      );
+
+      // Only a key that says the old name and opens this board. A word that
+      // happens to be spelled the same — `body` is on the board it names — is
+      // vocabulary, not a label for a category, and renaming it would take a
+      // word off somebody's board.
+      final was = boards.firstWhere((b) => b.id == entry.key).name;
+      await (db.update(db.buttons)..where(
+            (b) =>
+                b.targetBoardId.equals(entry.key) &
+                b.label.equals(was) &
+                b.isSystem.equals(true),
+          ))
+          .write(
+            ButtonsCompanion(
+              label: Value(entry.value),
+              updatedAt: Value(nowMs()),
+            ),
+          );
+    }
+    if (settled != null) {
+      await (db.update(
+        db.vocabularies,
+      )..where((v) => v.id.equals(vocab.id))).write(
+        VocabulariesCompanion(
+          systemCellMap: Value(settled.toJson()),
+          updatedAt: Value(nowMs()),
+        ),
+      );
+    }
+  }
+
+  return (
+    vocab: settled == null
+        ? vocab
+        : vocab.copyWith(systemCellMap: settled.toJson()),
+    boards: [
+      for (final b in boards)
+        if (wanted[b.id] case final to?) b.copyWith(name: to) else b,
+    ],
   );
 }
 
