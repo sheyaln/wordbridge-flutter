@@ -8,6 +8,10 @@ set -euo pipefail
 DEVICE="${DEVICE:-17098DA6-61DE-5465-9EA0-34CE0782F3C9}"
 BUNDLE_ID=com.sheyaln.aac
 
+# Resolved before the `cd`, because `$0` is relative and stops meaning anything
+# the moment the working directory moves.
+TOOLS="$(cd "$(dirname "$0")" && pwd)"
+
 cd "$(dirname "$0")/../app"
 
 if ! xcrun devicectl list devices 2>/dev/null | grep -q "$DEVICE"; then
@@ -16,6 +20,16 @@ if ! xcrun devicectl list devices 2>/dev/null | grep -q "$DEVICE"; then
   xcrun devicectl list devices >&2
   exit 1
 fi
+
+# Before the two slow steps below, not after them. On a machine marked as one
+# whose builds must be able to report, a missing address stops here rather than
+# producing a silent build — and it stops before a minute of code generation
+# rather than after it.
+#
+# The same check runs inside the Xcode build phase and the Gradle release task.
+# This script is not the only way to a build, and skipping it is exactly how an
+# app with nowhere to send a crash report reached somebody's iPad.
+"$TOOLS/require-intake.sh"
 
 echo "Resolving and generating…"
 flutter pub get

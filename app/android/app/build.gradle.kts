@@ -70,12 +70,51 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-    }
-}
+// Refuses a release build with nowhere to send a crash report, on a machine
+// marked as one whose builds must be able to. The iOS side of this is a build
+// phase in Runner.xcodeproj; this is the same check on the same terms, so that
+// neither platform is the way around it.
+//
+// Silent without the marker, which is what keeps the project buildable by a
+// fork, a contributor, or anyone from source — they get an app with no
+// reporting and a screen that says so, and are never asked for a credential
+// they should not have.
+//
+// Release only, for the reason the iOS phase gives: a guard people turn off
+// guards nothing.
+tasks.matching {
+    it.name.startsWith("assembleRelease") || it.name.startsWith("bundleRelease")
+}.configureEach {
+    // Read at configuration time. `--dart-define` reaches Gradle as a project
+    // property rather than as an environment variable, and it is the one that
+    // actually decides what is compiled in — the same string the iOS phase
+    // reads out of DART_DEFINES.
+    val dartDefines = project.findProperty("dart-defines")?.toString() ?: ""
+    val fromEnvironment = listOf(
+        "WORDBRIDGE_INTAKE_URL" to (System.getenv("WORDBRIDGE_INTAKE_URL") ?: ""),
+        "WORDBRIDGE_INTAKE_TOKEN" to
+            (System.getenv("WORDBRIDGE_INTAKE_TOKEN") ?: ""),
+    )
+    val check = rootProject.file("../../tools/require-intake.sh")
 
-flutter {
-    source = "../.."
+    doFirst {
+        if (!check.exists()) return@doFirst
+
+        val process = ProcessBuilder("/bin/sh", check.absolutePath)
+            .redirectErrorStream(true)
+            .also { builder ->
+                builder.environment()["DART_DEFINES"] = dartDefines
+                fromEnvironment.forEach { (key, value) ->
+                    builder.environment()[key] = value
+                }
+            }
+            .start()
+
+        val said = process.inputStream.bufferedReader().readText()
+        if (process.waitFor() != 0) {
+            throw GradleException(
+                said.ifBlank { "This build has nowhere to send crash reports." },
+            )
+        }
+    }
 }

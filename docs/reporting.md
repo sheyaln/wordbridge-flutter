@@ -160,3 +160,52 @@ So the sequence is:
 At most a small number of crash records are kept, oldest dropped first. A tablet
 that has crashed two hundred times has a problem that the first few records
 already describe.
+
+### A crash that kills the process is not one of these
+
+Both handlers are Dart-level. They see a fault the isolate survives; they do not
+see a native crash or an out-of-memory kill, because there is no Dart left to run
+when one happens. If an app is vanishing to the home screen rather than
+recovering, nothing here will ever have a record of it — the absence of reports
+is the expected outcome, not evidence that reporting is broken.
+
+## Builds with nowhere to send
+
+The intake address and token are compiled in with `--dart-define`. A build given
+neither has no reporting at all: `ReportSender.configured` is false and
+`flushCaughtFaults` returns on its first line, so faults are written to the
+device and never sent.
+
+**That is a legitimate build and must stay one.** It is the whole reason the
+address is compiled in rather than committed: a fork, a contributor, or anyone
+building from source gets an app that collects and refuses to send, a screen
+that says so, and no request for a credential they should not have.
+
+It is not legitimate *here*. A maintainer build that silently cannot report
+looks exactly like one that can — the app runs, the Reports screen builds, and
+the only symptom is an inbox that stays empty. That went unnoticed for a day of
+crashes on a real user's iPad.
+
+So a machine whose builds must be able to report says so, once:
+
+```sh
+mkdir -p ~/.config/wordbridge && touch ~/.config/wordbridge/maintainer
+```
+
+With that file present, a **release** build missing either value stops:
+
+| Where | Catches |
+|---|---|
+| `tools/require-intake.sh` | the check itself; silent with no marker |
+| `Runner.xcodeproj` build phase | `flutter build ios`, `flutter build ipa`, Xcode |
+| `bundleRelease` / `assembleRelease` in `android/app/build.gradle.kts` | `flutter build apk`, `flutter build appbundle` |
+| `tools/deploy-ipad.sh` | before code generation, so it fails in seconds |
+
+Three places rather than one because the deploy script is not the only route to
+a build, and going around it is exactly how it happened. Debug builds are not
+checked: one cannot be handed to anybody — it refuses to launch from the home
+screen — so stopping one would only be a reason to delete the marker, and a
+guard people turn off guards nothing.
+
+CI has no marker and needs none: its release jobs pass both values from
+repository secrets, and a job that lost them would fail its own build.

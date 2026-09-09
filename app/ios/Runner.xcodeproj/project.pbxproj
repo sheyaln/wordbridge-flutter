@@ -213,6 +213,7 @@
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
 			buildPhases = (
 				B267AAA0442A0A68122A25F8 /* [CP] Check Pods Manifest.lock */,
+				748B21E420F84829A006269C /* Require a report intake */,
 				9740EEB61CF901F6004384FC /* Run Script */,
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
@@ -371,6 +372,21 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
+		};
+		748B21E420F84829A006269C /* Require a report intake */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Require a report intake";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Refuses a build with nowhere to send a crash report, on a machine\n# marked as one whose builds must be able to. Silent everywhere else --\n# a fork building this project must never be asked for our credential.\n#\n# Here rather than only in tools/deploy-ipad.sh because a plain\n# `flutter build ios` never goes near that script, and that is exactly\n# how a build with no intake reached somebody's iPad.\n#\n# Release only. A debug build cannot be handed to anybody -- it refuses\n# to launch from the home screen -- so stopping one would only be a\n# reason to delete the marker, and a guard people turn off guards\n# nothing.\ncase \"${CONFIGURATION}\" in\n  Debug|debug) exit 0 ;;\nesac\ncheck=\"$SRCROOT/../../tools/require-intake.sh\"\n[ -x \"$check\" ] || exit 0\nexec \"$check\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
