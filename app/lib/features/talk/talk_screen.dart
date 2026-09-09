@@ -1341,14 +1341,31 @@ class TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  /// Whether the person on this board is the person who manages it (§4.78).
+  bool get _selfManaged => widget.settings?.selfManaged ?? false;
+
   Future<void> _openCaregiver() async {
-    final unlocked = await PinGate.show(context, widget.auth);
-    if (!unlocked || !mounted) return;
+    // No PIN in front of a person's own settings. The door exists because an
+    // AAC device is usually set up by somebody other than the person speaking
+    // on it; where that is not true there is nobody on the other side of it,
+    // and asking a competent adult for a PIN to reach their own settings is
+    // the device telling them what it thinks they are.
+    //
+    // The gesture is still the way in. It is not a lock — it is what keeps the
+    // settings from being opened by a hand exploring the board — and that is
+    // as necessary for somebody using their own device as for anybody else.
+    if (!_selfManaged) {
+      final unlocked = await PinGate.show(context, widget.auth);
+      if (!unlocked) return;
+    }
+    if (!mounted) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CaregiverHome(
           db: widget.db,
+          auth: widget.auth,
+          selfManaged: _selfManaged,
           vocabularyId: widget.vocabularyId,
           profileId: widget.profileId,
           logger: widget.logger,

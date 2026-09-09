@@ -78,8 +78,37 @@ class ProfileSetup extends StatefulWidget {
   State<ProfileSetup> createState() => _ProfileSetupState();
 }
 
+/// Who is answering these questions (§4.78).
+///
+/// One question, and it decides whether there is a door between the person
+/// speaking on this board and the settings behind it. There is a door when
+/// there are two people; there is nobody to keep out when there is one.
+enum _WhoFor {
+  someoneElse(
+    'Someone else',
+    'I am setting this up for the person who will use it. The settings sit '
+        'behind a held gesture and a PIN, so they cannot be reached from the '
+        'board by accident.',
+  ),
+  myself(
+    'Me',
+    'This is my own device. The settings open from the same held gesture and '
+        'ask for no PIN, and they are called Settings rather than Caregiver. '
+        'Switching to somebody else\u2019s profile still asks for the PIN.',
+  );
+
+  const _WhoFor(this.label, this.description);
+
+  final String label;
+  final String description;
+}
+
 class _ProfileSetupState extends State<ProfileSetup> {
   final _name = TextEditingController();
+
+  /// Unanswered until somebody answers it, so the question reads as a question
+  /// rather than as a default already chosen for them.
+  _WhoFor? _whoFor;
 
   DateTime? _birthDate;
   BoardOrientation _orientation = BoardOrientation.landscape;
@@ -155,6 +184,9 @@ class _ProfileSetupState extends State<ProfileSetup> {
   static const _longestHold = 20;
 
   AgeBand get _band => AgeBand.forBirthDate(_birthDate);
+
+  /// Whether the person answering is the person who will use the board.
+  bool get _selfManaged => _whoFor == _WhoFor.myself;
 
   @override
   void dispose() {
@@ -243,6 +275,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
         vocabLevel: _vocabLevel,
         usageTracking: _usageTracking,
         crashReports: _crashReports,
+        selfManaged: _whoFor == _WhoFor.myself,
       );
 
       if (mounted) Navigator.of(context).pop(profile);
@@ -268,16 +301,43 @@ class _ProfileSetupState extends State<ProfileSetup> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
         children: [
+          // First, because it changes what every question after it is asking.
+          // A person setting up their own device is being asked about
+          // themselves, and the wording follows.
           _Section(
-            title: 'Who is this for?',
+            title: 'Who is this board for?',
+            child: RadioGroup<_WhoFor>(
+              groupValue: _whoFor,
+              onChanged: (value) => setState(() => _whoFor = value),
+              child: Column(
+                children: [
+                  for (final who in _WhoFor.values)
+                    RadioListTile<_WhoFor>(
+                      value: who,
+                      title: Text(who.label),
+                      subtitle: Text(who.description),
+                      isThreeLine: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          _Section(
+            title: _selfManaged ? 'Your name' : 'Their name',
             child: TextField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Name',
-                helperText:
-                    'Added to the home board as a button, so it is spoken '
-                    'aloud. It also names this profile in settings.',
+                helperText: _selfManaged
+                    ? 'Goes on the people board as a button, beside the key '
+                          'that asks for a name, so you can say it aloud. It '
+                          'also names this profile in settings.'
+                    : 'Goes on the people board as a button, beside the key '
+                          'that asks for a name, so it is spoken aloud. It '
+                          'also names this profile in settings.',
               ),
               onChanged: (_) => setState(() {}),
             ),

@@ -31,29 +31,50 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Scrolls until something is on screen, rather than assuming it is.
+  ///
+  /// The setup page is a `ListView`, so anything far enough down it has not
+  /// been built yet and no finder can see it — `ensureVisible` included, which
+  /// needs the element to exist before it will scroll to it.
+  Future<Finder> reveal(WidgetTester tester, Finder target) async {
+    if (target.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        target,
+        200,
+        // The page's own list. Naming it matters because the radio tiles bring
+        // scrollables of their own and `scrollUntilVisible` will not choose.
+        scrollable: find.byType(Scrollable).first,
+        maxScrolls: 60,
+      );
+    }
+    await tester.ensureVisible(target);
+    await tester.pumpAndSettle();
+    return target;
+  }
+
+  Future<Finder> sliderFinder(WidgetTester tester) =>
+      reveal(tester, find.byType(Slider));
+
   Future<void> setHold(WidgetTester tester, int seconds) async {
-    final slider = tester.widget<Slider>(find.byType(Slider));
+    final slider = tester.widget<Slider>(await sliderFinder(tester));
     slider.onChanged!(seconds.toDouble());
     await tester.pumpAndSettle();
   }
 
   Future<void> choose(WidgetTester tester, CaregiverGesture gesture) async {
-    await tester.ensureVisible(find.text(gesture.label));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(gesture.label));
+    await tester.tap(await reveal(tester, find.text(gesture.label)));
     await tester.pumpAndSettle();
   }
 
   Future<void> build(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Build the board'));
-    await tester.tap(find.text('Build the board'));
+    await tester.tap(await reveal(tester, find.text('Build the board')));
     await tester.pumpAndSettle();
   }
 
   testWidgets('is offered on the first run', (tester) async {
     await pumpSetup(tester);
 
-    expect(find.byType(Slider), findsOneWidget);
+    expect(await sliderFinder(tester), findsOneWidget);
     expect(
       find.text(
         'Held for ${CaregiverEntry.defaultCornerHold.inSeconds} '

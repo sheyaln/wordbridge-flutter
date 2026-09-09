@@ -10,6 +10,8 @@ import '../../db/ids.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/vocabulary_top_up.dart';
 import '../auth/caregiver_gesture.dart';
+import '../auth/pin.dart';
+import '../auth/pin_gate.dart';
 import '../backup/backup_service.dart';
 import '../backup/cloud_backup.dart';
 import '../backup/cloud_destination.dart';
@@ -45,10 +47,12 @@ import 'telemetry_switches.dart';
 import 'reports_screen.dart';
 import 'voice_screen.dart';
 
-/// Everything behind the PIN.
+/// Everything behind the gesture.
 ///
-/// Reachable only through a held gesture plus a PIN, and never persisted —
-/// backgrounding the app or a cold start returns to the communication view.
+/// Reachable only through a held gesture, and a PIN behind it unless the
+/// person using this board is the person who manages it (§4.78). Never
+/// persisted either way — backgrounding the app or a cold start returns to the
+/// communication view.
 class CaregiverHome extends StatefulWidget {
   const CaregiverHome({
     super.key,
@@ -56,6 +60,8 @@ class CaregiverHome extends StatefulWidget {
     required this.vocabularyId,
     required this.profileId,
     required this.logger,
+    this.auth,
+    this.selfManaged = false,
     this.speech,
     this.settings,
     this.registry,
@@ -84,6 +90,17 @@ class CaregiverHome extends StatefulWidget {
   final SymbolResolver? resolver;
   final String? userName;
   final void Function(Profile)? onSwitchProfile;
+
+  /// The PIN, for the one thing this screen still asks for it: reaching
+  /// somebody else's profile from a session that was opened without one.
+  final PinAuth? auth;
+
+  /// Whether these settings belong to the person using the board (§4.78).
+  ///
+  /// Changes what the screen is called and what it says about whose settings
+  /// these are. It does not change what is on it — an adult managing their own
+  /// device gets every control, which is the point.
+  final bool selfManaged;
 
   /// Where the backups are. Built from [db] when nothing supplies one, so the
   /// screen is wired by existing rather than by being passed down four levels;
@@ -150,7 +167,10 @@ class _CaregiverHomeState extends State<CaregiverHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Caregiver'),
+        // Called what it is for whoever opened it. "Caregiver" over a screen
+        // an adult opened on their own device tells them the software has
+        // them filed as somebody else's responsibility.
+        title: Text(widget.selfManaged ? 'Settings' : 'Caregiver'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: 'Back to talking',
@@ -168,6 +188,8 @@ class _CaregiverHomeState extends State<CaregiverHome> {
         ),
         _ => _Settings(
           db: widget.db,
+          auth: widget.auth,
+          selfManaged: widget.selfManaged,
           vocabularyId: widget.vocabularyId,
           profileId: widget.profileId,
           logger: widget.logger,
@@ -674,6 +696,82 @@ class _CopulaMode extends StatelessWidget {
   }
 }
 
+/// Who manages this board — the person on it, or somebody else (§4.78).
+///
+/// Asked at setup and changeable here, because the answer changes: a child
+/// grows up, a person moves out, a device is handed over. It is one switch and
+/// it is worth more than one switch usually is, so it says what it does on
+/// both sides rather than only on the side it is on.
+class _SelfManaged extends StatelessWidget {
+  const _SelfManaged({
+    required this.settings,
+    required this.onChanged,
+    this.userName,
+  });
+
+  final ProfileSettings settings;
+  final String? userName;
+  final VoidCallback onChanged;
+
+  /// Closing the door on a session that came in through it.
+  ///
+  /// Turning this off makes the settings ask for a PIN, and the person turning
+  /// it off is standing in the settings. If they do not know the PIN — or if
+  /// somebody else set it — this is the last thing they will do in here.
+  Future<bool> _confirmLocking(BuildContext context) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Ask for the PIN from now on?'),
+          content: const Text(
+            'These settings will be behind the PIN the next time they are '
+            'opened. If nobody has set one yet you will be asked to choose '
+            'one; if somebody else set it, you will need it to get back in.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Leave it open'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Ask for the PIN'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  @override
+  Widget build(BuildContext context) {
+    final self = settings.selfManaged;
+    final who = userName ?? 'This person';
+
+    return SwitchListTile(
+      value: self,
+      title: Text(
+        self ? 'I manage my own settings' : '$who manages their own settings',
+      ),
+      subtitle: Text(
+        self
+            ? 'The settings open from the held gesture and ask for no PIN, and '
+                  'they are called Settings rather than Caregiver. Switching '
+                  'to another profile still asks for the PIN.'
+            : 'When enabled, the settings open from the held gesture with no '
+                  'PIN and are called Settings rather than Caregiver. Turn '
+                  'this on where the person using the board is the person who '
+                  'manages it. No key on the board moves either way.',
+      ),
+      isThreeLine: true,
+      onChanged: (value) async {
+        if (!value && !await _confirmLocking(context)) return;
+        await settings.set('selfManaged', value);
+        onChanged();
+      },
+    );
+  }
+}
+
 /// The settings, one section to a page.
 ///
 /// Each control in here explains itself in a sentence or three, which is right
@@ -684,6 +782,8 @@ class _CopulaMode extends StatelessWidget {
 class _Settings extends StatelessWidget {
   const _Settings({
     required this.db,
+    required this.selfManaged,
+    this.auth,
     required this.vocabularyId,
     required this.profileId,
     required this.logger,
@@ -705,6 +805,14 @@ class _Settings extends StatelessWidget {
   });
 
   final WordbridgeDatabase db;
+
+  /// Whether these settings belong to the person using the board (§4.78).
+  final bool selfManaged;
+
+  /// The PIN, for reaching somebody else's profile from a session opened
+  /// without one.
+  final PinAuth? auth;
+
   final String vocabularyId;
   final String profileId;
   final UsageLogger logger;
@@ -748,11 +856,13 @@ class _Settings extends StatelessWidget {
                 userName ?? 'This board',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              subtitle: Text(
-                onSwitchProfile == null
-                    ? 'These settings apply to this person'
-                    : 'These settings apply to this person · tap to switch',
-              ),
+              subtitle: Text(switch ((selfManaged, onSwitchProfile == null)) {
+                (true, true) => 'These are your settings',
+                (true, false) => 'These are your settings · tap to switch',
+                (false, true) => 'These settings apply to this person',
+                (false, false) =>
+                  'These settings apply to this person · tap to switch',
+              }),
               trailing: onSwitchProfile == null
                   ? null
                   : const Icon(Icons.swap_horiz),
@@ -789,6 +899,20 @@ class _Settings extends StatelessWidget {
   /// One route, reached from the card at the top and from the row inside "Who
   /// is using this", so the two cannot come to behave differently.
   Future<void> _switchProfile(BuildContext context) async {
+    // The one thing a self-managed session still asks for a PIN to do. This
+    // door was opened without one because there is nobody on the other side of
+    // it *on this board*; a tablet with four profiles has three other people
+    // on it who never answered that question, and their settings are theirs.
+    //
+    // Only where a PIN is set. Asking somebody to invent one in order to
+    // switch profiles would be a lock arriving in the middle of an errand.
+    final auth = this.auth;
+    if (selfManaged && auth != null && await auth.isConfigured()) {
+      if (!context.mounted) return;
+      if (!await PinGate.show(context, auth)) return;
+    }
+    if (!context.mounted) return;
+
     final chosen = await ProfilePicker.show(
       context,
       db: db,
@@ -851,6 +975,12 @@ class _Settings extends StatelessWidget {
           profileId: profileId,
           onChanged: onChanged,
         ),
+        if (settings != null)
+          _SelfManaged(
+            settings: settings!,
+            userName: userName,
+            onChanged: onChanged,
+          ),
         if (settings != null)
           _StrongLanguage(
             db: db,

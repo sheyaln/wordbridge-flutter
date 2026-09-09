@@ -73,6 +73,7 @@ class ProfileRepository {
     int? vocabLevel,
     bool usageTracking = ProfileSettings.usageTrackingForNewProfiles,
     bool crashReports = ProfileSettings.crashReportsForNewProfiles,
+    bool selfManaged = ProfileSettings.selfManagedForNewProfiles,
   }) async {
     if (!grid.isUsable) {
       throw ArgumentError(grid.refusal);
@@ -106,6 +107,10 @@ class ProfileRepository {
                 // leaving it to a getter's default.
                 'usageTracking': usageTracking,
                 'crashReports': crashReports,
+                // Whether the person on this board is the person who manages
+                // it (§4.78). Written either way, so the record says somebody
+                // was asked rather than leaving it to a getter's default.
+                'selfManaged': selfManaged,
               }),
             ),
             createdAt: ts,

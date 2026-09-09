@@ -231,6 +231,7 @@ void main() {
     SymbolRegistry? registry,
     SymbolResolver? resolver,
     void Function(dynamic)? onSwitchProfile,
+    bool selfManaged = false,
   }) async {
     tester.view.physicalSize = const Size(1200, 4000);
     tester.view.devicePixelRatio = 1.0;
@@ -240,6 +241,7 @@ void main() {
       MaterialApp(
         home: CaregiverHome(
           db: db,
+          selfManaged: selfManaged,
           vocabularyId: vocabularyId,
           profileId: profileId,
           logger: logger,
@@ -258,7 +260,15 @@ void main() {
     );
     await settle(tester);
 
-    await tester.tap(find.text('Settings'));
+    // The nav destination, named rather than found by text: on a self-managed
+    // screen the app bar says Settings too, and tapping the title does
+    // nothing at all.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Settings'),
+      ),
+    );
     await settle(tester);
   }
 
@@ -721,6 +731,132 @@ void main() {
       await open(tester, 'Pictures');
       expect(find.text('Picture sets'), findsOneWidget);
       expect(find.text('Browse pictures'), findsNothing);
+      await back(tester);
+      await closeHome(tester);
+    });
+  });
+
+  /// A person managing their own board (§4.78).
+  ///
+  /// Every control is still here — an adult managing their own device gets all
+  /// of them, which is the point — so what changes is what the screen is
+  /// called and what it says about whose settings these are.
+  group('when the board belongs to the person using it', () {
+    testWidgets('the screen is called Settings, not Caregiver', (tester) async {
+      await pumpSettings(tester, selfManaged: true);
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Caregiver'),
+        ),
+        findsNothing,
+        reason:
+            'an adult on their own device is told the software has them filed '
+            'as somebody else’s responsibility',
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Settings'),
+        ),
+        findsOneWidget,
+      );
+      await closeHome(tester);
+    });
+
+    testWidgets('and it is Caregiver when somebody else set it up', (
+      tester,
+    ) async {
+      await pumpSettings(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Caregiver'),
+        ),
+        findsOneWidget,
+      );
+      await closeHome(tester);
+    });
+
+    testWidgets('the card at the top says whose settings these are', (
+      tester,
+    ) async {
+      await pumpSettings(tester, selfManaged: true);
+
+      expect(find.textContaining('These are your settings'), findsOneWidget);
+      expect(
+        find.textContaining('These settings apply to this person'),
+        findsNothing,
+      );
+      await closeHome(tester);
+    });
+
+    testWidgets('and the switch is under Profile, either way', (tester) async {
+      // Changeable after setup, because the answer changes: a child grows up,
+      // a person moves out, a device is handed over.
+      await pumpSettings(tester);
+
+      await open(tester, 'Profile');
+      expect(
+        find.text('Maya manages their own settings'),
+        findsOneWidget,
+        reason: 'no way to hand a board over without rebuilding the profile',
+      );
+      await back(tester);
+      await closeHome(tester);
+    });
+
+    testWidgets('worded as the person’s own when it is theirs', (tester) async {
+      // The switch reads the setting, not how this session was opened. They
+      // agree in practice and the setting is the one that is true.
+      await settings.set('selfManaged', true);
+      await pumpSettings(tester, selfManaged: true);
+
+      await open(tester, 'Profile');
+      expect(find.text('I manage my own settings'), findsOneWidget);
+      await back(tester);
+      await closeHome(tester);
+    });
+
+    testWidgets('turning it on needs no confirmation', (tester) async {
+      await pumpSettings(tester);
+      await open(tester, 'Profile');
+
+      await tester.tap(find.text('Maya manages their own settings'));
+      await settle(tester);
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(settings.selfManaged, isTrue);
+      await back(tester);
+      await closeHome(tester);
+    });
+
+    testWidgets('turning it off asks first, because it is a door closing', (
+      tester,
+    ) async {
+      // The person turning it off is standing in the settings. If they do not
+      // know the PIN, this is the last thing they will do in here.
+      await settings.set('selfManaged', true);
+      await pumpSettings(tester, selfManaged: true);
+      await open(tester, 'Profile');
+
+      await tester.tap(find.text('I manage my own settings'));
+      await settle(tester);
+
+      expect(find.text('Ask for the PIN from now on?'), findsOneWidget);
+
+      await tester.tap(find.text('Leave it open'));
+      await settle(tester);
+      expect(settings.selfManaged, isTrue, reason: 'backing out changed it');
+
+      await tester.tap(find.text('I manage my own settings'));
+      await settle(tester);
+      await tester.tap(find.text('Ask for the PIN'));
+      await settle(tester);
+      expect(settings.selfManaged, isFalse);
+
       await back(tester);
       await closeHome(tester);
     });

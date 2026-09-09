@@ -263,6 +263,33 @@ class ProfileSettings extends ChangeNotifier {
   /// does, so no motor plan is touched either way.
   bool get segmentEditing => _values['segmentEditing'] as bool? ?? false;
 
+  /// Whether the person using this board is the person who manages it (§4.78).
+  ///
+  /// The PIN exists because an AAC device is usually set up by somebody other
+  /// than the person speaking on it, and the settings behind it can take that
+  /// person's words away — hide vocabulary, change the grid, delete a board.
+  /// A door between the two is right *when there are two*.
+  ///
+  /// There are not always two. An adult who bought this for themselves is the
+  /// user and the caregiver, and asking them for a PIN to reach their own
+  /// settings — under a heading that calls them somebody else's charge — is
+  /// the device telling a competent adult it does not think they are one.
+  ///
+  /// So this is asked at setup, in one question, and it moves two things: the
+  /// gesture opens the settings without a PIN, and the screen is called
+  /// Settings rather than Caregiver.
+  ///
+  /// **It does not open anybody else's settings.** Switching profiles from a
+  /// session opened this way still asks for the PIN where one is set: the door
+  /// this removes is the one in front of a person's own board, and a tablet
+  /// with four profiles on it has three other people on it who did not answer
+  /// this question.
+  ///
+  /// Off by default, which is the safe answer for the case nobody answered:
+  /// a board set up for somebody else and left with the door open is the
+  /// failure that costs a person their vocabulary.
+  bool get selfManaged => _values['selfManaged'] as bool? ?? false;
+
   /// Who presses the keys on the way to a word the finder found (§4.47).
   ///
   /// The key waits, by default. The board pressing the keys itself shows
@@ -366,6 +393,12 @@ class ProfileSettings extends ChangeNotifier {
 
   /// What a profile created without an answer is given.
   static const crashReportsForNewProfiles = true;
+
+  /// What setup writes when nobody answered who the board is for.
+  ///
+  /// The door closed. A profile whose owner never said "this is mine" is one
+  /// somebody else set up, and that is the case the PIN is for.
+  static const selfManagedForNewProfiles = false;
 
   T _enum<T extends Enum>(String key, List<T> values, T fallback) {
     final stored = _values[key];
