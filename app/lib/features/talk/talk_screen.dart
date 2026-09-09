@@ -35,6 +35,7 @@ import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import '../../theme/fitzgerald.dart';
 import '../usage/logger.dart';
+import '../utterance/keypad.dart';
 import '../utterance/morphology.dart';
 import '../utterance/numbers.dart';
 import '../utterance/utterance.dart';
@@ -939,8 +940,48 @@ class TalkScreenState extends State<TalkScreen> {
       case ButtonAction.morpheme:
         await _applyMorpheme(button);
 
+      case ButtonAction.keypad:
+        await _openKeypad();
+
       case ButtonAction.none:
         break;
+    }
+  }
+
+  /// Opens the number pad, and puts what was typed into the sentence (§4.77).
+  ///
+  /// One entry, not one per digit. The pad holds its digits while they are
+  /// being typed so a wrong one is deleted in front of the person who typed
+  /// it, and what reaches the bar is the number they meant — one word to the
+  /// sentence, one press of delete to take it back out.
+  ///
+  /// **The digits go in and the number comes out.** `15` in the bar is what
+  /// the engine reads as fifteen, which is the whole reason the bar holds
+  /// digits at all, and it is what makes a typed number behave like a joined
+  /// one everywhere downstream.
+  ///
+  /// Marked inflected, so the ending keys leave it alone. "12s" is not a word.
+  Future<void> _openKeypad() async {
+    final typed = await Keypad.show(
+      context,
+      // Every key in this app speaks as it is tapped, and a pad is no
+      // different: a silent key reads as a press that did not register, and
+      // the number gains a digit nobody meant.
+      onDigit: (digit) => _sayWord(numberInWords(int.parse(digit))),
+    );
+    if (typed == null || !mounted) return;
+
+    _utterance.add(typed, pos: PartOfSpeech.determiner, inflected: true);
+    await _sayWord(numberInWords(int.parse(typed)));
+
+    // Home afterwards, like any other word chosen on a category board. The pad
+    // was opened to say a number and the number has been said.
+    if (_autoReturn && _currentBoardId != _rootBoardId) {
+      setState(() {
+        _currentBoardId = _rootBoardId;
+        _previousBoardId = null;
+        _settle();
+      });
     }
   }
 

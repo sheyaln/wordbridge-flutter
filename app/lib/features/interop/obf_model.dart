@@ -40,6 +40,7 @@ abstract final class WordbridgeExt {
   static const noneAction = ':ext_wordbridge_none';
   static const punctuateAction = ':ext_wordbridge_punctuate';
   static const cycleCategoriesAction = ':ext_wordbridge_cycle_categories';
+  static const keypadAction = ':ext_wordbridge_keypad';
 }
 
 class ObfFormatException implements Exception {

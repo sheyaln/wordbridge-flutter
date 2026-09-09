@@ -217,7 +217,14 @@ class UtteranceBar extends ChangeNotifier {
   ///
   /// Only one of the two repairs can fire, because both look at the word
   /// immediately behind and no word is both an article and a form of "to be".
-  String? add(String word, {PartOfSpeech? pos, bool subjectFollows = false}) {
+  /// [inflected] marks a word no ending may be applied to. A number typed on
+  /// the pad is one: "12" is finished, and "12s" is not a word.
+  String? add(
+    String word, {
+    PartOfSpeech? pos,
+    bool subjectFollows = false,
+    bool inflected = false,
+  }) {
     final trimmed = word.trim();
     if (trimmed.isEmpty) return null;
 
@@ -226,7 +233,7 @@ class UtteranceBar extends ChangeNotifier {
     _insert((
       text: trimmed,
       pos: pos,
-      inflected: false,
+      inflected: inflected,
       subjectFollows: subjectFollows,
     ));
     notifyListeners();

@@ -30,6 +30,15 @@ enum ButtonAction {
   /// categories would put every one of them two movements away instead of one.
   cycleCategories,
 
+  /// Opens the number pad (§4.77).
+  ///
+  /// The numbers board carries ten keys and a person's numbers do not stop at
+  /// ten: an age, a date, a price, a bus, a door, a phone number. Two presses
+  /// on the row already make any number the joining setting is on for, and the
+  /// pad is for everybody else and for the numbers that are longer than a
+  /// number — a phone number is typed, not counted.
+  keypad,
+
   none,
 }
 

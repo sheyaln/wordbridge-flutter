@@ -166,6 +166,24 @@ List<BandItem<SeedWord>> phrases(
 /// spoken text are deliberately different. Colored as determiners because
 /// that is the work they do — `three` quantifies exactly as `some` and `more`
 /// do, and sharing their color is what says so.
+/// The key that opens the number pad (§4.77).
+///
+/// Labelled with digits rather than with a word, because that is what it makes
+/// and because there is no word for it a person would look for: nobody scans a
+/// board for "keypad".
+///
+/// Tagged as a determiner like the numerals beside it. It is not a word and it
+/// speaks nothing, but Fitzgerald colors by class and a band owns a row — one
+/// grey key on the end of a row of orange ones would read as the board having
+/// made a mistake, and what this key produces is a number.
+BandItem<SeedWord> _keypad({int level = 2}) => BandItem((
+  label: '123',
+  message: '',
+  action: ButtonAction.keypad,
+  morphemeKind: null,
+  pos: PartOfSpeech.determiner,
+), level: level);
+
 BandItem<SeedWord> _numeral(String digit, String spoken, {int level = 2}) =>
     BandItem((
       label: digit,
@@ -1733,6 +1751,15 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         _numeral('8', 'eight', level: 3),
         _numeral('9', 'nine', level: 3),
         _numeral('10', 'ten', level: 3),
+        // The end of the row, and the answer to what the row cannot hold. Ten
+        // keys is one movement wide and that is worth keeping; a person's
+        // numbers are not ten long. Appended, so every numeral above keeps the
+        // location it was learned in.
+        //
+        // Level 2 with `1` to `5` rather than level 3 with the rest. A board
+        // drawing five numbers is the one that most needs another way to a
+        // sixth, and the pad is the way that does not cost a location.
+        _keypad(),
       ],
     ),
 

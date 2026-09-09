@@ -578,6 +578,8 @@ ButtonAction _actionFor(ObfButton button) {
       return ButtonAction.punctuate;
     case WordbridgeExt.cycleCategoriesAction:
       return ButtonAction.cycleCategories;
+    case WordbridgeExt.keypadAction:
+      return ButtonAction.keypad;
     case WordbridgeExt.noneAction:
       return ButtonAction.none;
   }

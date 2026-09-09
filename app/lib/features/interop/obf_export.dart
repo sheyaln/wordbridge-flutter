@@ -576,6 +576,7 @@ String? _obfAction(ButtonAction action) => switch (action) {
   ButtonAction.morpheme => WordbridgeExt.morphemeAction,
   ButtonAction.punctuate => WordbridgeExt.punctuateAction,
   ButtonAction.cycleCategories => WordbridgeExt.cycleCategoriesAction,
+  ButtonAction.keypad => WordbridgeExt.keypadAction,
   ButtonAction.none => WordbridgeExt.noneAction,
   // Speaking is the default and a link is described by load_board.
   ButtonAction.speak || ButtonAction.navigate => null,
