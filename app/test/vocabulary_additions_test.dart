@@ -211,6 +211,74 @@ void main() {
     });
   });
 
+  /// The family somebody chose, beside the family they were born to.
+  ///
+  /// A board that can say "mom" and "brother" and not "wife" has decided which
+  /// of somebody's relationships count.
+  group('partners', () {
+    test('are on the people board, on the row the family is on', () async {
+      final people = (await layout(rows: 7, cols: 12))['people']!;
+
+      for (final word in ['husband', 'wife', 'boyfriend']) {
+        expect(people, contains(word), reason: 'no word for a partner');
+        expect(
+          people[word]!.row,
+          people['mom']!.row,
+          reason: '"$word" is not on the row somebody looks for it on',
+        );
+      }
+    });
+
+    test('and every word already there kept its location', () async {
+      // The whole argument for appending into the row's own free cells rather
+      // than giving them a band. A seventh band on this board takes a seventh
+      // row it does not have at 7x12, and the nine possessives pay for it.
+      final people = (await layout(rows: 7, cols: 12))['people']!;
+
+      const wasAt = {
+        'mom': (row: 1, col: 0),
+        'family': (row: 1, col: 7),
+        'friend': (row: 2, col: 0),
+        'boy': (row: 3, col: 0),
+        'him': (row: 4, col: 0),
+        'your': (row: 5, col: 0),
+        'theirs': (row: 5, col: 8),
+      };
+
+      for (final entry in wasAt.entries) {
+        expect(
+          people[entry.key],
+          entry.value,
+          reason: '"${entry.key}" moved to make room for a partner',
+        );
+      }
+    });
+
+    test('and the possessives are still on page one', () async {
+      // What a band of their own would have cost, asserted rather than
+      // remembered: nine words a press further away to buy four.
+      final boards = await layout(rows: 7, cols: 12);
+
+      expect(boards['people']!.keys, containsAll(['your', 'mine', 'theirs']));
+      expect(
+        boards['people 2']?.keys ?? const <String>[],
+        isNot(contains('your')),
+      );
+    });
+
+    test('all four fit on a grid with room for them', () async {
+      final people = (await layout(rows: 10, cols: 14))['people']!;
+
+      expect(
+        people.keys,
+        containsAll(['husband', 'wife', 'boyfriend', 'girlfriend']),
+      );
+      for (final word in ['husband', 'wife', 'boyfriend', 'girlfriend']) {
+        expect(people[word]!.row, people['mom']!.row);
+      }
+    });
+  });
+
   group('the user’s own name', () {
     test('lands beside the key that asks for one', () async {
       // On the people board, in the row `name` closes — not on the root board

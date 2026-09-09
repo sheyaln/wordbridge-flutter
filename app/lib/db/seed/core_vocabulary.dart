@@ -814,12 +814,34 @@ final categoryBands = <String, List<Band<SeedWord>>>{
 
     // Only the two a shipped board can assume. Whether there is a sibling or a
     // living grandparent is exactly the kind of thing it cannot know, so the
-    // rest of the strip waits for somebody who does. "family" closes the row
-    // because the collective belongs with its members, not with the words for
-    // people in general.
+    // rest of the strip waits for somebody who does.
+    //
+    // The family somebody chose is on the end of the same row, appended into
+    // the free cells it already had. Not a band of its own: they are the same
+    // kind of word, somebody looking for "wife" looks where "mom" is, and a
+    // seventh band on this board takes a seventh row the board does not have —
+    // which at 7x12 would have paged the nine possessives to buy four words.
+    //
+    // **`maxLines: 1` is what stops that happening anyway.** A band with more
+    // items than its line holds claims another line by default, and another
+    // line here is the same eviction by a quieter route. Capped, the row keeps
+    // the eleven it can draw and the twelfth reads on page two: at 7x12 that
+    // is `girlfriend`, and on every wider grid all four fit. One word a press
+    // further away, against nine.
+    //
+    // Level 2, not the level 3 the rest of the naming vocabulary sits at.
+    // Adults and teenagers start at level 2, so level 3 would have meant
+    // shipping these and drawing none of them — and a board that can say "mom"
+    // and "brother" but not "wife" has decided which of somebody's
+    // relationships count.
+    //
+    // "family" no longer closes the row. It did, on the argument that the
+    // collective belongs with its members; it is still among them, one cell
+    // further in.
     Band(
       name: 'family',
       shedRank: 1,
+      maxLines: 1,
       items: [
         ...nouns(['mom', 'dad'], level: 1),
         ...nouns([
@@ -830,6 +852,8 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'grandpa',
           'family',
         ], level: 2),
+        ...nouns(['husband', 'wife'], level: 2),
+        ...nouns(['boyfriend', 'girlfriend'], level: 2),
       ],
     ),
 
@@ -1194,6 +1218,14 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'I need a break',
           "I don't know",
           "I don't understand",
+          // The sentence an AAC user needs most and is least often given time
+          // to build. Composing one word at a time is slower than speech, so
+          // the gap before the next word reads to a speaking listener as the
+          // end of the turn — and they answer, or move on, or finish it
+          // themselves. `wait` is on the root board at level 1 and holds the
+          // floor before a sentence; this is the one that takes it back
+          // halfway through, which is when it is actually lost.
+          'let me finish',
         ], level: 1),
       ],
     ),
