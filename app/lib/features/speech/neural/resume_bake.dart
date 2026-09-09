@@ -82,3 +82,45 @@ StreamSubscription<ModelProgress>? bakeWhenInstalled(
     unawaited(resumeBaking(speech, settings, db, vocabularyId));
   });
 }
+
+/// Finishes an install that was interrupted after the download (§4.79).
+///
+/// **What goes wrong without it.** The archive downloads, the unpack begins,
+/// and the app is suspended or killed — which on a tablet with 3 GB and a
+/// board open is a thing that happens, and happens most on exactly the devices
+/// this voice is slowest on. The bytes are on the disk and the install is half
+/// done, and nothing anywhere starts the second half again. The person is left
+/// with a voice that is downloaded, not installed, and a screen that offers
+/// them a download they have already paid for.
+///
+/// **It starts no download.** The condition is a *complete* archive waiting to
+/// be unpacked. A session may finish local work somebody already asked for; it
+/// may not put hundreds of megabytes on a household's connection because a
+/// setting says the voice is on.
+///
+/// Returns the subscription that is watching it, so a caller can drop it, or
+/// null when there was nothing to finish.
+Future<StreamSubscription<ModelProgress>?> finishInterruptedInstall(
+  SpeechEngine speech,
+  ProfileSettings settings,
+  WordbridgeDatabase db,
+  String vocabularyId,
+) async {
+  if (speech is! NeuralSpeechEngine || !settings.neuralVoice) return null;
+
+  try {
+    // Already going, so it is being watched by whoever started it.
+    if (speech.models.isInstalling) return null;
+    if (!await speech.models.isUnpackingLeft) return null;
+
+    final watching = speech.models.install().listen((progress) {
+      if (progress.phase != ModelPhase.installed) return;
+      unawaited(resumeBaking(speech, settings, db, vocabularyId));
+    });
+    return watching;
+  } catch (_) {
+    // An install that will not start is a board speaking in the device voice,
+    // which is a product. A launch that will not finish is not.
+    return null;
+  }
+}

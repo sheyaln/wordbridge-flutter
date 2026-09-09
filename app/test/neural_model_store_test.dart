@@ -146,6 +146,65 @@ void main() {
     expect(files.espeakData.existsSync(), isTrue);
   });
 
+  test('it finishes with nobody watching', () async {
+    // The screen that starts a download is the screen somebody leaves the
+    // moment they have chosen the voice, and the row above it promises the
+    // download carries on. The work belongs to the store, not to a listener:
+    // an `async*` generator driven by its subscriber would unwind through the
+    // socket's `finally` the instant that subscriber went away.
+    final bytes = archiveOf(scratch, modelBytes: 512 * 1024);
+    final store = storeServing(_Server(bytes));
+
+    final watching = store.install().listen((_) {});
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await watching.cancel();
+
+    for (var i = 0; i < 400 && !(await store.isInstalled()); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+    }
+
+    expect(
+      await store.isInstalled(),
+      isTrue,
+      reason: 'the install stopped when the screen watching it closed',
+    );
+  });
+
+  group('an install interrupted after the download', () {
+    test('is a state the store can name', () async {
+      final bytes = archiveOf(scratch);
+      final store = storeServing(_Server(bytes));
+
+      expect(
+        await store.isUnpackingLeft,
+        isFalse,
+        reason: 'nothing downloaded, so there is nothing to finish',
+      );
+
+      // What an app killed mid-unpack leaves behind: the whole archive on
+      // disk and no model beside it.
+      final root = Directory(p.join(documents.path, VoiceModelStore.folder))
+        ..createSync(recursive: true);
+      File(p.join(root.path, 'model.tar.bz2.part')).writeAsBytesSync(bytes);
+
+      expect(await store.isUnpackingLeft, isTrue);
+    });
+
+    test('and stops being one once the model is there', () async {
+      final bytes = archiveOf(scratch);
+      final store = storeServing(_Server(bytes));
+
+      await store.install().drain<void>();
+
+      expect(await store.isInstalled(), isTrue);
+      expect(
+        await store.isUnpackingLeft,
+        isFalse,
+        reason: 'a finished install would be unpacked again on every launch',
+      );
+    });
+  });
+
   test('unpacking reports as it goes, not all at the end', () async {
     // Decompression is minutes of solid bzip2 on the floor device, and it is
     // one call that cannot report on itself. A bar that stands still through

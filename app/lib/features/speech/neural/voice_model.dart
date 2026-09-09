@@ -205,6 +205,17 @@ class VoiceModelStore {
 
   bool get isInstalling => _running != null;
 
+  /// Whether the archive is fully downloaded but not yet unpacked.
+  ///
+  /// The state an app killed mid-install comes back in, and the reason it
+  /// needs a name: the bytes are paid for and on the disk, and what is left is
+  /// minutes of local work that nothing on its own will finish. Resuming from
+  /// here starts no download.
+  Future<bool> get isUnpackingLeft async {
+    if (await isInstalled()) return false;
+    return await downloadedBytes() >= published.downloadBytes;
+  }
+
   /// The install already under way, or null when there is none.
   ///
   /// [install] *starts* one where none is running, which is right for a screen

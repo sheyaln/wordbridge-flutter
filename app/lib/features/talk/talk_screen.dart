@@ -1368,6 +1368,30 @@ class TalkScreenState extends State<TalkScreen> {
       widget.db,
       widget.vocabularyId,
     );
+
+    // Nothing running to attach to, and an archive on the disk waiting to be
+    // unpacked, is what a launch after an interrupted install looks like. The
+    // second half is local work somebody already asked for, so it is finished
+    // rather than offered back to them as a download they have paid for.
+    if (_installWatch == null) unawaited(_finishInstall());
+  }
+
+  Future<void> _finishInstall() async {
+    final settings = widget.settings;
+    if (settings == null) return;
+
+    final watching = await finishInterruptedInstall(
+      widget.speech,
+      settings,
+      widget.db,
+      widget.vocabularyId,
+    );
+    if (watching == null) return;
+    if (!mounted) {
+      await watching.cancel();
+      return;
+    }
+    _installWatch = watching;
   }
 
   Future<void> _openCaregiver() async {

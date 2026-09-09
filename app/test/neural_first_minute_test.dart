@@ -67,8 +67,16 @@ class _FakeModels extends VoiceModelStore {
   @override
   Future<bool> isInstalled() async => present;
 
+  /// How much of the archive is on the disk. Set to the whole of it to stand
+  /// for an app killed after the download and before the unpack.
+  int downloaded = 0;
+
   @override
-  Future<int> downloadedBytes() async => 0;
+  Future<int> downloadedBytes() async => downloaded;
+
+  @override
+  Future<bool> get isUnpackingLeft async =>
+      !present && downloaded >= published.downloadBytes;
 
   @override
   Future<int> bytesOnDisk() async => present ? 100 << 20 : 0;
@@ -386,6 +394,82 @@ void main() {
       models.install();
 
       expect(bakeWhenInstalled(engine, settings, db, vocabularyId), isNull);
+    });
+  });
+
+  /// An install killed between the download and the unpack (§4.79).
+  ///
+  /// The bytes are paid for and on the disk. Nothing anywhere finished the
+  /// second half, so the person was left with a voice that is downloaded, not
+  /// installed, and a screen offering them a download they had already waited
+  /// through.
+  group('an install interrupted after the download', () {
+    test('is finished on the next launch', () async {
+      await settings.set('neuralVoice', true);
+      await engine.useNeuralVoice(enabled: true);
+      models.downloaded = models.published.downloadBytes;
+
+      final watch = await finishInterruptedInstall(
+        engine,
+        settings,
+        db,
+        vocabularyId,
+      );
+      addTearDown(() => watch?.cancel());
+
+      expect(watch, isNotNull, reason: 'the half-done install was left alone');
+      expect(models.asked, 1);
+    });
+
+    test('and no download is started to do it', () async {
+      // A session may finish local work somebody asked for. It may not put
+      // hundreds of megabytes on a household's connection because a setting
+      // says the voice is on.
+      await settings.set('neuralVoice', true);
+      models.downloaded = 0;
+
+      final watch = await finishInterruptedInstall(
+        engine,
+        settings,
+        db,
+        vocabularyId,
+      );
+
+      expect(watch, isNull);
+      expect(models.asked, 0);
+    });
+
+    test('and a finished install is not unpacked again', () async {
+      await settings.set('neuralVoice', true);
+      models.present = true;
+      models.downloaded = models.published.downloadBytes;
+
+      final watch = await finishInterruptedInstall(
+        engine,
+        settings,
+        db,
+        vocabularyId,
+      );
+
+      expect(watch, isNull);
+      expect(models.asked, 0);
+    });
+
+    test('and one already running is left to whoever started it', () async {
+      await settings.set('neuralVoice', true);
+      models.downloaded = models.published.downloadBytes;
+      models.install();
+      expect(models.asked, 1);
+
+      final watch = await finishInterruptedInstall(
+        engine,
+        settings,
+        db,
+        vocabularyId,
+      );
+
+      expect(watch, isNull);
+      expect(models.asked, 1, reason: 'a second install onto the same file');
     });
   });
 }
