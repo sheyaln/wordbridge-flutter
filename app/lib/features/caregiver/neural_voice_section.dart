@@ -170,6 +170,12 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
   }
 
   /// Turning it on is free; it opens an index file and loads no model.
+  ///
+  /// **And it starts the download, where there is one to start (§4.79).** The
+  /// download used to be a button further down this page, so switching the
+  /// voice on did nothing anybody could hear: the person went straight back to
+  /// the board to try it, heard the device voice, and had no reason to come
+  /// back and scroll. Choosing the voice *is* asking for it.
   Future<void> _setEnabled(bool on) async {
     await _set('neuralVoice', on);
     await _speech.useNeuralVoice(
@@ -180,8 +186,18 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     if (mounted) setState(() => _bake = null);
     widget.onChanged();
     await _refresh();
+    if (!mounted) return;
 
-    if (on && mounted) await _getGoing();
+    if (on && !_installed) {
+      // Not asked first. The size is on the row that was just chosen and on
+      // the progress under it, and a confirmation here is one more press
+      // between a person and the voice they have already said they want —
+      // which is the press that does not get made.
+      await _startInstall();
+      return;
+    }
+
+    if (on) await _getGoing();
   }
 
   /// Measures this tablet, then starts filling the pack — without being asked.
@@ -424,10 +440,13 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     }
     if (!_installed) {
       return on
-          ? '$name. Not downloaded, so the board is speaking with the device '
-                'voice until it is.'
-          : '$name. Not downloaded yet — '
-                '${_megabytes(_speech.models.published.downloadBytes)} below.';
+          ? '$name. Downloading now — the board speaks with the device voice '
+                'until it is ready, and carries on downloading if you leave '
+                'this screen.'
+          : '$name. Closer to a human speaker than text to speech. Choosing '
+                'it downloads '
+                '${_megabytes(_speech.models.published.downloadBytes)}, best '
+                'over wifi.';
     }
     return '$name. Closer to a human speaker than text to speech. Words made '
         'in advance play instantly; anything else is synthesized as it is '
@@ -440,10 +459,11 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
     final words = _words?.length ?? 0;
     final baked = _speech.clips?.count ?? 0;
 
-    // Nothing to pick until there is a second voice on the tablet, and nothing
-    // to pick at all where a buffer cannot be played back. The row stays on
-    // screen either way and says which of the two it is.
-    final chooseable = _installed && _speech.canPlay;
+    // Choosable as soon as the device can play one — the download is what
+    // choosing it starts, not what has to happen first (§4.79). Only a device
+    // that cannot play a buffer back has nothing to choose, and the row says
+    // so rather than disappearing.
+    final chooseable = _speech.canPlay;
 
     // What the neural voice has to show for itself, as against what a profile
     // merely asked for.
@@ -501,20 +521,28 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
 
         const VoiceHeader('The download'),
       ],
-      _ModelTile(
-        published: _speech.models.published,
-        installed: _installed,
-        onDisk: _onDisk,
-        partial: _partial,
-        progress: _progress,
-        onInstall: _startInstall,
-        onDelete: _deleteModel,
-      ),
+      // Not while the voice is on and the model is not here yet: the row at
+      // the top is already reporting that download, and the same bar twice on
+      // one screen reads as two downloads. What is left for this tile is the
+      // two things the row above deliberately does not carry — fetching the
+      // model before choosing the voice, and deleting it afterwards.
+      if (!(on && !_installed))
+        _ModelTile(
+          published: _speech.models.published,
+          installed: _installed,
+          onDisk: _onDisk,
+          partial: _partial,
+          progress: _progress,
+          onInstall: _startInstall,
+          onDelete: _deleteModel,
+        ),
 
       // The same switch that appears under Reports, not a second copy of it
-      // (§4.59). Disabled while the device voice is speaking, because there
-      // are no neural timings to send.
-      if (chooseable)
+      // (§4.59). While the voice is on it rides the row that turns it on
+      // instead, where somebody can find it without scrolling; here is where
+      // it lives when the device voice is speaking and there is nothing to
+      // send.
+      if (chooseable && !on)
         VoiceMeasurementSwitch(
           settings: _settings,
           available: on,
@@ -568,6 +596,31 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
                 subtitle: Text(_neuralLine(on: on)),
                 isThreeLine: true,
               ),
+
+              // Under the row that turns it on, and this is the whole point of
+              // where it sits (§4.79). Somebody who has just chosen this voice
+              // goes straight back to the board to hear it. They do not scroll
+              // — so what is happening, and the one switch they may want to
+              // turn off, are here rather than under four headings further
+              // down.
+              if (on)
+                _NeuralStatus(
+                  canPlay: _speech.canPlay,
+                  installed: _installed,
+                  progress: _progress,
+                  partial: _partial,
+                  published: _speech.models.published,
+                  baked: baked,
+                  words: words,
+                  job: _bake,
+                  onInstall: _startInstall,
+                ),
+              if (on && chooseable)
+                VoiceMeasurementSwitch(
+                  settings: _settings,
+                  available: on,
+                  onChanged: () => setState(() {}),
+                ),
             ],
           ),
         ),
@@ -722,6 +775,150 @@ class _PreAlpha extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// What the neural voice is doing, on the row that turns it on (§4.79).
+///
+/// **The failure this exists for.** The download was a button under a heading
+/// four sections down. Somebody switched the voice on, went straight back to
+/// the board to hear it, heard the device voice, and had no reason to think
+/// anything was unfinished — the one screen that would have told them was the
+/// one they had already left. Nobody scrolls a settings page they believe they
+/// are done with.
+///
+/// So the two things a person needs in the first minute are here: whether the
+/// voice is on its way, and how far along it is. Everything else — which voice,
+/// the speed, the budget, the fallback count, deleting it again — stays where
+/// it is, because none of it is needed before the voice can be heard.
+///
+/// Reports rather than offers. There is no button on it in the ordinary case:
+/// the download starts when the voice is chosen and the synthesis starts when
+/// the download lands, so a control here would be one for work already under
+/// way. The exception is a download that stopped, which nothing else will
+/// restart.
+class _NeuralStatus extends StatelessWidget {
+  const _NeuralStatus({
+    required this.canPlay,
+    required this.installed,
+    required this.progress,
+    required this.partial,
+    required this.published,
+    required this.baked,
+    required this.words,
+    required this.job,
+    required this.onInstall,
+  });
+
+  final bool canPlay;
+  final bool installed;
+  final ModelProgress? progress;
+  final int partial;
+  final PublishedModel published;
+  final int baked;
+  final int words;
+  final BakeJob? job;
+  final VoidCallback onInstall;
+
+  Widget _line(String title, String detail, {double? share}) => Padding(
+    // Indented under the row it belongs to, so it reads as that row's own
+    // state rather than as a third choice of voice.
+    padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(value: share),
+        const SizedBox(height: 6),
+        Text(detail, style: const TextStyle(fontSize: 13)),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    // The row itself says this device cannot play one, and a progress bar
+    // under a voice that will never speak is worse than nothing.
+    if (!canPlay) return const SizedBox.shrink();
+
+    final running = progress;
+
+    if (!installed) {
+      if (running != null &&
+          running.phase != ModelPhase.failed &&
+          running.phase != ModelPhase.installed) {
+        final share = running.totalBytes == 0
+            ? null
+            : running.bytes / running.totalBytes;
+        return _line(
+          switch (running.phase) {
+            ModelPhase.downloading => 'Downloading the voice',
+            ModelPhase.verifying => 'Checking the download',
+            ModelPhase.unpacking => 'Unpacking',
+            _ => 'Working',
+          },
+          running.phase == ModelPhase.downloading
+              ? '${_megabytes(running.bytes)} of '
+                    '${_megabytes(running.totalBytes)}. Carries on if you '
+                    'leave this screen.'
+              : '${_megabytes(running.bytes)} of '
+                    '${_megabytes(running.totalBytes)}.',
+          share: share,
+        );
+      }
+
+      // Stopped. The one case with a button on it, because nothing else on
+      // this screen will start it again and the board is on the device voice
+      // until somebody does.
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              running?.detail ??
+                  (partial > 0
+                      ? 'The download stopped. '
+                            '${_megabytes(partial)} of '
+                            '${_megabytes(published.downloadBytes)} is here '
+                            'already and it picks up where it left off.'
+                      : 'The download has not started.'),
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonal(
+              onPressed: onInstall,
+              child: Text(partial > 0 ? 'Carry on downloading' : 'Download'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final done = job?.done ?? baked;
+    final total = job?.total ?? words;
+
+    if (total > 0 && done < total) {
+      return _line(
+        'Making words in advance',
+        '$done of $total. It runs in the background, stands aside whenever '
+            'the board speaks, and picks up a few seconds later. Anything not '
+            'made yet speaks in the device voice.',
+        share: done / total,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
+      child: Text(
+        total == 0
+            ? 'Ready.'
+            : 'Ready. All $total words are made in advance and play '
+                  'instantly.',
+        style: const TextStyle(fontSize: 13),
       ),
     );
   }

@@ -205,6 +205,15 @@ class VoiceModelStore {
 
   bool get isInstalling => _running != null;
 
+  /// The install already under way, or null when there is none.
+  ///
+  /// [install] *starts* one where none is running, which is right for a screen
+  /// somebody has just pressed Download on and wrong for anything that runs on
+  /// its own. A session must not put hundreds of megabytes on a household's
+  /// connection because a setting says the voice is on; this is how something
+  /// long-lived watches a download it did not start.
+  Stream<ModelProgress>? get runningInstall => _running;
+
   /// Downloads and installs, reporting as it goes.
   ///
   /// **Resumable, and it has to be.** Three hundred megabytes over a domestic

@@ -15,7 +15,7 @@ import 'package:wordbridge/features/speech/neural/clip_store.dart';
 import 'package:wordbridge/features/speech/neural/neural_engine.dart';
 import 'package:wordbridge/features/speech/neural/voice_model.dart';
 import 'package:wordbridge/features/speech/speech_engine.dart';
-import 'package:wordbridge/main.dart';
+import 'package:wordbridge/features/speech/neural/resume_bake.dart';
 
 /// The voice that speaks when the neural one has not been made yet.
 class _PlatformVoice implements SpeechEngine {

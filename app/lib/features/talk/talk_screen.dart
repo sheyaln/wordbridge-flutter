@@ -27,6 +27,8 @@ import '../grid/region_labels.dart';
 import '../grid/symbol_view.dart';
 import '../prediction/prediction_strip.dart';
 import '../prediction/word_prediction.dart';
+import '../speech/neural/resume_bake.dart';
+import '../speech/neural/voice_model.dart';
 import '../speech/speech_engine.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
@@ -513,6 +515,7 @@ class TalkScreenState extends State<TalkScreen> {
     // Which endings are offered depends on the sentence so far, so the grid
     // has to rebuild whenever the bar changes.
     _utterance.addListener(_onUtteranceChanged);
+    _watchInstall();
     // Whether the strip is drawn is read during build, so a caregiver turning
     // it on has to reach the board without going back out and in again.
     widget.settings?.addListener(_onSettingsChanged);
@@ -554,6 +557,7 @@ class TalkScreenState extends State<TalkScreen> {
     _settleTimer?.cancel();
     _walkTimer?.cancel();
     _utterance.removeListener(_onUtteranceChanged);
+    _installWatch?.cancel();
     widget.settings?.removeListener(_onSettingsChanged);
     widget.developer?.removeListener(_onDeveloperChanged);
     super.dispose();
@@ -1344,6 +1348,28 @@ class TalkScreenState extends State<TalkScreen> {
   /// Whether the person on this board is the person who manages it (§4.78).
   bool get _selfManaged => widget.settings?.selfManaged ?? false;
 
+  /// A voice download running somewhere behind this board (§4.79).
+  StreamSubscription<ModelProgress>? _installWatch;
+
+  /// Starts the synthesis when that download lands, whatever screen is up.
+  ///
+  /// The settings screen is where a download is watched and it is the screen
+  /// somebody leaves the instant they have chosen the voice — so without this
+  /// the model arrives, nothing fills the pack, and the board goes on speaking
+  /// in the device voice until the app is next launched.
+  void _watchInstall() {
+    final settings = widget.settings;
+    if (settings == null) return;
+
+    _installWatch?.cancel();
+    _installWatch = bakeWhenInstalled(
+      widget.speech,
+      settings,
+      widget.db,
+      widget.vocabularyId,
+    );
+  }
+
   Future<void> _openCaregiver() async {
     // No PIN in front of a person's own settings. The door exists because an
     // AAC device is usually set up by somebody other than the person speaking
@@ -1387,6 +1413,11 @@ class TalkScreenState extends State<TalkScreen> {
     // on the way out: a caregiver who switches it and then cannot get back in
     // has no way to discover they are locked out except by being locked out.
     await _readCaregiverEntry();
+
+    // A download can have been started in there, and the screen that was
+    // watching it has just closed. Somebody who chose the neural voice and
+    // came straight back here is exactly the case §4.79 is about.
+    _watchInstall();
 
     // A top-up can put the first word on a page that had none, and the key
     // that reaches it has to come back with it.

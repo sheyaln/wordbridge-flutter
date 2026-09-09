@@ -358,21 +358,29 @@ void main() {
       }
     });
 
-    testWidgets('a model that is not downloaded is still a voice with a name', (
+    testWidgets('a model that is not downloaded is a voice you can choose', (
       tester,
     ) async {
+      // The download is what choosing it starts (§4.79). It used to be a
+      // button four headings down and the row was dead until somebody found
+      // it — which nobody did, because the first thing anybody does after
+      // choosing a voice is go back to the board to hear it.
       await open(tester);
 
       expect(header('Which voice speaks'), findsOneWidget);
       expect(
         tester.widget<RadioListTile<bool>>(option('Neural voice')).enabled,
-        isFalse,
+        isTrue,
       );
-      expect(find.textContaining('Not downloaded yet'), findsOneWidget);
+      expect(
+        find.textContaining('Choosing it downloads'),
+        findsOneWidget,
+        reason: 'the row does not say what choosing it costs',
+      );
       expect(
         find.text('Download the voice'),
         findsOneWidget,
-        reason: 'the row says what is missing and nothing offers to fetch it',
+        reason: 'no way to fetch it ahead of choosing it',
       );
     });
 
@@ -419,7 +427,7 @@ void main() {
       await open(tester);
 
       expect(
-        find.textContaining('the board is speaking with the device voice'),
+        find.textContaining('the board speaks with the device voice'),
         findsOneWidget,
       );
 
