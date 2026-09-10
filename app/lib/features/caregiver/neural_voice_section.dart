@@ -478,7 +478,7 @@ class _NeuralVoiceSectionState extends State<NeuralVoiceSection> {
           subtitle: Text(
             '${neuralVoiceById(_settings.neuralVoiceId).name} · '
             '${neuralVoiceById(_settings.neuralVoiceId).accent} · '
-            '${kokoroVoices.length} to choose from',
+            '${offeredNeuralVoices.length} to choose from',
           ),
           trailing: const Icon(Icons.chevron_right),
           onTap: _openVoicePicker,
@@ -699,7 +699,7 @@ class _VoicePickerState extends State<_VoicePicker> {
             },
             child: Column(
               children: [
-                for (final voice in kokoroVoices)
+                for (final voice in offeredNeuralVoices)
                   RadioListTile<String>(
                     value: voice.id,
                     title: Text(voice.name),

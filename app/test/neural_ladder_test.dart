@@ -392,9 +392,12 @@ void main() {
       await bella.write('outside', clipOf(240));
       await bella.close();
 
+      // Two voices that are both offered. A withdrawn id resolves back to the
+      // default (§4.80), so `bm_george` here was a change to nothing and the
+      // clip was found — the test passed for the wrong reason.
       final engine = engineWith();
       await engine.useNeuralVoice(enabled: true, voiceId: 'af_bella');
-      await engine.useNeuralVoice(enabled: true, voiceId: 'bm_george');
+      await engine.useNeuralVoice(enabled: true, voiceId: 'am_adam');
       await engine.speak('outside');
 
       expect(played, isEmpty);
