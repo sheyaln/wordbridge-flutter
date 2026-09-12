@@ -29,9 +29,21 @@ if [ "$width" != "$height" ]; then
   echo "error: $SOURCE is ${width}x${height}; an app icon is square." >&2
   exit 1
 fi
-if [ "$width" -lt 1024 ]; then
-  echo "error: $SOURCE is ${width}px; the App Store wants 1024." >&2
+# 180 is the largest icon that goes on a device (iPhone @3x). Below it every
+# home-screen icon is an upscale, which is a broken icon and not a warning.
+if [ "$width" -lt 180 ]; then
+  echo "error: $SOURCE is ${width}px; the icons on the device go up to 180." >&2
   exit 1
+fi
+# Between 180 and 1024 exactly one file is an upscale: the 1024, which is App
+# Store listing artwork and is never rendered on a device. Worth saying out
+# loud and not worth refusing the build over.
+if [ "$width" -lt 1024 ]; then
+  echo "warning: $SOURCE is ${width}px." >&2
+  echo "         Every icon on the device is cut down from it and is sharp." >&2
+  echo "         Icon-App-1024x1024@1x.png is scaled UP and will be soft." >&2
+  echo "         That file is the App Store listing image; re-cut from a" >&2
+  echo "         1024 source before an App Store upload." >&2
 fi
 
 work=$(mktemp -d)
@@ -49,6 +61,19 @@ trap 'rm -rf "$work"' EXIT
 # every result is immediately resampled, and one round trip at maximum quality
 # costs less than the resampling that follows. The check at the end is what
 # actually holds the guarantee.
+#
+# Android gets the flattened copy too, which it did not used to. The launcher
+# masks an icon to the device's shape, so art that floats on transparency wants
+# the alpha kept — that was true of the bridge drawn on nothing. It is not true
+# of a full-bleed design whose *interior* is transparent: there the mask never
+# touches the hole, and the wallpaper shows through the middle of the icon.
+# These mipmaps are plain legacy bitmaps (there is no mipmap-anydpi-v26
+# adaptive icon here), so nothing puts a layer behind them.
+#
+# One rule for both platforms, and it fails in the mild direction: art that
+# should have floated gets a white square behind it, which looks plain. Art
+# that should have been flattened and was not is see-through, which looks
+# broken.
 flat="$work/flat.png"
 sips -s format jpeg -s formatOptions best "$SOURCE" --out "$work/flat.jpg" >/dev/null
 sips -s format png "$work/flat.jpg" --out "$flat" >/dev/null
@@ -82,12 +107,10 @@ do
   cut "$flat" "${spec%%:*}" "$ios/${spec##*:}"
 done
 
-# Android keeps the alpha: a launcher icon is masked to the device's own shape,
-# and a white square inside a circle is what a flattened one looks like there.
 for spec in \
   "48:mdpi" "72:hdpi" "96:xhdpi" "144:xxhdpi" "192:xxxhdpi"
 do
-  cut "$SOURCE" "${spec%%:*}" "$android/mipmap-${spec##*:}/ic_launcher.png"
+  cut "$flat" "${spec%%:*}" "$android/mipmap-${spec##*:}/ic_launcher.png"
 done
 
 # What the store listing and the site use, kept beside the icons they were cut
