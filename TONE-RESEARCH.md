@@ -153,3 +153,12 @@ So this is parked as a roadmap item, not carried forward. What survives:
   once — and is a much larger product.
 
 **Ship the voice. The tones are not close.**
+
+## What this does not cover
+
+Emotional tone is one question and it is the one that failed above. Three
+others were never part of it and are answered separately in
+**`PROSODY-FINDINGS.md`**: sentence-final punctuation (plumbed correctly,
+ignored by the model), whisper as a phonation rather than a level, and the
+loudness gap ADR-0005 left open — where the gain stage turns out to be built,
+unreachable, and carrying a line that does nothing.
