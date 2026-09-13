@@ -52,25 +52,46 @@ marks. `length_scale` is not a lever either — it is exactly `1/speed`
 (`length_scale` 0.8 and `speed` 1.25 both give 1.37 s), not an independent
 prosody control.
 
-### What would actually make a question sound like one
+### What makes a question sound like one: two cues, not one
 
-Post-process the contour. The cue is narrow, well understood and does not
-require the model's cooperation: **raise f0 across the final voiced syllable by
-4–8 semitones.** It is a pitch shift on the last ~250 ms of an existing buffer,
-so it is deterministic, it runs on a cached clip, and it costs no synthesis.
+Post-process the contour. The model's cooperation is not required, and a first
+pass has been built and listened to. **A terminal rise alone is not enough** —
+that was the first thing the listening check said. A question carries two cues
+together:
 
-It fits the architecture rather than fighting it. A sentence ending `?` is
-already its own cache key — `you want that?` and `you want that.` are separate
-entries — so the shifted clip is stored once and every later press is a cache
-read. Nothing on the tap path changes.
+1. **Terminal rise** across the final voiced syllable.
+2. **Phrase-final lengthening.** A question does not only end higher, it dwells
+   on the syllable it ends on. Leaving this out is what made a rise-only
+   version read as clipped rather than interrogative.
 
-The honest caveat, and it is the ADR-0005 argument again: a terminal rise
-applied to a clip is a rise, not an interrogative prosody. It will read as a
-question on short sentences that end on a stressed syllable and will read as
-odd on sentences that do not. **It needs the same listening check the tones
-failed**, on real sentences, before it is offered — and it is a far smaller
-claim than the tones were, because a rise at the end is one cue rather than a
-whole emotional register.
+Settings measured against each voice's own median f0 — how high the utterance
+ends relative to that speaker's normal, six sentences, `af`:
+
+| setting | end vs baseline | utterance duration |
+|---|---|---|
+| untreated `?` | −2.44 st | 1.00× |
+| rise 5 st, lengthen 1.20 | −1.60 st | 1.06× |
+| rise 8 st, lengthen 1.30 | +1.55 st | 1.10× |
+| **rise 11 st, lengthen 1.40** | **+3.15 st** | **1.14×** |
+
+The final syllable is found from the last contiguous voiced run rather than a
+fixed tail, so the lengthening lands on the syllable rather than across a word
+boundary. Utterance duration moves only 1.14× because the treatment applies to
+the final syllable, not the sentence.
+
+**The implementation has one trap worth recording.** The obvious approach —
+cut the tail into chunks, pitch-shift each by an increasing amount, overlap-add
+— does not work. Each chunk comes out of the phase vocoder with its own phase,
+so overlapping chunks cancel against each other and the measured contour moves
+*backwards*. The working version stretches the tail in a single phase-vocoder
+pass and then reads it back with one continuously varying pointer, so there is
+only ever one phase to be coherent with. Same failure mode as the whisper
+below, and the same fix.
+
+It fits the architecture. A sentence ending `?` is already its own cache key —
+`you want that?` and `you want that.` are separate entries — so the treated
+clip is stored once and every later press is a cache read. Nothing on the tap
+path changes, and the treatment is deterministic.
 
 ## 2. Whisper is reachable, and it is not the volume dial
 
@@ -78,28 +99,41 @@ ADR-0005 says a whisper is a different phonation rather than a quieter voice,
 and declines to ship `Quiet` under a whisper's name. That is correct, and it is
 now measured rather than asserted.
 
-Whispering is voiced excitation replaced by noise with the formants left alone.
-On a buffer that is STFT magnitude preserved, phase randomised per bin, plus a
-gentle high shelf. Five sentences, `af`:
+| variant | HNR | spectral centroid |
+|---|---|---|
+| normal | **3.07 dB** | 3267 Hz |
+| `Quiet` (×0.25) | **3.07 dB** | 3267 Hz |
+| phase randomisation | 0.78 dB | 4248 Hz |
+| **LPC resynthesis** | **−7.29 dB** | 3971 Hz |
 
-| variant | HNR | spectral centroid | rms |
-|---|---|---|---|
-| normal | **3.66 dB** | 3124 Hz | 0.0667 |
-| `Quiet` (×0.25) | **3.66 dB** | 3124 Hz | 0.0167 |
-| whisper (DSP) | **0.97 dB** | 4088 Hz | 0.0499 |
+**`Quiet` has identical harmonicity and spectral shape to normal.** It is the
+same phonation at a lower level, exactly as the ADR says — the table is the
+receipt.
 
-**`Quiet` has byte-identical harmonicity and spectral shape to normal.** It is
-the same phonation at a lower level, exactly as the ADR says — the table is the
-receipt. The DSP version drops harmonicity by 2.7 dB and moves the centroid up
-by ~960 Hz, which is the direction real whispered speech moves.
+**Two methods were tried and only the second survives a listen.** STFT phase
+randomisation devoices by about 2 dB and measures fine, but it was rejected on
+hearing: independent random phase per bin per frame means overlapping frames
+are mutually incoherent, and the ear reads that smearing as **several voices at
+once** rather than one person whispering. The measurement had no way to see it.
 
-Two things this does not settle. The absolute HNR figures are low because the
-estimator is a normalised-autocorrelation proxy rather than a proper cepstral
-HNR — read the *contrast*, not the levels. And phase randomisation smears
-transients, so plosives soften; an LPC source-filter resynthesis with a noise
-excitation would be cleaner and is the better implementation if this is
-pursued. **Nobody has listened to it yet**, which given how `TONE-RESEARCH.md`
-ended is the only gate that decides anything.
+The method that works is source-filter resynthesis:
+
+- LPC analysis per frame (order 18 at 24 kHz) captures the formants.
+- The excitation is **one continuous noise stream**, sampled at each frame's own
+  time offset, so overlapping frames stay coherent — one voice, not a chorus.
+  This is the whole of the difference.
+- **Bandwidth expansion** — LPC coefficients scaled by `γ^k`, γ ≈ 0.90–0.94 —
+  widens the formant bandwidths. This is the knob that reads as *breath* rather
+  than as a buzzy filtered noise, and it is what a rise-only whisper lacks.
+- Genuinely unvoiced frames are passed through unchanged, so `/s/`, `/ʃ/` and
+  plosives keep their bite instead of being resynthesised into mush.
+
+Devoicing improves from ~2 dB to ~10 dB against normal speech, which is the
+difference between a voice with the harmonics disguised and one with no
+harmonic structure left.
+
+The absolute HNR figures are a normalised-autocorrelation proxy rather than a
+proper cepstral HNR — read the contrast, not the levels.
 
 ## 3. Loudness: the mechanism is built, unreachable, and has a dead line in it
 
@@ -217,9 +251,10 @@ pointer can be shared; `kokoro.dart` already shares one by address.
 3. **Wire `gain` to a control**, once 1 and 2 are in. This is the requirement
    that motivated §4.5 in the first place.
 4. **`lang: 'en-gb-x-rp'`** behind a listening check — four voices for one field.
-5. **Terminal-rise post-process for `?`**, behind a listening check.
-6. **Whisper by LPC resynthesis**, behind a listening check. Largest of these
-   and the one most likely to come back uncanny.
+5. **Question contour for `?`** — terminal rise *and* final lengthening, at
+   roughly 11 st / 1.40×. Prototyped and heard; tuning, not discovery.
+6. **Whisper by LPC resynthesis** with bandwidth expansion. Prototyped and
+   heard. Phase randomisation is a dead end — it choruses.
 
 Items 4–6 all end at the same gate, and `TONE-RESEARCH.md` is the reason to
 respect it: measurements said calm moved correctly on every axis and a listener
