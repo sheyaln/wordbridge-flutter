@@ -54,7 +54,7 @@ void main() {
   });
 
   test('and the pack answers well inside the registry budget', () async {
-    // The numbers, not just the behaviour: the inner bound has to be the one
+    // The numbers, not just the behavior: the inner bound has to be the one
     // that fires. Equal or larger and the registry cancels work that arrived.
     final pack = GlobalSymbolsPack();
     addTearDown(pack.dispose);

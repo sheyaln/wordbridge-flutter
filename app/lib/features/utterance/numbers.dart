@@ -39,7 +39,7 @@ bool isNumeral(String text) {
 /// sentence the app never produced.
 ///
 /// With joining off the spoken word goes in, unchanged. The bar reads "one
-/// two", which is the behaviour that setting is a choice against, and digits
+/// two", which is the behavior that setting is a choice against, and digits
 /// there would be a silent change to what a sentence looks like.
 String numeralBarText(String label, String message, {required bool joining}) =>
     joining && isNumeral(label) ? label : message;

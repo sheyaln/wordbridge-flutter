@@ -193,7 +193,7 @@ void main() {
     expect(find.text('Did not load'), findsOneWidget);
 
     // The one that has not failed is still worth waiting for, and must not be
-    // tarred by its neighbour.
+    // tarred by its neighbor.
     expect(find.text('still water'), findsOneWidget);
     expect(find.text('Loading'), findsOneWidget);
   });

@@ -124,7 +124,7 @@ void main() {
     });
 
     test('and with joining off the spoken word goes in unchanged', () {
-      // The behaviour the setting is a choice against. Somebody counting two
+      // The behavior the setting is a choice against. Somebody counting two
       // things presses 1 then 2 and means one two, and the bar has to read
       // that back to them.
       final bar = UtteranceBar();
