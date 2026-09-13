@@ -1520,6 +1520,16 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           // An ordinary evaluative adjective, in the band that already holds
           // them. It opens no row and widens none.
           'cute',
+          // The pair, kept together the way every pair on this board is: one
+          // location plus a direction is one thing to learn, two locations
+          // apart are two. They are verdicts on a thing rather than reports of
+          // a feeling, which is what "cute" beside them is too.
+          //
+          // "ugly" is here on purpose and not softened away. A board that can
+          // only say the kind half of a judgement is a board that decides what
+          // its user is allowed to think.
+          'beautiful',
+          'ugly',
         ], level: 3),
         ...adjectives(['safe', 'ready'], level: 2),
         // Appended, so nothing on this row moves.
