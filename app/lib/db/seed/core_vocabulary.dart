@@ -464,6 +464,16 @@ final homeBands = <Band<SeedWord>>[
       _article('the'),
       w('and', PartOfSpeech.conjunction, level: 2),
       w('but', PartOfSpeech.conjunction, level: 2),
+      // Slotted in beside the other two coordinators rather than appended,
+      // which moves `because`, `so`, `for` and `with` one location along. The
+      // three of them are one group — and, but, or — and a board that scatters
+      // them is three things to learn instead of one; nobody has learned these
+      // positions yet, so this is the moment it is affordable.
+      //
+      // It is also the word a choice is made of. Without it a board can be
+      // offered two things and can accept one or refuse both; it cannot ask
+      // which, and it cannot offer anybody else a choice either.
+      w('or', PartOfSpeech.conjunction, level: 2),
       w('because', PartOfSpeech.conjunction, level: 2),
       w('so', PartOfSpeech.conjunction, level: 2),
       // With the joining words, which is what it is: "for" is benefactive, not
