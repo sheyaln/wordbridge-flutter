@@ -121,7 +121,7 @@ Future<void> unship(
     if (frame.cycleCol != null) frame.cycleCol!,
   ];
 
-  for (final board in await db.select(db.boards).get()) {
+  for (final board in await _navigable(db)) {
     for (final col in slots) {
       final cell = await cellAt(
         db,
@@ -166,7 +166,7 @@ Future<void> unship(
     ],
   );
 
-  for (final board in await db.select(db.boards).get()) {
+  for (final board in await _navigable(db)) {
     for (var i = 0; i < older.categoryCols.length; i++) {
       final cell = await cellAt(
         db,
@@ -447,7 +447,7 @@ void main() {
     // word two locations — which is the one thing a fixed layout cannot
     // survive, and which a user meets as the same word in two places.
     final labels = <String, List<String>>{};
-    for (final board in await db.select(db.boards).get()) {
+    for (final board in await _navigable(db)) {
       final rows =
           await (db.select(db.buttons).join([
                 innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
@@ -487,7 +487,7 @@ void main() {
 
   test('a pinned question reaches every board, not just the root', () async {
     // The pinned column is the same on every board or it is not pinned.
-    for (final board in await db.select(db.boards).get()) {
+    for (final board in await _navigable(db)) {
       final button =
           await (db.select(db.buttons).join([
                 innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
@@ -499,6 +499,28 @@ void main() {
 
       expect(button, hasLength(1), reason: '"${board.name}" cannot ask');
     }
+  });
+
+  test('the quick settings menu is left out of the pinned column', () async {
+    // It is drawn over a board that already has one. Writing questions onto it
+    // put "what", "where" and "who" on the menu, because the menu draws what is
+    // on its board.
+    await topUpVocabulary(db, vocabularyId: vocabId);
+
+    final menu = await (db.select(
+      db.boards,
+    )..where((b) => b.name.equals(quickSettingsBoardName))).getSingleOrNull();
+    if (menu == null) return;
+
+    final on = await (db.select(db.buttons).join([
+      innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+    ])..where(db.cells.boardId.equals(menu.id))).get();
+
+    expect(on.map((r) => r.readTable(db.buttons).action).toSet(), {
+      ButtonAction.quickVolume,
+      ButtonAction.quickTone,
+      ButtonAction.favorites,
+    }, reason: 'something that is not a menu row is on the menu board');
   });
 
   test('a top-up run twice adds nothing the second time', () async {
@@ -587,14 +609,14 @@ void main() {
     // turning case has its own group below.
     //
     // The width follows the number of shipped categories — a row holds
-    // `cols - 5` of them — so it was 14 for nine, 15 for ten, 18 for thirteen
-    // and is 19 for fourteen. That is the premise, not the subject: a narrower
-    // grid here does not make the test harder, it makes it a different test
-    // that the group below already runs.
+    // `cols - 5` of them — so it was 14 for nine, 15 for ten, 18 for thirteen,
+    // 19 for fourteen, 20 for fifteen and is 21 for sixteen. That is the
+    // premise, not the subject: a narrower grid here does not make the test
+    // harder, it makes it a different test that the group below already runs.
     setUp(() async {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
-      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 19);
+      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 21);
     });
 
     test('the board arrives, with its words in it', () async {
@@ -621,11 +643,13 @@ void main() {
       );
       // The board's own verbs, the `how` adverbs §4.42 added to it, the noun
       // "question" that `ask` and `answer` needed and the three verbs added
-      // since — `charge`, `use` and `order` — plus the six question words
-      // every board carries in its pinned column. Arithmetic, not behavior: a
-      // word added to the shipped vocabulary moves this number and nothing
-      // else.
-      expect(words.keys, hasLength(57 + 6));
+      // since — `charge`, `use` and `order` — less the two that left for
+      // `play` to sit against their opposites, `lose` against `win` and
+      // `break` against `build`; one more again for `let`; three more for the
+      // money row — `shop`, `buy` and `sell`; plus the six question words
+      // every board carries in its pinned column. Arithmetic, not behavior: a word joining
+      // or leaving the shipped vocabulary moves this number and nothing else.
+      expect(words.keys, hasLength(60 + 6));
       expect(
         result.added.where((a) => a.board == 'doing').map((a) => a.label),
         containsAll(['wash', 'breathe', 'cry']),
@@ -670,7 +694,7 @@ void main() {
       )..where((b) => b.name.equals('doing'))).getSingle();
       final frame = await frameOf(db, vocabId);
 
-      for (final board in await db.select(db.boards).get()) {
+      for (final board in await _navigable(db)) {
         final rows =
             await (db.select(db.buttons).join([
                   innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
@@ -886,6 +910,55 @@ void main() {
       narrowId = await seedCoreBoardSet(narrow, rows: rows, cols: cols);
       for (final category in without) {
         await unship(narrow, narrowId, category);
+      }
+
+      // And the quick settings key, where taking those categories away has
+      // stopped the wheel turning.
+      //
+      // Fixture realism, not a thing production does. This helper builds "a
+      // board set from before those categories shipped" by seeding all of them
+      // and taking some back out — but a board set genuinely built with this
+      // few categories never had the key at all: `SystemRowPlan.forGrid` only
+      // gives it the gap once the wheel is already turning, precisely because
+      // the gap is the cycle key's last resort. Leaving it here would test a
+      // board set that cannot exist.
+      // Checked on the boards rather than on the frame: `unship` rewrites the
+      // frame and does not carry `configCol` across, so the key can still be
+      // sitting in the column while the frame has stopped mentioning it.
+      final frame = await frameOf(narrow, narrowId);
+      if (frame.cycleCol == null) {
+        final gapCol = frame.backCol + 1;
+        for (final board in await (narrow.select(
+          narrow.boards,
+        )..where((b) => b.vocabularyId.equals(narrowId))).get()) {
+          final gap = await cellAt(
+            narrow,
+            boardId: board.id,
+            row: frame.row,
+            col: gapCol,
+          );
+          final button = await (narrow.select(
+            narrow.buttons,
+          )..where((b) => b.cellId.equals(gap.id))).getSingleOrNull();
+          if (button?.action != ButtonAction.quickSettings) continue;
+
+          await (narrow.delete(
+            narrow.buttons,
+          )..where((b) => b.cellId.equals(gap.id))).go();
+          await (narrow.update(
+            narrow.cells,
+          )..where((c) => c.id.equals(gap.id))).write(
+            const CellsCompanion(state: Value(CellState.emptyReserved)),
+          );
+        }
+
+        await (narrow.update(
+          narrow.vocabularies,
+        )..where((v) => v.id.equals(narrowId))).write(
+          VocabulariesCompanion(
+            systemCellMap: Value(frame.copyWith(clearConfigCol: true).toJson()),
+          ),
+        );
       }
     }
 
@@ -1306,3 +1379,13 @@ void main() {
     });
   });
 }
+
+/// The boards somebody navigates to.
+///
+/// Excludes [BoardKind.system], the quick settings menu (§4.81): it is drawn
+/// over whichever board you are on rather than being one, so it carries no
+/// system row and no pinned question column. Writing either onto it put a
+/// question column down the side of the menu, and the menu drew it.
+Future<List<Board>> _navigable(WordbridgeDatabase db) => (db.select(
+  db.boards,
+)..where((b) => b.kind.equalsValue(BoardKind.system).not())).get();

@@ -280,31 +280,48 @@ void main() {
   });
 
   group('the user’s own name', () {
-    test('lands beside the key that asks for one', () async {
-      // On the people board, in the row `name` closes — not on the root board
-      // among the pronouns, where it used to go. A proper noun in the middle
-      // of a closed set of pronouns drew in their color and took the reserve
-      // that band holds for the personal vocabulary it is not.
-      final people = (await layout(
-        rows: 7,
-        cols: 12,
-        userName: 'Maya',
-      ))['people']!;
+    test('lands on the root board, in the pronoun column', () async {
+      // Back on the root, beside `me` (§4.83). It went to `people` for a
+      // while, and the argument for that still holds — a proper noun in the
+      // middle of a closed set of pronouns draws in their color and fills the
+      // reserve that band holds for personal vocabulary. It is outweighed by
+      // where the word is used: this is how a person says who is talking, and
+      // they say it from whatever board they are standing on.
+      final home = (await layout(rows: 7, cols: 12, userName: 'Maya'))['home']!;
 
-      expect(people, contains('Maya'));
+      expect(home, contains('Maya'));
       expect(
-        people['Maya']!.row,
-        people['name']!.row,
-        reason: 'the name is not on the row the key that asks for one is on',
+        home['Maya']!.col,
+        home['me']!.col,
+        reason: 'the name is not in the column the pronouns are in',
+      );
+      expect(
+        home['Maya']!.row,
+        greaterThan(home['me']!.row),
+        reason: 'the name should sit below "me", not above it',
       );
     });
 
-    test('is not on the root board any more', () async {
-      final home = (await layout(rows: 7, cols: 12, userName: 'Maya'))['home']!;
-      expect(home.keys, isNot(contains('Maya')));
+    test('and takes the one location the root board reserves for a name', () async {
+      // Said out loud because it is the whole cost of putting it here: the
+      // tail of the pronoun column is the only spare name location a shipped
+      // root board has, and the person's own name now fills it. A family's
+      // other names go in the `names` band on `people`, which is held open for
+      // exactly that.
+      final withName = (await layout(
+        rows: 7,
+        cols: 12,
+        userName: 'Maya',
+      ))['home']!;
+      final without = (await layout(rows: 7, cols: 12))['home']!;
+
+      expect(withName.length, without.length + 1);
     });
 
     test('is absent when nobody has a name set', () async {
+      final home = (await layout(rows: 7, cols: 12))['home']!;
+      expect(home.keys, isNot(contains('Maya')));
+
       final people = (await layout(rows: 7, cols: 12))['people']!;
       expect(people.keys, isNot(contains('Maya')));
     });

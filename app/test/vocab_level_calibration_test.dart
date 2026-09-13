@@ -278,6 +278,19 @@ void main() {
       // "weather" or "animal" cannot ask about the one that is not on the
       // board. Level 3 is still comfortably twice this and `each step is a
       // real step` pins the gap at both ends.
+      //
+      // **Not raised for the `colors` and `nature` boards.** They would have
+      // taken it to 385, and the answer was to level the words rather than
+      // move the wall: both boards are naming vocabulary, which is what level
+      // 3 is for. What stayed below it is the handful a day is negotiated in —
+      // the four colors a child is asked to choose between, and `tree` and
+      // `flower`, which are what a walk is actually about.
+      //
+      // That is what this ceiling is supposed to do. It is worth saying that
+      // the first instinct was to raise it again, and that raising it would
+      // have been the wrong answer: the number is not the point, and a board
+      // whose level 2 keeps growing is a board where level 2 has stopped
+      // meaning anything.
       expect(shippedWordsAtMost(2), inInclusiveRange(200, 380));
     });
 

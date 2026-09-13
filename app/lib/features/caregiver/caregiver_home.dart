@@ -2011,6 +2011,24 @@ class _NewWordsState extends State<_NewWords> {
                   style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],
+              if (preview.renamed.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Renamed where they already are, keeping their locations: '
+                  '${[for (final r in preview.renamed) '"${r.from}" becomes "${r.to}"'].join(', ')}.',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+              if (preview.addedQuickSettings) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'A quick settings key joins the bottom row, next to back, in '
+                  'the column that has always been left empty there. It opens '
+                  'volume, tone and favorites over the board without leaving '
+                  'it. Nothing else on the row moves.',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
             ],
           ),
         ),
@@ -2058,7 +2076,13 @@ class _NewWordsState extends State<_NewWords> {
           );
         }
 
-        if (preview.added.isEmpty && preview.refusedBoards.isEmpty) {
+        // The quick settings key counts here even though it is not a word. A
+        // board set whose only missing piece is that key would otherwise be
+        // told it has everything, and the key would never be offered.
+        if (preview.added.isEmpty &&
+            preview.refusedBoards.isEmpty &&
+            preview.renamed.isEmpty &&
+            !preview.addedQuickSettings) {
           return const ListTile(
             leading: Icon(Icons.playlist_add_check),
             title: Text('New words'),

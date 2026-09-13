@@ -240,19 +240,26 @@ void main() {
     // beside the pronouns. Both exist so personal vocabulary has somewhere to
     // land that displaces nothing.
     //
-    // Three, down from six, down from seven. §4.68 and §4.70 spent the first
-    // difference on words the board could not say — `for`, `under`, `left`,
-    // `right`, `less`, `whole`, the modals. The second went on `off`,
-    // `forward` and `backward`: "on" had been here since the first board and
-    // its opposite never had, and left and right were the only directions the
-    // board could give.
+    // Two, down from three, down from six, down from seven. §4.68 and §4.70
+    // spent the first difference on words the board could not say — `for`,
+    // `under`, `left`, `right`, `less`, `whole`, the modals. The second went
+    // on `off`, `forward` and `backward`: "on" had been here since the first
+    // board and its opposite never had, and left and right were the only
+    // directions the board could give.
     //
-    // Three is the floor and not a target. What survives is what the two
-    // tests below name — the noun column and the tail beside the pronouns —
-    // and those are the reserves a caregiver's own words actually land in.
-    // The next thing that wants a location on this board takes one of the
-    // last three, and this line is what makes somebody say so out loud.
-    expect(reserved.length, greaterThanOrEqualTo(3));
+    // **Saying the third out loud, which is what this line is for.** The
+    // quick settings key took it (§4.81) — column 2 of the system row, the gap
+    // that used to separate the undo keys from the category keys. It is not a
+    // word and it did not come off the vocabulary's budget, but it was a
+    // reserved location and now it is not, so it is counted here like any
+    // other.
+    //
+    // Neither of the two reserves that matter was touched: the noun column
+    // and the tail beside the pronouns both survive, and the two tests below
+    // name them. Those are where a caregiver's own words actually land.
+    //
+    // Two is the floor and not a target.
+    expect(reserved.length, greaterThanOrEqualTo(2));
   });
 
   test('reserves the column beside the pronouns for names', () async {
@@ -284,7 +291,7 @@ void main() {
 
   group('system row is identical on every board', () {
     test('every board carries the same system positions', () async {
-      final boards = await db.select(db.boards).get();
+      final boards = await _navigable(db);
       expect(boards.length, greaterThan(1));
 
       final signatures = <String, Map<String, int>>{};
@@ -345,7 +352,7 @@ void main() {
     test(
       'every board carries the same questions at the same coordinates',
       () async {
-        final boards = await db.select(db.boards).get();
+        final boards = await _navigable(db);
         expect(boards.length, greaterThan(1));
 
         final perBoard = <String, Map<String, ({int row, int col})>>{};
@@ -534,6 +541,11 @@ void main() {
         'clothing',
         'animals',
         'measurement',
+        // Appended, like every name before it. The list grows by one each time
+        // a category ships and that is what this test is for: what it must
+        // never do is gain one anywhere but the end.
+        'colors',
+        'nature',
       ]);
     });
 
@@ -606,9 +618,12 @@ void main() {
         reason: 'a strip of the doing board was never placed',
       );
       // One fewer since `cook` moved to `food` (§4.42), one more for the noun
-      // `question` that `ask` and `answer` needed, and three more for
-      // `charge`, `use` and `order`. Arithmetic, not behavior: a word joining
-      // or leaving the shipped board moves this number and nothing else.
+      // `question` that `ask` and `answer` needed, three more for `charge`,
+      // `use` and `order`, one fewer again since `lose` went to `play` to sit
+      // against `win`, and one fewer for `break`, which went to `play` for the
+      // same reason — to sit against `build`. Arithmetic, not behavior: a word
+      // joining or leaving the shipped board moves this number and nothing
+      // else.
       expect(labels, hasLength(51));
     });
 
@@ -626,13 +641,19 @@ void main() {
       // `cook` arrived here from `doing` (§4.42) and took a location that was
       // held open, which is what an addition is supposed to do: not one word
       // already on this board moved to make room for it.
+      //
+      // The four tastes did the same (§4.82). They went onto the row that
+      // already answers "what is it like" rather than onto the end of the verb
+      // row above — which is full at this grid anyway — and the empty tail
+      // that row was carrying is exactly what they landed in. Every other
+      // location on this board is unchanged.
       const shipped = [
         'eat drink food straw plate cook taste chew swallow pour spill',
         'water milk juice tea coffee soda . . . . .',
         'breakfast lunch dinner snack soup pizza chicken . . . .',
         'bread toast cereal rice pasta egg cheese butter honey jam .',
         'apple banana orange grapes berries melon lemon . . . .',
-        'hungry thirsty yummy yucky hot cold . . . . .',
+        'hungry thirsty yummy yucky hot cold sweet sour bitter salty .',
       ];
 
       final food = await (db.select(
@@ -698,7 +719,7 @@ void main() {
       // displace one somebody may already have learned.
       expect(byRow[2], [
         'dessert',
-        'sweets',
+        'candy',
         'chocolate',
         'ice cream',
         'pudding',
@@ -1157,3 +1178,13 @@ void main() {
     });
   });
 }
+
+/// The boards somebody navigates to.
+///
+/// Excludes [BoardKind.system], which is the quick settings menu (§4.81): it is
+/// drawn *over* whichever board you are on rather than being one, so it carries
+/// no system row and no pinned question column. Two of either on screen at once
+/// would be two homes and two ways to ask "where".
+Future<List<Board>> _navigable(WordbridgeDatabase db) => (db.select(
+  db.boards,
+)..where((b) => b.kind.equalsValue(BoardKind.system).not())).get();

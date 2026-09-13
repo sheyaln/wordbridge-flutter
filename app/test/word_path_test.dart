@@ -335,27 +335,47 @@ void main() {
 
   group('a word with two homes', () {
     test('is offered at both of them', () async {
-      // Deliberate in this board set: `doctor` is a person and also something
-      // the body board needs. They are two movements to two places.
-      final found = await find('doctor');
+      // `chicken` is the bird on `animals` and the dinner on `food`. Two words
+      // that share a spelling, two movements to two places.
+      //
+      // It used to be `doctor`, which was on `people` and on `health` as the
+      // same noun — one word in two places rather than two words — and was
+      // given a single home (§4.15). The words left with two homes are the
+      // ones that are genuinely two words.
+      final found = await find('chicken');
 
       expect(found, hasLength(2));
       expect(
         {for (final path in found) path.boardId},
-        {await boardNamed('people'), await boardNamed('health')},
+        {await boardNamed('food'), await boardNamed('animals')},
       );
     });
 
     test('nearest first', () async {
-      // `bike` is one press away on `places` and two on the second page of
-      // `play`. Offering the long way first offers the wrong one.
-      final found = await find('bike');
+      // `right` is the direction on the root board, already under the hand,
+      // and the opposite of wrong one press away on `feelings`. Offering the
+      // long way first offers the wrong one.
+      //
+      // Deliberately a word whose near home is the root board: every category
+      // is at least one press away, and how many depends on where the wheel
+      // has got to — which grows every time a category ships and is not what
+      // this test is about.
+      //
+      // It used to be `bike`, which was the same noun on `places` and `play`
+      // and now has one home (§4.15).
+      // Filtered to the label: the finder matches what a key *says* as well as
+      // what it reads, so "too bright" comes back for "right" too. That is the
+      // search working, and it is a different test.
+      final found = [
+        for (final path in await find('right'))
+          if (path.label == 'right') path,
+      ];
 
       expect(found, hasLength(2));
-      expect(found.first.boardId, await boardNamed('places'));
-      expect(found.first.steps, hasLength(1));
-      expect(found.last.boardId, await boardNamed('play 2'));
-      expect(found.last.steps, hasLength(2));
+      expect(found.first.boardId, await boardNamed('home'));
+      expect(found.first.steps, isEmpty);
+      expect(found.last.boardId, await boardNamed('feelings'));
+      expect(found.last.steps, isNotEmpty);
     });
   });
 
@@ -638,6 +658,7 @@ void main() {
             row: frame.row,
             homeCol: frame.homeCol,
             backCol: frame.backCol,
+            configCol: frame.configCol,
             categoryCols: [frame.categoryCols.first],
             cycleCol: null,
             pageBackCol: frame.pageBackCol,

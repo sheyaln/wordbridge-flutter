@@ -136,7 +136,7 @@ void main() {
       });
 
       test('every board carries what fits of the question column', () async {
-        final boards = await db.select(db.boards).get();
+        final boards = await _navigable(db);
         final questionCol = g.cols - 1;
 
         for (final board in boards) {
@@ -286,7 +286,7 @@ void main() {
         );
 
         if (frame.cycleCol != null) {
-          for (final board in await db.select(db.boards).get()) {
+          for (final board in await _navigable(db)) {
             final query =
                 db.select(db.buttons).join([
                   innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
@@ -381,3 +381,13 @@ void main() {
     expect(await layoutOf(second), await layoutOf(first));
   });
 }
+
+/// The boards somebody navigates to.
+///
+/// Excludes [BoardKind.system], which is the quick settings menu (§4.81): it is
+/// drawn *over* whichever board you are on rather than being one, so it carries
+/// no system row and no pinned question column. Two of either on screen at once
+/// would be two homes and two ways to ask "where".
+Future<List<Board>> _navigable(WordbridgeDatabase db) => (db.select(
+  db.boards,
+)..where((b) => b.kind.equalsValue(BoardKind.system).not())).get();

@@ -92,7 +92,9 @@ void main() {
       final key = await onBoard('home', 'food');
       final siblings = await frameSiblings(db, key);
 
-      final boards = await db.select(db.boards).get();
+      // Every board you can stand on. The quick settings menu is not one —
+      // it has no home key because it is drawn over a board that has one.
+      final boards = await _navigable(db);
       expect(
         siblings.length,
         boards.length - 1,
@@ -236,7 +238,10 @@ void main() {
       // reason.
       final wide = WordbridgeDatabase.forTesting(NativeDatabase.memory());
       addTearDown(wide.close);
-      final id = await seedCoreBoardSet(wide, rows: 7, cols: 19);
+      // Wide enough that every category has a slot of its own and the wheel
+      // never turns. It grows by one column each time a category ships, which
+      // is the point of the assertion below rather than a nuisance.
+      final id = await seedCoreBoardSet(wide, rows: 7, cols: 21);
 
       final frame = SystemFrame.parse(
         (await (wide.select(
@@ -277,3 +282,13 @@ void main() {
     expect(await frameSiblings(db, key), isEmpty);
   });
 }
+
+/// The boards somebody navigates to.
+///
+/// Excludes [BoardKind.system], which is the quick settings menu (§4.81). It is
+/// drawn *over* whichever board you are on rather than being one, so it carries
+/// no system row, no pinned questions, and no bands — its three rows are placed
+/// at fixed coordinates rather than laid out.
+Future<List<Board>> _navigable(WordbridgeDatabase db) => (db.select(
+  db.boards,
+)..where((b) => b.kind.equalsValue(BoardKind.system).not())).get();

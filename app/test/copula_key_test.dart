@@ -378,7 +378,7 @@ void main() {
   });
 
   testWidgets('every board carries "how" in the pinned column', (tester) async {
-    for (final board in await db.select(db.boards).get()) {
+    for (final board in await _navigable(db)) {
       final pinned =
           await (db.select(db.buttons).join([
                 innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
@@ -454,3 +454,13 @@ void main() {
     });
   });
 }
+
+/// The boards somebody navigates to.
+///
+/// Excludes [BoardKind.system], which is the quick settings menu (§4.81): it is
+/// drawn *over* whichever board you are on rather than being one, so it carries
+/// no system row and no pinned question column. Two of either on screen at once
+/// would be two homes and two ways to ask "where".
+Future<List<Board>> _navigable(WordbridgeDatabase db) => (db.select(
+  db.boards,
+)..where((b) => b.kind.equalsValue(BoardKind.system).not())).get();

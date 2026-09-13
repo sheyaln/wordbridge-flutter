@@ -34,6 +34,8 @@ class VocabularyTopUp {
     required this.blocked,
     this.addedBoards = const [],
     this.refusedBoards = const [],
+    this.renamed = const [],
+    this.addedQuickSettings = false,
   });
 
   /// Words placed, or that would be placed.
@@ -53,7 +55,29 @@ class VocabularyTopUp {
   /// top-up may never do.
   final List<String> refusedBoards;
 
-  bool get isEmpty => added.isEmpty && blocked.isEmpty && refusedBoards.isEmpty;
+  /// Words whose label was corrected in place (§4.82), old name first.
+  ///
+  /// Separate from [added] because nothing arrived: these are buttons that
+  /// were already on the board, at the same locations, now saying the right
+  /// word. Counting them as additions would tell a caregiver a word appeared
+  /// somewhere when what happened is that a word they already had got its
+  /// spelling fixed.
+  final List<({String from, String to})> renamed;
+
+  /// Whether the quick settings key was put on the row (§4.81).
+  ///
+  /// Reported on its own rather than counted among [added], because it is not
+  /// a word: it costs a column that was empty on every board, and a caregiver
+  /// reading "1 word added" and finding a menu key would be reading a wrong
+  /// answer to the question they asked.
+  final bool addedQuickSettings;
+
+  bool get isEmpty =>
+      added.isEmpty &&
+      blocked.isEmpty &&
+      refusedBoards.isEmpty &&
+      renamed.isEmpty &&
+      !addedQuickSettings;
   int get count => added.length;
 }
 
@@ -90,6 +114,32 @@ Future<VocabularyTopUp> topUpVocabulary(
   );
   vocab = renamed.vocab;
   boards = renamed.boards;
+
+  // Before anything is counted as missing, for the same reason the category
+  // renames run first: a word that was renamed is still on the board under its
+  // old label, and everything below matches by label. Without this, "candy"
+  // reads as absent, gets aimed at the cell "sweets" is sitting in, and is
+  // reported as blocked by itself.
+  final renamedWordList = await _renameWords(
+    db,
+    vocab: vocab,
+    boards: boards,
+    dryRun: dryRun,
+  );
+
+  // The boards somebody navigates to, which is every board except the quick
+  // settings menu (§4.81).
+  //
+  // **Everything below that writes "to every board" means this list.** The menu
+  // is drawn *over* a board rather than being one: it has no system row and no
+  // pinned question column, because the board underneath it already has both.
+  // Treating it as an ordinary board put a question column down the side of the
+  // menu, and the menu draws what is on its board — so "what", "where" and
+  // "who" turned up as menu rows.
+  List<Board> navigable() => [
+    for (final b in boards)
+      if (b.kind != BoardKind.system) b,
+  ];
 
   final added = <({String label, String board, int row, int col})>[];
   final blocked = <({String label, String board, String occupant})>[];
@@ -193,7 +243,7 @@ Future<VocabularyTopUp> topUpVocabulary(
   // reach all of them or it is in a different place depending on where you are.
   final questionCol = vocab.gridCols - 1;
   final questionRows = vocab.gridRows - 1;
-  for (final board in boards) {
+  for (final board in navigable()) {
     for (var i = 0; i < pinnedQuestions.length && i < questionRows; i++) {
       final item = pinnedQuestions[i];
       await consider(
@@ -231,12 +281,174 @@ Future<VocabularyTopUp> topUpVocabulary(
     }
   }
 
+  final quickSettings = await _addQuickSettingsKey(
+    db,
+    vocab: vocab,
+    boards: boards,
+    dryRun: dryRun,
+  );
+
   return VocabularyTopUp(
     added: added,
     blocked: blocked,
     addedBoards: newBoards.addedBoards,
     refusedBoards: newBoards.refusedBoards,
+    renamed: renamedWordList,
+    addedQuickSettings: quickSettings,
   );
+}
+
+/// Corrects the label on a word that shipped under the wrong one (§4.82).
+///
+/// **Nothing moves and nothing is created.** The button keeps its cell, its
+/// id, its picture, its part of speech and its place in every motor plan that
+/// reaches it; the word written on it changes. A person who had learned where
+/// "sweets" was finds "candy" in exactly that location, said with exactly that
+/// movement.
+///
+/// System keys are left alone. A category key is renamed by [_applyRenames],
+/// which knows to match the board it opens as well as the label — renaming by
+/// label alone here would take the word `home` off a board that carries it as
+/// vocabulary.
+Future<List<({String from, String to})>> _renameWords(
+  WordbridgeDatabase db, {
+  required Vocabulary vocab,
+  required List<Board> boards,
+  required bool dryRun,
+}) async {
+  final done = <({String from, String to})>[];
+
+  for (final entry in renamedWords) {
+    // `onBoard` is what keeps a rename off a word that merely shares a
+    // spelling: "shop" the place becomes "store", and "shop" the verb on
+    // `doing` is a different word and is left alone.
+    final onlyHere = entry.onBoard;
+    final pages = onlyHere == null
+        ? null
+        : {
+            for (final b in boards)
+              if (b.name == onlyHere || b.name.startsWith('$onlyHere ')) b.id,
+          };
+
+    final matches =
+        await (db.select(db.buttons).join([
+                innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+              ])
+              ..where(db.buttons.vocabularyId.equals(vocab.id))
+              ..where(db.buttons.label.equals(entry.from))
+              ..where(db.buttons.isSystem.equals(false)))
+            .get();
+
+    final wanted = [
+      for (final r in matches)
+        if (pages == null || pages.contains(r.readTable(db.cells).boardId)) r,
+    ];
+    if (wanted.isEmpty) continue;
+
+    done.add((from: entry.from, to: entry.to));
+    if (dryRun) continue;
+
+    for (final row in wanted) {
+      final button = row.readTable(db.buttons);
+      await (db.update(db.buttons)..where((b) => b.id.equals(button.id))).write(
+        ButtonsCompanion(
+          label: Value(entry.to),
+          // Only where the two were the same word. A button somebody edited to
+          // say something longer — "I would like some sweets" — is that
+          // person's sentence, and rewriting it would be editing what they
+          // wrote rather than correcting what shipped.
+          message: button.message == entry.from
+              ? Value(entry.to)
+              : const Value.absent(),
+          updatedAt: Value(nowMs()),
+        ),
+      );
+    }
+  }
+
+  return done;
+}
+
+/// Puts the quick settings key on a board set built before it existed (§4.81).
+///
+/// **Purely additive, or it does not happen.** The key goes in column 2, which
+/// every board in a set laid out by [SystemRowPlan] leaves empty — it was the
+/// gap between the undo keys and the category keys. If anything at all is
+/// sitting there on any board, this returns without writing: a key that
+/// appears on some boards and not others is not a fixed key, and one that
+/// displaced something would change what a learned movement does.
+///
+/// Nothing moves either way. This fills a reserved location or it fills none.
+Future<bool> _addQuickSettingsKey(
+  WordbridgeDatabase db, {
+  required Vocabulary vocab,
+  required List<Board> boards,
+  required bool dryRun,
+}) async {
+  final frame = SystemFrame.parse(vocab.systemCellMap);
+  if (frame == null || frame.configCol != null) return false;
+
+  // Column 2 is the gap, and only where the categories start after it. A grid
+  // narrow enough to have given the gap up has a category key there, and that
+  // key is not available.
+  const col = 2;
+  if (frame.categoryCols.isEmpty || frame.categoryCols.first <= col) {
+    return false;
+  }
+
+  // Not until the wheel turns. Until then this column is the cycle key's last
+  // resort, and a category that cannot be opened is worse than a menu that is
+  // not on the row — see `SystemRowPlan.forGrid`. A board set that starts
+  // cycling later gets the key on the top-up after that.
+  if (frame.cycleCol == null) return false;
+  if (frame.homeCol == col || frame.backCol == col) return false;
+  final carrying = [
+    for (final b in boards)
+      if (b.kind != BoardKind.system) b,
+  ];
+  if (!await _isFreeOnEvery(db, carrying, frame.row, col)) return false;
+
+  if (dryRun) return true;
+
+  for (final board in carrying) {
+    final cell = await cellAt(db, boardId: board.id, row: frame.row, col: col);
+    await placeButton(
+      db,
+      vocabularyId: vocab.id,
+      cellId: cell.id,
+      label: quickSettingsLabel,
+      message: '',
+      action: ButtonAction.quickSettings,
+      isSystem: true,
+      symbolId: await frameKeySymbol(db, quickSettingsLabel),
+    );
+  }
+
+  // The menu the key opens, which is a board of its own. Skipped if one is
+  // somehow already there, so a half-finished top-up that is run again does
+  // not leave a board set with two menus and no way to tell which one opens.
+  final existing =
+      await (db.select(db.boards)
+            ..where((b) => b.vocabularyId.equals(vocab.id))
+            ..where((b) => b.name.equals(quickSettingsBoardName)))
+          .getSingleOrNull();
+  if (existing == null) {
+    await seedQuickSettingsMenu(
+      db,
+      vocabId: vocab.id,
+      rows: vocab.gridRows,
+      cols: vocab.gridCols,
+      frame: frame.copyWith(configCol: col),
+    );
+  }
+
+  await (db.update(db.vocabularies)..where((v) => v.id.equals(vocab.id))).write(
+    VocabulariesCompanion(
+      systemCellMap: Value(frame.copyWith(configCol: col).toJson()),
+    ),
+  );
+
+  return true;
 }
 
 /// Brings a board set's category names forward, so a rename is not read as a
@@ -390,6 +602,20 @@ Future<_NewCategories> _addMissingCategories(
         ? (col: room.cycleCol!, cycles: true)
         : null;
 
+    // **Refused, never resolved by moving something.** The gap is the cycle
+    // key's last resort and it is also where the quick settings key sits
+    // (§4.81), so a board set that has stopped cycling and still carries that
+    // key has nowhere to put a cycle key.
+    //
+    // Evicting the quick settings key to make room was tried and is wrong:
+    // every top-up is an addition, and `fingerprint` proves it by asserting
+    // that nothing on any board has changed. A key vanishing from a row
+    // somebody has learned is precisely the displacement that guarantee
+    // exists to forbid — it does not stop being one because what it makes
+    // room for is valuable.
+    //
+    // So the category is refused and said out loud, which is the honest
+    // outcome and the one a caregiver can act on.
     if (key != null &&
         !await _isFreeOnEvery(db, carrying, frame.row, key.col)) {
       refused.add(category);

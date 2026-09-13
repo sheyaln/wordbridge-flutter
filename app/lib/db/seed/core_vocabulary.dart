@@ -466,7 +466,7 @@ final homeBands = <Band<SeedWord>>[
       //
       // Tagged a conjunction, which is what colors it. It was left a
       // preposition on the argument that Fitzgerald colors by word class and
-      // the color should not follow the neighbours — but the neighbours are
+      // the color should not follow the neighbors — but the neighbors are
       // what a person reads. One pink key in a row of white ones says the
       // board made a mistake, and the reader who most needs the color coding
       // is the one least able to be told it is fine. "for" is a coordinating
@@ -566,6 +566,25 @@ final homeBands = <Band<SeedWord>>[
     shedRank: 2,
     items: [
       w('good', PartOfSpeech.adjective),
+      // The rest of the scale "good" is one end of. Without them the only
+      // verdict on this board is a positive one, and "not good" is what a
+      // person is left saying when they mean "bad" — which is a hedge, not
+      // the word.
+      //
+      // Paged at the comparative rank, beside "almost", and the dump is why:
+      // at their own rank the band asks for a second column, and the column it
+      // takes comes off `places` — `under`, `left`, `right`, `off`, `forward`
+      // and `backward` all leave page one to pay for two words. Ranked here
+      // they take themselves to page two on a grid with no room and sit in
+      // "good"'s own column on a grid that has it.
+      //
+      // Level 2, not 1, and that is the paging rank's doing rather than a
+      // judgement about the words: at level 1 they are the only thing on page
+      // two of a level-1 board, which hands a beginner a paging key and a
+      // second page where the board had been one page and done. "almost" sits
+      // at this rank for the same reason and took level 2 with it.
+      w('ok', PartOfSpeech.adjective, level: 2, pageRank: comparativePageRank),
+      w('bad', PartOfSpeech.adjective, level: 2, pageRank: comparativePageRank),
       w('not', PartOfSpeech.negation, essential: true),
       w('yes', PartOfSpeech.social, essential: true),
       w('no', PartOfSpeech.negation, essential: true),
@@ -730,6 +749,8 @@ const categoryNames = [
   // window onto this list in order, so a name at the end leaves every key
   // already learned opening what it always opened.
   'measurement',
+  'colors',
+  'nature',
 ];
 
 /// Categories that have been renamed, old name to new.
@@ -750,6 +771,40 @@ const categoryNames = [
 ///
 /// Append only, and never a chain: the value is always a current entry of
 /// [categoryNames], so one lookup is always enough.
+/// Words whose label changed after boards had already been built with the old
+/// one (§4.82).
+///
+/// **A label, not a location.** The button keeps its cell, its id, its picture
+/// and its place in the motor plan; only the word written on it changes. That
+/// is what makes this safe to apply without asking — the movement that reached
+/// the old word reaches the new one, because it is the same button.
+///
+/// Only for a word that was *wrong*, never for one somebody might prefer
+/// differently. A board that renamed words on taste would be changing what a
+/// person had learned to say.
+const renamedWords = <({String from, String to, String? onBoard})>[
+  // "sweets" is British and this board is written in American English. A
+  // person whose board says "sweets" sounds like somebody else's board.
+  (from: 'sweets', to: 'candy', onBoard: null),
+  // Same reason: "film" is what it is called somewhere else. Nobody in this
+  // house asks to watch a film.
+  (from: 'film', to: 'movie', onBoard: null),
+  // Not a rename for the sake of a better word — a rename for a wider one.
+  // "cartoon" names one kind of thing on the screen, and the thing a person
+  // actually asks for is the screen: the news, a show, a game somebody else is
+  // playing. A board that can only ask for cartoons cannot ask to watch
+  // anything else.
+  (from: 'cartoon', to: 'TV', onBoard: null),
+  // **The place, not the verb — which is what `onBoard` is for.**
+  //
+  // "shop" is both a noun and a verb in English and the board needs both, so
+  // the place takes the unambiguous word and the verb keeps "shop" on `doing`.
+  // Renaming by label alone would have renamed the verb too, and left a board
+  // with "store" where an action should be. Found by the test that says a
+  // fresh seed has nothing to rename.
+  (from: 'shop', to: 'store', onBoard: 'places'),
+];
+
 const renamedCategories = <String, String>{'body': 'health'};
 
 /// Fringe vocabulary in clusters: one cluster to a band, one band to a row.
@@ -880,7 +935,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['friend', 'teacher'], level: 2),
         ...nouns(['class', 'helper'], level: 3),
-        ...nouns(['doctor', 'nurse'], level: 2),
+        // "doctor" and "nurse" are not here: they are on `health`, which is
+        // the board somebody is on when they need one. They were on both as
+        // the same noun, which is one word in two places rather than two
+        // words.
+
         ...nouns(['neighbor', 'driver', 'stranger'], level: 3),
       ],
     ),
@@ -1058,7 +1117,10 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'sweet things',
       shedRank: 8,
       items: [
-        ...nouns(['dessert', 'sweets'], level: 2),
+        // "candy", not "sweets". Both are English and only one of them is the
+        // English this board is written in — a board that says "sweets" to an
+        // American child is a board that sounds like somebody else.
+        ...nouns(['dessert', 'candy'], level: 2),
         ...nouns(['chocolate', 'ice cream', 'pudding'], level: 3),
       ],
     ),
@@ -1086,6 +1148,13 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...adjectives(['hungry', 'thirsty', 'yummy', 'yucky'], level: 1),
         ...adjectives(['hot', 'cold'], level: 2),
+        // The four tastes, on the row that already answers "what is it like"
+        // rather than at the end of `eating` above it. `eating` is verbs and
+        // the things they are done to; these are what the answer to `taste` —
+        // one row up and a few locations along — actually is. Kept with the
+        // other adjectives so the row stays one color, which is the whole of
+        // how somebody finds a describing word without reading it.
+        ...adjectives(['sweet', 'sour', 'bitter', 'salty'], level: 3),
       ],
     ),
 
@@ -1128,7 +1197,23 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...verbs(['throw', 'catch'], level: 3),
         ...verbs(['push', 'pull'], level: 2),
-        ...verbs(['build', 'hide', 'chase', 'win'], level: 3),
+        // "break" against "build", which is the pair this row is built on —
+        // throw with catch, push with pull, build with break.
+        //
+        // Slotted in rather than appended, which is the one place this file
+        // does that: it moves `hide`, `chase`, `win` and `lose` a column along
+        // in the shipped layout. Affordable only because nobody has learned
+        // those positions yet — no board in anybody's hands is rebuilt by
+        // this, because a top-up never moves a button that is already placed.
+        // It would not be affordable after 1.0.
+        ...verbs(['build', 'break'], level: 3),
+        ...verbs(['hide', 'chase'], level: 3),
+        // "lose" against "win", which is the pair and not two words. It was
+        // on `doing` among the things somebody does to an object — fix, clean,
+        // cut — where it meant mislaying a shoe. This is the other sense and
+        // the one a game needs, and it belongs against its opposite: a pair
+        // learned as a pair is one location plus a direction.
+        ...verbs(['win', 'lose'], level: 3),
       ],
     ),
 
@@ -1142,6 +1227,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...nouns(['ball', 'book', 'toy'], level: 1),
         ...nouns(['game'], level: 2),
         ...nouns(['puzzle', 'blocks'], level: 3),
+        // Appended, not slotted in beside "game" where it reads best. Putting
+        // it there pushed "puzzle" and "blocks" a column along, and a word
+        // added to a band has to take a location nothing was in — otherwise a
+        // board built today and one built last week disagree about where two
+        // words are, and the top-up can only report the new one as blocked.
+        ...nouns(['video game'], level: 2),
       ],
     ),
 
@@ -1152,7 +1243,13 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['music'], level: 1),
         ...nouns(['song', 'story', 'video', 'tablet'], level: 2),
-        ...nouns(['film', 'cartoon'], level: 3),
+        ...nouns(['movie', 'TV'], level: 3),
+        // The other half of a screen: the things it holds and the thing that
+        // makes them. "picture" earns level 2 on its own — it is half of "take
+        // a picture", which is a whole request, and it is what a person points
+        // at when the word they want is not on the board.
+        ...nouns(['picture'], level: 2),
+        ...nouns(['camera'], level: 3),
       ],
     ),
 
@@ -1162,27 +1259,72 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'outdoor',
       shedRank: 6,
-      items: nouns([
-        'bubbles',
-        'swing',
-        'slide',
-        'bike',
-        'scooter',
-        'trampoline',
-        'sand',
-        'paint',
-      ], level: 3),
+      items: [
+        // The place the rest of this row happens in, first, because it is the
+        // word that asks to go and the others are what you do once you are
+        // there. "park" is not here: it has a level-1 location on `places`,
+        // which is one movement away, and a second copy of a word is a second
+        // thing to learn about it.
+        ...nouns(['playground'], level: 2),
+        ...nouns([
+          'bubbles',
+          'swing',
+          'slide',
+          'bike',
+          'scooter',
+          'trampoline',
+          'sand',
+          'paint',
+        ], level: 3),
+      ],
+    ),
+
+    // What a person is doing rather than what they are doing it with. "active"
+    // is how somebody describes a day, a mood, or what they want more of, and
+    // "activity" is the word every school timetable and support plan is
+    // written in — which makes it the word said *to* this person all day, and
+    // one they have no way to say back without it.
+    Band(
+      name: 'activity',
+      shedRank: 7,
+      items: [
+        ...nouns(['activity'], level: 2),
+        ...adjectives(['active'], level: 3),
+      ],
+    ),
+
+    // A row of its own rather than a scatter through the verbs, because these
+    // are what a person watches, plays, supports and is taken to — and because
+    // naming the category gives somebody a way to ask about one this board
+    // does not carry.
+    Band(
+      name: 'sports',
+      shedRank: 8,
+      items: [
+        ...nouns(['sports'], level: 2),
+        ...nouns(['soccer', 'basketball'], level: 2),
+        ...nouns([
+          'baseball',
+          'football',
+          'tennis',
+          'hockey',
+          'golf',
+          'running',
+        ], level: 3),
+      ],
     ),
 
     // "outside" has a location on the places board too. Level 1 takes that one:
     // a second copy buys no payload, and one word in one place is what a person
     // learns.
+    // "outside" is not here any more: it and "inside" both live on `places`,
+    // which is the board that answers where. A second copy bought no payload
+    // and cost a person a second thing to learn about one word.
     Band(
       name: 'again',
       shedRank: 3,
       items: [
         ...adverbs(['again'], level: 1),
-        ...adverbs(['outside'], level: 2),
       ],
     ),
 
@@ -1235,7 +1377,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 2,
       items: [
         ...verbs(['love'], level: 1),
-        ...verbs(['like', 'hate'], level: 2),
+        // "like" is not here: it is a level-1 verb on the root board, one
+        // movement from everywhere, and it was the same verb twice.
+        ...verbs(['hate'], level: 2),
         ...verbs(['miss'], level: 3),
       ],
     ),
@@ -1288,6 +1432,20 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           'cute',
         ], level: 3),
         ...adjectives(['safe', 'ready'], level: 2),
+        // Appended, so nothing on this row moves.
+        //
+        // "uncomfortable" is the one that earns its place: it is what somebody
+        // says about a chair, a seam, a position they have been left in or a
+        // room that is too warm — none of which is pain, and all of which get
+        // reported as pain by a board that has no other word for them. "hurt"
+        // is already here and it is a different thing; being taken to mean it
+        // is how a person ends up examined for a problem they do not have.
+        //
+        // Level 2 for the same reason: it is what a day is negotiated in, not
+        // what it is named with. Its opposite comes with it, because a person
+        // who can only report the bad half is a person nobody can ask whether
+        // a change helped.
+        ...adjectives(['comfortable', 'uncomfortable'], level: 2),
       ],
     ),
 
@@ -1365,7 +1523,7 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       shedRank: 0,
       items: [
         ...nouns(['home', 'school'], level: 1),
-        ...nouns(['shop'], level: 2),
+        ...nouns(['store'], level: 2),
         ...nouns(['park'], level: 1),
         // The board's own name. Without it a person can name the places on
         // the board and cannot ask about one that is not.
@@ -1379,7 +1537,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['car'], level: 1),
         ...nouns(['bus'], level: 2),
-        ...nouns(['train', 'plane', 'bike'], level: 3),
+        // "bike" is not here: it is on `play`, where it is the thing a
+        // person rides for the sake of it rather than to get somewhere.
+        ...nouns(['train', 'plane'], level: 3),
       ],
     ),
 
@@ -1597,7 +1757,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...adjectives(['itchy'], level: 3),
         ...adjectives(['sore'], level: 2),
-        ...adjectives(['dizzy', 'thirsty'], level: 3),
+        // "thirsty" is not here: it is level 1 on `food`, where a person is
+        // when they want a drink, and that is two levels sooner than this.
+        ...adjectives(['dizzy'], level: 3),
         ...adjectives(['sleepy', 'poorly'], level: 2),
       ],
     ),
@@ -1679,6 +1841,16 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['call'], level: 3),
         ...verbs(['show'], level: 1),
         ...verbs(['spell', 'shout'], level: 3),
+        // Appended, like everything added to a band here: it takes a location
+        // nothing was in.
+        //
+        // On the telling row rather than among the things done to objects,
+        // because what it does is answer somebody — it is the other half of
+        // "order". Level 2 and not 3: "let me" is how a person asks to be
+        // allowed to do a thing themselves, which is the request this board
+        // most needs to be able to make and the one nobody can build out of
+        // the words around it.
+        ...verbs(['let'], level: 2),
       ],
     ),
 
@@ -1690,6 +1862,23 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...verbs(['learn', 'understand'], level: 3),
         ...verbs(['try', 'choose'], level: 2),
         ...verbs(['decide', 'wonder'], level: 3),
+      ],
+    ),
+
+    // Money words, as a row of their own rather than scattered through the
+    // verbs. They come as a set — you shop somewhere, you buy a thing, and
+    // "sell" is what the other person is doing — and a person who has one of
+    // them almost always wants the next.
+    Band(
+      name: 'buying',
+      shedRank: 5,
+      items: [
+        // The verb. The place is "store" on `places`, which is what the
+        // rename above is for: one label for two parts of speech means the
+        // picture is wrong for one of them.
+        ...verbs(['shop'], level: 2),
+        ...verbs(['buy'], level: 2),
+        ...verbs(['sell'], level: 3),
       ],
     ),
 
@@ -1711,7 +1900,14 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // it acts on (§4.42) — displacing for anybody who had learned it on
         // this board, which is why it is a seed change reaching new profiles
         // and not an edit to a board in use.
-        ...verbs(['lose', 'fix', 'clean', 'cut'], level: 3),
+        // "lose" left here for `play`, against "win" — see that board. What
+        // stayed is the row's own sense: things done to an object.
+        ...verbs(['fix', 'clean', 'cut'], level: 3),
+
+        // "break" is not here: it went to `play`, against "build". It reads as
+        // a thing done to an object, which is this row, but the word it is
+        // actually used with is its opposite — and a pair learned as a pair is
+        // one location plus a direction.
       ],
     ),
 
@@ -1992,6 +2188,16 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // Units. A person names the unit only once they are negotiating with
         // it — "five more minutes" — which is a level-3 conversation.
         ...nouns(['minute', 'hour', 'day', 'week'], level: 3),
+        // Appended, so nothing on this row moves. The longer spans and the
+        // shortest one: a board that stops at "week" cannot say when a
+        // birthday is or how long a wait is, and "second" is the word for
+        // "wait a second" — which is a whole sentence on its own.
+        ...nouns(['month', 'year'], level: 3),
+        ...nouns(['second'], level: 3),
+        // The object, not a span. It is what somebody points at to ask when
+        // something is, and it is on the wall of most of the rooms this board
+        // gets used in.
+        ...nouns(['calendar'], level: 3),
       ],
     ),
 
@@ -2145,7 +2351,9 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       name: 'how it feels on',
       shedRank: 2,
       items: [
-        ...adjectives(['itchy', 'tight'], level: 2),
+        // "itchy" is not here: it is on `health`, with the other things a
+        // body reports. It was the same adjective on both.
+        ...adjectives(['tight'], level: 2),
         ...adjectives(['loose', 'scratchy'], level: 3),
       ],
     ),
@@ -2264,6 +2472,12 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // they need to name a library.
         ...adjectives(['far', 'near'], level: 2),
         ...adjectives(['close', 'deep'], level: 3),
+        // The same axis at nought distance, and the pair this board was built
+        // for: every row on it is two words that are opposites. "together" is
+        // wanted far more often than it is described — "sit together", "play
+        // together" — and the root board has no column left to give it, so it
+        // is one movement away rather than none.
+        ...adjectives(['together', 'separate'], level: 2),
       ],
     ),
 
@@ -2291,6 +2505,141 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // off the label, so the two do not interfere.
         ...adjectives(['heavy', 'light'], level: 2),
         ...adjectives(['full', 'empty'], level: 2),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // Naming a color is how a person chooses between two things that are
+  // otherwise the same — which shirt, which cup, which crayon — and it is the
+  // answer to the question a room asks a child more than almost any other.
+  //
+  // Adjectives throughout, which is what they are: they describe the noun
+  // somebody is pointing at, and coding them as anything else would put them
+  // in a different color block from every other describing word on the board.
+  'colors': [
+    Band(
+      name: 'colors',
+      shedRank: 4,
+      items: [
+        // The board's own name as a word, like every other category carries.
+        // It is also the question — "what color?" — and the way to ask for one
+        // when the particular color is not the point.
+        ...nouns(['color'], level: 3),
+        // A noun on a board of adjectives, and it belongs on this row for that
+        // reason rather than among the hues: it is a thing somebody points at
+        // and names, not a way of describing something else. It is also the
+        // one word here a person is most likely to want and least likely to
+        // be able to build out of the others.
+        ...nouns(['rainbow'], level: 3),
+      ],
+    ),
+
+    // The four a child is taught first and asked about most.
+    Band(
+      name: 'first colors',
+      shedRank: 0,
+      items: adjectives(['red', 'blue', 'yellow', 'green'], level: 1),
+    ),
+
+    Band(
+      name: 'more colors',
+      shedRank: 1,
+      items: [
+        ...adjectives(['orange', 'purple', 'pink'], level: 3),
+        ...adjectives(['brown'], level: 3),
+      ],
+    ),
+
+    // Kept apart from the hues rather than mixed in with them, because this is
+    // the row somebody reaches for when they mean light or dark rather than
+    // when they mean a color.
+    Band(
+      name: 'light and dark',
+      shedRank: 2,
+      items: [
+        ...adjectives(['black', 'white'], level: 3),
+        ...adjectives(['gray'], level: 3),
+      ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // The outdoors as things you can name, which is what a walk, a window and
+  // most of a school year are made of.
+  //
+  // Deliberately not the weather and not the animals: both have boards of
+  // their own, and a word that appeared on two of them would be two things to
+  // learn about one word. So there is no `sun`, `rain`, `cloud` or `sky` here
+  // — they are on `weather`, one movement away — and no `bug` or `bird`, which
+  // are on `animals`.
+  'nature': [
+    Band(
+      name: 'nature',
+      shedRank: 4,
+      items: [
+        // The board's own name as a word, like every other category carries.
+        ...nouns(['nature'], level: 3),
+      ],
+    ),
+
+    // What is growing, which is the half of this a person meets every day.
+    Band(
+      name: 'growing',
+      shedRank: 0,
+      items: [
+        ...nouns(['tree', 'flower'], level: 1),
+        ...nouns(['plant', 'grass'], level: 3),
+        ...nouns(['leaf'], level: 3),
+      ],
+    ),
+
+    // What is underfoot, and what it is made of.
+    Band(
+      name: 'ground',
+      shedRank: 1,
+      items: [
+        ...nouns(['rock', 'dirt'], level: 3),
+        // No "sand": it is on `play` / `outdoor`, where it is the thing a
+        // child digs in. One word, one location.
+        ...nouns(['mud'], level: 3),
+      ],
+    ),
+
+    // Water, largest first, because the one a person is most likely to be
+    // taken to is the one they are most likely to want a word for.
+    Band(
+      name: 'water',
+      shedRank: 2,
+      items: [
+        ...nouns(['ocean', 'lake'], level: 3),
+        ...nouns(['river'], level: 3),
+      ],
+    ),
+
+    // What is too big or too far to touch. "sun" is not here and "moon" is:
+    // the sun belongs to the weather, which is the board that answers what
+    // today is like, and these two answer what is up there at night.
+    Band(
+      name: 'up there',
+      shedRank: 3,
+      items: [
+        ...nouns(['moon', 'star'], level: 3),
+        ...nouns(['mountain', 'forest'], level: 3),
       ],
     ),
 

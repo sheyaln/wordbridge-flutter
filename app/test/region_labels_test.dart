@@ -101,7 +101,7 @@ void main() {
     tearDown(() => db.close());
 
     test('every seeded board knows which lines its bands own', () async {
-      for (final board in await db.select(db.boards).get()) {
+      for (final board in await _navigable(db)) {
         final regions = BoardRegions.decode(board.bandMap);
         expect(
           regions,
@@ -334,3 +334,13 @@ void main() {
     });
   });
 }
+
+/// The boards somebody navigates to.
+///
+/// Excludes [BoardKind.system], which is the quick settings menu (§4.81). It is
+/// drawn *over* whichever board you are on rather than being one, so it carries
+/// no system row, no pinned questions, and no bands — its three rows are placed
+/// at fixed coordinates rather than laid out.
+Future<List<Board>> _navigable(WordbridgeDatabase db) => (db.select(
+  db.boards,
+)..where((b) => b.kind.equalsValue(BoardKind.system).not())).get();
