@@ -18,6 +18,13 @@ typedef UtteranceEntry = ({
   PartOfSpeech? pos,
   bool inflected,
   bool subjectFollows,
+
+  /// How to say this word, where that is not how it is written (§4.84).
+  ///
+  /// Null for every ordinary word. Set where the two genuinely differ — the
+  /// past of `read` is written `read` and said `red` — so the bar shows the
+  /// sentence somebody built and the voice says the word they meant.
+  String? spoken,
 });
 
 /// The sentence being built.
@@ -64,11 +71,20 @@ class UtteranceBar extends ChangeNotifier {
   /// "you want that?" rather than "you want that ?". Engines read
   /// sentence-final punctuation for prosody, and a stray space in front of it
   /// is enough for some of them to miss it.
-  String get text {
+  String get text => _join((e) => e.text);
+
+  /// The sentence as it should be *said*.
+  ///
+  /// The same string as [text] except where a word is written one way and said
+  /// another — see [UtteranceEntry.spoken]. Everything that speaks reads this;
+  /// everything that draws reads [text].
+  String get spokenText => _join((e) => e.spoken ?? e.text);
+
+  String _join(String Function(UtteranceEntry) of) {
     final buffer = StringBuffer();
     for (final entry in _entries) {
       if (buffer.isNotEmpty && !isPunctuation(entry.text)) buffer.write(' ');
-      buffer.write(entry.text);
+      buffer.write(of(entry));
     }
     return buffer.toString();
   }
@@ -129,7 +145,13 @@ class UtteranceBar extends ChangeNotifier {
       _removeAt(caret - 1);
     }
 
-    _insert((text: mark, pos: null, inflected: true, subjectFollows: false));
+    _insert((
+      text: mark,
+      pos: null,
+      inflected: true,
+      subjectFollows: false,
+      spoken: null,
+    ));
     notifyListeners();
   }
 
@@ -164,6 +186,7 @@ class UtteranceBar extends ChangeNotifier {
       // "can'ted" out of it.
       inflected: true,
       subjectFollows: false,
+      spoken: null,
     );
     notifyListeners();
     return contracted;
@@ -200,6 +223,7 @@ class UtteranceBar extends ChangeNotifier {
       // "12ed" out of it.
       inflected: true,
       subjectFollows: false,
+      spoken: null,
     );
     notifyListeners();
     return numberInWords(int.parse(joined));
@@ -235,6 +259,7 @@ class UtteranceBar extends ChangeNotifier {
       pos: pos,
       inflected: inflected,
       subjectFollows: subjectFollows,
+      spoken: null,
     ));
     notifyListeners();
     return repaired;
@@ -281,6 +306,7 @@ class UtteranceBar extends ChangeNotifier {
         pos: PartOfSpeech.verb,
         inflected: false,
         subjectFollows: false,
+        spoken: null,
       );
       notifyListeners();
       return replacement;
@@ -330,6 +356,7 @@ class UtteranceBar extends ChangeNotifier {
       pos: previous.pos,
       inflected: previous.inflected,
       subjectFollows: previous.subjectFollows,
+      spoken: null,
     );
     return corrected;
   }
@@ -357,6 +384,7 @@ class UtteranceBar extends ChangeNotifier {
       pos: previous.pos,
       inflected: previous.inflected,
       subjectFollows: true,
+      spoken: null,
     );
     return settled == previous.text ? null : settled;
   }
@@ -365,7 +393,10 @@ class UtteranceBar extends ChangeNotifier {
   ///
   /// Tapping "+ed" after "want" should leave one word reading "wanted", not
   /// two reading "want ed".
-  String? replaceLast(String Function(String) transform) {
+  String? replaceLast(
+    String Function(String) transform, {
+    String? Function(String written)? saidAs,
+  }) {
     final previous = last;
     if (previous == null) return null;
 
@@ -375,6 +406,7 @@ class UtteranceBar extends ChangeNotifier {
       pos: previous.pos,
       inflected: true,
       subjectFollows: previous.subjectFollows,
+      spoken: saidAs?.call(replaced),
     );
     notifyListeners();
     return replaced;

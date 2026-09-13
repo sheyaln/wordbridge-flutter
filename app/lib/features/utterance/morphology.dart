@@ -125,6 +125,25 @@ const _irregularPast = <String, String>{
 };
 
 /// Plurals and third-person singulars that no rule produces.
+/// Past forms spelled like the present and said differently (§4.84).
+///
+/// **The only kind of word the "+ed" key cannot handle by spelling alone.**
+/// `read` past tense is written `read` and pronounced `red`, so a board that
+/// gets the spelling right still says the wrong word out loud — which on this
+/// app is the whole of the failure, because what the board is for is the
+/// saying. Nothing on screen changes: the sentence still reads "I read a book"
+/// and only the voice knows it is the past.
+///
+/// Deliberately tiny. English has very few of these, and a respelling that
+/// guesses is worse than none: it puts a word nobody wrote into somebody's
+/// mouth.
+const _pastSaidDifferently = <String, String>{'read': 'red'};
+
+/// How a past-tense form should be *said*, where that differs from how it is
+/// written. Null means say it as written, which is almost always.
+String? pastPronunciation(String word) =>
+    _pastSaidDifferently[word.trim().toLowerCase()];
+
 const _irregularPlural = <String, String>{
   'child': 'children',
   'person': 'people',
