@@ -495,20 +495,6 @@ final homeBands = <Band<SeedWord>>[
       // "for", exactly as "for" reads on page two there. Accepted for the same
       // reason: one movement further away costs less than the column.
       w('with', PartOfSpeech.preposition, level: 2),
-      // What a sentence is *of*, which nothing on this board could say. Every
-      // preposition in `places` answers where a thing is; none of them answers
-      // what a thing concerns — "talk about it", "ask about him", "a story
-      // about the dog" — and that is most of what anybody says out loud.
-      //
-      // Here rather than in `places`, for the reason "with" is here: that band
-      // is exactly twelve deep, which is exactly two columns at 7x12, and a
-      // thirteenth word costs it a whole column and takes `under`, `left`,
-      // `right` and `off` off page one to pay for it. This band is the one for
-      // words whose job is to join two parts of a sentence, and joining is
-      // what this one does.
-      //
-      // Appended, so it takes a location nothing was in.
-      w('about', PartOfSpeech.preposition, level: 2),
     ],
   ),
 
@@ -567,12 +553,20 @@ final homeBands = <Band<SeedWord>>[
       // wheelchair, a queue, a page or a walk.
       w('forward', PartOfSpeech.preposition, level: 3),
       w('backward', PartOfSpeech.preposition, level: 3),
+      // What a sentence is *of*, which nothing on this board could say. Every
+      // preposition above answers where a thing is; none answers what a thing
+      // concerns — "talk about it", "ask about him", "a story about the dog" —
+      // and that is most of what anybody says out loud.
+      //
+      // **The thirteenth word in a twelve-deep band, and it costs a column.**
+      // Twelve is exactly two columns at 7x12, so this takes a third and sends
+      // `under`, `left`, `right` and `off` to page one's end. Taken on purpose
+      // rather than routed around: nobody has learned these locations yet, and
+      // a preposition a board cannot say is worse than four prepositions one
+      // key further away. It would not be affordable after 1.0.
+      w('about', PartOfSpeech.preposition, level: 2),
       // "there" is not here, and "with" is not here. Both belong in this band
-      // by word class and neither fits: the band is exactly twelve deep, which
-      // is exactly two columns at 7x12, and a thirteenth word costs it a whole
-      // column — which at that size took `under`, `left`, `right` and `off`
-      // off page one and moved `yes`, `no` and `don't` a column sideways.
-      // Two words are not worth four words and a displacement.
+      // by word class and neither fits at any grid this board ships on.
       //
       // "there" is on `places` / `where`, with the other adverbs that answer
       // the question. "with" is in `articles` below, with the joining words.
@@ -1279,6 +1273,23 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // at when the word they want is not on the board.
         ...nouns(['picture'], level: 2),
         ...nouns(['camera'], level: 3),
+        // With "story", which is the word it is nearest: both are things told,
+        // and this row is what a person listens to or watches rather than what
+        // they do.
+        //
+        // The tenth word on a nine-deep row, so at 6x10 it opens a line and
+        // takes `activity`, `active`, `lose` and the sports row down a page.
+        // Taken on purpose: nobody has learned those locations, and a joke
+        // filed under "activity" is a word somebody has to be taught to look
+        // for twice.
+        //
+        // The only repair this board has for a sentence that landed wrong.
+        // Somebody who cannot say "joke" cannot take anything back, and is
+        // answered seriously for the rest of the conversation — a worse
+        // outcome than the joke not landing.
+        //
+        // Level 3, with "funny" and "silly" on `feelings`.
+        ...nouns(['joke'], level: 3),
       ],
     ),
 
@@ -1319,21 +1330,6 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['activity'], level: 2),
         ...adjectives(['active'], level: 3),
-        // Here rather than beside "story" in the row above, where it reads
-        // best. That row is exactly nine words, which is exactly a line at
-        // 6x10, so a tenth opens a line there and takes `activity`, `active`,
-        // `lose` and the whole sports row down a page with it — twelve placed
-        // words moved to pay for one. This row has room on every grid the app
-        // builds, and it is not a bad home: a joke is a thing a person does,
-        // which is what this row is for.
-        //
-        // The only repair this board has for a sentence that landed wrong.
-        // Somebody who cannot say "joke" cannot take anything back, and is
-        // answered seriously for the rest of the conversation — which is a
-        // worse outcome than the joke not landing.
-        //
-        // Level 3, with "funny" and "silly" on `feelings`. Appended.
-        ...nouns(['joke'], level: 3),
       ],
     ),
 
@@ -1412,6 +1408,17 @@ final categoryBands = <String, List<Band<SeedWord>>>{
           // floor before a sentence; this is the one that takes it back
           // halfway through, which is when it is actually lost.
           'let me finish',
+          // How a person gets a turn at all, which is the thing every sentence
+          // on this row depends on having already done. A board that can say
+          // "let me finish" and not "excuse me" can defend a turn it was given
+          // and cannot ask for one.
+          //
+          // The eleventh phrase on a ten-deep row, so at 6x11 and 7x11 it
+          // opens a line and walks the feelings below it down a row. Taken on
+          // purpose — nobody has learned those locations yet — because the
+          // alternative is filing it with the interjections, where a whole
+          // sentence would sit in a row of noises.
+          'excuse me',
         ], level: 1),
       ],
     ),
@@ -1443,21 +1450,6 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...phrases(['ow', 'uh oh'], level: 1),
         ...phrases(['oops', 'yay'], level: 1),
         ...phrases(['wow', 'huh'], level: 2),
-        // Here rather than on the sentence row above, which is where it was
-        // asked for. That row is exactly ten phrases, which is exactly a line
-        // at 6x11 and 7x11, so an eleventh opens a line there and walks the
-        // whole board down — every feeling, every judgement, the unsure row
-        // and the adverbs, on four of the seven grids this app builds.
-        //
-        // And this row is the honest home for it anyway. "excuse me" is not a
-        // sentence about how somebody is, it is the noise a person makes to
-        // get a turn — which is what everything on this row is, and the reason
-        // the row exists.
-        //
-        // Level 1, with the four beside it that report something happening.
-        // A person who cannot interrupt is a person who speaks only when they
-        // are asked to.
-        ...phrases(['excuse me'], level: 1),
       ],
     ),
 
@@ -1838,6 +1830,29 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // The board's own name, and the word for the subject of every
         // appointment the words above are said at.
         ...nouns(['health'], level: 2),
+        // The other half of what a person is, and the half nobody puts on an
+        // AAC board. A nonspeaking adult has no way to come out, no way to
+        // correct somebody who assumes, and no way to answer a doctor asking —
+        // and the usual advice, to build the word out of the ones already
+        // there, does not work for any of these three.
+        //
+        // On this row and not a row of their own, because this is the row that
+        // means what they mean. It is exactly eight words, which is exactly a
+        // line at 5x9 and one short of one at 6x11, 7x11 and 6x10, so three
+        // more open a line and take the symptoms below down a row on four of
+        // the seven grids. Taken on purpose: nobody has learned those
+        // locations, and a heading that separates these from "autistic" and
+        // "disabled" says they are a different kind of fact about a person.
+        //
+        // Nouns like the rest of the row, including the two that are
+        // adjectives: Fitzgerald colors by word class, the band owns a row,
+        // and a row that is half orange and half blue reads as a mistake.
+        //
+        // Level 3 — where a word goes when it is not needed to build a
+        // sentence and is needed to say a true thing, which is where
+        // "disability" and "diagnosis" sit.
+        ...nouns(['gay', 'lesbian'], level: 3),
+        ...nouns(['bisexual'], level: 3),
       ],
     ),
 
@@ -1859,38 +1874,6 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // when they want a drink, and that is two levels sooner than this.
         ...adjectives(['dizzy'], level: 3),
         ...adjectives(['sleepy', 'poorly'], level: 2),
-      ],
-    ),
-
-    // The other half of what a person is, and the half nobody puts on an AAC
-    // board. A nonspeaking adult has no way to come out, no way to correct
-    // somebody who assumes, and no way to say who they are to a doctor asking
-    // — and the usual answer to that is to build the word out of the ones
-    // already here, which for these three does not work.
-    //
-    // A row of its own rather than an append to `about me`, which is where
-    // they read best. That row is exactly eight words, which is exactly a line
-    // at 5x9 and one short of one at 6x11, 7x11 and 6x10, so three more there
-    // open a line on four of the seven grids and walk the symptoms down with
-    // it. Last in the file and ranked to shed first, so it takes the line
-    // nothing else wanted or reads on page two.
-    //
-    // Tagged as nouns for the reason `about me` is: Fitzgerald colors by word
-    // class, the band owns a row, and a row that is half orange and half blue
-    // reads as the board having made a mistake.
-    //
-    // Level 3. Not a judgement about the words — it is where a word goes when
-    // it is not needed to build a sentence and is needed to say a true thing,
-    // which is where "disability" and "diagnosis" sit.
-    Band(
-      // Not 'who I am': `about me` one board over already draws under that
-      // heading, and two rows on one board with the same name over them is
-      // two rows nobody can tell apart.
-      name: 'who I love',
-      shedRank: 8,
-      items: [
-        ...nouns(['gay', 'lesbian'], level: 3),
-        ...nouns(['bisexual'], level: 3),
       ],
     ),
 

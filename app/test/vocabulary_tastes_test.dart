@@ -296,7 +296,12 @@ void main() {
         'right',
         'off',
         'forward',
-        'backward',
+        // "backward" is not in this list any more, and not because of `ok` and
+        // `bad`. It is the location the preposition band gave up when "about"
+        // arrived — thirteen words in a band that is exactly two columns here
+        // — which is a cost that row took knowingly and paid once. What this
+        // test still guards is that the describing band did not take a second
+        // column and charge `places` for it.
         'good',
         'not',
         'yes',

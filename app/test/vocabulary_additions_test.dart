@@ -103,18 +103,16 @@ void main() {
       expect(page['unlikely']!.row, page['unsure']!.row);
     });
 
-    test('about is with the words that join a sentence up', () async {
-      // Not in `places` with the other prepositions, and the comment on that
-      // band says why: it is exactly twelve deep, which is exactly two columns
-      // at 7x12, and a thirteenth word costs it a column. "with" went to the
-      // joining words for the same reason and this sits beside it.
-      final boards = await layout(rows: 7, cols: 12);
-      final page = boards['home 2'] ?? boards['home']!;
+    test('about is with the other prepositions', () async {
+      // The thirteenth word in a twelve-deep band, which is exactly two
+      // columns at 7x12 — so it takes a third and sends "backward" to page
+      // two. Its column is what this checks: the band fills down, so "about"
+      // is under "out" and in the same column as "under", "left" and "off".
+      final board = (await layout(rows: 7, cols: 12))['home']!;
 
-      expect(page, contains('about'));
-      // The same column, not the same row: this band fills down its columns,
-      // so "for", "with" and "about" are one under another.
-      expect(page['about']!.col, page['with']!.col);
+      expect(board, contains('about'));
+      expect(board['about']!.col, board['under']!.col);
+      expect(board['about']!.row, board['out']!.row);
     });
 
     test('and it is on every grid the app builds', () async {
@@ -128,26 +126,25 @@ void main() {
       }
     });
 
-    test('joke is on the play board', () async {
-      final boards = await layout(rows: 7, cols: 12);
-      final page = boards['play 2'] ?? boards['play']!;
+    test('joke is with the other things people tell', () async {
+      final board = (await layout(rows: 7, cols: 12))['play']!;
 
-      expect(page, contains('joke'));
-      // Beside "activity", which is the row it was appended to. It reads
-      // better beside "story" one row up; that row is exactly nine words,
-      // which is exactly a line at 6x10, and a tenth opens one.
-      expect(page['joke']!.row, page['activity']!.row);
+      expect(board, contains('joke'));
+      // With "story", which is the word it is nearest — both are things told.
+      // The tenth word on a nine-deep row, so at 6x10 it opens a line.
+      expect(board['joke']!.row, board['story']!.row);
+      expect(board['joke']!.row, board['camera']!.row);
     });
 
-    test('excuse me is on the row of reactions', () async {
-      // Asked for on the sentence row above it. That row is exactly ten
-      // phrases, which is exactly a line at 6x11 and 7x11, and an eleventh
-      // walked the whole feelings board down on four of the seven grids.
+    test('excuse me is on the row of whole sentences', () async {
+      // How a person gets a turn at all, on the row of the sentences that
+      // depend on having one. The eleventh phrase on a ten-deep row, so at
+      // 6x11 and 7x11 it opens a line and walks the feelings below it down.
       final board = (await layout(rows: 7, cols: 12))['feelings']!;
 
       expect(board, contains('excuse me'));
-      expect(board['excuse me']!.row, board['oops']!.row);
-      expect(board['excuse me']!.row, board['uh oh']!.row);
+      expect(board['excuse me']!.row, board['let me finish']!.row);
+      expect(board['excuse me']!.row, board['I need a break']!.row);
     });
 
     test('and it is placed at every grid size', () async {
@@ -165,18 +162,20 @@ void main() {
       }
     });
 
-    test('the identity words are on health, together on one row', () async {
-      // Not appended to `about me`, where they read best: that row is exactly
-      // eight words, which is exactly a line at 5x9, and three more open one
-      // on four of the seven shipped grids.
+    test('the identity words are on the row about who a person is', () async {
+      // With "autistic" and "disabled", not under a heading of their own: a
+      // separate row would say these are a different kind of fact about
+      // somebody. Three more on an eight-deep row, so it opens a line at 5x9,
+      // 6x11, 7x11 and 6x10 and takes the symptoms below down with it.
       final boards = await layout(rows: 7, cols: 12);
       final page = boards['health 2'] ?? boards['health']!;
 
       for (final word in ['gay', 'lesbian', 'bisexual']) {
         expect(page, contains(word), reason: '"$word" was not placed');
       }
-      expect(page['gay']!.row, page['lesbian']!.row);
-      expect(page['gay']!.row, page['bisexual']!.row);
+      expect(page['gay']!.row, page['autistic']!.row);
+      expect(page['gay']!.row, page['health']!.row);
+      expect(page['bisexual']!.row, page['gay']!.row);
     });
 
     test('shapes is a board, and it is last on the wheel', () async {
