@@ -6,6 +6,11 @@ import '../backup/cloud_backup.dart';
 import '../backup/cloud_destination.dart';
 import '../backup/snapshot.dart';
 
+// How a snapshot's date and size are written is one answer, and it belongs
+// beside the snapshot itself so that the recovery board — which cannot import
+// a screen — says it the same way.
+export '../backup/snapshot.dart' show snapshotSize, snapshotWhen;
+
 /// The backups, where a caregiver can see them.
 ///
 /// A backup nobody can see is one nobody trusts, and the parents in §1 did not
@@ -686,39 +691,6 @@ String leavingWarning(CloudView view) {
       'To get rid of them: delete them in ${view.label} itself, or come back '
       'here, switch to ${view.label} again and use "Remove every copy".\n\n'
       'The backups on this tablet are copied to the new place straight away.';
-}
-
-/// When a snapshot was taken, in the caregiver's own timezone.
-///
-/// Stored in UTC so the name sorts and survives being copied off the device;
-/// shown local, because "3 Aug, 14:22" is only useful if it is the 14:22 they
-/// remember.
-String snapshotWhen(DateTime takenAt) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  final at = takenAt.toLocal();
-  String pad(int v) => v.toString().padLeft(2, '0');
-
-  return '${at.day} ${months[at.month - 1]} ${at.year}, '
-      '${pad(at.hour)}:${pad(at.minute)}';
-}
-
-String snapshotSize(int bytes) {
-  if (bytes < 1024) return '$bytes bytes';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
 /// The line at the top: the one fact this screen exists to show.

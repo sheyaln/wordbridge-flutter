@@ -38,7 +38,8 @@ jobs:
 
       # motor_plan_invariant_test.dart is the reason this job blocks merges.
       # If a change moves a word that already had a home, it fails here rather
-      # than on someone's device six months into learning that position.
+      # than on someone's device six months into learning that position. It is
+      # named in `ci_tests.sh` as a guard, so it runs whatever the diff says.
       #
       # Not serial any more. It was, on the grounds that parallel workers
       # tripped over each other's in-memory databases — measured over three
@@ -49,7 +50,7 @@ jobs:
       # Not all of them either, except on a tag. `ci_tests.sh` runs what the
       # change can reach and says which files those are; the rules for when it
       # gives up and runs everything are in the script, and a tag is one of
-      # them. Nothing ships on a subset.
+      # them. Nothing ships on a subset of what this runner can run.
       #
       # The golden tag is excluded, and not because those tests are optional.
       # The goldens are written on macOS; Linux rasterizes text differently, so

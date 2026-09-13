@@ -11,6 +11,7 @@ import '../profiles/profile_settings.dart';
 import 'obf_export.dart';
 import 'obf_import.dart';
 import 'obf_model.dart';
+import 'recordings.dart';
 
 /// A board file sitting in the folder, ready to be taken away or brought in.
 typedef BoardFile = ({String path, String name, int bytes, DateTime at});
@@ -56,10 +57,11 @@ typedef ImportOutcome = ({
 /// Getting a board set out of wordbridge, and getting one in.
 ///
 /// **This is not a backup and must never be offered as one.** OBF carries
-/// buttons, labels, pictures and links; it does not carry which locations are
-/// reserved and empty, what level a word is drawn at, what is hidden, or which
-/// band owns which line — which is exactly the metadata that makes this a
-/// motor-planning board rather than a grid of pictures. `BackupService` copies
+/// buttons, labels, pictures, links and the recordings a board came in with;
+/// it does not carry which locations are reserved and empty, what level a word
+/// is drawn at, what is hidden, or which band owns which line — which is
+/// exactly the metadata that makes this a motor-planning board rather than a
+/// grid of pictures. `BackupService` copies
 /// the database and is the thing to reach for when the question is "do not
 /// lose this". The two live in different sections of the caregiver screen and
 /// say so.
@@ -75,6 +77,10 @@ class BoardFileStore {
 
   final WordbridgeDatabase _db;
   final Future<Directory> Function() _documentsDirectory;
+
+  late final _recordings = RecordingStore(
+    documentsDirectory: _documentsDirectory,
+  );
 
   /// Where board files live, under the application documents directory.
   ///
@@ -180,7 +186,12 @@ class BoardFileStore {
     switch (scope) {
       case ExportScope.boardSet:
         name = exportFileName(vocabulary.name, at ?? DateTime.now());
-        bytes = await exportObz(_db, vocabularyId, notes: notes);
+        bytes = await exportObz(
+          _db,
+          vocabularyId,
+          notes: notes,
+          recordings: _recordings,
+        );
 
       case ExportScope.category:
         final board = await _board(boardId!);
@@ -194,6 +205,7 @@ class BoardFileStore {
           boardIds: await linkedBoardIds(_db, board.id),
           rootBoardId: board.id,
           notes: notes,
+          recordings: _recordings,
         );
 
       case ExportScope.board:
@@ -203,7 +215,9 @@ class BoardFileStore {
           at ?? DateTime.now(),
           extension: '.obf',
         );
-        bytes = utf8.encode(await exportObf(_db, board.id, notes: notes));
+        bytes = utf8.encode(
+          await exportObf(_db, board.id, notes: notes, recordings: _recordings),
+        );
     }
 
     final file = File(p.join((await directory()).path, name));
@@ -250,6 +264,7 @@ class BoardFileStore {
       name: file.name,
       bytes: await handle.readAsBytes(),
       displayName: displayName ?? nameFromFile(file.name),
+      recordings: _recordings,
     );
   }
 }
@@ -284,6 +299,10 @@ String nameFromFile(String fileName) {
 /// what a malformed file does, and the fact that a new profile is created
 /// instead of an existing one being overwritten.
 ///
+/// [recordings] is where audio on the buttons is filed so that exporting the
+/// board writes it back out. Without one the import says what it is leaving in
+/// the file rather than taking the audio quietly.
+///
 /// Nothing here throws. A caregiver holding a file that will not open needs a
 /// sentence they can act on, not a crash on the one screen that could have
 /// told them what was wrong with it.
@@ -292,17 +311,25 @@ Future<ImportOutcome> importBoardFile(
   required String name,
   required List<int> bytes,
   required String displayName,
+  RecordingStore? recordings,
 }) async {
   final notes = <String>[];
 
   try {
     final vocabularyId = p.extension(name).toLowerCase() == '.obz'
-        ? await importObz(db, bytes, vocabularyName: displayName, notes: notes)
+        ? await importObz(
+            db,
+            bytes,
+            vocabularyName: displayName,
+            notes: notes,
+            recordings: recordings,
+          )
         : await importObf(
             db,
             utf8.decode(bytes),
             vocabularyName: displayName,
             notes: notes,
+            recordings: recordings,
           );
 
     final profileId = await _attach(db, vocabularyId, displayName);

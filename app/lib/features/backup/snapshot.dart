@@ -22,6 +22,22 @@ typedef Snapshot = ({
 const _prefix = 'wordbridge-';
 const _extension = '.db';
 
+/// Where snapshots live, under the application documents directory.
+///
+/// Documents, never the cache. The OS empties caches when a device runs short
+/// of space, and it does not ask first — a backup that the system is free to
+/// delete is not a backup.
+///
+/// Here rather than on [BackupService] because the recovery path in
+/// `recovery.dart` has to find the same folder without opening a database.
+const snapshotFolder = 'backups';
+
+/// The copy taken when caregiver mode opens (§4.41 part 4b).
+///
+/// Named so that [snapshotTakenAt] does not recognize it, which is what keeps
+/// it out of a list of dates and out of the prune.
+const sessionSnapshotFileName = 'wordbridge-session.db';
+
 /// Names a snapshot after the instant it was taken, in UTC.
 ///
 /// The instant lives in the name rather than in the file's modification time
@@ -33,16 +49,20 @@ const _extension = '.db';
 /// Compact ISO-8601, so the names sort into chronological order and the
 /// oldest can be found without opening anything. Colons are omitted because
 /// they are not legal in a filename on every platform this runs on.
-String snapshotFileName(DateTime takenAt) {
+String snapshotFileName(DateTime takenAt) =>
+    '$_prefix${snapshotStamp(takenAt)}$_extension';
+
+/// The instant on its own, for the files that are named after a moment without
+/// being snapshots — see `recovery.dart`, which sets a board aside under one.
+String snapshotStamp(DateTime takenAt) {
   final t = takenAt.toUtc();
   String pad(int value, int width) => value.toString().padLeft(width, '0');
 
-  return '$_prefix'
-      '${pad(t.year, 4)}${pad(t.month, 2)}${pad(t.day, 2)}'
+  return '${pad(t.year, 4)}${pad(t.month, 2)}${pad(t.day, 2)}'
       'T'
       '${pad(t.hour, 2)}${pad(t.minute, 2)}${pad(t.second, 2)}'
       '${pad(t.millisecond, 3)}'
-      'Z$_extension';
+      'Z';
 }
 
 /// The instant in a snapshot's name, or null if the name is not one of ours.
@@ -114,4 +134,37 @@ Future<int?> snapshotSchemaVersion(File file) async {
   } finally {
     await handle?.close();
   }
+}
+
+/// When a snapshot was taken, in the caregiver's own timezone.
+///
+/// Stored in UTC so the name sorts and survives being copied off the device;
+/// shown local, because "3 Aug, 14:22" is only useful if it is the 14:22 they
+/// remember.
+String snapshotWhen(DateTime takenAt) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final at = takenAt.toLocal();
+  String pad(int v) => v.toString().padLeft(2, '0');
+
+  return '${at.day} ${months[at.month - 1]} ${at.year}, '
+      '${pad(at.hour)}:${pad(at.minute)}';
+}
+
+String snapshotSize(int bytes) {
+  if (bytes < 1024) return '$bytes bytes';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} KB';
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }

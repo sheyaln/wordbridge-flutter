@@ -99,11 +99,7 @@ class BackupService {
   static const keep = 5;
 
   /// Where snapshots live, under the application documents directory.
-  ///
-  /// Documents, never the cache. The OS empties caches when a device runs
-  /// short of space, and it does not ask first — a backup that the system is
-  /// free to delete is not a backup.
-  static const folder = 'backups';
+  static const folder = snapshotFolder;
 
   /// The copy taken when caregiver mode opens (§4.41 part 4b).
   ///
@@ -115,7 +111,7 @@ class BackupService {
   /// Named so that [snapshotTakenAt] does not recognize it, which is what
   /// keeps it out of [snapshots] and out of the prune. It is a way back from
   /// this session, not a date in a list of dates.
-  static const sessionFileName = 'wordbridge-session.db';
+  static const sessionFileName = sessionSnapshotFileName;
 
   /// The most recent attempt, including one nobody was waiting on.
   SnapshotAttempt? get lastAttempt => _lastAttempt;

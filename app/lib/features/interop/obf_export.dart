@@ -12,6 +12,7 @@ import '../../db/tables.dart';
 import '../symbols/custom_upload.dart';
 import '../symbols/drawable.dart';
 import 'obf_model.dart';
+import 'recordings.dart';
 
 /// Reads whatever a symbol's `local_uri` points at, or null when this device
 /// has no bytes behind it.
@@ -51,11 +52,17 @@ const redistributableSymbolLicenses = <String>{
 /// forward but cannot resolve it — use [exportObz] when the links matter. What
 /// was left unresolvable is written into [notes] rather than left for the
 /// recipient to discover.
+///
+/// [recordings] is where audio that arrived on these keys was filed. Given
+/// one, the file leaves with the recordings it came in with; without one it
+/// leaves without them, and a board set holding somebody's recorded voice is
+/// exported by [BoardFileStore], which always passes it.
 Future<String> exportObf(
   WordbridgeDatabase db,
   String boardId, {
   List<String>? notes,
   SymbolImageReader? readImage,
+  RecordingStore? recordings,
 }) async {
   final log = notes ?? <String>[];
 
@@ -79,6 +86,10 @@ Future<String> exportObf(
   await pictures.load(db, _symbolIdsIn([placed]));
   pictures.report(log);
 
+  final sounds = _Recordings(recordings, board.vocabularyId, asFiles: false);
+  await sounds.load(_buttonIdsIn([placed]));
+  sounds.report(log);
+
   _noteBoardsLeftOut(
     await _outboundLinks(db, board.vocabularyId),
     included: {board.id},
@@ -93,6 +104,7 @@ Future<String> exportObf(
     paths: const {},
     names: names,
     pictures: pictures,
+    sounds: sounds,
   ).encode();
 }
 
@@ -102,6 +114,11 @@ Future<String> exportObf(
 /// opens, say. Boards outside it are still named on the links that point at
 /// them, so a recipient is told a page is missing rather than handed keys that
 /// quietly do nothing; [notes] says which, and the screen shows it.
+///
+/// [recordings] carries the audio the boards arrived with back out, as files
+/// in the package. Recordings on a key outside [boardIds] are counted in
+/// [notes]: a partial export is a choice about pages, and it must not be a
+/// silent choice about somebody's voice.
 Future<List<int>> exportObz(
   WordbridgeDatabase db,
   String vocabularyId, {
@@ -109,6 +126,7 @@ Future<List<int>> exportObz(
   String? rootBoardId,
   List<String>? notes,
   SymbolImageReader? readImage,
+  RecordingStore? recordings,
 }) async {
   final log = notes ?? <String>[];
 
@@ -154,6 +172,11 @@ Future<List<int>> exportObz(
   pictures.assignPaths();
   pictures.report(log);
 
+  final sounds = _Recordings(recordings, vocabularyId, asFiles: true);
+  await sounds.load(_buttonIdsIn(placed.values));
+  sounds.assignPaths();
+  sounds.report(log);
+
   _noteBoardsLeftOut(
     await _outboundLinks(db, vocabularyId),
     included: ids,
@@ -169,6 +192,7 @@ Future<List<int>> exportObz(
           root: paths[rootId],
           boards: paths,
           images: pictures.manifestPaths,
+          sounds: sounds.manifestPaths,
         ).encode(),
       ),
     );
@@ -181,10 +205,14 @@ Future<List<int>> exportObz(
       paths: paths,
       names: names,
       pictures: pictures,
+      sounds: sounds,
     );
     archive.add(ArchiveFile.string(paths[board.id]!, obf.encode()));
   }
   for (final entry in pictures.files.entries) {
+    archive.add(ArchiveFile.bytes(entry.key, entry.value));
+  }
+  for (final entry in sounds.files.entries) {
     archive.add(ArchiveFile.bytes(entry.key, entry.value));
   }
 
@@ -305,6 +333,11 @@ Future<List<_Link>> _outboundLinks(
 Set<String> _symbolIdsIn(Iterable<List<_Placed>> boards) => {
   for (final placed in boards)
     for (final entry in placed) ?entry.button?.symbolId,
+};
+
+Set<String> _buttonIdsIn(Iterable<List<_Placed>> boards) => {
+  for (final placed in boards)
+    for (final entry in placed) ?entry.button?.id,
 };
 
 /// Says which boards the file points at but does not contain.
@@ -462,6 +495,128 @@ class _Pictures {
   }
 }
 
+/// The recordings this file can carry, and which keys they belong on.
+///
+/// A recording is in this store because a board arrived carrying it, and it
+/// goes back out under the license it came in under. No allowlist stands in
+/// front of it the way [redistributableSymbolLicenses] stands in front of the
+/// pictures: a picture from a symbol pack is this app's to pass on or withhold,
+/// and a recorded message never was. Handing back somebody's own voice — or a
+/// sibling's, recorded for a child who cannot speak with their own — is the
+/// whole of what "you can leave" means for a board that has one.
+class _Recordings {
+  _Recordings(this._store, this._vocabularyId, {required this.asFiles});
+
+  final RecordingStore? _store;
+  final String _vocabularyId;
+
+  /// True for an `.obz`, which carries audio as a file in the zip; false for a
+  /// standalone `.obf`, whose only place to put it is a data URI.
+  final bool asFiles;
+
+  final _held = <String, Recording>{};
+  final _byButton = <String, Recording>{};
+  final _bytes = <String, Uint8List>{};
+  final _paths = <String, String>{};
+
+  /// Recordings this vocabulary holds whose key is not in this file.
+  var _leftBehind = 0;
+
+  /// Recordings on a key in this file whose audio is gone from this device.
+  var _missing = 0;
+
+  Future<void> load(Set<String> buttonIds) async {
+    final store = _store;
+    if (store == null) return;
+
+    final held = await store.of(_vocabularyId);
+    for (final entry in held.entries) {
+      if (!buttonIds.contains(entry.key)) continue;
+      _byButton[entry.key] = entry.value;
+      _held[entry.value.id] = entry.value;
+    }
+    _leftBehind = {for (final r in held.values) r.id}.length - _held.length;
+
+    for (final recording in _held.values) {
+      if (recording.fileName == null) continue;
+      final bytes = await store.bytes(_vocabularyId, recording);
+      if (bytes == null) {
+        _missing++;
+        continue;
+      }
+      _bytes[recording.id] = bytes;
+    }
+  }
+
+  void assignPaths() {
+    var n = 0;
+    for (final id in _bytes.keys) {
+      _paths[id] = 'sounds/${++n}${audioExtension(_held[id]!.contentType)}';
+    }
+  }
+
+  /// Zip entries for the audio the package carries.
+  Map<String, Uint8List> get files => {
+    for (final entry in _paths.entries) entry.value: _bytes[entry.key]!,
+  };
+
+  /// Sound id to path within the zip, for `manifest.json`.
+  Map<String, String> get manifestPaths => Map.of(_paths);
+
+  /// The recording on [buttonId], where there is something a recipient can
+  /// play: audio this file carries, or the link it arrived as. A sound with
+  /// neither is left out entirely rather than emitted as an id pointing at
+  /// nothing.
+  ObfSound? soundFor(String buttonId) {
+    final recording = _byButton[buttonId];
+    if (recording == null) return null;
+
+    final bytes = _bytes[recording.id];
+    if (bytes == null && recording.url == null) return null;
+    final type = recording.contentType;
+
+    return ObfSound(
+      id: recording.id,
+      url: recording.url,
+      data: bytes == null || asFiles
+          ? null
+          : 'data:${type ?? 'application/octet-stream'};base64,'
+                '${base64Encode(bytes)}',
+      path: asFiles ? _paths[recording.id] : null,
+      contentType: type,
+      duration: recording.duration,
+      license: (recording.license?.isEmpty ?? true) ? null : recording.license,
+    );
+  }
+
+  void report(List<String> notes) {
+    final carried = {
+      for (final recording in _byButton.values)
+        if (_bytes.containsKey(recording.id) || recording.url != null)
+          recording.id,
+    }.length;
+
+    if (carried > 0) {
+      notes.add(
+        '$carried recorded message(s) travel with this file. This app does '
+        'not play them; a program that does will find them on the same keys.',
+      );
+    }
+    if (_missing > 0) {
+      notes.add(
+        '$_missing recorded message(s) are no longer on this device and are '
+        'not in this file. Those keys still carry their words.',
+      );
+    }
+    if (_leftBehind > 0) {
+      notes.add(
+        '$_leftBehind recorded message(s) stay behind: the keys they are on '
+        'are not in this file.',
+      );
+    }
+  }
+}
+
 String _extensionFor(String contentType) => switch (contentType) {
   'image/png' => '.png',
   'image/jpeg' => '.jpg',
@@ -479,6 +634,7 @@ ObfBoard _toObf({
   required Map<String, String> paths,
   required Map<String, String> names,
   required _Pictures pictures,
+  required _Recordings sounds,
 }) {
   // Geometry is the vocabulary's, but never emit a grid too small to hold a
   // cell that exists: truncating the order array would delete a word.
@@ -492,6 +648,7 @@ ObfBoard _toObf({
   final order = List.generate(rows, (_) => List<String?>.filled(cols, null));
   final buttons = <ObfButton>[];
   final images = <String, ObfImage>{};
+  final recordings = <String, ObfSound>{};
 
   for (final entry in placed) {
     final button = entry.button;
@@ -503,7 +660,9 @@ ObfBoard _toObf({
 
     final image = pictures.imageFor(button.symbolId);
     if (image != null) images[image.id] = image;
-    buttons.add(_toObfButton(button, image?.id, paths, names));
+    final sound = sounds.soundFor(button.id);
+    if (sound != null) recordings[sound.id] = sound;
+    buttons.add(_toObfButton(button, image?.id, sound?.id, paths, names));
   }
 
   return ObfBoard(
@@ -513,6 +672,7 @@ ObfBoard _toObf({
     buttons: buttons,
     grid: ObfGrid(rows: rows, columns: cols, order: order),
     images: images.values.toList(),
+    sounds: recordings.values.toList(),
     // No board-level `license`. What is recorded about where a board set came
     // from is a sentence of provenance, and OBF's `license.type` is a license
     // identifier that other programs display as one — a paragraph there reads
@@ -533,6 +693,7 @@ ObfBoard _toObf({
 ObfButton _toObfButton(
   Button button,
   String? imageId,
+  String? soundId,
   Map<String, String> paths,
   Map<String, String> names,
 ) {
@@ -548,6 +709,7 @@ ObfButton _toObfButton(
     label: button.label,
     vocalization: button.speakText,
     imageId: imageId,
+    soundId: soundId,
     action: action,
     backgroundColor: button.backgroundColor,
     borderColor: button.borderColor,

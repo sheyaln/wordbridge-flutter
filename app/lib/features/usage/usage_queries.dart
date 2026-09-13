@@ -128,6 +128,11 @@ class UsageQueries {
   ///
   /// Asked before offering to delete them, because "delete usage history" with
   /// no number in it is a button whose cost nobody can see.
+  ///
+  /// Every source, alone among the figures here, because this one is not about
+  /// practice: it is how many rows the delete takes with it, and it takes all
+  /// of them. A number filtered down to the user's own reaches would promise
+  /// to delete less than it deletes.
   Future<int> recordedFor(String profileId) async {
     final count = _db.usageEvents.id.count();
     final row =

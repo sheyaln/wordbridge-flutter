@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wordbridge/db/board_builder.dart';
 import 'package:wordbridge/db/database.dart';
 import 'package:wordbridge/db/ids.dart';
+import 'package:wordbridge/db/seed/age_presets.dart';
+import 'package:wordbridge/db/seed/core_board_set.dart';
+import 'package:wordbridge/db/seed/vocabulary_top_up.dart';
 import 'package:wordbridge/db/tables.dart';
 
 /// A word's motor path: the board it lives on and the location within it.
@@ -29,6 +32,34 @@ Future<Map<String, MotorPath>> motorPaths(
     for (final r in rows)
       r.readTable(db.buttons).label: (
         board: r.readTable(db.boards).name,
+        row: r.readTable(db.cells).row,
+        col: r.readTable(db.cells).col,
+      ),
+  };
+}
+
+/// One word of a real board set, identified by the button rather than by its
+/// label.
+///
+/// A label is not unique across the shipped set — the pinned questions reach
+/// every board — and a board can be renamed without a finger moving, so the
+/// board's id is what the path is anchored to.
+typedef SeededPath = ({String label, String boardId, int row, int col});
+
+/// Snapshots every word of a seeded vocabulary, hidden ones included.
+Future<Map<String, SeededPath>> seededPaths(
+  WordbridgeDatabase db,
+  String vocabularyId,
+) async {
+  final query = db.select(db.buttons).join([
+    innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+  ])..where(db.buttons.vocabularyId.equals(vocabularyId));
+
+  return {
+    for (final r in await query.get())
+      r.readTable(db.buttons).id: (
+        label: r.readTable(db.buttons).label,
+        boardId: r.readTable(db.cells).boardId,
         row: r.readTable(db.cells).row,
         col: r.readTable(db.cells).col,
       ),
@@ -296,6 +327,97 @@ void main() {
           reason:
               '"$label" moved from ${before[label]} to ${after[label]}. '
               'A learned motor pattern was silently destroyed.',
+        );
+      }
+    });
+  });
+
+  group('THE INVARIANT: the shipped vocabulary grows but never moves', () {
+    // The case above builds its own board set, which leaves it unreachable
+    // from `lib/db/seed/` through the import graph the test selector walks.
+    // The words that ship are the ones a person has learned, so the guard has
+    // to be asked about them: this group is what makes an edit under
+    // `lib/db/seed/` select this file.
+    late String shippedId;
+
+    setUp(() async {
+      // The teen preset, because it is the one that ships a band already
+      // hidden — strong language, holding its locations from day one — and
+      // revealing that is one of the growth paths below.
+      shippedId = await seedCoreBoardSet(
+        db,
+        rows: 7,
+        cols: 12,
+        ageBand: AgeBand.teen,
+      );
+    });
+
+    test('every way it grows afterwards displaces nothing', () async {
+      final before = await seededPaths(db, shippedId);
+      expect(before, isNotEmpty, reason: 'the premise');
+
+      // 1. Strong language switched on, which reveals a band that has held
+      //    its locations since the day the board was built.
+      final held =
+          await (db.select(db.buttons)
+                ..where((b) => b.vocabularyId.equals(shippedId))
+                ..where((b) => b.hidden.equals(true)))
+              .get();
+      expect(held, isNotEmpty, reason: 'the premise: words are held back');
+      for (final button in held) {
+        await unhideButton(db, button.id);
+      }
+
+      // 2. The set grows with the person it belongs to: a teenager's topped
+      //    up to the words an adult needs. It is the same path a set laid out
+      //    by an older version takes when this one ships more.
+      final topUp = await topUpVocabulary(
+        db,
+        vocabularyId: shippedId,
+        ageBand: AgeBand.adult,
+      );
+      expect(topUp.added, isNotEmpty, reason: 'the premise: words arrived');
+
+      // 3. Personal vocabulary into the locations reserved for it.
+      final free =
+          await (db.select(db.cells).join([
+                  innerJoin(
+                    db.boards,
+                    db.boards.id.equalsExp(db.cells.boardId),
+                  ),
+                ])
+                ..where(
+                  db.boards.vocabularyId.equals(shippedId) &
+                      db.cells.state.equalsValue(CellState.emptyReserved),
+                )
+                ..limit(30))
+              .get();
+      expect(
+        free,
+        isNotEmpty,
+        reason: 'the premise: locations are held for personal vocabulary',
+      );
+      for (var i = 0; i < free.length; i++) {
+        await placeButton(
+          db,
+          vocabularyId: shippedId,
+          cellId: free[i].readTable(db.cells).id,
+          label: 'personal_$i',
+          message: 'personal_$i',
+        );
+      }
+
+      final after = await seededPaths(db, shippedId);
+      expect(after.length, before.length + topUp.count + free.length);
+
+      for (final entry in before.entries) {
+        expect(
+          after[entry.key],
+          entry.value,
+          reason:
+              '"${entry.value.label}" moved from ${entry.value} to '
+              '${after[entry.key]}. A learned motor pattern was silently '
+              'destroyed.',
         );
       }
     });

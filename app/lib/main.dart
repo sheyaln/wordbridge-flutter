@@ -10,6 +10,7 @@ import 'features/backup/backup_service.dart';
 import 'features/backup/cloud_backup.dart';
 import 'features/backup/cloud_destination.dart';
 import 'features/backup/pre_migration.dart';
+import 'features/backup/recovery.dart';
 import 'features/developer/developer_mode.dart';
 import 'features/profiles/grid_choice.dart';
 import 'features/profiles/profile_repository.dart';
@@ -45,6 +46,39 @@ SymbolResolver appSymbolResolver({
   required SymbolRegistry registry,
 }) => SymbolResolver(registry: registry, db: db);
 
+/// The board a failure lands on, with the way back attached.
+///
+/// Every fallback board in the app is built here, because the door out of one
+/// is only as good as the number of failures it is behind. §5 non-negotiable 6
+/// stops at "a crash never leaves a user with nothing"; fourteen words with no
+/// route to the backups is nothing that gets better.
+///
+/// The recovery object is handed what it needs rather than reaching for it:
+/// where the file sits and which schema this build reads. Both come from
+/// `db/database.dart`, which is what has failed by the time this board is on
+/// screen, so the crash board never imports it.
+FallbackBoard failedBoard({String? detail}) => FallbackBoard(
+  detail: detail,
+  recovery: BoardRecovery(
+    boardDatabaseFile,
+    appSchemaVersion: WordbridgeDatabase.currentSchemaVersion,
+  ),
+  onRelaunch: relaunchApp,
+);
+
+/// Starts the app over on a database file that has just been replaced.
+///
+/// A restore reached from the crash board works on files: the board is moved
+/// aside under a new name and the copy takes its place, so a connection this
+/// session happens to hold keeps the file it already opened and writes nothing
+/// into the one that replaced it. Attaching a fresh root widget builds a new
+/// database object, which opens the board that is there now.
+///
+/// The screen that calls this also tells the caregiver how to close and reopen
+/// the app, because a repair that depends on this working would be a repair
+/// behind one more thing that can fail.
+void relaunchApp() => runApp(const WordbridgeApp());
+
 /// Puts the fallback board behind every route a failure can take.
 ///
 /// §5 non-negotiable 6. Flutter's own answer to a widget that throws is a red
@@ -56,7 +90,7 @@ SymbolResolver appSymbolResolver({
 /// something to report, and it is never the only thing on the screen.
 void installFallbackBoard() {
   ErrorWidget.builder = (details) =>
-      FallbackBoard(detail: details.exceptionAsString());
+      failedBoard(detail: details.exceptionAsString());
 }
 
 /// Waits for something the board cannot be drawn without, and ends at the
@@ -65,14 +99,14 @@ void installFallbackBoard() {
 /// The app has two such waits — the database at startup, and a profile's
 /// settings — and they fail the same way: a person holding a tablet that will
 /// not talk. Written once so that neither can be given an error message
-/// instead, which is what both of them used to do.
+/// instead.
 Widget awaiting<T>({
   required Future<T> future,
   required Widget Function(T value) then,
 }) => FutureBuilder<T>(
   future: future,
   builder: (context, snapshot) {
-    if (snapshot.hasError) return FallbackBoard(detail: '${snapshot.error}');
+    if (snapshot.hasError) return failedBoard(detail: '${snapshot.error}');
     if (snapshot.connectionState != ConnectionState.done) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -470,7 +504,7 @@ class _WordbridgeAppState extends State<WordbridgeApp>
       home: awaiting<Profile?>(
         future: _ready,
         then: (profile) {
-          if (profile == null) return _FirstRun(db: _db, onCreated: _use);
+          if (profile == null) return FirstRun(db: _db, onCreated: _use);
 
           // Keyed on the profile so switching rebuilds the whole screen rather
           // than leaving one person's board holding another person's settings.
@@ -494,14 +528,35 @@ class _WordbridgeAppState extends State<WordbridgeApp>
 }
 
 /// Nothing has been set up yet, so there is nobody to hand the device to.
-class _FirstRun extends StatelessWidget {
-  const _FirstRun({required this.db, required this.onCreated});
+///
+/// Public so a test can build one. What it does that nothing else does is
+/// carry §5 non-negotiable 6 across the one moment there is no board behind
+/// the screen.
+class FirstRun extends StatefulWidget {
+  const FirstRun({super.key, required this.db, required this.onCreated});
 
   final WordbridgeDatabase db;
   final void Function(Profile) onCreated;
 
   @override
+  State<FirstRun> createState() => _FirstRunState();
+}
+
+class _FirstRunState extends State<FirstRun> {
+  /// Why the board was not built, if it was not.
+  ///
+  /// A full disk, a platform that will not say where the documents directory
+  /// is, a seed the grid refuses — all of them end here, and all of them end
+  /// with somebody holding a device that has never spoken. §5 non-negotiable 6
+  /// covers the crash path and this is the other one: the screen behind this
+  /// question is the setup form, so a failure reported on it and nowhere else
+  /// is a tablet with a button on it and no words.
+  String? _failure;
+
+  @override
   Widget build(BuildContext context) {
+    if (_failure case final failure?) return failedBoard(detail: failure);
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -528,10 +583,13 @@ class _FirstRun extends StatelessWidget {
                 onPressed: () async {
                   final profile = await ProfileSetup.show(
                     context,
-                    db: db,
+                    db: widget.db,
                     isFirstRun: true,
+                    onFailed: (error) {
+                      if (mounted) setState(() => _failure = '$error');
+                    },
                   );
-                  if (profile != null) onCreated(profile);
+                  if (profile != null) widget.onCreated(profile);
                 },
                 child: const Text('Get started'),
               ),
@@ -638,7 +696,7 @@ class _SessionState extends State<Session> {
     final vocabularyId = _profile.activeVocabularyId;
 
     if (vocabularyId == null) {
-      return const FallbackBoard(detail: 'This profile has no board set.');
+      return failedBoard(detail: 'This profile has no board set.');
     }
 
     // The settings would not load. Carrying on into the board from here draws
