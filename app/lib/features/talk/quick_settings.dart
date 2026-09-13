@@ -323,6 +323,16 @@ class _VolumeDialogState extends State<_VolumeDialog> {
     volumeLoudest.value,
   );
 
+  /// The pause, held here as well as on the board.
+  ///
+  /// **`widget.paused` is a snapshot and cannot be read for this.** This
+  /// dialog is its own route, built once by `showDialog`; the board rebuilding
+  /// behind it does not rebuild the widget the route already holds, so the
+  /// field keeps whatever was true when the menu opened. Reading it drew a
+  /// switch that never moved while the board underneath went quiet — the
+  /// control worked and said it had not.
+  late bool _paused = widget.paused;
+
   /// Writes it, then says something at it.
   ///
   /// Hearing the result is the only way to judge a volume: the position of a
@@ -411,10 +421,10 @@ class _VolumeDialogState extends State<_VolumeDialog> {
           // it yet".
           if (widget.onPaused case final onPaused?)
             SwitchListTile(
-              value: widget.paused,
+              value: _paused,
               onChanged: (on) {
+                setState(() => _paused = on);
                 onPaused(on);
-                setState(() {});
               },
               dense: true,
               contentPadding: EdgeInsets.zero,

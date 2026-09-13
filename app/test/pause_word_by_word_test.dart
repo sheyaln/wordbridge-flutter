@@ -154,6 +154,48 @@ void main() {
       await teardownBoard(tester);
     });
 
+    testWidgets('and the switch moves when it is pressed', (tester) async {
+      // The control has to say what it did. It read `widget.paused`, which is
+      // a snapshot taken when the route was built — the board went quiet and
+      // the switch stayed off, which reads as a control that does not work.
+      await pumpBoard(tester, _Speech());
+      await openVolume(tester);
+
+      bool switchIsOn() => tester.widget<Switch>(find.byType(Switch)).value;
+
+      expect(switchIsOn(), isFalse);
+      await tester.tap(find.byType(Switch));
+      await settle(tester);
+      expect(switchIsOn(), isTrue, reason: 'the switch did not move');
+
+      // And back off again, from the same switch.
+      await tester.tap(find.byType(Switch));
+      await settle(tester);
+      expect(switchIsOn(), isFalse);
+
+      await teardownBoard(tester);
+    });
+
+    testWidgets('and it is still on when the menu is opened again', (
+      tester,
+    ) async {
+      await pumpBoard(tester, _Speech());
+      await openVolume(tester);
+      await tester.tap(find.byType(Switch));
+      await settle(tester);
+      await tester.tap(find.text('Done'));
+      await settle(tester);
+
+      await openVolume(tester);
+      expect(
+        tester.widget<Switch>(find.byType(Switch)).value,
+        isTrue,
+        reason: 'the menu forgot the pause it had set',
+      );
+
+      await teardownBoard(tester);
+    });
+
     testWidgets('holds the keys quiet, and the sentence still speaks', (
       tester,
     ) async {
