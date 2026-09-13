@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
-import 'modelling_session.dart';
 
 /// Records what was selected, batched off the critical path.
 ///
@@ -27,17 +26,6 @@ class UsageLogger {
   final String deviceId;
 
   final ValueNotifier<bool> _enabled = ValueNotifier(false);
-
-  /// Whether the selections arriving right now belong to a partner modelling
-  /// rather than to the user.
-  ///
-  /// Resolved here rather than at each call site so one rule covers every
-  /// route to a word — the board, the prediction strip, a guided walk, and
-  /// whatever is added next. A source that has to be remembered at the call
-  /// site is a source that will be forgotten at one of them, and the figure it
-  /// corrupts is the tap count the editor quotes before moving a word somebody
-  /// has spent months learning.
-  final modelling = ModellingSession();
 
   /// Opt-in, per the AAC user or whoever speaks for them.
   bool get enabled => _enabled.value;
@@ -82,7 +70,6 @@ class UsageLogger {
 
     try {
       final now = nowMs();
-      final attributed = modelling.active ? UsageSource.partnerModel : source;
       // No label, no utterance, no session (§4.71). Those three are what turn
       // a list of taps back into the sentences somebody said, and this table
       // exists to answer one question — how often this word has been reached
@@ -96,7 +83,7 @@ class UsageLogger {
           cellId: cellId,
           buttonId: Value(buttonId),
           action: action,
-          source: attributed,
+          source: source,
           occurredAt: now,
         ),
       );
@@ -131,6 +118,5 @@ class UsageLogger {
     await flush();
     _flushTimer?.cancel();
     _enabled.dispose();
-    modelling.dispose();
   }
 }

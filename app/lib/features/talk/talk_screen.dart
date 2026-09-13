@@ -40,7 +40,6 @@ import '../symbols/symbol_registry.dart';
 import '../symbols/symbol_resolver.dart';
 import '../../theme/fitzgerald.dart';
 import '../usage/logger.dart';
-import '../usage/modelling_session.dart';
 import '../utterance/keypad.dart';
 import '../utterance/morphology.dart';
 import '../utterance/numbers.dart';
@@ -137,13 +136,6 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
   /// carries a location and nothing else, and it is the one piece of this app
   /// that must not grow a second reason to change.
   final _gridKey = GlobalKey();
-
-  /// Whether a partner is demonstrating on this board right now.
-  ///
-  /// Lives on the logger because that is where the attribution is applied; the
-  /// board reads it to say so on the screen, and to keep somebody else's
-  /// sentences out of this user's prediction model.
-  ModellingSession get _modelling => widget.logger.modelling;
 
   Vocabulary? _vocab;
   String? _rootBoardId;
@@ -543,29 +535,8 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     // is read during build, so a switch thrown in caregiver mode has to reach
     // the board without the screen being rebuilt from scratch.
     widget.developer?.addListener(_onDeveloperChanged);
-    // The bar draws itself differently while a partner is modelling, and the
-    // stretch can lapse on its own, so the screen has to hear about it rather
-    // than wait for whatever else happens to rebuild.
-    _modelling.addListener(_onModellingChanged);
     WidgetsBinding.instance.addObserver(this);
     _load();
-  }
-
-  /// Ends a modelling stretch whenever this board stops being in front of
-  /// somebody.
-  ///
-  /// The commonest end is a partner handing the device back and putting it
-  /// down, which is a background, not a decision. Anything short of `resumed`
-  /// counts: a false end costs a hold and a tap, while a missed one costs the
-  /// user's own practice going down as somebody else's.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state != AppLifecycleState.resumed) _modelling.end();
-  }
-
-  void _onModellingChanged() {
-    if (mounted) setState(() {});
   }
 
   @override
@@ -603,11 +574,6 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     widget.settings?.removeListener(_onSettingsChanged);
     widget.developer?.removeListener(_onDeveloperChanged);
     WidgetsBinding.instance.removeObserver(this);
-    _modelling.removeListener(_onModellingChanged);
-    // The board going away — a profile switch, a restart — ends it too. The
-    // mode belongs to a moment on one board, and it never outlives the screen
-    // it was turned on from.
-    _modelling.end();
     super.dispose();
   }
 
@@ -1237,7 +1203,7 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     // A sentence a partner built to demonstrate is theirs, and a model
     // trained on it offers the user the partner's next word. The strip has to
     // predict one person.
-    if (_predicting && words.isNotEmpty && !_modelling.active) {
+    if (_predicting && words.isNotEmpty) {
       unawaited(
         _prediction
             .learn(words)
@@ -1626,45 +1592,13 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     _installWatch = watching;
   }
 
-  /// What the caregiver gesture opens: the settings, or a modelling stretch.
+  /// What the unadvertised hold opens.
   ///
-  /// Both belong to the person who has just picked the device up, and one
-  /// unadvertised hold is enough to keep either of them away from a hand
-  /// exploring the board — which is the whole job of the gesture. They are
-  /// priced differently past it, and deliberately so.
-  ///
-  /// Settings keep the PIN. An edit behind that door moves a word somebody may
+  /// Straight to the settings. The hold is not a lock — it is what keeps the
+  /// settings from being opened by a hand exploring the board — and the PIN
+  /// past it is, because an edit behind that door moves a word somebody may
   /// have spent months learning where to find.
-  ///
-  /// Modelling does not. It changes nothing on the board, writes nothing that
-  /// leaves the device, lapses on its own, and can be stopped from the bar in
-  /// one tap — and it happens many times a day, mid-conversation, with a child
-  /// waiting. A PIN in front of that is a PIN nobody types, and a partner who
-  /// does not turn modelling on has their sentences recorded as the user's
-  /// practice and taught to the user's prediction model.
-  Future<void> _onCaregiverGesture() async {
-    final choice = await showModalBottomSheet<_PartnerChoice>(
-      context: context,
-      builder: (_) => _PartnerSheet(
-        modelling: _modelling.active,
-        remaining: _modelling.remaining,
-        window: _modelling.window,
-        userName: widget.userName,
-      ),
-    );
-    if (choice == null || !mounted) return;
-
-    switch (choice) {
-      case _PartnerChoice.modelling:
-        if (_modelling.active) {
-          _modelling.end();
-        } else {
-          _modelling.begin();
-        }
-      case _PartnerChoice.settings:
-        await _openCaregiver();
-    }
-  }
+  Future<void> _onCaregiverGesture() => _openCaregiver();
 
   Future<void> _openCaregiver() async {
     // No PIN in front of a person's own settings. The door exists because an
@@ -1756,8 +1690,6 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
                   tone: widget.settings?.tone ?? Tone.normal,
                   neuralVoice: widget.settings?.neuralVoice ?? false,
                   onTone: () => _runQuickSetting(ButtonAction.quickTone),
-                  modelling: _modelling.active,
-                  onStopModelling: _modelling.end,
                 ),
                 // A board showing words it does not normally show has to say
                 // so, and be turnable off from where it is being looked at. A
@@ -1964,8 +1896,6 @@ class _UtteranceBarView extends StatelessWidget {
     required this.onBackspace,
     required this.onClear,
     required this.editableSegments,
-    required this.modelling,
-    required this.onStopModelling,
     this.tone = Tone.normal,
     this.neuralVoice = false,
     this.onTone,
@@ -2010,8 +1940,6 @@ class _UtteranceBarView extends StatelessWidget {
   /// place on this screen where something can be added without the grid losing
   /// room and every key moving, and a word that moves is the harm the whole
   /// app is built around.
-  final bool modelling;
-  final VoidCallback onStopModelling;
 
   /// Space between speaking and deleting.
   ///
@@ -2032,9 +1960,7 @@ class _UtteranceBarView extends StatelessWidget {
         return Container(
           height: utteranceBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          // The whole band changes color, not just the badge. Whoever needs to
-          // notice this is often across the room and not looking at the bar.
-          color: modelling ? const Color(0xFFFFE082) : Colors.white,
+          color: Colors.white,
           child: Row(
             children: [
               // Deliberately the largest target on the bar.
@@ -2151,14 +2077,6 @@ class _UtteranceBarView extends StatelessWidget {
                 onChosen: (mark) => mark == 'find' ? onFind() : onType(),
               ),
               const SizedBox(width: _separation),
-
-              // Between the controls and the sentence, so the keys either end
-              // of the bar keep the positions they were learned in whether or
-              // not anyone is modelling.
-              if (modelling) ...[
-                _ModellingBadge(onStop: onStopModelling),
-                const SizedBox(width: 12),
-              ],
 
               Expanded(
                 child: editableSegments
@@ -2757,132 +2675,6 @@ class _CategoryWheel {
       // then behave as plain navigation, which is what they already are.
       return null;
     }
-  }
-}
-
-enum _PartnerChoice { modelling, settings }
-
-/// What the caregiver gesture offers, once somebody has made it.
-///
-/// Two rows rather than a screen: whoever is here is mid-conversation with a
-/// child waiting, and the reason modelling is on this sheet at all is that
-/// anything slower does not get used.
-class _PartnerSheet extends StatelessWidget {
-  const _PartnerSheet({
-    required this.modelling,
-    required this.remaining,
-    required this.window,
-    required this.userName,
-  });
-
-  final bool modelling;
-  final Duration? remaining;
-  final Duration window;
-  final String? userName;
-
-  /// Rounded up, so a stretch with forty seconds left reads as a minute rather
-  /// than as nothing. Nobody here is timing anything; they want to know
-  /// whether it is about to lapse under them.
-  static String _minutes(Duration left) {
-    final n = (left.inSeconds / 60).ceil();
-    return '$n ${n == 1 ? 'minute' : 'minutes'}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final who = userName ?? 'this user';
-    final left = remaining;
-    final lapses = left == null ? '' : ', for another ${_minutes(left)}';
-
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: Icon(
-              modelling
-                  ? Icons.stop_circle_outlined
-                  : Icons.record_voice_over_outlined,
-            ),
-            title: Text(modelling ? 'Stop modelling' : 'I am modelling'),
-            // The board is the same board either way, and the sentence says
-            // so: what changes is whose practice the taps count as. Somebody
-            // who thinks this hides words or changes the voice will not turn
-            // it on in front of the person they are modelling for.
-            subtitle: Text(
-              modelling
-                  ? 'The board is unchanged. Taps are recorded as yours rather '
-                        "than as $who's practice$lapses."
-                  : 'The board does not change. Your taps are recorded as '
-                        "yours rather than as $who's practice, and stop after "
-                        '${_minutes(window)}.',
-            ),
-            onTap: () => Navigator.of(context).pop(_PartnerChoice.modelling),
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Settings'),
-            subtitle: const Text('Words, boards, voice, backups.'),
-            onTap: () => Navigator.of(context).pop(_PartnerChoice.settings),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Says the board is not recording the user's own practice right now, and
-/// stops that from where it is being looked at.
-///
-/// It sits inside the bar rather than in a strip of its own, because a strip
-/// would take height off the grid and every key would land somewhere new. The
-/// one thing modelling must not do is move a word: a partner demonstrating on
-/// a board whose keys have all shifted is demonstrating the wrong board.
-///
-/// Reachable by the user, unlike the way in. The only thing a stray tap here
-/// can do is put the board back to recording their own practice, which is the
-/// state it is supposed to be in.
-class _ModellingBadge extends StatelessWidget {
-  const _ModellingBadge({required this.onStop});
-
-  final VoidCallback onStop;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Stop modelling',
-      child: Material(
-        color: const Color(0xFF7A5B00),
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onStop,
-          child: const Padding(
-            padding: EdgeInsets.fromLTRB(12, 8, 10, 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.record_voice_over_outlined,
-                  size: 18,
-                  color: Colors.white,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'Modelling',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(width: 6),
-                Icon(Icons.close_rounded, size: 18, color: Colors.white),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
