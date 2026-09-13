@@ -145,8 +145,9 @@ class Profiles extends Table with _Timestamps {
   /// how vocabulary grows, and it never moves anything already placed.
   IntColumn get vocabLevel => integer().withDefault(const Constant(1))();
 
-  /// Voice, rate, pitch, gain, activation mode, dwell/debounce ms,
-  /// auto-return, speak-on-tap vs speak-on-send.
+  /// Every per-user preference, as JSON: the voice and its dials, how the
+  /// board behaves, and the answers given at setup. `ProfileSettings` is where
+  /// the keys are named and defaulted.
   TextColumn get settingsJson => text().withDefault(const Constant('{}'))();
 
   @override

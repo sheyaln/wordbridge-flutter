@@ -54,10 +54,21 @@ class ProfileSetup extends StatefulWidget {
     required this.db,
     this.isFirstRun = false,
     this.cloud,
+    this.onFailed,
   });
 
   final WordbridgeDatabase db;
   final bool isFirstRun;
+
+  /// Where a setup that will not complete is reported to.
+  ///
+  /// Given, this screen closes on a failure and hands it over. That is for the
+  /// first run, where there is no board behind this form: a failure shown on
+  /// the form and nowhere else leaves a nonspeaking person holding a device
+  /// that has never spoken, with a button on it. Left null, the failure is
+  /// reported here and the form stays, which is right everywhere there is
+  /// already a board to go back to.
+  final void Function(Object error)? onFailed;
 
   /// Where a copy of the board could go, so that the question about it can be
   /// answered here rather than only pointed at. Injected for tests, which must
@@ -68,9 +79,11 @@ class ProfileSetup extends StatefulWidget {
     BuildContext context, {
     required WordbridgeDatabase db,
     bool isFirstRun = false,
+    void Function(Object error)? onFailed,
   }) => Navigator.of(context).push<Profile>(
     MaterialPageRoute(
-      builder: (_) => ProfileSetup(db: db, isFirstRun: isFirstRun),
+      builder: (_) =>
+          ProfileSetup(db: db, isFirstRun: isFirstRun, onFailed: onFailed),
     ),
   );
 
@@ -282,6 +295,13 @@ class _ProfileSetupState extends State<ProfileSetup> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _creating = false);
+
+      if (widget.onFailed case final report?) {
+        Navigator.of(context).pop();
+        report(error);
+        return;
+      }
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Could not set up: $error')));
     }

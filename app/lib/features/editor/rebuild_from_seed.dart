@@ -19,6 +19,7 @@ import '../../db/database.dart';
 import '../../db/seed/age_presets.dart';
 import '../../db/seed/core_board_set.dart';
 import '../../db/seed/core_vocabulary.dart';
+import '../usage/usage_queries.dart';
 
 /// Every label the shipped vocabulary places, at any level, on any board.
 ///
@@ -39,7 +40,11 @@ typedef RebuildImpact = ({
   /// Words on the current boards that the shipped vocabulary does not place.
   List<String> handAdded,
 
-  /// Taps recorded against locations on the current boards.
+  /// Taps the user made at locations on the current boards.
+  ///
+  /// Their own reaches only. The sentence this ends up in names them, and a
+  /// number holding a partner's demonstrations would attribute somebody else's
+  /// practice to them at the moment they are being asked what a rebuild costs.
   int recordedTaps,
 
   int rows,
@@ -81,9 +86,13 @@ Future<RebuildImpact> rebuildImpact(
       if (!button.isSystem && !shipped.contains(button.label)) button.label,
   };
 
-  final taps = await (db.select(
-    db.usageEvents,
-  )..where((e) => e.vocabularyId.equals(vocabularyId))).get();
+  final taps =
+      await (db.select(db.usageEvents)..where(
+            (e) =>
+                e.vocabularyId.equals(vocabularyId) &
+                e.source.isInValues(UsageQueries.practicedSources),
+          ))
+          .get();
 
   return (
     handAdded: handAdded.toList()..sort(),

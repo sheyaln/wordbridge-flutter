@@ -389,9 +389,10 @@ class BoardCell extends StatelessWidget {
       color: color,
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
-        // Speaking on press rather than release: the gap between them is
-        // perceptible, and responsiveness is what makes a device feel like a
-        // voice. Release and dwell modes are per-profile settings.
+        // Acts on release, and has to. The corner gesture and the developer
+        // hold both complete with the finger still down, and the state above
+        // drops the release that ends them; on press a word would already
+        // have been spoken.
         onTap: () => onSelect(placed),
         // Null unless this particular key has something behind a hold, so an
         // ordinary word's gesture handling is untouched.

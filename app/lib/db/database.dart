@@ -57,8 +57,15 @@ class WordbridgeDatabase extends _$WordbridgeDatabase {
   /// In-memory instance for tests.
   WordbridgeDatabase.forTesting(super.executor);
 
+  /// The schema this build reads.
+  ///
+  /// Static as well as an instance getter, because the recovery path in
+  /// `features/backup/recovery.dart` has to know which backups this build can
+  /// open at the moment nothing can open a database.
+  static const currentSchemaVersion = 9;
+
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

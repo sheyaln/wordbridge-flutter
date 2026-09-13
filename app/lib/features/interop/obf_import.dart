@@ -10,17 +10,24 @@ import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
 import 'obf_model.dart';
+import 'recordings.dart';
 
 /// Imports a single `.obf` board as a new vocabulary and returns its id.
 ///
 /// Any `load_board` links are unresolvable in a standalone file — there is no
 /// other board in the package to point at — so those buttons arrive as
 /// navigation with no target and are listed in [notes].
+///
+/// [recordings] is where audio carried on the buttons is filed, so that an
+/// export can write it back out. Without one the audio stays in the file it
+/// arrived in and [notes] says how much — the least an import may do with
+/// somebody's recorded voice is say that it has it and is not keeping it.
 Future<String> importObf(
   WordbridgeDatabase db,
   String json, {
   String? vocabularyName,
   List<String>? notes,
+  RecordingStore? recordings,
 }) async {
   final log = notes ?? <String>[];
   final source = _Source(ObfBoard.parse(json));
@@ -30,6 +37,8 @@ Future<String> importObf(
     root: source,
     name: vocabularyName ?? _vocabularyName(source),
     notes: log,
+    sounds: _Sounds([source.obf]),
+    store: recordings,
   );
 }
 
@@ -43,15 +52,18 @@ Future<String> importObz(
   List<int> zipBytes, {
   String? vocabularyName,
   List<String>? notes,
+  RecordingStore? recordings,
 }) async {
   final log = notes ?? <String>[];
   final archive = ZipDecoder().decodeBytes(zipBytes);
 
   ArchiveFile? manifestFile;
   final rawBoards = <String, ArchiveFile>{};
+  final rawFiles = <String, ArchiveFile>{};
   for (final file in archive.files) {
     if (!file.isFile) continue;
     final name = _normalize(file.name);
+    rawFiles[name] = file;
     if (p.url.basename(name) == 'manifest.json') {
       manifestFile ??= file;
     } else if (p.url.extension(name).toLowerCase() == '.obf') {
@@ -75,6 +87,9 @@ Future<String> importObz(
 
   final boards = <String, ArchiveFile>{
     for (final e in rawBoards.entries) rebase(e.key): e.value,
+  };
+  final files = <String, ArchiveFile>{
+    for (final e in rawFiles.entries) rebase(e.key): e.value,
   };
 
   ObzManifest? manifest;
@@ -111,6 +126,12 @@ Future<String> importObz(
     root: root,
     name: vocabularyName ?? _vocabularyName(root),
     notes: log,
+    sounds: _Sounds(
+      [for (final source in sources) source.obf],
+      files: files,
+      manifestPaths: manifest?.sounds ?? const {},
+    ),
+    store: recordings,
   );
 }
 
@@ -158,6 +179,8 @@ Future<String> _materialize(
   required _Source root,
   required String name,
   required List<String> notes,
+  required _Sounds sounds,
+  RecordingStore? store,
 }) async {
   if (sources.isEmpty) {
     throw ObfFormatException('nothing to import');
@@ -187,6 +210,9 @@ Future<String> _materialize(
       'gained reserved cells rather than being reflowed.',
     );
   }
+
+  final pending = <PendingRecording>[];
+  var wordless = 0;
 
   return db.transaction(() async {
     final vocabId = newId();
@@ -259,7 +285,7 @@ Future<String> _materialize(
             row: row,
             col: col,
           );
-          await _place(
+          final buttonId = await _place(
             db,
             vocabId: vocabId,
             source: source,
@@ -268,17 +294,33 @@ Future<String> _materialize(
             links: links,
             notes: notes,
           );
+          wordless += _collect(
+            into: pending,
+            sounds: sounds,
+            source: source,
+            button: button,
+            buttonId: buttonId,
+            notes: notes,
+          );
         }
       }
 
       for (final button in source.obf.buttons) {
         if (placed.contains(button.id)) continue;
-        await _tray(
+        final buttonId = await _tray(
           db,
           vocabId: vocabId,
           source: source,
           button: button,
           links: links,
+          notes: notes,
+        );
+        wordless += _collect(
+          into: pending,
+          sounds: sounds,
+          source: source,
+          button: button,
+          buttonId: buttonId,
           notes: notes,
         );
         notes.add(
@@ -289,6 +331,13 @@ Future<String> _materialize(
       }
     }
 
+    await _keepRecordings(
+      store,
+      vocabularyId: vocabId,
+      pending: pending,
+      wordless: wordless,
+      notes: notes,
+    );
     await _recordSystemCells(db, vocabId, root.boardId);
     await _recordImport(
       db,
@@ -371,7 +420,59 @@ class _LinkTable {
   }
 }
 
-Future<void> _place(
+/// The recordings a file declares, and the audio the package holds for them.
+///
+/// Ids are collected across every board in an `.obz`: the package's sounds are
+/// listed per board but addressed globally, so a button on one board may name
+/// a recording another board declared.
+class _Sounds {
+  _Sounds(
+    Iterable<ObfBoard> boards, {
+    this.files = const {},
+    this.manifestPaths = const {},
+  }) {
+    for (final board in boards) {
+      for (final sound in board.sounds) {
+        _byId.putIfAbsent(sound.id, () => _located(sound));
+      }
+    }
+  }
+
+  final _byId = <String, ObfSound>{};
+  final Map<String, ArchiveFile> files;
+  final Map<String, String> manifestPaths;
+
+  /// A sound carrying the path the manifest gives it.
+  ///
+  /// The file name is where the audio is and, for a package that declares no
+  /// `content_type`, the only thing that says what kind of audio it is.
+  ObfSound _located(ObfSound sound) {
+    final path = sound.path ?? manifestPaths[sound.id];
+    if (path == null || path == sound.path) return sound;
+    return ObfSound(
+      id: sound.id,
+      url: sound.url,
+      data: sound.data,
+      path: path,
+      contentType: sound.contentType,
+      duration: sound.duration,
+      license: sound.license,
+    );
+  }
+
+  ObfSound? operator [](String id) => _byId[id];
+
+  /// The audio an `.obz` carries for [sound], or null where the package holds
+  /// none. A `data:` URI is read by the store; a `url` stays a url.
+  Uint8List? bytesOf(ObfSound sound) {
+    final path = sound.path;
+    if (path == null) return null;
+    final bytes = files[_normalize(path)]?.readBytes();
+    return bytes == null ? null : Uint8List.fromList(bytes);
+  }
+}
+
+Future<String> _place(
   WordbridgeDatabase db, {
   required String vocabId,
   required _Source source,
@@ -406,6 +507,8 @@ Future<void> _place(
       ),
     );
   }
+
+  return buttonId;
 }
 
 /// Imports a button the grid never references.
@@ -413,7 +516,7 @@ Future<void> _place(
 /// ADR-0003 keeps `buttons.cell_id` nullable so a bulk import can land in the
 /// editor's unplaced tray. Dropping the word would lose vocabulary; putting it
 /// in the first free cell would be a position we made up.
-Future<void> _tray(
+Future<String> _tray(
   WordbridgeDatabase db, {
   required String vocabId,
   required _Source source,
@@ -423,12 +526,13 @@ Future<void> _tray(
 }) async {
   final content = _Content(source, button, links, notes);
   final ts = nowMs();
+  final buttonId = newId();
 
   await db
       .into(db.buttons)
       .insert(
         ButtonsCompanion.insert(
-          id: newId(),
+          id: buttonId,
           vocabularyId: vocabId,
           label: content.label,
           message: content.message,
@@ -446,6 +550,101 @@ Future<void> _tray(
           updatedAt: ts,
         ),
       );
+
+  return buttonId;
+}
+
+/// Queues a button's recording, and answers 1 for a key that arrived with a
+/// recording and no words.
+///
+/// That key is the one this app cannot speak from at all, so it is counted and
+/// reported rather than left to be discovered by pressing it.
+int _collect({
+  required List<PendingRecording> into,
+  required _Sounds sounds,
+  required _Source source,
+  required ObfButton button,
+  required String buttonId,
+  required List<String> notes,
+}) {
+  final id = button.soundId;
+  if (id == null) return 0;
+
+  final sound = sounds[id];
+  if (sound == null) {
+    notes.add(
+      'Button "${button.label ?? button.id}" on "${source.name}" names '
+      'recording "$id", which the file does not define.',
+    );
+    return 0;
+  }
+
+  into.add((buttonId: buttonId, sound: sound, bytes: sounds.bytesOf(sound)));
+
+  final wordless =
+      (button.label ?? '').isEmpty &&
+      (button.vocalization ?? '').isEmpty &&
+      (readExt<String>(button.ext, WordbridgeExt.message) ?? '').isEmpty;
+  return wordless && _actionFor(button) == ButtonAction.speak ? 1 : 0;
+}
+
+/// Files the recordings the boards carried and says what became of them.
+///
+/// Every branch ends in a sentence. A board set whose keys hold somebody's
+/// recorded voice must not arrive looking complete when the audio did not come
+/// with it, and the caregiver reading this is the only person in a position to
+/// go back for the file it came from.
+Future<void> _keepRecordings(
+  RecordingStore? store, {
+  required String vocabularyId,
+  required List<PendingRecording> pending,
+  required int wordless,
+  required List<String> notes,
+}) async {
+  if (pending.isNotEmpty) {
+    final count = {for (final item in pending) item.sound.id}.length;
+
+    if (store == null) {
+      notes.add(
+        '$count recorded message(s) came with this board and are not kept. '
+        'Those keys speak their words instead.',
+      );
+    } else {
+      final outcome = await store.keep(vocabularyId, pending);
+
+      if (outcome.kept > 0) {
+        notes.add(
+          '${outcome.kept} recorded message(s) came with this board and are '
+          'kept with it, so exporting it writes them back out. This app '
+          'speaks the words on those keys rather than playing the recording.',
+        );
+      }
+      if (outcome.linked > 0) {
+        notes.add(
+          '${outcome.linked} recorded message(s) are links to files on the '
+          'internet. The links are kept and nothing was downloaded.',
+        );
+      }
+      if (outcome.dropped > 0) {
+        notes.add(
+          outcome.overBudget
+              ? '${outcome.dropped} recorded message(s) are not kept: the '
+                    'file holds more audio than one import copies onto this '
+                    'device. Those keys speak their words instead.'
+              : '${outcome.dropped} recorded message(s) are not kept: they '
+                    'could not be read out of the file. Those keys speak '
+                    'their words instead.',
+        );
+      }
+    }
+  }
+
+  if (wordless > 0) {
+    notes.add(
+      '$wordless key(s) carry a recording and no words, so this app has '
+      'nothing to say on them.',
+    );
+  }
 }
 
 /// An OBF button translated into our columns.

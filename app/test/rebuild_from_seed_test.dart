@@ -159,6 +159,40 @@ void main() {
       expect((impact.rows, impact.cols), (7, 12));
     });
 
+    test('only the taps the user made are counted', () async {
+      Future<void> record(UsageSource source) => db
+          .into(db.usageEvents)
+          .insert(
+            UsageEventsCompanion.insert(
+              deviceId: 'd1',
+              profileId: profileId,
+              vocabularyId: vocabularyId,
+              boardId: 'b1',
+              cellId: 'c1',
+              action: ButtonAction.speak,
+              source: source,
+              occurredAt: nowMs(),
+            ),
+          );
+
+      await record(UsageSource.touch);
+      await record(UsageSource.partnerModel);
+
+      final impact = await rebuildImpact(
+        db,
+        profileId: profileId,
+        vocabularyId: vocabularyId,
+      );
+
+      expect(
+        impact.recordedTaps,
+        1,
+        reason:
+            'the sentence reads "<name> has tapped these boards N times", so a '
+            "count holding a partner's demonstrations names the wrong person",
+      );
+    });
+
     test('the shipped set knows what an age preset adds', () async {
       // The extras a preset appends are shipped words, not somebody's own, so
       // rebuilding a teen board must not offer to discard them.
