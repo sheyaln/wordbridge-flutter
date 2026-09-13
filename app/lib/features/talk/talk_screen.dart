@@ -215,6 +215,43 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
   /// Whether each key speaks as it is pressed (§4.48).
   bool get _speakEachWord => widget.settings?.speakEachWord ?? true;
 
+  /// Word-by-word speech, held quiet until the sentence is sent (§4.88).
+  ///
+  /// **Not a setting, and deliberately not stored.** A person who builds their
+  /// sentences one spoken word at a time has learned to, and taking that away
+  /// permanently because of one private sentence is the displacement this app
+  /// refuses everywhere else. This is the covert half of a conversation — a
+  /// sentence somebody wants finished before the room hears the first word of
+  /// it, which for a person whose every draft is public is the only privacy
+  /// the board can offer — and it ends by itself the moment the sentence is
+  /// said.
+  ///
+  /// In memory, like caregiver mode and for the same reason: a restart puts
+  /// the board back the way its user knows it. Being silent after a crash is
+  /// a board that appears to have lost its voice.
+  bool _pausedWordByWord = false;
+
+  /// Whether a key pressed right now says anything.
+  ///
+  /// The profile's setting, and then the pause on top of it. Every route that
+  /// speaks one word reads this and not [_speakEachWord] — including the
+  /// screens this one hands a voice to, because a typed word announced across
+  /// the room is the same leak as a tapped one.
+  bool get _sayingEachWord => _speakEachWord && !_pausedWordByWord;
+
+  /// Whether the pause is worth offering at all.
+  ///
+  /// Nothing to pause on a profile that never speaks the keys, and a control
+  /// that does nothing is worse than no control: somebody presses it, hears no
+  /// change, and learns that this menu lies.
+  bool get _canPauseWordByWord => _speakEachWord;
+
+  /// Holds the keys quiet, or lets them speak again.
+  void setPausedWordByWord(bool paused) {
+    if (_pausedWordByWord == paused) return;
+    setState(() => _pausedWordByWord = paused);
+  }
+
   /// Says a word as it lands, unless this profile has asked for quiet.
   ///
   /// The sentence is still spoken when it is sent. This is the choice between
@@ -222,7 +259,7 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
   /// covers only the four routes that speak a word on its own — the fifth is
   /// the sentence itself, and it is untouched.
   Future<void> _sayWord(String text) async {
-    if (!_speakEachWord) return;
+    if (!_sayingEachWord) return;
     await _saying(() => widget.speech.speak(text));
   }
 
@@ -1122,7 +1159,10 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
           resolver: widget.resolver,
           speech: widget.speech,
           sentence: _utterance.spokenText,
+          paused: _pausedWordByWord,
+          onPaused: _canPauseWordByWord ? setPausedWordByWord : null,
         );
+        if (mounted) setState(() {});
       case ButtonAction.quickTone:
         await chooseTone(
           context,
@@ -1203,6 +1243,14 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     // read from `spokenText`, which is the same string everywhere else.
     await _saying(() => widget.speech.speakUtterance(_utterance.spokenText));
 
+    // The sentence has been said, so the thing the pause was protecting is
+    // over and the keys speak again (§4.88). Ending it here rather than on the
+    // key that starts it means every route to a spoken sentence ends it — the
+    // bar's speak key, a tap on the sentence, and the punctuation marks.
+    if (_pausedWordByWord && mounted) {
+      setState(() => _pausedWordByWord = false);
+    }
+
     // A sentence a partner built to demonstrate is theirs, and a model
     // trained on it offers the user the partner's next word. The strip has to
     // predict one person.
@@ -1235,7 +1283,7 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     // "Add to sentence" and means it (§4.48).
     final word = await TypeAWord.show(
       context,
-      speech: _speakEachWord ? widget.speech : null,
+      speech: _sayingEachWord ? widget.speech : null,
     );
     if (word == null || !mounted) return;
 
@@ -1265,7 +1313,7 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
       db: widget.db,
       vocabularyId: widget.vocabularyId,
       vocabLevel: widget.vocabLevel,
-      speech: _speakEachWord ? widget.speech : null,
+      speech: _sayingEachWord ? widget.speech : null,
     );
     if (found == null || !mounted) return;
 
@@ -1693,6 +1741,8 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
                   tone: widget.settings?.tone ?? Tone.normal,
                   neuralVoice: widget.settings?.neuralVoice ?? false,
                   onTone: () => _runQuickSetting(ButtonAction.quickTone),
+                  pausedWordByWord: _pausedWordByWord,
+                  onResumeWordByWord: () => setPausedWordByWord(false),
                 ),
                 // A board showing words it does not normally show has to say
                 // so, and be turnable off from where it is being looked at. A
@@ -1888,6 +1938,61 @@ class _ToneBadge extends StatelessWidget {
   );
 }
 
+/// The badge that says the keys are quiet, and turns them back on.
+///
+/// Same shape and same rule as [_ToneBadge]: a 44pt target because the hand
+/// that presses it is the hand that presses the board, and a small chip inside
+/// it because this reads as a note about the sentence rather than as a key
+/// somebody is meant to press.
+class _PausedBadge extends StatelessWidget {
+  const _PausedBadge({this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message:
+        'Word-by-word is paused. Speaking the sentence turns it back on, '
+        'and so does tapping here.',
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECEFF1),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFB0BEC5)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.volume_off_rounded,
+                  size: 15,
+                  color: Color(0xFF37474F),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Quiet',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF37474F),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _UtteranceBarView extends StatelessWidget {
   const _UtteranceBarView({
     required this.utterance,
@@ -1902,10 +2007,24 @@ class _UtteranceBarView extends StatelessWidget {
     this.tone = Tone.normal,
     this.neuralVoice = false,
     this.onTone,
+    this.pausedWordByWord = false,
+    this.onResumeWordByWord,
   });
 
   /// Opens the tone picker from the badge.
   final VoidCallback? onTone;
+
+  /// The keys are quiet until this sentence is sent (§4.88).
+  ///
+  /// Shown for the same reason the tone is: it is a property of *this*
+  /// sentence that the board is otherwise silent about, and silence is the one
+  /// state a person cannot tell apart from a broken voice. Somebody who paused
+  /// it two minutes ago and has since started a different sentence has no
+  /// other way to notice.
+  final bool pausedWordByWord;
+
+  /// Lets the keys speak again, from the badge itself.
+  final VoidCallback? onResumeWordByWord;
 
   /// Whether this profile speaks in a bundled neural voice, which changes what
   /// the punctuation marks can do — see the note on the marks control.
@@ -1933,6 +2052,7 @@ class _UtteranceBarView extends StatelessWidget {
   final void Function(String mark) onPunctuate;
   final VoidCallback onType;
   final VoidCallback onFind;
+
   final VoidCallback onBackspace;
   final VoidCallback onClear;
 
@@ -1984,6 +2104,10 @@ class _UtteranceBarView extends StatelessWidget {
               if (tone != Tone.normal) ...[
                 const SizedBox(width: 6),
                 _ToneBadge(tone: tone, onTap: onTone),
+              ],
+              if (pausedWordByWord) ...[
+                const SizedBox(width: 6),
+                _PausedBadge(onTap: onResumeWordByWord),
               ],
               const SizedBox(width: 4),
               // Punctuation marks the sentence rather than adding a word to

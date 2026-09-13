@@ -198,9 +198,11 @@ void main() {
   });
 
   testWidgets('and it is only as tall as what is in it', (tester) async {
-    // It is a slider and two small labels. An earlier version put the pictures
-    // in `Expanded`, which took whatever height the dialog was willing to give
-    // and turned a one-line control into most of the screen.
+    // It is a slider, two small labels and the pause switch. An earlier
+    // version put the pictures in `Expanded`, which took whatever height the
+    // dialog was willing to give and turned a one-line control into most of
+    // the screen — that is the failure this number is watching for, and it was
+    // 768px tall.
     final speech = _SilentSpeech();
     await pumpBoard(tester, speech);
 
@@ -221,7 +223,7 @@ void main() {
     );
     expect(
       card.height,
-      lessThan(280),
+      lessThan(360),
       reason: 'the volume dialog card is ${card.height}px tall',
     );
 

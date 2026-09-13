@@ -262,6 +262,8 @@ Future<void> chooseVolume(
   required SymbolResolver? resolver,
   SpeechEngine? speech,
   String? sentence,
+  bool paused = false,
+  ValueChanged<bool>? onPaused,
 }) => showDialog<void>(
   context: context,
   builder: (context) => _VolumeDialog(
@@ -269,8 +271,17 @@ Future<void> chooseVolume(
     resolver: resolver,
     speech: speech,
     sentence: sentence,
+    paused: paused,
+    onPaused: onPaused,
   ),
 );
+
+/// What the pause is called wherever it is drawn.
+///
+/// Named for the setting it suspends rather than for what it does to the
+/// voice. "Mute" would be a lie — the sentence still speaks, and it is the
+/// only thing that does.
+const pauseWordByWordLabel = 'Pause word-by-word';
 
 class _VolumeDialog extends StatefulWidget {
   const _VolumeDialog({
@@ -278,11 +289,20 @@ class _VolumeDialog extends StatefulWidget {
     required this.resolver,
     this.speech,
     this.sentence,
+    this.paused = false,
+    this.onPaused,
   });
 
   final ProfileSettings settings;
   final SymbolResolver? resolver;
   final SpeechEngine? speech;
+
+  /// Whether the keys are currently silent until the sentence is sent.
+  final bool paused;
+
+  /// Turns that pause on or off, or null where there is nothing to pause —
+  /// a profile that has word-by-word speech switched off already.
+  final ValueChanged<bool>? onPaused;
 
   /// What is in the utterance bar, said back at the new volume.
   ///
@@ -385,6 +405,28 @@ class _VolumeDialogState extends State<_VolumeDialog> {
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             ),
           ),
+          // Under the volume control because it is the same question — how
+          // much of this does the room get to hear — and because this is the
+          // dial somebody is already reaching for when the answer is "none of
+          // it yet".
+          if (widget.onPaused case final onPaused?)
+            SwitchListTile(
+              value: widget.paused,
+              onChanged: (on) {
+                onPaused(on);
+                setState(() {});
+              },
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                pauseWordByWordLabel,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+              subtitle: const Text(
+                'Saying the sentence turns it back on.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
         ],
       ),
     ),
