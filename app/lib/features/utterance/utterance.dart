@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../db/tables.dart';
 import 'contractions.dart';
 import 'morphology.dart';
-import 'pronunciation.dart';
 import 'numbers.dart';
+import 'pronunciation.dart';
 
 /// One word in the sentence, and what it was.
 ///
