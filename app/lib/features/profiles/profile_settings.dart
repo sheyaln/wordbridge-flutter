@@ -311,6 +311,26 @@ class ProfileSettings extends ChangeNotifier {
   /// finished sentence, not a mute: the sentence key is untouched either way.
   bool get speakEachWord => _values['speakEachWord'] as bool? ?? true;
 
+  /// Whether the device keyboard corrects what gets typed (§4.87).
+  ///
+  /// On by default, because it is on everywhere else on the device and a
+  /// keyboard that suddenly stops fixing "teh" is a keyboard that has broken.
+  ///
+  /// Off matters more than it looks. Autocorrect is built for the words a
+  /// dictionary knows, and the words somebody types here are the ones the
+  /// board could not give them: a sibling's name, a street, a diagnosis, a
+  /// word in another language, a spelling a person is still learning. Every
+  /// one of those is a word autocorrect will quietly replace with something
+  /// else — and a person watching the letters rather than the line does not
+  /// see it happen. A learner being corrected into a word they did not choose
+  /// is also being told their spelling does not count.
+  ///
+  /// One setting for both the typing screen and keyboard mode, because they
+  /// are the same keyboard doing the same job and a person who turned it off
+  /// in one has said what they want.
+  bool get keyboardAutocorrect =>
+      _values['keyboardAutocorrect'] as bool? ?? true;
+
   /// Name each run of locations by what it is for.
   ///
   /// Off by default. It is scaffolding for the people teaching a board rather

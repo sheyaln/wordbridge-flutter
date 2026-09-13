@@ -48,6 +48,7 @@ import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
 import 'fallback_board.dart';
 import 'find_a_word.dart';
+import 'keyboard_mode.dart';
 import 'pick_a_word.dart';
 import 'quick_settings.dart';
 import 'route_walk.dart';
@@ -1284,6 +1285,7 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
     final word = await TypeAWord.show(
       context,
       speech: _sayingEachWord ? widget.speech : null,
+      settings: widget.settings,
     );
     if (word == null || !mounted) return;
 
@@ -1299,6 +1301,30 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
       _utterance.add(word);
       _reached = null;
     });
+  }
+
+  /// Opens the keyboard and leaves it open (§4.87).
+  ///
+  /// The typing screen takes one word and closes; this one stays, which is
+  /// what an adult composing a sentence needs. Both write into the same bar,
+  /// so the sentence is the same sentence either way.
+  ///
+  /// Nothing is returned, because nothing needs to be: the words went straight
+  /// into the bar as they were sent, and the sentence on screen when this
+  /// closes is the sentence the board already has.
+  Future<void> _openKeyboard() async {
+    await KeyboardMode.show(
+      context,
+      utterance: _utterance,
+      onSpeak: _speakSentence,
+      speech: _sayingEachWord ? widget.speech : null,
+      settings: widget.settings,
+    );
+    if (!mounted) return;
+
+    // The sentence changed underneath the board while this was open, and the
+    // suggestion strip was reading the old one.
+    setState(() => _reached = null);
   }
 
   /// Looks for a word, and either walks the way to it or says it as typed.
@@ -1735,6 +1761,7 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
                   onPunctuate: _endSentence,
                   onType: _typeWord,
                   onFind: _findWord,
+                  onKeyboard: _openKeyboard,
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                   editableSegments: _editsSegments,
@@ -2001,6 +2028,7 @@ class _UtteranceBarView extends StatelessWidget {
     required this.onPunctuate,
     required this.onType,
     required this.onFind,
+    required this.onKeyboard,
     required this.onBackspace,
     required this.onClear,
     required this.editableSegments,
@@ -2053,6 +2081,8 @@ class _UtteranceBarView extends StatelessWidget {
   final VoidCallback onType;
   final VoidCallback onFind;
 
+  /// Opens the keyboard and leaves it open (§4.87).
+  final VoidCallback onKeyboard;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
 
@@ -2200,8 +2230,22 @@ class _UtteranceBarView extends StatelessWidget {
                     label: 'Type a word',
                     icon: Icons.keyboard_alt_outlined,
                   ),
+                  // Last, so the two already learned keep the positions they
+                  // were learned in. It is also the one that is not about a
+                  // single word: the other two answer "where is this word",
+                  // and this one is for the sentence the board was never
+                  // going to carry.
+                  (
+                    mark: 'keyboard',
+                    label: 'Keyboard',
+                    icon: Icons.keyboard_rounded,
+                  ),
                 ],
-                onChosen: (mark) => mark == 'find' ? onFind() : onType(),
+                onChosen: (mark) => switch (mark) {
+                  'find' => onFind(),
+                  'keyboard' => onKeyboard(),
+                  _ => onType(),
+                },
               ),
               const SizedBox(width: _separation),
 
