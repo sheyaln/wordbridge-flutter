@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../db/tables.dart';
 import 'contractions.dart';
 import 'morphology.dart';
+import 'pronunciation.dart';
 import 'numbers.dart';
 
 /// One word in the sentence, and what it was.
@@ -252,6 +253,10 @@ class UtteranceBar extends ChangeNotifier {
     final trimmed = word.trim();
     if (trimmed.isEmpty) return null;
 
+    // Words the engine says wrong are respelled on the way to the voice and
+    // nowhere else — the bar keeps the word somebody pressed (§4.86).
+    final saidAs = spokenForm(trimmed);
+
     final repaired =
         _fixPrecedingArticle(trimmed) ?? _fixOpeningCopula(trimmed);
     _insert((
@@ -259,7 +264,7 @@ class UtteranceBar extends ChangeNotifier {
       pos: pos,
       inflected: inflected,
       subjectFollows: subjectFollows,
-      spoken: null,
+      spoken: saidAs,
     ));
     notifyListeners();
     return repaired;

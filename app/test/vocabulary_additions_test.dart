@@ -86,10 +86,21 @@ void main() {
     });
 
     test('unlikely joins the words for not being sure', () async {
-      final board = (await layout(rows: 7, cols: 12))['feelings']!;
+      // On page two at 7x12, which is where that whole row went when the
+      // interjections arrived (§4.85). Its own note says it should: nothing on
+      // it is level 1, the root board carries "maybe" which does the job, and
+      // "the cost of reading it on page two is a key press, not a lost
+      // answer". The row that displaced it has four level-1 words on it, and
+      // `ow` said late is not said at all.
+      //
+      // What matters here is that it is still one row, together — the words
+      // are a scale and a scale split across two pages is not one.
+      final boards = await layout(rows: 7, cols: 12);
+      final page = boards['feelings 2'] ?? boards['feelings']!;
 
-      expect(board, contains('unlikely'));
-      expect(board['unlikely']!.row, board['perhaps']!.row);
+      expect(page, contains('unlikely'));
+      expect(page['unlikely']!.row, page['perhaps']!.row);
+      expect(page['unlikely']!.row, page['unsure']!.row);
     });
 
     test('the possessives are on the people board, both forms', () async {

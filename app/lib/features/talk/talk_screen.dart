@@ -43,6 +43,7 @@ import '../usage/logger.dart';
 import '../utterance/keypad.dart';
 import '../utterance/morphology.dart';
 import '../utterance/numbers.dart';
+import '../utterance/pronunciation.dart';
 import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
 import 'fallback_board.dart';
@@ -889,7 +890,9 @@ class TalkScreenState extends State<TalkScreen> with WidgetsBindingObserver {
             ? null
             : _utterance.add(_barText(button), pos: button.partOfSpeech);
         _markReached(button.label);
-        await _sayWord(collapsed ?? _withRepair(repaired, button));
+        // Said as the engine needs it spelled, which for most words is exactly
+        // as it is written (§4.86). The bar already holds the word itself.
+        await _sayWord(asSpoken(collapsed ?? _withRepair(repaired, button)));
         if (_autoReturn && _currentBoardId != _rootBoardId) {
           setState(() {
             _currentBoardId = _rootBoardId;
