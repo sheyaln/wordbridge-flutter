@@ -1372,6 +1372,36 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       ],
     ),
 
+    // What a person makes rather than says (§4.85).
+    //
+    // **These are reactions, and the board had none.** Everything else here is
+    // a sentence — "it hurts", "too loud", "I need a break" — and a sentence
+    // arrives after the moment it was about. An interjection is the moment:
+    // `ow` lands while the thing is happening, which is when somebody can
+    // still stop it, and `uh oh` is how a person reports a spill or a mistake
+    // before anybody has asked.
+    //
+    // Coded as whole utterances for the same reason the sentences above are:
+    // one tap is the complete thing, and nothing should offer `ow` a plural.
+    // That also puts them in the social color, which is where Modified
+    // Fitzgerald keeps them — Goossens' gives interjections a group of their
+    // own, and if this board ever ships that scheme these are the words it
+    // would move.
+    //
+    // Level 1 for the four that report something happening to somebody, and
+    // that is the argument for the whole row: a person who cannot say `ow` at
+    // the moment it hurts is a person whose pain is found out later, from a
+    // sentence, if at all.
+    Band(
+      name: 'reacting',
+      shedRank: 1,
+      items: [
+        ...phrases(['ow', 'uh oh'], level: 1),
+        ...phrases(['oops', 'yay'], level: 1),
+        ...phrases(['wow', 'huh'], level: 2),
+      ],
+    ),
+
     Band(
       name: 'liking',
       shedRank: 2,

@@ -587,6 +587,49 @@ void main() {
     });
   });
 
+  group('reacting', () {
+    test('the board can make a sound, not just a sentence', () async {
+      // Everything else on `feelings` is a sentence, and a sentence arrives
+      // after the moment it was about. "ow" lands while the thing is
+      // happening, which is when somebody can still stop it.
+      final vocabId = await seedCoreBoardSet(db, rows: 7, cols: 12);
+      final at = await placesOn(vocabId, 'feelings');
+
+      for (final word in ['ow', 'uh oh', 'oops', 'yay', 'wow', 'huh']) {
+        expect(at[word], isNotNull, reason: '"$word" is missing');
+      }
+      // One row, so they read as one kind of thing.
+      expect(at['ow']!.row, at['huh']!.row);
+    });
+
+    test('and they take no endings', () async {
+      // Coded as whole utterances, so nothing offers "ow" a plural.
+      final vocabId = await seedCoreBoardSet(db, rows: 7, cols: 12);
+
+      final board =
+          await (db.select(db.boards)
+                ..where((b) => b.vocabularyId.equals(vocabId))
+                ..where((b) => b.name.equals('feelings')))
+              .getSingle();
+
+      final rows = await (db.select(db.buttons).join([
+        innerJoin(db.cells, db.cells.id.equalsExp(db.buttons.cellId)),
+      ])..where(db.cells.boardId.equals(board.id))).get();
+
+      for (final r in rows) {
+        final b = r.readTable(db.buttons);
+        if (!['ow', 'uh oh', 'oops', 'yay', 'wow', 'huh'].contains(b.label)) {
+          continue;
+        }
+        expect(
+          b.partOfSpeech,
+          PartOfSpeech.social,
+          reason: '"${b.label}" would be offered an ending',
+        );
+      }
+    });
+  });
+
   group('being comfortable', () {
     test('is sayable, and so is not being', () async {
       // Without "uncomfortable" a chair, a seam or a position gets reported as
