@@ -28,16 +28,36 @@ enum Tone {
 
   /// Quiet, and named for what it is rather than what was asked for. This is
   /// the same voice turned down, not a whisper.
-  quiet(label: 'Quiet', rate: 0.95, pitch: 1.0, volume: 0.35);
+  ///
+  /// **Not offered any more (§4.81).** It was never a tone — it is the volume
+  /// dial wearing a tone's name, which is the exact thing the note above says
+  /// this list refuses to do, and it slipped in anyway. Quick settings has a
+  /// volume slider now whose quiet end is where this belonged all along, and a
+  /// person who wants to be quieter should turn the volume down rather than
+  /// pick a way of speaking that is not one.
+  ///
+  /// Kept in the enum because profiles have it stored: a value that vanished
+  /// would leave [byName] silently answering "normal" for somebody who had
+  /// chosen something, with no way to see that it had happened.
+  quiet(label: 'Quiet', rate: 0.95, pitch: 1.0, volume: 0.35, offered: false);
 
   const Tone({
     required this.label,
     required this.rate,
     required this.pitch,
     required this.volume,
+    this.offered = true,
   });
 
   final String label;
+
+  /// Whether somebody may choose it.
+  ///
+  /// A tone the engine can produce is a fact about the engine; a tone offered
+  /// to a person is a judgement about whether it is a way of speaking at all.
+  /// The two part company, which is why they are separate — same split as the
+  /// neural voices, and for the same reason.
+  final bool offered;
 
   /// Multipliers on the profile's own settings, not absolute values. A user
   /// who has set a slow rate because that is what they follow should get a
@@ -55,6 +75,12 @@ enum Tone {
   /// Every setting above it speaks at the same speed, so a screen offering
   /// rates past it has to say where it stops.
   double get rateCeiling => maxRate / rate;
+
+  /// The ones a person is shown, in the order they are shown.
+  static List<Tone> get offeredTones => [
+    for (final tone in values)
+      if (tone.offered) tone,
+  ];
 
   static Tone byName(String? name) {
     for (final tone in values) {

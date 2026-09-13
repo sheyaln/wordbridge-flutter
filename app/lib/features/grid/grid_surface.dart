@@ -191,7 +191,7 @@ class _GridSurfaceState extends State<GridSurface> {
       rows: widget.rows,
       cols: widget.cols,
       cells: widget.cells,
-      cellBuilder: (placed) => _Cell(
+      cellBuilder: (placed) => BoardCell(
         placed: placed,
         vocabLevel: widget.vocabLevel,
         colorConvention: widget.colorConvention,
@@ -292,8 +292,16 @@ class _Pointer extends StatelessWidget {
   }
 }
 
-class _Cell extends StatelessWidget {
-  const _Cell({
+/// One location, drawn.
+///
+/// Public because the quick settings menu draws its rows with it (§4.81). That
+/// menu is a board — its rows are buttons at cells — and it has to *look* like
+/// one: a tile that was nearly a cell, in nearly the cell's color, with the
+/// picture placed nearly where the board places it, would be the one surface in
+/// this app that taught a person its conventions do not hold.
+class BoardCell extends StatelessWidget {
+  const BoardCell({
+    super.key,
     required this.placed,
     required this.vocabLevel,
     required this.colorConvention,

@@ -39,6 +39,25 @@ enum ButtonAction {
   /// number — a phone number is typed, not counted.
   keypad,
 
+  /// Opens the quick settings menu (§4.81).
+  ///
+  /// Volume, tone and favorites, reached from the board rather than from
+  /// behind the caregiver door. These are the three dials somebody changes
+  /// *while* they are talking — too loud for this room, the wrong tone for
+  /// this sentence, the word they say twenty times a day — and a setting you
+  /// have to stop talking to reach is one that does not get changed.
+  quickSettings,
+
+  /// The three rows of the quick settings menu (§4.81).
+  ///
+  /// Real actions on real buttons, because the menu is a board: its rows live
+  /// in `buttons` at `cells` like every other key, so a caregiver can put the
+  /// right picture on "Volume" with the picker they already know, and the row
+  /// a person has learned to reach for stays where it is.
+  quickVolume,
+  quickTone,
+  favorites,
+
   none,
 }
 

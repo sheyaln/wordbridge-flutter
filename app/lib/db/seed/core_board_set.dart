@@ -41,6 +41,97 @@ const cycleCategoriesLabel = 'more categories';
 /// step with it.
 const moreWordsLabel = 'more words';
 
+/// What the quick settings key reads (§4.81).
+///
+/// Not "config". Every other key on this row is a word somebody learning the
+/// board can read — home, back, more words — and this is the only one that
+/// would have been jargon. Not "settings" either: that is the name of the
+/// caregiver screen when a profile manages itself, and two different doors
+/// with one name is how somebody hunting for the volume ends up behind the PIN.
+const quickSettingsLabel = 'quick settings';
+
+/// The board the quick settings menu is drawn from (§4.81).
+///
+/// A real board with real buttons, not a list written into the UI. That is the
+/// whole design: a caregiver puts the right picture on "Volume" with the same
+/// picker they use for any other key, and the row somebody has learned to
+/// reach for keeps its location like any other cell.
+///
+/// [BoardKind.system] because it is not somewhere you go. It carries no home
+/// key, no back key and no pinned questions — it is drawn *over* whichever
+/// board you are on, so a system row on it would be a second system row on
+/// screen at once.
+const quickSettingsBoardName = 'quick settings menu';
+
+/// The rows of the menu, top to bottom.
+///
+/// Shared by the seed and the top-up so a board set built today and one
+/// brought forward carry the same rows in the same order.
+const quickSettingsItems = <({String label, ButtonAction action})>[
+  (label: 'Volume', action: ButtonAction.quickVolume),
+  (label: 'Tone', action: ButtonAction.quickTone),
+  (label: 'Favorites', action: ButtonAction.favorites),
+];
+
+/// Where a menu row sits: stacked upward from the key, flush against it.
+///
+/// The last row is immediately above the key, so the reach from the key to the
+/// nearest row is one cell and the whole menu is within a hand's span of the
+/// thing that opened it. Growing the menu adds a row at the top and moves
+/// nothing — the rows are indexed from the bottom for exactly that reason.
+int quickSettingsRow(int systemRow, int index) =>
+    systemRow - (quickSettingsItems.length - index);
+
+/// Builds the menu board and places its rows.
+///
+/// Returns the board id, or null where the grid has no column for the key and
+/// so has no menu to open.
+Future<String?> seedQuickSettingsMenu(
+  WordbridgeDatabase db, {
+  required String vocabId,
+  required int rows,
+  required int cols,
+  required SystemFrame frame,
+}) async {
+  final col = frame.configCol;
+  if (col == null) return null;
+
+  // A grid too short to stack the rows above the key without running off the
+  // top has no menu. Refused rather than squeezed: a menu that started
+  // half-way up on one grid and against the key on another would be two
+  // different things to learn.
+  if (quickSettingsRow(frame.row, 0) < 0) return null;
+
+  final boardId = await materializeBoard(
+    db,
+    vocabularyId: vocabId,
+    name: quickSettingsBoardName,
+    kind: BoardKind.system,
+  );
+
+  for (var i = 0; i < quickSettingsItems.length; i++) {
+    final item = quickSettingsItems[i];
+    final cell = await cellAt(
+      db,
+      boardId: boardId,
+      row: quickSettingsRow(frame.row, i),
+      col: col,
+    );
+    await placeButton(
+      db,
+      vocabularyId: vocabId,
+      cellId: cell.id,
+      label: item.label,
+      message: '',
+      action: item.action,
+      isSystem: true,
+      symbolId: await frameKeySymbol(db, item.label),
+    );
+  }
+
+  return boardId;
+}
+
 /// Creates a vocabulary and returns its id.
 Future<String> seedCoreBoardSet(
   WordbridgeDatabase db, {
@@ -176,10 +267,22 @@ Future<String> seedCoreBoardSet(
     }
   }
 
+  // Not in `pageGroups`, and that is deliberate: it takes no system row and no
+  // pinned questions, because it is drawn over a board that already has both.
+  await seedQuickSettingsMenu(
+    db,
+    vocabId: vocabId,
+    rows: rows,
+    cols: cols,
+    frame: frame,
+  );
+
+  // Root first, then people: the pronoun tail is where it belongs and the
+  // people board is where it goes on a grid that has no room there.
   await placeUserName(
     db,
     vocabularyId: vocabId,
-    boardId: categoryPages['people']!.first,
+    boardIds: [homePages.first, categoryPages['people']!.first],
     name: userName,
   );
 
@@ -222,7 +325,7 @@ Future<String> seedCoreBoardSet(
 ///
 /// **[_nameBands] in order, first with room wins.** `people` is the row the
 /// key that asks for a name closes, and `names` is the row held open for a
-/// family's own. Either is the right neighbourhood; the first is the better
+/// family's own. Either is the right neighborhood; the first is the better
 /// one, and on a grid too narrow to leave that row a spare cell the second
 /// still puts the name among people rather than nowhere.
 ///
@@ -239,51 +342,65 @@ Future<String> seedCoreBoardSet(
 Future<String?> placeUserName(
   WordbridgeDatabase db, {
   required String vocabularyId,
-  required String boardId,
+  required List<String> boardIds,
   String? name,
 }) async {
   final label = name?.trim();
   if (label == null || label.isEmpty) return null;
 
-  final board = await (db.select(
-    db.boards,
-  )..where((b) => b.id.equals(boardId))).getSingleOrNull();
-  if (board == null) return null;
-
-  final regions = BoardRegions.decode(board.bandMap);
-  if (regions == null) return null;
-
   for (final wanted in _nameBands) {
-    final band = regions.bands.where((b) => b.name == wanted).firstOrNull;
-    if (band == null) continue;
+    for (final boardId in boardIds) {
+      final board = await (db.select(
+        db.boards,
+      )..where((b) => b.id.equals(boardId))).getSingleOrNull();
+      if (board == null) continue;
 
-    final free = await _freeCellInLines(
-      db,
-      boardId: boardId,
-      axis: regions.axis,
-      first: band.first,
-      last: band.last,
-    );
-    if (free == null) continue;
+      final regions = BoardRegions.decode(board.bandMap);
+      if (regions == null) continue;
 
-    return placeButton(
-      db,
-      vocabularyId: vocabularyId,
-      cellId: free.id,
-      label: label,
-      message: label,
-      // A name is what a pronoun stands in for, and coding it as one is what
-      // puts it in the same color as `I` and `you` — the class of word it
-      // belongs to even on a board of nouns.
-      partOfSpeech: PartOfSpeech.pronoun,
-    );
+      final band = regions.bands.where((b) => b.name == wanted).firstOrNull;
+      if (band == null) continue;
+
+      final free = await _freeCellInLines(
+        db,
+        boardId: boardId,
+        axis: regions.axis,
+        first: band.first,
+        last: band.last,
+      );
+      if (free == null) continue;
+
+      return placeButton(
+        db,
+        vocabularyId: vocabularyId,
+        cellId: free.id,
+        label: label,
+        message: label,
+        // A name is what a pronoun stands in for, and coding it as one is what
+        // puts it in the same color as `I` and `you` — the class of word it
+        // belongs to even on a board of nouns.
+        partOfSpeech: PartOfSpeech.pronoun,
+      );
+    }
   }
 
   return null;
 }
 
 /// Where a person's own name goes, best first.
-const _nameBands = ['people', 'names'];
+///
+/// **`pronouns` first, which is the root board, beside `me` (§4.83.)** It was
+/// moved off the root to `people` and is moved back: one movement from every
+/// board beats sitting among the other people, because this is the word a
+/// person uses to say who is talking and they use it everywhere.
+///
+/// What that costs, said plainly: the tail of the pronoun column is the only
+/// location a shipped root board holds open for a name, so the person's own
+/// name now fills it and a caregiver adding the rest of a family's names has
+/// none left *there*. They are not homeless — `people` carries a `names` band
+/// held open for exactly that — but the root board's one spare name location
+/// is spent, and the next thing that wants it will find it gone.
+const _nameBands = ['pronouns', 'people', 'names'];
 
 /// The first reserved location inside a run of lines, reading the way the band
 /// was filled.
@@ -745,6 +862,10 @@ Future<void> addFixedKeys(
   await key(frame.homeCol, 'home', ButtonAction.home);
   await key(frame.backCol, 'back', ButtonAction.back);
 
+  if (frame.configCol != null) {
+    await key(frame.configCol!, quickSettingsLabel, ButtonAction.quickSettings);
+  }
+
   // The keys as they stand on the first turn of the wheel. When there are more
   // categories than slots, the talk screen draws a different one of them in
   // each slot as the wheel turns; the location never changes, only what it
@@ -808,6 +929,7 @@ Future<void> addFixedKeys(
 const frameKeyEmoji = {
   'home': (systemEmojiPackId, '1f3e0', 'house'),
   'back': (systemEmojiPackId, '1f519', 'back arrow'),
+  quickSettingsLabel: (systemEmojiPackId, '1f39b-fe0f', 'control knobs'),
   // Handpicked from the downloading pack rather than the emoji font. It is the
   // one of these with no emoji worth the name — a cycling arrow says "again",
   // not "more of these" — so it is fetched like any other picture, and until
@@ -943,6 +1065,7 @@ class SystemFrame {
     required this.row,
     required this.homeCol,
     required this.backCol,
+    required this.configCol,
     required this.categoryCols,
     required this.cycleCol,
     required this.pageBackCol,
@@ -954,6 +1077,7 @@ class SystemFrame {
     : row = plan.row,
       homeCol = plan.homeCol,
       backCol = plan.backCol,
+      configCol = plan.configCol,
       categoryCols = plan.categoryCols,
       cycleCol = plan.cycleCol,
       pageBackCol = plan.pageBackCol,
@@ -975,6 +1099,12 @@ class SystemFrame {
         row: map['row'] as int,
         homeCol: map['home'] as int,
         backCol: map['back'] as int,
+        // Absent in every frame recorded before quick settings existed, which
+        // is why it is read as nullable rather than defaulted to 2. A board set
+        // that predates the key has an empty column 2 and no button on it; the
+        // top-up is what puts one there, and until it runs the frame must keep
+        // saying truthfully that there is nothing in that column.
+        configCol: map['configCol'] as int?,
         categoryCols: cols,
         cycleCol: map['cycleCol'] as int?,
         pageBackCol: map['backAPage'] as int,
@@ -992,6 +1122,11 @@ class SystemFrame {
   final int row;
   final int homeCol;
   final int backCol;
+
+  /// Where the quick settings key sits, or null where this board set has none:
+  /// a grid too narrow to spare the column, or a frame recorded before the key
+  /// existed and not yet topped up.
+  final int? configCol;
 
   /// One per category showing at a time, left to right.
   final List<int> categoryCols;
@@ -1012,6 +1147,11 @@ class SystemFrame {
       cycleCol == null && categories.length <= categoryCols.length;
 
   SystemFrame copyWith({
+    int? configCol,
+
+    /// Sets [configCol] back to null, which `configCol:` cannot express — the
+    /// key has been taken off the row to give the wheel its column back.
+    bool clearConfigCol = false,
     List<int>? categoryCols,
     int? cycleCol,
     List<({String name, String boardId})>? categories,
@@ -1019,6 +1159,7 @@ class SystemFrame {
     row: row,
     homeCol: homeCol,
     backCol: backCol,
+    configCol: clearConfigCol ? null : configCol ?? this.configCol,
     categoryCols: categoryCols ?? this.categoryCols,
     cycleCol: cycleCol ?? this.cycleCol,
     pageBackCol: pageBackCol,
@@ -1030,6 +1171,7 @@ class SystemFrame {
     'row': row,
     'home': homeCol,
     'back': backCol,
+    if (configCol != null) 'configCol': configCol,
     'categoryCols': categoryCols,
     if (cycleCol != null) 'cycleCol': cycleCol,
     'backAPage': pageBackCol,

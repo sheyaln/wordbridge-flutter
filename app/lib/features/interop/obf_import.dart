@@ -580,6 +580,14 @@ ButtonAction _actionFor(ObfButton button) {
       return ButtonAction.cycleCategories;
     case WordbridgeExt.keypadAction:
       return ButtonAction.keypad;
+    case WordbridgeExt.quickSettingsAction:
+      return ButtonAction.quickSettings;
+    case WordbridgeExt.quickVolumeAction:
+      return ButtonAction.quickVolume;
+    case WordbridgeExt.quickToneAction:
+      return ButtonAction.quickTone;
+    case WordbridgeExt.favoritesAction:
+      return ButtonAction.favorites;
     case WordbridgeExt.noneAction:
       return ButtonAction.none;
   }

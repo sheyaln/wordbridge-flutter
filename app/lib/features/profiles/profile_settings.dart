@@ -426,6 +426,59 @@ class ProfileSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The words this person keeps to hand (§4.81).
+  ///
+  /// Stored on the profile rather than as buttons on a board, and the
+  /// distinction is the whole design. A favorite is a *shortcut* to a word,
+  /// not a location for it: adding one must never place a cell, move a cell,
+  /// or make the board somebody has learned a different shape. Pressing a
+  /// favorite says the same word the board says; the board is unchanged
+  /// whether the list holds nothing or fifty.
+  ///
+  /// Order is the order they were added. Nothing sorts this list — a list that
+  /// reorders itself by what was used most is the dynamic-reordering failure
+  /// this app refuses everywhere else, and it would be worse here, where the
+  /// whole point is that the word is where the person left it.
+  List<({String label, String message})> get favorites {
+    final stored = _values['favorites'];
+    if (stored is! List) return const [];
+    return [
+      for (final entry in stored)
+        if (entry is Map && entry['label'] is String)
+          (
+            label: entry['label'] as String,
+            message: entry['message'] as String? ?? entry['label'] as String,
+          ),
+    ];
+  }
+
+  /// Adds a word to the end of the list, or does nothing if it is already on
+  /// it. Silent about the duplicate on purpose: somebody who adds a word twice
+  /// meant to have it, and an error would be the app arguing with them.
+  Future<void> addFavorite(String label, {String? message}) async {
+    final current = favorites;
+    if (current.any((f) => f.label == label)) return;
+    await _writeFavorites([
+      ...current,
+      (label: label, message: message ?? label),
+    ]);
+  }
+
+  Future<void> removeFavorite(String label) async {
+    final current = favorites;
+    if (!current.any((f) => f.label == label)) return;
+    await _writeFavorites([
+      for (final f in current)
+        if (f.label != label) f,
+    ]);
+  }
+
+  Future<void> _writeFavorites(
+    List<({String label, String message})> list,
+  ) async => set('favorites', [
+    for (final f in list) {'label': f.label, 'message': f.message},
+  ]);
+
   Future<void> set(String key, Object? value) async {
     _values = {..._values, key: value};
     notifyListeners();

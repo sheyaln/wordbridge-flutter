@@ -796,6 +796,7 @@ class SystemRowPlan {
     required this.row,
     required this.homeCol,
     required this.backCol,
+    required this.configCol,
     required this.categoryCols,
     required this.cycleCol,
     required this.pageBackCol,
@@ -828,14 +829,22 @@ class SystemRowPlan {
   }) {
     validate(rows: rows, cols: cols);
 
-    // Column 2 is normally left empty. Home and back undo what the user just
-    // did; the category keys go somewhere new. Shoulder to shoulder, an
-    // imprecise reach for one lands on the other.
+    // Column 2 held nothing until quick settings took it (§4.81). It was a
+    // gap on purpose: home and back undo what the user just did, the category
+    // keys go somewhere new, and shoulder to shoulder an imprecise reach for
+    // one lands on the other.
+    //
+    // What makes it affordable to spend is what happens on a mis-reach. Landing
+    // on a category key replaces the board under a hand that was going
+    // somewhere else. Landing on quick settings opens a menu over the board,
+    // which dismisses to exactly the state that was there before — the board
+    // does not move and the sentence is untouched. The guard is still doing
+    // work; it is now guarding the side where being wrong costs something.
     //
     // A grid narrow enough that the gap would leave room for the cycle key and
-    // no category at all gives the gap up. Its buttons are large — that is why
-    // there are so few — so the mis-reach it guards against is the less likely
-    // problem, and a system row with no category key on it is the worse one.
+    // no category at all gives the gap up, and gives up quick settings with it:
+    // a system row with no category key on it is the worse problem, and the
+    // menu is reachable from the caregiver screen either way.
     final lastCategory = cols - 3;
     var firstCategory = 3;
     if (lastCategory - firstCategory + 1 < 2 && categories > 1) {
@@ -854,6 +863,19 @@ class SystemRowPlan {
       row: rows - 1,
       homeCol: 0,
       backCol: 1,
+      // **Only once the wheel already turns.** Column 2 is the gap, and the
+      // gap is also the cycle key's last resort: when the category row fills
+      // up and the wheel has to start turning, `_roomForCategory` puts the key
+      // that turns it here, because it is the only column the row is not
+      // using. A category no key opens is worse than not having the category —
+      // it is vocabulary somebody is told about and cannot reach — so the
+      // wheel's claim on this column outranks a settings menu's.
+      //
+      // Once `cycles` is true that claim is settled forever: the wheel is
+      // already turning, so it never needs another key, and the gap has no
+      // other claimant. That is the only case where this column is genuinely
+      // spare, and it is the only case quick settings takes it in.
+      configCol: firstCategory > 2 && cycles ? 2 : null,
       categoryCols: [for (var i = 0; i < shown; i++) firstCategory + i],
       cycleCol: cycles ? firstCategory + shown : null,
       pageBackCol: cols - 2,
@@ -864,6 +886,10 @@ class SystemRowPlan {
   final int row;
   final int homeCol;
   final int backCol;
+
+  /// Where the quick settings key goes, or null on a grid too narrow to carry
+  /// one. Column 2, the old separating gap — see [forGrid].
+  final int? configCol;
 
   /// One per category shown at a time, left to right. When there are more
   /// categories than slots, these keys are a window onto the full list and

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 
 import '../../db/database.dart';
 import '../../db/seed/band_layout.dart';
+import '../../db/seed/core_board_set.dart';
 import '../../db/tables.dart';
 import '../auth/caregiver_gesture.dart';
 import '../auth/corner_hold_target.dart';
@@ -21,6 +22,7 @@ import '../auth/pin_gate.dart';
 import '../caregiver/caregiver_home.dart';
 import '../developer/cell_sheet.dart';
 import '../developer/developer_mode.dart';
+import '../grid/grid_geometry.dart';
 import '../grid/grid_surface.dart';
 import '../grid/region_label_strip.dart';
 import '../grid/region_labels.dart';
@@ -30,6 +32,7 @@ import '../prediction/word_prediction.dart';
 import '../speech/neural/resume_bake.dart';
 import '../speech/neural/voice_model.dart';
 import '../speech/speech_engine.dart';
+import '../speech/tone.dart';
 import '../profiles/profile_settings.dart';
 import '../symbols/global_symbols_pack.dart';
 import '../symbols/symbol_pack.dart';
@@ -44,6 +47,8 @@ import '../utterance/utterance.dart';
 import 'breadcrumb_strip.dart';
 import 'fallback_board.dart';
 import 'find_a_word.dart';
+import 'pick_a_word.dart';
+import 'quick_settings.dart';
 import 'route_walk.dart';
 import 'type_a_word.dart';
 import 'word_path.dart';
@@ -124,6 +129,13 @@ class TalkScreen extends StatefulWidget {
 
 class TalkScreenState extends State<TalkScreen> {
   final _utterance = UtteranceBar();
+
+  /// The grid's own box, so a menu can be anchored to the key that opened it.
+  ///
+  /// Held here rather than threaded through the grid's gesture path: that path
+  /// carries a location and nothing else, and it is the one piece of this app
+  /// that must not grow a second reason to change.
+  final _gridKey = GlobalKey();
 
   Vocabulary? _vocab;
   String? _rootBoardId;
@@ -947,6 +959,17 @@ class TalkScreenState extends State<TalkScreen> {
       case ButtonAction.keypad:
         await _openKeypad();
 
+      case ButtonAction.quickSettings:
+        await _openQuickSettings(placed);
+
+      // Pressed inside the menu, which dispatches them itself. They reach this
+      // switch only if somebody has put one on an ordinary board, and doing
+      // what they say is the right answer there too.
+      case ButtonAction.quickVolume:
+      case ButtonAction.quickTone:
+      case ButtonAction.favorites:
+        await _runQuickSetting(button.action);
+
       case ButtonAction.none:
         break;
     }
@@ -989,6 +1012,167 @@ class TalkScreenState extends State<TalkScreen> {
     }
   }
 
+  /// Opens the quick settings menu over the board (§4.81).
+  ///
+  /// The rows come out of the menu board rather than out of this file, which
+  /// is what makes their pictures a caregiver's to choose and their locations
+  /// as fixed as any other key's.
+  ///
+  /// Wrapped, like every other sheet this screen opens. A throw here is caught
+  /// by `ErrorWidget.builder` and replaces the whole board with the fallback
+  /// one, and a settings menu must not be able to do that to somebody in the
+  /// middle of a sentence.
+  Future<void> _openQuickSettings(PlacedCell placed) async {
+    final vocab = _vocab;
+    final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (vocab == null || box == null || !box.hasSize) return;
+
+    try {
+      final rows = await _quickSettingsRows();
+      if (!mounted) return;
+
+      // Nothing to draw is not an error: a grid too narrow for the key never
+      // built a menu board, and the key is not on that grid either.
+      if (rows.isEmpty) return;
+
+      final chosen = await showQuickSettings(
+        context,
+        geometry: GridGeometry(
+          rows: vocab.gridRows,
+          cols: vocab.gridCols,
+          size: box.size,
+        ),
+        gridOrigin: box.localToGlobal(Offset.zero),
+        keyRow: placed.cell.row,
+        keyCol: placed.cell.col,
+        rows: rows,
+        resolver: widget.resolver,
+        colorConvention: vocab.colorConvention,
+      );
+      if (chosen == null || !mounted) return;
+
+      await _runQuickSetting(chosen);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Quick settings would not open: $e')),
+      );
+    }
+  }
+
+  /// The menu board's rows, in the order they are stacked.
+  Future<List<PlacedCell>> _quickSettingsRows() async {
+    final board =
+        await (widget.db.select(widget.db.boards)
+              ..where((b) => b.vocabularyId.equals(widget.vocabularyId))
+              ..where((b) => b.name.equals(quickSettingsBoardName))
+              ..where((b) => b.deletedAt.isNull()))
+            .getSingleOrNull();
+    if (board == null) return const [];
+
+    final found = await (widget.db.select(widget.db.cells).join([
+      innerJoin(
+        widget.db.buttons,
+        widget.db.buttons.cellId.equalsExp(widget.db.cells.id),
+      ),
+    ])..where(widget.db.cells.boardId.equals(board.id))).get();
+
+    // Only the rows the menu is made of, never simply everything on the board.
+    //
+    // A top-up once wrote the pinned question column onto this board, and
+    // because the menu drew whatever it found there, "what", "where" and "who"
+    // became menu rows. That cause is fixed; this is the guard that makes the
+    // symptom impossible, because anything that can write to a board — an
+    // import, the editor, a restored backup — can put a button here.
+    const menuActions = {
+      ButtonAction.quickVolume,
+      ButtonAction.quickTone,
+      ButtonAction.favorites,
+    };
+
+    return [
+      for (final r in found)
+        if (menuActions.contains(r.readTable(widget.db.buttons).action))
+          (
+            cell: r.readTable(widget.db.cells),
+            button: r.readTable(widget.db.buttons),
+          ),
+    ]..sort((a, b) => a.cell.row.compareTo(b.cell.row));
+  }
+
+  Future<void> _runQuickSetting(ButtonAction action) async {
+    final settings = widget.settings;
+    if (settings == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No profile to change settings on.')),
+      );
+      return;
+    }
+
+    switch (action) {
+      case ButtonAction.quickVolume:
+        await chooseVolume(
+          context,
+          settings: settings,
+          resolver: widget.resolver,
+          speech: widget.speech,
+        );
+      case ButtonAction.quickTone:
+        await chooseTone(
+          context,
+          settings: settings,
+          resolver: widget.resolver,
+          speech: widget.speech,
+          sentence: _utterance.spokenText,
+        );
+        if (mounted) setState(() {});
+      case ButtonAction.favorites:
+        await _openFavorites(settings);
+      default:
+        break;
+    }
+  }
+
+  Future<void> _openFavorites(ProfileSettings settings) async {
+    final word = await FavoritesSheet.show(
+      context,
+      settings: settings,
+      resolver: widget.resolver,
+      color: Fitzgerald.colorFor(
+        _vocab?.colorConvention ?? ColorConvention.modifiedFitzgerald,
+        null,
+      ),
+      onAdd: _findWordToFavorite,
+    );
+    if (word == null || word.isEmpty || !mounted) return;
+
+    _utterance.add(word);
+    await _sayWord(word);
+
+    if (_autoReturn && _currentBoardId != _rootBoardId) {
+      setState(() {
+        _currentBoardId = _rootBoardId;
+        _previousBoardId = null;
+        _settle();
+      });
+    }
+  }
+
+  /// Finds the word a favorite is being made of, by browsing the boards.
+  ///
+  /// The board rather than a search box, because somebody choosing a favorite
+  /// is choosing a word they already say and already know the way to — and
+  /// spelling it is a different skill from saying it, one many people using
+  /// this app do not have. Typing is still there, at the top, for the word the
+  /// board does not carry.
+  Future<String?> _findWordToFavorite() => PickAWord.show(
+    context,
+    db: widget.db,
+    vocabularyId: widget.vocabularyId,
+    vocabLevel: widget.vocabLevel,
+    resolver: widget.resolver,
+  );
+
   /// Speaks the sentence, and lets prediction watch it.
   ///
   /// A sentence the user chose to say is the thing worth learning from. Words
@@ -1008,7 +1192,9 @@ class TalkScreenState extends State<TalkScreen> {
     // The ring goes up for the whole call rather than only for a synthesis,
     // because nothing here knows which it will be — and a key that looks
     // unpressed for a second is a key somebody presses again.
-    await _saying(() => widget.speech.speakUtterance(_utterance.text));
+    // Said, not written: a word spelled one way and pronounced another is
+    // read from `spokenText`, which is the same string everywhere else.
+    await _saying(() => widget.speech.speakUtterance(_utterance.spokenText));
 
     if (_predicting && words.isNotEmpty) {
       unawaited(
@@ -1252,9 +1438,14 @@ class TalkScreenState extends State<TalkScreen> {
       return;
     }
 
-    final inflected = _utterance.replaceLast((w) => applyMorpheme(w, kind));
+    // The past of `read` is written `read` and said `red` (§4.84). The bar
+    // keeps the spelling somebody built; only the voice is told.
+    final inflected = _utterance.replaceLast(
+      (w) => applyMorpheme(w, kind),
+      saidAs: kind == MorphemeKind.pastEd ? pastPronunciation : null,
+    );
     if (inflected == null) return;
-    await _sayWord(inflected);
+    await _sayWord(pastPronunciation(inflected) ?? inflected);
   }
 
   /// Held on a key, where holding it offers something pressing it does not.
@@ -1481,6 +1672,9 @@ class TalkScreenState extends State<TalkScreen> {
                   onBackspace: _utterance.backspace,
                   onClear: _utterance.clear,
                   editableSegments: _editsSegments,
+                  tone: widget.settings?.tone ?? Tone.normal,
+                  neuralVoice: widget.settings?.neuralVoice ?? false,
+                  onTone: () => _runQuickSetting(ButtonAction.quickTone),
                 ),
                 // A board showing words it does not normally show has to say
                 // so, and be turnable off from where it is being looked at. A
@@ -1537,6 +1731,7 @@ class TalkScreenState extends State<TalkScreen> {
                             final grid = AbsorbPointer(
                               absorbing: _settling,
                               child: GridSurface(
+                                key: _gridKey,
                                 rows: vocab.gridRows,
                                 cols: vocab.gridCols,
                                 cells: [for (final c in cells) _asDrawn(c)],
@@ -1625,6 +1820,56 @@ class TalkScreenState extends State<TalkScreen> {
   }
 }
 
+/// What tone the next sentence will be said in, beside the key that says it.
+class _ToneBadge extends StatelessWidget {
+  const _ToneBadge({required this.tone, this.onTap});
+
+  final Tone tone;
+
+  /// Opens the tone picker. The badge is where somebody notices the tone is
+  /// wrong, so it is also where they should be able to put it right — sending
+  /// them off to the menu key for a control they are already looking at is one
+  /// more thing to know.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: 'Said in a ${tone.label.toLowerCase()} voice. Tap to change.',
+    // **The target is large and the chip is not.** They are different things:
+    // a control on this bar is pressed by the same hand that presses the
+    // board, so it needs the 44pt everything else here is held to — but this
+    // one reads as a label, and a label blown up to 44pt tall reads as a
+    // button somebody is supposed to press instead of as a note about the
+    // sentence. So the tap area keeps the height and the chip stays small
+    // inside it.
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDE7F6),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFB39DDB)),
+            ),
+            child: Text(
+              tone.label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4527A0),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _UtteranceBarView extends StatelessWidget {
   const _UtteranceBarView({
     required this.utterance,
@@ -1636,10 +1881,31 @@ class _UtteranceBarView extends StatelessWidget {
     required this.onBackspace,
     required this.onClear,
     required this.editableSegments,
+    this.tone = Tone.normal,
+    this.neuralVoice = false,
+    this.onTone,
   });
+
+  /// Opens the tone picker from the badge.
+  final VoidCallback? onTone;
+
+  /// Whether this profile speaks in a bundled neural voice, which changes what
+  /// the punctuation marks can do — see the note on the marks control.
+  final bool neuralVoice;
 
   final UtteranceBar utterance;
   final VoidCallback onSpeak;
+
+  /// How this sentence will be said (§4.83).
+  ///
+  /// Shown here rather than only in the menu that sets it, because tone is a
+  /// property of the *sentence*, not of the app: somebody who set "urgent" an
+  /// hour ago and has since calmed down has no other way to notice that
+  /// everything they say still arrives as an emergency.
+  ///
+  /// Drawn only when it is not the ordinary voice. A badge that is always
+  /// there is furniture, and this bar is already the busiest strip on screen.
+  final Tone tone;
 
   /// Whether a tap on the sentence selects a word rather than speaking it.
   final bool editableSegments;
@@ -1689,6 +1955,10 @@ class _UtteranceBarView extends StatelessWidget {
                 color: const Color(0xFF1B5E20),
                 background: const Color(0xFFDCEDC8),
               ),
+              if (tone != Tone.normal) ...[
+                const SizedBox(width: 6),
+                _ToneBadge(tone: tone, onTap: onTone),
+              ],
               const SizedBox(width: 4),
               // Punctuation marks the sentence rather than adding a word to
               // it, so it belongs where the sentence is and not on a grid
@@ -1742,6 +2012,15 @@ class _UtteranceBarView extends StatelessWidget {
                   ),
                 ],
                 onChosen: onPunctuate,
+                // The marks still end the sentence; what they cannot do under
+                // the neural voice is change how it sounds. That intonation
+                // comes from the platform engine reading the mark, and a clip
+                // baked before the mark existed has none of it.
+                note: neuralVoice
+                    ? 'Not compatible with the neural voice: the mark is '
+                          'added, but it will not change how the sentence '
+                          'sounds.'
+                    : null,
               ),
               const SizedBox(width: 4),
               // The ways to a word that is not on the board in front of you.
@@ -2033,7 +2312,13 @@ class _BarMenu<T> extends StatelessWidget {
     required this.items,
     required this.onChosen,
     this.enabled = true,
+    this.note,
   });
+
+  /// A line above the items, for saying that what they do is limited right
+  /// now — the marks still end the sentence under the neural voice, they just
+  /// do not change how it sounds (§4.83).
+  final String? note;
 
   /// Drawn in the color the control's state calls for, so a face made of
   /// letters grays out with the rest of the bar rather than staying bright on a
@@ -2053,6 +2338,32 @@ class _BarMenu<T> extends StatelessWidget {
         tooltip: '',
         onSelected: onChosen,
         itemBuilder: (context) => [
+          if (note case final note?) ...[
+            PopupMenuItem<T>(
+              enabled: false,
+              height: 34,
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Color(0xFFE65100),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      note,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFE65100),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+          ],
           for (final item in items)
             PopupMenuItem<T>(
               value: item.mark,
@@ -2154,7 +2465,7 @@ class _BarButton extends StatelessWidget {
 /// them.
 ///
 /// Each cell draws what its key draws: the same picture, resolved from the
-/// category's name the same way, in the same system colour at the same corner
+/// category's name the same way, in the same system color at the same corner
 /// radius. Nothing here is a shortcut to a board the wheel cannot reach — it
 /// is the identical set, laid out so it can be seen at once instead of turned
 /// to.
@@ -2171,7 +2482,7 @@ class _AllCategories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Null is the system colour, which is what a category key is drawn in.
+    // Null is the system color, which is what a category key is drawn in.
     // Taken from the same function the board uses rather than written down
     // here, so the two cannot come apart.
     final color = Fitzgerald.colorFor(colorConvention, null);

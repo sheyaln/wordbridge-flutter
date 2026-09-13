@@ -41,6 +41,10 @@ abstract final class WordbridgeExt {
   static const punctuateAction = ':ext_wordbridge_punctuate';
   static const cycleCategoriesAction = ':ext_wordbridge_cycle_categories';
   static const keypadAction = ':ext_wordbridge_keypad';
+  static const quickSettingsAction = ':ext_wordbridge_quick_settings';
+  static const quickVolumeAction = ':ext_wordbridge_quick_volume';
+  static const quickToneAction = ':ext_wordbridge_quick_tone';
+  static const favoritesAction = ':ext_wordbridge_favorites';
 }
 
 class ObfFormatException implements Exception {

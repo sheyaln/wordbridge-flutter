@@ -263,8 +263,20 @@ class _VoiceScreenState extends State<VoiceScreen> {
         },
         child: Column(
           children: [
-            for (final tone in Tone.values)
+            // The offered ones, not every one the engine can produce. "Quiet"
+            // was the volume dial wearing a tone's name and is withdrawn
+            // (§4.81); a profile that had already chosen it still resolves to
+            // it, and still speaks in it, until somebody picks another.
+            for (final tone in Tone.offeredTones)
               RadioListTile<Tone>(value: tone, title: Text(tone.label)),
+            if (!_settings.tone.offered)
+              RadioListTile<Tone>(
+                value: _settings.tone,
+                title: Text(_settings.tone.label),
+                subtitle: const Text(
+                  'No longer offered. Picking another takes this off the list.',
+                ),
+              ),
           ],
         ),
       ),
