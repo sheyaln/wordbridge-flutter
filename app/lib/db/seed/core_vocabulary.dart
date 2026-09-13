@@ -335,7 +335,18 @@ final homeBands = <Band<SeedWord>>[
       w('see', PartOfSpeech.verb, level: 2, pageRank: 30),
       w('come', PartOfSpeech.verb, level: 2, pageRank: 30),
       w('give', PartOfSpeech.verb, level: 2, pageRank: 30),
-      w('feel', PartOfSpeech.verb, level: 2, pageRank: 30),
+      // In the location "feel" held, which is what makes the swap free: the
+      // cell, the rank and the level are the same one, so nothing else on this
+      // band moves by a column. "feel" went to `feelings`, where the words it
+      // attaches to are — it is the one verb here that needs an adjective from
+      // another board to finish it, and "I feel" then "sad" was two boards
+      // either way round.
+      //
+      // "have" is the verb that was missing and could not be built: possession
+      // ("I have a sister"), obligation ("I have to go"), and the perfect that
+      // the endings on this board cannot make on their own. Beside "give",
+      // which is the other half of what happens to a thing.
+      w('have', PartOfSpeech.verb, level: 2, pageRank: 30),
       // Tense arrives as a set: "will" waits for the endings and the past
       // copula rather than leaving level 1 with a future and no past.
       //
@@ -484,6 +495,20 @@ final homeBands = <Band<SeedWord>>[
       // "for", exactly as "for" reads on page two there. Accepted for the same
       // reason: one movement further away costs less than the column.
       w('with', PartOfSpeech.preposition, level: 2),
+      // What a sentence is *of*, which nothing on this board could say. Every
+      // preposition in `places` answers where a thing is; none of them answers
+      // what a thing concerns — "talk about it", "ask about him", "a story
+      // about the dog" — and that is most of what anybody says out loud.
+      //
+      // Here rather than in `places`, for the reason "with" is here: that band
+      // is exactly twelve deep, which is exactly two columns at 7x12, and a
+      // thirteenth word costs it a whole column and takes `under`, `left`,
+      // `right` and `off` off page one to pay for it. This band is the one for
+      // words whose job is to join two parts of a sentence, and joining is
+      // what this one does.
+      //
+      // Appended, so it takes a location nothing was in.
+      w('about', PartOfSpeech.preposition, level: 2),
     ],
   ),
 
@@ -751,6 +776,10 @@ const categoryNames = [
   'measurement',
   'colors',
   'nature',
+  // Appended, with the same guarantee as every name above it: the wheel is a
+  // window onto this list in order, so a name at the end leaves every key
+  // already learned opening what it always opened.
+  'shapes',
 ];
 
 /// Categories that have been renamed, old name to new.
@@ -1290,6 +1319,21 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         ...nouns(['activity'], level: 2),
         ...adjectives(['active'], level: 3),
+        // Here rather than beside "story" in the row above, where it reads
+        // best. That row is exactly nine words, which is exactly a line at
+        // 6x10, so a tenth opens a line there and takes `activity`, `active`,
+        // `lose` and the whole sports row down a page with it — twelve placed
+        // words moved to pay for one. This row has room on every grid the app
+        // builds, and it is not a bad home: a joke is a thing a person does,
+        // which is what this row is for.
+        //
+        // The only repair this board has for a sentence that landed wrong.
+        // Somebody who cannot say "joke" cannot take anything back, and is
+        // answered seriously for the rest of the conversation — which is a
+        // worse outcome than the joke not landing.
+        //
+        // Level 3, with "funny" and "silly" on `feelings`. Appended.
+        ...nouns(['joke'], level: 3),
       ],
     ),
 
@@ -1399,6 +1443,21 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...phrases(['ow', 'uh oh'], level: 1),
         ...phrases(['oops', 'yay'], level: 1),
         ...phrases(['wow', 'huh'], level: 2),
+        // Here rather than on the sentence row above, which is where it was
+        // asked for. That row is exactly ten phrases, which is exactly a line
+        // at 6x11 and 7x11, so an eleventh opens a line there and walks the
+        // whole board down — every feeling, every judgement, the unsure row
+        // and the adverbs, on four of the seven grids this app builds.
+        //
+        // And this row is the honest home for it anyway. "excuse me" is not a
+        // sentence about how somebody is, it is the noise a person makes to
+        // get a turn — which is what everything on this row is, and the reason
+        // the row exists.
+        //
+        // Level 1, with the four beside it that report something happening.
+        // A person who cannot interrupt is a person who speaks only when they
+        // are asked to.
+        ...phrases(['excuse me'], level: 1),
       ],
     ),
 
@@ -1411,6 +1470,15 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // movement from everywhere, and it was the same verb twice.
         ...verbs(['hate'], level: 2),
         ...verbs(['miss'], level: 3),
+        // Off the root board, onto the board its object is on. "feel" is the
+        // one verb the root carried that needs a word from somewhere else to
+        // finish it — "I feel" and then "sad", "tired", "worried", none of
+        // which are on the root — so it was always two boards, and this way
+        // the second board is the one it is already on.
+        //
+        // Level 2, which is what it drew at on the root: the move is a
+        // location, not a demotion.
+        ...verbs(['feel'], level: 2),
       ],
     ),
 
@@ -1791,6 +1859,38 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // when they want a drink, and that is two levels sooner than this.
         ...adjectives(['dizzy'], level: 3),
         ...adjectives(['sleepy', 'poorly'], level: 2),
+      ],
+    ),
+
+    // The other half of what a person is, and the half nobody puts on an AAC
+    // board. A nonspeaking adult has no way to come out, no way to correct
+    // somebody who assumes, and no way to say who they are to a doctor asking
+    // — and the usual answer to that is to build the word out of the ones
+    // already here, which for these three does not work.
+    //
+    // A row of its own rather than an append to `about me`, which is where
+    // they read best. That row is exactly eight words, which is exactly a line
+    // at 5x9 and one short of one at 6x11, 7x11 and 6x10, so three more there
+    // open a line on four of the seven grids and walk the symptoms down with
+    // it. Last in the file and ranked to shed first, so it takes the line
+    // nothing else wanted or reads on page two.
+    //
+    // Tagged as nouns for the reason `about me` is: Fitzgerald colors by word
+    // class, the band owns a row, and a row that is half orange and half blue
+    // reads as the board having made a mistake.
+    //
+    // Level 3. Not a judgement about the words — it is where a word goes when
+    // it is not needed to build a sentence and is needed to say a true thing,
+    // which is where "disability" and "diagnosis" sit.
+    Band(
+      // Not 'who I am': `about me` one board over already draws under that
+      // heading, and two rows on one board with the same name over them is
+      // two rows nobody can tell apart.
+      name: 'who I love',
+      shedRank: 8,
+      items: [
+        ...nouns(['gay', 'lesbian'], level: 3),
+        ...nouns(['bisexual'], level: 3),
       ],
     ),
 
@@ -2495,6 +2595,19 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...adjectives(['big', 'small'], level: 1),
         ...adjectives(['long', 'short'], level: 2),
         ...adjectives(['tall', 'wide', 'thin'], level: 3),
+        // Not a second "big". It is the word on a label, a menu and a form —
+        // small, medium, large — which is the one place a person is asked to
+        // pick a size in words rather than by pointing, and the one "big" does
+        // not answer.
+        //
+        // Appended, and free on every grid but the smallest. This row is
+        // exactly seven words, which is exactly a line at 4x8, so there it
+        // opens one and moves `size`, `measurement` and the heavy/light row
+        // down a row on page two — six level-2 words, one row, on the
+        // narrowest board the app builds. Taken rather than worked around:
+        // the alternative is the row of nouns above, where an adjective would
+        // draw in the wrong color.
+        ...adjectives(['large'], level: 3),
       ],
     ),
 
@@ -2676,6 +2789,63 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         ...nouns(['moon', 'star'], level: 3),
         ...nouns(['mountain', 'forest'], level: 3),
       ],
+    ),
+
+    Band(
+      name: 'ours',
+      shedRank: 9,
+      reserveLines: 1,
+      reserveRank: 0,
+      items: const [],
+    ),
+  ],
+
+  // The words a school day is full of and no board carried: every early
+  // worksheet, every sorting task, every "find me the red circle" asks for one
+  // of these, and a person who has the color and not the shape can answer half
+  // of it.
+  //
+  // Laid out like `colors`, which is the board it is the pair to: the name of
+  // the class first, the ones taught first next, then the rest, then the words
+  // for describing a thing that is not one of the named shapes.
+  //
+  // No "star" and no "heart". Both are already words on other boards — `star`
+  // on `nature` and `heart` on `health` — and a second copy is a second thing
+  // to learn about one word.
+  'shapes': [
+    Band(
+      name: 'shapes',
+      shedRank: 4,
+      items: [
+        // The board's own name, and the question: "what shape?" — which is how
+        // somebody asks when the particular shape is not the point.
+        ...nouns(['shape'], level: 2),
+      ],
+    ),
+
+    // The three a child is taught first and asked about most.
+    Band(
+      name: 'first shapes',
+      shedRank: 0,
+      items: nouns(['circle', 'square', 'triangle'], level: 2),
+    ),
+
+    Band(
+      name: 'more shapes',
+      shedRank: 1,
+      items: nouns(['rectangle', 'oval', 'diamond'], level: 3),
+    ),
+
+    // Adjectives, and kept off the rows above for that reason: these describe
+    // a thing that is not one of the named shapes, which is most things.
+    //
+    // Not named 'describing': that name is already spoken as "yes, no and how
+    // it is" on the root board, and the map that does it is keyed by band name
+    // for the whole app.
+    Band(
+      name: 'what it looks like',
+      shedRank: 2,
+      items: adjectives(['round', 'flat', 'straight', 'curved'], level: 3),
     ),
 
     Band(

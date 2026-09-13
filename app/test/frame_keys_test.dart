@@ -241,7 +241,7 @@ void main() {
       // Wide enough that every category has a slot of its own and the wheel
       // never turns. It grows by one column each time a category ships, which
       // is the point of the assertion below rather than a nuisance.
-      final id = await seedCoreBoardSet(wide, rows: 7, cols: 21);
+      final id = await seedCoreBoardSet(wide, rows: 7, cols: 22);
 
       final frame = SystemFrame.parse(
         (await (wide.select(

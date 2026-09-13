@@ -499,7 +499,10 @@ void main() {
 
   group('the nature board', () {
     test('exists, and carries what is outdoors', () async {
-      expect(categoryNames.last, 'nature');
+      // Not last any more — `shapes` shipped after it. What matters is that it
+      // is still where it was, because the wheel is a window onto this list in
+      // order and a name that moved would change what a learned key opens.
+      expect(categoryNames.contains('nature'), isTrue);
 
       final vocabId = await seedCoreBoardSet(db, rows: 7, cols: 12);
       final words = await wordsIn(vocabId);

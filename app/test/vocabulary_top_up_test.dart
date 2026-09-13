@@ -610,13 +610,14 @@ void main() {
     //
     // The width follows the number of shipped categories — a row holds
     // `cols - 5` of them — so it was 14 for nine, 15 for ten, 18 for thirteen,
-    // 19 for fourteen, 20 for fifteen and is 21 for sixteen. That is the
-    // premise, not the subject: a narrower grid here does not make the test
-    // harder, it makes it a different test that the group below already runs.
+    // 19 for fourteen, 20 for fifteen, 21 for sixteen and is 22 for seventeen.
+    // That is the premise, not the subject: a narrower grid here does not make
+    // the test harder, it makes it a different test that the group below
+    // already runs.
     setUp(() async {
       await db.close();
       db = WordbridgeDatabase.forTesting(NativeDatabase.memory());
-      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 21);
+      vocabId = await seedCoreBoardSet(db, rows: 9, cols: 22);
     });
 
     test('the board arrives, with its words in it', () async {

@@ -103,6 +103,119 @@ void main() {
       expect(page['unlikely']!.row, page['unsure']!.row);
     });
 
+    test('about is with the words that join a sentence up', () async {
+      // Not in `places` with the other prepositions, and the comment on that
+      // band says why: it is exactly twelve deep, which is exactly two columns
+      // at 7x12, and a thirteenth word costs it a column. "with" went to the
+      // joining words for the same reason and this sits beside it.
+      final boards = await layout(rows: 7, cols: 12);
+      final page = boards['home 2'] ?? boards['home']!;
+
+      expect(page, contains('about'));
+      // The same column, not the same row: this band fills down its columns,
+      // so "for", "with" and "about" are one under another.
+      expect(page['about']!.col, page['with']!.col);
+    });
+
+    test('and it is on every grid the app builds', () async {
+      for (final (rows, cols) in grids) {
+        final boards = await layout(rows: rows, cols: cols);
+        expect(
+          boards.values.any((b) => b.containsKey('about')),
+          isTrue,
+          reason: '"about" was not placed at ${rows}x$cols',
+        );
+      }
+    });
+
+    test('joke is on the play board', () async {
+      final boards = await layout(rows: 7, cols: 12);
+      final page = boards['play 2'] ?? boards['play']!;
+
+      expect(page, contains('joke'));
+      // Beside "activity", which is the row it was appended to. It reads
+      // better beside "story" one row up; that row is exactly nine words,
+      // which is exactly a line at 6x10, and a tenth opens one.
+      expect(page['joke']!.row, page['activity']!.row);
+    });
+
+    test('excuse me is on the row of reactions', () async {
+      // Asked for on the sentence row above it. That row is exactly ten
+      // phrases, which is exactly a line at 6x11 and 7x11, and an eleventh
+      // walked the whole feelings board down on four of the seven grids.
+      final board = (await layout(rows: 7, cols: 12))['feelings']!;
+
+      expect(board, contains('excuse me'));
+      expect(board['excuse me']!.row, board['oops']!.row);
+      expect(board['excuse me']!.row, board['uh oh']!.row);
+    });
+
+    test('and it is placed at every grid size', () async {
+      // The row it is on holds seven phrases, so a grid narrower than seven
+      // usable columns splits it — 4x7 does, and there the word is on the
+      // line below rather than beside "oops". Placed is what matters there;
+      // on every grid the app actually ships it is on the row.
+      for (final (rows, cols) in grids) {
+        final boards = await layout(rows: rows, cols: cols);
+        expect(
+          boards.values.any((b) => b.containsKey('excuse me')),
+          isTrue,
+          reason: '"excuse me" was not placed at ${rows}x$cols',
+        );
+      }
+    });
+
+    test('the identity words are on health, together on one row', () async {
+      // Not appended to `about me`, where they read best: that row is exactly
+      // eight words, which is exactly a line at 5x9, and three more open one
+      // on four of the seven shipped grids.
+      final boards = await layout(rows: 7, cols: 12);
+      final page = boards['health 2'] ?? boards['health']!;
+
+      for (final word in ['gay', 'lesbian', 'bisexual']) {
+        expect(page, contains(word), reason: '"$word" was not placed');
+      }
+      expect(page['gay']!.row, page['lesbian']!.row);
+      expect(page['gay']!.row, page['bisexual']!.row);
+    });
+
+    test('shapes is a board, and it is last on the wheel', () async {
+      final boards = await layout(rows: 7, cols: 12);
+      final board = boards['shapes']!;
+
+      for (final word in ['shape', 'circle', 'square', 'triangle', 'round']) {
+        expect(board, contains(word), reason: '"$word" was not placed');
+      }
+      // The wheel is a window onto this list in order, so a name anywhere but
+      // the end changes what a key somebody already learned opens.
+      expect(categoryNames.last, 'shapes');
+    });
+
+    test('have took the location feel had, beside give', () async {
+      final boards = await layout(rows: 7, cols: 12);
+      final page = boards['home 2'] ?? boards['home']!;
+
+      expect(page, contains('have'));
+      expect(page['have']!.row, page['give']!.row);
+      expect(page['have']!.col, page['give']!.col + 1);
+      expect(page, isNot(contains('feel')), reason: 'feel is still on root');
+    });
+
+    test('and feel is on the board its adjectives are on', () async {
+      final boards = await layout(rows: 7, cols: 12);
+      final board = boards['feelings']!;
+
+      expect(board, contains('feel'));
+      expect(board['feel']!.row, board['love']!.row);
+    });
+
+    test('large is with the words for how big', () async {
+      final board = (await layout(rows: 7, cols: 12))['measurement']!;
+
+      expect(board, contains('large'));
+      expect(board['large']!.row, board['big']!.row);
+    });
+
     test('the possessives are on the people board, both forms', () async {
       final board = (await layout(rows: 7, cols: 12))['people']!;
 

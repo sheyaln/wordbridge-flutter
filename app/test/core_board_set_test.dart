@@ -494,9 +494,13 @@ void main() {
                 ))
                 .get();
 
+        // A row, and then some. The board is 12 wide and one of those columns
+        // is the pinned questions, so eleven is the row a caregiver can add
+        // in one go — the bar is above it so that a board that has just taken
+        // one still has room for the next.
         expect(
           reserved.length,
-          greaterThan(15),
+          greaterThan(11),
           reason:
               '"${board.name}" is packed too full for personal vocabulary '
               'to be added without displacing something',
@@ -546,6 +550,7 @@ void main() {
         // never do is gain one anywhere but the end.
         'colors',
         'nature',
+        'shapes',
       ]);
     });
 
@@ -900,7 +905,9 @@ void main() {
         ('know', 'think'),
         ('say', 'tell'),
         ('see', 'come'),
-        ('give', 'feel'),
+        // "feel" moved to `feelings`, where the adjectives it needs are.
+        // "have" took its cell, so the pair is the same pair of locations.
+        ('give', 'have'),
       ]) {
         expect(
           adjacent(p[pair.$1]!, p[pair.$2]!),
