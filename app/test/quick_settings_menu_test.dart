@@ -247,6 +247,53 @@ void main() {
     await teardownBoard(tester);
   });
 
+  testWidgets('and the volume says the sentence, not a sample', (tester) async {
+    // The question somebody is answering is "will I be heard saying *this*, in
+    // *this* room". A fixed phrase is the wrong words and the wrong length.
+    final speech = _SilentSpeech();
+    await pumpBoard(tester, speech);
+
+    await tester.tap(find.text('I').first);
+    await settle(tester);
+    await tester.tap(find.text('want').first);
+    await settle(tester);
+
+    await tester.tap(find.text(quickSettingsLabel));
+    await settle(tester);
+    await tester.tap(find.text('Volume'));
+    await settle(tester);
+    await tester.tap(find.text(volumeQuietest.label));
+    await settle(tester);
+
+    expect(speech.spoken.last, 'I want');
+    expect(
+      speech.spoken,
+      isNot(contains(volumeSample)),
+      reason: 'it said the sample over the sentence somebody had built',
+    );
+
+    await teardownBoard(tester);
+  });
+
+  testWidgets('and falls back to a sample when the bar is empty', (
+    tester,
+  ) async {
+    // Silence would read as a volume of zero.
+    final speech = _SilentSpeech();
+    await pumpBoard(tester, speech);
+
+    await tester.tap(find.text(quickSettingsLabel));
+    await settle(tester);
+    await tester.tap(find.text('Volume'));
+    await settle(tester);
+    await tester.tap(find.text(volumeLoudest.label));
+    await settle(tester);
+
+    expect(speech.spoken, contains(volumeSample));
+
+    await teardownBoard(tester);
+  });
+
   testWidgets('Tone offers ways of speaking, and "Quiet" is not one', (
     tester,
   ) async {

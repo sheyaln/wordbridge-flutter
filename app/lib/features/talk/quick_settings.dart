@@ -261,10 +261,15 @@ Future<void> chooseVolume(
   required ProfileSettings settings,
   required SymbolResolver? resolver,
   SpeechEngine? speech,
+  String? sentence,
 }) => showDialog<void>(
   context: context,
-  builder: (context) =>
-      _VolumeDialog(settings: settings, resolver: resolver, speech: speech),
+  builder: (context) => _VolumeDialog(
+    settings: settings,
+    resolver: resolver,
+    speech: speech,
+    sentence: sentence,
+  ),
 );
 
 class _VolumeDialog extends StatefulWidget {
@@ -272,11 +277,21 @@ class _VolumeDialog extends StatefulWidget {
     required this.settings,
     required this.resolver,
     this.speech,
+    this.sentence,
   });
 
   final ProfileSettings settings;
   final SymbolResolver? resolver;
   final SpeechEngine? speech;
+
+  /// What is in the utterance bar, said back at the new volume.
+  ///
+  /// Their own words, not a sample: the question somebody is answering here is
+  /// "will I be heard saying *this*, in *this* room", and a fixed phrase is
+  /// the wrong length, the wrong words and often the wrong moment. Null or
+  /// empty falls back to [volumeSample], because an empty bar has nothing to
+  /// say and silence would read as a volume of zero.
+  final String? sentence;
 
   @override
   State<_VolumeDialog> createState() => _VolumeDialogState();
@@ -298,7 +313,11 @@ class _VolumeDialogState extends State<_VolumeDialog> {
     setState(() => _value = value);
     await widget.settings.set('speechVolume', value);
     await widget.speech?.setVolume(value);
-    await widget.speech?.speak(volumeSample);
+
+    final say = widget.sentence == null || widget.sentence!.trim().isEmpty
+        ? volumeSample
+        : widget.sentence!;
+    await widget.speech?.speak(say);
   }
 
   @override

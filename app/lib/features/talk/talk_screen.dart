@@ -1116,6 +1116,7 @@ class TalkScreenState extends State<TalkScreen> {
           settings: settings,
           resolver: widget.resolver,
           speech: widget.speech,
+          sentence: _utterance.spokenText,
         );
       case ButtonAction.quickTone:
         await chooseTone(
