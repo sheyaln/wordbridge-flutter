@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../profiles/profile_settings.dart';
@@ -22,13 +24,21 @@ import '../utterance/utterance.dart';
 /// case that matters, because the word somebody has to type is usually one
 /// word in a sentence of words they know the locations of.
 ///
-/// **One entry per send, not one per word.** The keypad does the same with a
-/// number and for the same reason: what the person composed in the field is
-/// one thing they meant, and the bar's delete key should take back the phrase
-/// they just sent rather than leave them pressing it five times. A sentence
-/// typed here also has no parts of speech to offer — nothing in this screen
-/// knows one — and splitting it into words would invite the endings and the
-/// copula to guess at them, which is how "+ed" ends up on a person's name.
+/// **A space is a word.** Every word goes into the bar the moment it is
+/// finished and is said as it lands, exactly the way a key on the board
+/// behaves — so typing and tapping produce the same sentence, built the same
+/// way, and the delete key takes back one word from either. Nothing has to be
+/// sent, and there is no unit of composition between the word and the
+/// sentence for somebody to keep track of.
+///
+/// Committing on the space is also what makes autocorrect's answer the one
+/// that lands: both platforms finalize the word being composed when the space
+/// arrives, so what is taken is what the keyboard settled on rather than the
+/// letters underneath it.
+///
+/// No part of speech, because nothing here knows one. The endings and the
+/// copula read the word before them, and a typed word tells them nothing —
+/// which is honest: guessing would offer "+ed" on a person's name.
 class KeyboardMode extends StatefulWidget {
   const KeyboardMode({
     super.key,
@@ -113,25 +123,58 @@ class _KeyboardModeState extends State<KeyboardMode> {
     if (mounted) _focus.requestFocus();
   }
 
-  /// Puts what is in the field into the sentence.
+  /// Takes every finished word out of the field and into the sentence.
+  ///
+  /// A word is finished when a space follows it. What is left after the last
+  /// space stays in the field, still being typed and still correctable —
+  /// nothing is taken from somebody mid-word.
+  ///
+  /// Reads the whole field rather than the last character, so a pasted line
+  /// and a held-down space both land as the words they are.
+  void _onChanged(String value) {
+    if (!value.contains(' ')) {
+      setState(() {});
+      return;
+    }
+
+    final parts = value.split(' ');
+    final unfinished = parts.removeLast();
+
+    // The field first, so the words below cannot be taken twice if speaking
+    // one of them takes a moment.
+    _field.value = TextEditingValue(
+      text: unfinished,
+      selection: TextSelection.collapsed(offset: unfinished.length),
+    );
+
+    for (final word in parts) {
+      if (word.trim().isNotEmpty) unawaited(_commit(word.trim()));
+    }
+    setState(() {});
+  }
+
+  /// Puts one word into the sentence and says it.
   ///
   /// Said as it lands, where this profile hears each word, because that is the
-  /// same feedback a tapped key gives and the reason the typing screen speaks
-  /// too. The field empties and the keyboard stays, which is the whole point
-  /// of this screen over that one.
+  /// same feedback a tapped key gives.
+  Future<void> _commit(String word) async {
+    setState(() => widget.utterance.add(word));
+
+    try {
+      await widget.speech?.speak(word);
+    } catch (_) {
+      // Nowhere to report it to, and the word is not lost by it.
+    }
+  }
+
+  /// Sends the word still being typed, for the one that has no space after it.
   Future<void> _send() async {
     final text = _field.text.trim();
     if (text.isEmpty) return;
 
     _field.clear();
-    setState(() => widget.utterance.add(text));
     _focus.requestFocus();
-
-    try {
-      await widget.speech?.speak(text);
-    } catch (_) {
-      // Nowhere to report it to, and the words are not lost by it.
-    }
+    await _commit(text);
   }
 
   /// Sends anything still in the field, then says the sentence.
@@ -185,17 +228,17 @@ class _KeyboardModeState extends State<KeyboardMode> {
               autofocus: true,
               autocorrect: _correcting,
               enableSuggestions: _correcting,
-              // Return sends and the screen stays open, which is what makes
-              // this a mode rather than a dialog. "done" would be a lie about
-              // what the key does.
+              // Return finishes the word being typed, the way a space does,
+              // and the screen stays open — which is what makes this a mode
+              // rather than a dialog. "done" would be a lie about what it
+              // does.
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
-              onChanged: (_) => setState(() {}),
-              maxLines: 2,
-              minLines: 1,
+              onChanged: _onChanged,
+              maxLines: 1,
               style: const TextStyle(fontSize: 28),
               decoration: const InputDecoration(
-                hintText: 'Type, then send it to the sentence',
+                hintText: 'Type a word, then space',
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 16,
@@ -210,7 +253,10 @@ class _KeyboardModeState extends State<KeyboardMode> {
                   child: OutlinedButton.icon(
                     onPressed: _hasText ? _send : null,
                     icon: const Icon(Icons.subdirectory_arrow_left_rounded),
-                    label: const Text('Add to sentence'),
+                    // For the last word of a sentence, which has no space
+                    // after it. Every other word has already gone in by
+                    // itself.
+                    label: const Text('Add this word'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(56),
                       textStyle: const TextStyle(fontSize: 17),

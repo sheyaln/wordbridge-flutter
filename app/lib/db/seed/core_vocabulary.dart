@@ -2816,7 +2816,19 @@ final categoryBands = <String, List<Band<SeedWord>>>{
     Band(
       name: 'more shapes',
       shedRank: 1,
-      items: nouns(['rectangle', 'oval', 'diamond'], level: 3),
+      // "line" is the flattest of them and the one a worksheet asks for most:
+      // draw a line, stand in a line, the line on the page. No conflict with
+      // anything — no board carried the word.
+      items: nouns(['rectangle', 'oval', 'diamond', 'line'], level: 3),
+    ),
+
+    // The ones with a size in three directions. A row of their own because
+    // that is what separates them: a cube is not a square, and a child asked
+    // to tell them apart has to have both words to answer with.
+    Band(
+      name: 'solid shapes',
+      shedRank: 3,
+      items: nouns(['sphere', 'cube', 'pyramid'], level: 3),
     ),
 
     // Adjectives, and kept off the rows above for that reason: these describe

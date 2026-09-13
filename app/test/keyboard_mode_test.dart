@@ -152,28 +152,65 @@ void main() {
       },
     );
 
-    testWidgets('sends what was typed as one entry, not one per word', (
-      tester,
-    ) async {
-      // The keypad's rule. What somebody composed in the field is one thing
-      // they meant, and the bar's delete key should take that back rather
-      // than leave them pressing it five times.
+    testWidgets('a space finishes a word, and the word speaks', (tester) async {
+      // The same behaviour as a key on the board: the word lands and is said
+      // as it lands. Nothing has to be sent.
       final speech = _Speech();
       await pumpBoard(tester, speech);
       await openKeyboard(tester);
 
-      await tester.enterText(find.byType(TextField), 'the bus was late');
-      await settle(tester);
-      await tester.tap(find.text('Add to sentence'));
+      await tester.enterText(find.byType(TextField), 'bus ');
       await settle(tester);
 
-      expect(find.text('the bus was late'), findsWidgets);
-      expect(speech.words, ['the bus was late']);
+      expect(speech.words, ['bus']);
+      expect(find.text('bus'), findsWidgets);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+        reason: 'the finished word stayed in the field',
+      );
 
-      // One delete takes the whole phrase back.
+      await teardownBoard(tester);
+    });
+
+    testWidgets('and the word still being typed is left alone', (tester) async {
+      final speech = _Speech();
+      await pumpBoard(tester, speech);
+      await openKeyboard(tester);
+
+      await tester.enterText(find.byType(TextField), 'the bus was la');
+      await settle(tester);
+
+      expect(speech.words, ['the', 'bus', 'was']);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'la',
+        reason: 'an unfinished word was taken out of the field',
+      );
+
+      // One delete takes back one word, the way it does on the board.
       await tester.tap(find.byTooltip('Delete last'));
       await settle(tester);
-      expect(find.text('Nothing said yet'), findsOneWidget);
+      expect(find.text('the bus'), findsWidgets);
+
+      await teardownBoard(tester);
+    });
+
+    testWidgets('and the last word goes in without a space after it', (
+      tester,
+    ) async {
+      final speech = _Speech();
+      await pumpBoard(tester, speech);
+      await openKeyboard(tester);
+
+      await tester.enterText(find.byType(TextField), 'late');
+      await settle(tester);
+      expect(speech.words, isEmpty, reason: 'an unfinished word was said');
+
+      await tester.tap(find.text('Add this word'));
+      await settle(tester);
+
+      expect(speech.words, ['late']);
 
       await teardownBoard(tester);
     });
@@ -185,9 +222,7 @@ void main() {
       await pumpBoard(tester, speech);
       await openKeyboard(tester);
 
-      await tester.enterText(find.byType(TextField), 'hello');
-      await settle(tester);
-      await tester.tap(find.text('Add to sentence'));
+      await tester.enterText(find.byType(TextField), 'hello ');
       await settle(tester);
 
       expect(find.byType(KeyboardMode), findsOneWidget);
@@ -197,9 +232,7 @@ void main() {
         reason: 'the field kept what was already sent',
       );
 
-      await tester.enterText(find.byType(TextField), 'again');
-      await settle(tester);
-      await tester.tap(find.text('Add to sentence'));
+      await tester.enterText(find.byType(TextField), 'again ');
       await settle(tester);
 
       expect(speech.words, ['hello', 'again']);
@@ -220,6 +253,7 @@ void main() {
       await settle(tester);
 
       expect(speech.sentences, ['I am ready']);
+      expect(speech.words, ['I', 'am', 'ready']);
 
       await teardownBoard(tester);
     });
@@ -231,9 +265,7 @@ void main() {
       await pumpBoard(tester, speech);
       await openKeyboard(tester);
 
-      await tester.enterText(find.byType(TextField), 'my sister');
-      await settle(tester);
-      await tester.tap(find.text('Add to sentence'));
+      await tester.enterText(find.byType(TextField), 'my sister ');
       await settle(tester);
 
       expect(find.byTooltip('Back to the board'), findsOneWidget);
