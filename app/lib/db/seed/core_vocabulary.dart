@@ -2198,6 +2198,11 @@ final categoryBands = <String, List<Band<SeedWord>>>{
         // something is, and it is on the wall of most of the rooms this board
         // gets used in.
         ...nouns(['calendar'], level: 3),
+        // What turns a number into a time. The numbers board can already say
+        // "three"; this is the word that makes it three o'clock rather than
+        // three of something, and without it a person can count and cannot
+        // tell anybody when.
+        ...nouns(["o'clock"], level: 3),
       ],
     ),
 

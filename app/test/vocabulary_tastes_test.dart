@@ -487,7 +487,7 @@ void main() {
       final vocabId = await seedCoreBoardSet(db, rows: 7, cols: 12);
       final at = await placesOn(vocabId, 'time');
 
-      for (final word in ['month', 'year', 'second', 'calendar']) {
+      for (final word in ['month', 'year', 'second', 'calendar', "o'clock"]) {
         expect(at[word], isNotNull, reason: '"$word" is missing');
       }
       // On the row that already measures how long, appended so nothing on it

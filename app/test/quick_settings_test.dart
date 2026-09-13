@@ -398,7 +398,8 @@ void main() {
 
     test('and are named for a room, not a number', () {
       expect(volumeQuietest.label, 'Whisper');
-      expect(volumeLoudest.label, 'Yelling');
+      expect(volumeLoudest.label, 'Loud');
+      expect(volumeNormal.label, 'Normal');
     });
   });
 

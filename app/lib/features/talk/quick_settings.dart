@@ -224,7 +224,7 @@ class _Scrim extends CustomPainter {
 ///
 /// Named for how it sounds in the room rather than for a number. "60%" is not
 /// something anybody can hear; "loud enough for the back seat" is.
-const volumeLoudest = (label: 'Yelling', value: 1.0);
+const volumeLoudest = (label: 'Loud', value: 1.0);
 const volumeQuietest = (label: 'Whisper', value: 0.15);
 
 /// The middle of the slider, and where a voice sits when nobody has moved it.
