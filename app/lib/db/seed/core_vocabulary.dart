@@ -464,16 +464,21 @@ final homeBands = <Band<SeedWord>>[
       _article('the'),
       w('and', PartOfSpeech.conjunction, level: 2),
       w('but', PartOfSpeech.conjunction, level: 2),
-      // Slotted in beside the other two coordinators rather than appended,
-      // which moves `because`, `so`, `for` and `with` one location along. The
-      // three of them are one group — and, but, or — and a board that scatters
-      // them is three things to learn instead of one; nobody has learned these
-      // positions yet, so this is the moment it is affordable.
+      // Declared with the other two coordinators and ranked to page off ahead
+      // of them, which is the only way to have both. This band is exactly six
+      // deep — one column — so page one holds six of it, and a seventh word
+      // beside `but` sends `so` to page two. §4.68 says it may not: `and`,
+      // `but`, `because` and `so` are what turn a run of words into a
+      // sentence, and the guard that keeps all four on the root board exists
+      // because a comparative once pushed them off.
       //
-      // It is also the word a choice is made of. Without it a board can be
-      // offered two things and can accept one or refuse both; it cannot ask
-      // which, and it cannot offer anybody else a choice either.
-      w('or', PartOfSpeech.conjunction, level: 2),
+      // So this reads on page two, one page-turn from the pair it belongs
+      // with, and nothing already placed moves by a cell.
+      //
+      // The word a choice is made of. Without it a board can be offered two
+      // things and can accept one or refuse both; it cannot ask which, and it
+      // cannot offer anybody else a choice either.
+      w('or', PartOfSpeech.conjunction, level: 2, pageRank: 25),
       w('because', PartOfSpeech.conjunction, level: 2),
       w('so', PartOfSpeech.conjunction, level: 2),
       // With the joining words, which is what it is: "for" is benefactive, not
@@ -2822,15 +2827,22 @@ final categoryBands = <String, List<Band<SeedWord>>>{
       items: [
         // The board's own name, and the question: "what shape?" — which is how
         // somebody asks when the particular shape is not the point.
-        ...nouns(['shape'], level: 2),
+        ...nouns(['shape'], level: 3),
       ],
     ),
 
     // The three a child is taught first and asked about most.
+    //
+    // Level 3, all of it, the way `colors` and `nature` are. This is naming
+    // vocabulary — the answer to a worksheet, not the thing a day is
+    // negotiated in — and level 2 is for the latter. `colors` kept four hues
+    // at level 2 only because choosing between two things by color is what a
+    // child is asked to do before anything else; nobody is asked to pick the
+    // triangle one to make a day work.
     Band(
       name: 'first shapes',
       shedRank: 0,
-      items: nouns(['circle', 'square', 'triangle'], level: 2),
+      items: nouns(['circle', 'square', 'triangle'], level: 3),
     ),
 
     Band(
