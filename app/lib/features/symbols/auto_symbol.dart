@@ -42,6 +42,19 @@ class AutoSymbol {
     required String label,
   }) async {
     try {
+      // What the button had before the lookup, so the write at the end can
+      // tell whether a caregiver got there first (§4.89). Read before the
+      // search rather than after: the search is the slow part, and the whole
+      // point is to notice a choice made while it was running.
+      final before = await (db.select(
+        db.buttons,
+      )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
+      if (before == null) return false;
+
+      // Somebody has already chosen for this button. This only ever fills in
+      // for a word nobody has chosen for.
+      if (before.symbolId != null) return false;
+
       final ref = await _findExact(label);
       if (ref == null) return false;
 
@@ -85,6 +98,23 @@ class AutoSymbol {
         db.buttons,
       )..where((b) => b.id.equals(buttonId))).getSingleOrNull();
       if (button == null) return false;
+
+      // **A guess never overwrites a choice** (§4.89).
+      //
+      // This runs unwatched and it can be slow: nothing bundled matches, so
+      // the network is asked, and then the picture is fetched. Seconds pass,
+      // and they are exactly the seconds in which a caregiver who saw a blank
+      // button opens the picker and puts their own photograph on it — so the
+      // write below would land last and take the photograph off again. From
+      // the caregiver's side the picker simply does nothing, and does nothing
+      // every time, because the slow path is slow for the same word every
+      // time.
+      //
+      // The word that has a bundled picture never shows this: that lookup
+      // finishes before anybody can reach the picker. It is the word with no
+      // bundled match and a match on the network — "colleague" was the one
+      // reported — that reliably loses the race.
+      if (button.symbolId != before.symbolId) return false;
 
       await writeToWord(
         db,

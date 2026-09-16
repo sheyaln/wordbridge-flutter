@@ -155,6 +155,24 @@ void main() {
     Future<Button> buttonById(String id) =>
         (db.select(db.buttons)..where((b) => b.id.equals(id))).getSingle();
 
+    /// A photograph a caregiver imported, as a row the button can point at.
+    Future<String> theirOwnPhoto() async {
+      const id = 'their-own-photo';
+      await db
+          .into(db.symbols)
+          .insert(
+            SymbolsCompanion.insert(
+              id: id,
+              source: SymbolSource.custom,
+              label: 'colleague',
+              license: 'user-owned',
+              attribution: 'Supplied by the device owner.',
+              createdAt: nowMs(),
+            ),
+          );
+      return id;
+    }
+
     test('an exact match is attached', () async {
       final pack = packReturning([(text: 'Nana', id: 99)]);
       addTearDown(pack.dispose);
@@ -168,6 +186,68 @@ void main() {
 
       expect(attached, isTrue);
       expect((await buttonById(buttonId)).symbolId, isNotNull);
+    });
+
+    test('a picture a caregiver chose is never overwritten', () async {
+      // §4.89. This runs unwatched and can take seconds — nothing bundled
+      // matches, so the network is asked and then the picture is fetched — and
+      // those are exactly the seconds in which somebody looking at a blank
+      // button opens the picker and puts their own photograph on it. Landing
+      // last, it used to take the photograph straight back off, so the picker
+      // appeared to do nothing at all.
+      final pack = packReturning([(text: 'colleague', id: 42)]);
+      addTearDown(pack.dispose);
+
+      final buttonId = await addWord('colleague');
+      // The caregiver got there first.
+      final theirs = await theirOwnPhoto();
+      await (db.update(db.buttons)..where((b) => b.id.equals(buttonId))).write(
+        ButtonsCompanion(symbolId: Value(theirs)),
+      );
+
+      final attached = await AutoSymbol(
+        db: db,
+        registry: SymbolRegistry(packs: [pack]),
+        fetcher: pack,
+      ).attachTo(buttonId: buttonId, label: 'colleague');
+
+      expect(attached, isFalse);
+      expect(
+        (await buttonById(buttonId)).symbolId,
+        'their-own-photo',
+        reason: 'the lookup overwrote a picture somebody chose',
+      );
+    });
+
+    test('and not one chosen while the lookup was still running', () async {
+      // The real shape of it: the button is blank when the lookup starts, and
+      // the choice lands while the network is being asked.
+      final buttonId = await addWord('colleague');
+      final theirs = await theirOwnPhoto();
+
+      // The choice lands while the lookup is out on the network, which is the
+      // seam the real one is slow at.
+      final racing = GlobalSymbolsPack(
+        documentsDirectory: () async => temp,
+        client: MockClient((request) async {
+          if (request.url.host == GlobalSymbolsPack.host) {
+            await (db.update(db.buttons)..where((b) => b.id.equals(buttonId)))
+                .write(ButtonsCompanion(symbolId: Value(theirs)));
+            return http.Response(labels([(text: 'colleague', id: 42)]), 200);
+          }
+          return http.Response.bytes([1, 2, 3], 200);
+        }),
+      );
+      addTearDown(racing.dispose);
+
+      final attached = await AutoSymbol(
+        db: db,
+        registry: SymbolRegistry(packs: [racing]),
+        fetcher: racing,
+      ).attachTo(buttonId: buttonId, label: 'colleague');
+
+      expect(attached, isFalse);
+      expect((await buttonById(buttonId)).symbolId, 'their-own-photo');
     });
 
     test('nothing is taken from a set that is switched off', () async {
