@@ -79,14 +79,26 @@ fixed tail, so the lengthening lands on the syllable rather than across a word
 boundary. Utterance duration moves only 1.14× because the treatment applies to
 the final syllable, not the sentence.
 
-**The implementation has one trap worth recording.** The obvious approach —
-cut the tail into chunks, pitch-shift each by an increasing amount, overlap-add
-— does not work. Each chunk comes out of the phase vocoder with its own phase,
-so overlapping chunks cancel against each other and the measured contour moves
-*backwards*. The working version stretches the tail in a single phase-vocoder
-pass and then reads it back with one continuously varying pointer, so there is
-only ever one phase to be coherent with. Same failure mode as the whisper
-below, and the same fix.
+**Two implementations were rejected on the way, and both are worth recording.**
+
+*Chunked pitch shifting.* Cut the tail into chunks, shift each by an increasing
+amount, overlap-add. Each chunk leaves the phase vocoder with its own phase, so
+overlapping chunks cancel and the measured contour moves *backwards*.
+
+*Resampling with a varying read pointer.* Phase-coherent, and it moves the pitch
+correctly — but it is a tape-speed change, so **the formants go up with the
+pitch**. A listener called it "a robo chipmunk", which is exactly what a shifted
+vocal tract sounds like. Restoring the envelope afterwards by LPC whitening and
+re-imposing the source filter did not rescue it; the correction over-brightened.
+
+**The method that works is TD-PSOLA.** Grains are two-period windowed slices
+centred on glottal epochs, repositioned at new spacings and overlap-added.
+Because a grain is never resampled, the vocal tract is unchanged *by
+construction* — there is no formant correction to get wrong. It also delivers
+more audible rise per nominal semitone, so the shipped setting is far gentler
+than the resampling version needed: **3-5 st, not 11**. Spectral centroid in
+the treated tail stays at or below the untreated value while f0 rises, which is
+the measurement that says "no chipmunk".
 
 It fits the architecture. A sentence ending `?` is already its own cache key —
 `you want that?` and `you want that.` are separate entries — so the treated
@@ -128,9 +140,31 @@ The method that works is source-filter resynthesis:
 - Genuinely unvoiced frames are passed through unchanged, so `/s/`, `/ʃ/` and
   plosives keep their bite instead of being resynthesised into mush.
 
-Devoicing improves from ~2 dB to ~10 dB against normal speech, which is the
-difference between a voice with the harmonics disguised and one with no
-harmonic structure left.
+Devoicing improves from ~2 dB to ~10 dB against normal speech.
+
+**And a fully devoiced whisper is the wrong target.** Clean, coherent and
+correctly formanted, it was still called frightening. That is not a defect in
+the synthesis: **a voice with no f0 at all is the one horror films use.**
+Removing phonation entirely removes what marks a speaker as a living person,
+and §5 non-negotiable 9's argument applies exactly — an AAC user is taken to
+mean whatever came out, in whatever voice it came out in.
+
+What is wanted is **breathy voice**, not whisper: the folds still vibrate with
+turbulent noise alongside them. That is also what confidential human speech
+mostly is — true whisper is rarer than people assume. The knob is how much
+phonation survives:
+
+| retained voice | HNR | centroid |
+|---|---|---|
+| normal | 3.07 dB | 3264 Hz |
+| 0% (full whisper) | -7.13 dB | 4295 Hz |
+| 30% | -6.53 dB | 4280 Hz |
+| 45% | -4.23 dB | 4183 Hz |
+| 60% | -1.34 dB | 4016 Hz |
+
+Breath is present across the whole range — the centroid stays 750-1000 Hz above
+normal at every setting. Only the pitch comes back. **The setting is a listening
+choice, not a measurement**, which is why it ships as a ladder.
 
 The absolute HNR figures are a normalised-autocorrelation proxy rather than a
 proper cepstral HNR — read the contrast, not the levels.
@@ -251,10 +285,12 @@ pointer can be shared; `kokoro.dart` already shares one by address.
 3. **Wire `gain` to a control**, once 1 and 2 are in. This is the requirement
    that motivated §4.5 in the first place.
 4. **`lang: 'en-gb-x-rp'`** behind a listening check — four voices for one field.
-5. **Question contour for `?`** — terminal rise *and* final lengthening, at
-   roughly 11 st / 1.40×. Prototyped and heard; tuning, not discovery.
-6. **Whisper by LPC resynthesis** with bandwidth expansion. Prototyped and
-   heard. Phase randomisation is a dead end — it choruses.
+5. **Question contour for `?`** — terminal rise *and* final lengthening, by
+   TD-PSOLA, at roughly 3-5 st / 1.30×. Prototyped and heard twice; tuning,
+   not discovery. Resampling is a dead end — it chipmunks.
+6. **Breathy voice, not whisper** — LPC resynthesis with bandwidth expansion,
+   mixed back over retained phonation. Prototyped and heard twice. Full
+   devoicing is a dead end: it is clean, and it frightens people.
 
 Items 4–6 all end at the same gate, and `TONE-RESEARCH.md` is the reason to
 respect it: measurements said calm moved correctly on every axis and a listener
