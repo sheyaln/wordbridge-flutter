@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import '../../db/database.dart';
 import '../../db/tables.dart';
 import '../symbols/custom_upload.dart';
+import '../symbols/stored_path.dart';
 import '../symbols/drawable.dart';
 import 'obf_model.dart';
 import 'recordings.dart';
@@ -261,8 +262,14 @@ Future<Uint8List?> readSymbolImage(String localUri) async {
     if (localUri.startsWith('assets/')) {
       return (await rootBundle.load(localUri)).buffer.asUint8List();
     }
-    if (p.isAbsolute(localUri)) {
-      final file = File(localUri);
+    if (p.isAbsolute(localUri) || !localUri.startsWith('assets/')) {
+      // Where it is now. A path written down before iOS moved the data
+      // container names a folder that is gone, and an export that skipped the
+      // picture would quietly ship a board with the photographs missing
+      // (§4.90).
+      final at = await resolveStoredPath(localUri);
+      if (at == null) return null;
+      final file = File(at);
       return await file.exists() ? await file.readAsBytes() : null;
     }
   } catch (_) {

@@ -2,12 +2,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
 :root{--paper:#F5F7F9;--surface:#FFF;--ink:#171C23;--ink-2:#3C4655;--muted:#667287;
- --line:#DCE2EA;--accent:#2B4A8B;--accent-soft:#E4EAF6}
+ --line:#DCE2EA;--accent:#2B4A8B}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
  --paper:#12161B;--surface:#1A1F27;--ink:#E6EAF0;--ink-2:#BCC5D2;--muted:#8B97A8;
- --line:#2A323D;--accent:#8FB0EE;--accent-soft:#233149}}
+ --line:#2A323D;--accent:#8FB0EE}}
 :root[data-theme="dark"]{--paper:#12161B;--surface:#1A1F27;--ink:#E6EAF0;--ink-2:#BCC5D2;
- --muted:#8B97A8;--line:#2A323D;--accent:#8FB0EE;--accent-soft:#233149}
+ --muted:#8B97A8;--line:#2A323D;--accent:#8FB0EE}
 *{box-sizing:border-box}
 body{background:var(--paper);color:var(--ink);
  font:400 16px/1.5 "Source Sans 3",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -38,20 +38,15 @@ section{padding-top:34px;scroll-margin-top:72px}
 h2{font-size:20px;font-weight:600;letter-spacing:-.01em}
 .h span{margin-left:auto;font:400 13px/1 "IBM Plex Mono",ui-monospace,monospace;
  color:var(--muted);font-variant-numeric:tabular-nums}
-ul{list-style:none;margin:14px 0 0;padding:0;
- columns:180px;column-gap:28px}
+ul{list-style:none;margin:14px 0 0;padding:0;columns:180px;column-gap:28px}
 li{break-inside:avoid;padding:3px 0;color:var(--ink-2);font-size:15.5px}
 .hidden{display:none!important}
 .empty{color:var(--muted);font-size:14px;padding:16px 0}
-footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
- color:var(--muted);font-size:13.5px;max-width:68ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
-<div class="wrap"><header>
-<div class="eyebrow">Wordbridge</div>
+<div class="wrap"><header><div class="eyebrow">Wordbridge</div>
 <h1>Every word on the board</h1>
-<p class="sub">700 words &middot; 18 boards</p>
-<nav>
+<p class="sub">771 words &middot; 18 boards</p><nav>
 <a href="#home">Root board</a>
 <a href="#people">People</a>
 <a href="#food">Food</a>
@@ -71,7 +66,7 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <a href="#nature">Nature</a>
 <a href="#shapes">Shapes</a>
 </nav></header>
-<div class="bar"><input type="search" id="q" placeholder="Search" aria-label="Search words"><span id="count">700 shown</span></div>
+<div class="bar"><input type="search" id="q" placeholder="Search" aria-label="Search words"><span id="count">771 shown</span></div>
 <section id="home"><div class="h"><h2>Root board</h2><span>87</span></div><ul>
 <li data-w="+&#x27;s">+&#x27;s</li>
 <li data-w="+ed">+ed</li>
@@ -161,13 +156,16 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="yes">yes</li>
 <li data-w="you">you</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
-<section id="people"><div class="h"><h2>People</h2><span>47</span></div><ul>
+<section id="people"><div class="h"><h2>People</h2><span>55</span></div><ul>
 <li data-w="baby">baby</li>
+<li data-w="boss">boss</li>
 <li data-w="boy">boy</li>
 <li data-w="boyfriend">boyfriend</li>
 <li data-w="brother">brother</li>
 <li data-w="bye">bye</li>
 <li data-w="class">class</li>
+<li data-w="colleague">colleague</li>
+<li data-w="crush">crush</li>
 <li data-w="dad">dad</li>
 <li data-w="driver">driver</li>
 <li data-w="everybody">everybody</li>
@@ -177,6 +175,7 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="girlfriend">girlfriend</li>
 <li data-w="grandma">grandma</li>
 <li data-w="grandpa">grandpa</li>
+<li data-w="group">group</li>
 <li data-w="hello">hello</li>
 <li data-w="helper">helper</li>
 <li data-w="her">her</li>
@@ -184,7 +183,9 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="him">him</li>
 <li data-w="his">his</li>
 <li data-w="husband">husband</li>
+<li data-w="landlord">landlord</li>
 <li data-w="man">man</li>
+<li data-w="mate">mate</li>
 <li data-w="mine">mine</li>
 <li data-w="mom">mom</li>
 <li data-w="name">name</li>
@@ -192,6 +193,7 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="nobody">nobody</li>
 <li data-w="our">our</li>
 <li data-w="ours">ours</li>
+<li data-w="partner">partner</li>
 <li data-w="people">people</li>
 <li data-w="person">person</li>
 <li data-w="please">please</li>
@@ -199,6 +201,7 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="somebody">somebody</li>
 <li data-w="sorry">sorry</li>
 <li data-w="stranger">stranger</li>
+<li data-w="support worker">support worker</li>
 <li data-w="teacher">teacher</li>
 <li data-w="thank you">thank you</li>
 <li data-w="their">their</li>
@@ -284,7 +287,7 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="yucky">yucky</li>
 <li data-w="yummy">yummy</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
-<section id="play"><div class="h"><h2>Play</h2><span>61</span></div><ul>
+<section id="play"><div class="h"><h2>Play</h2><span>68</span></div><ul>
 <li data-w="active">active</li>
 <li data-w="activity">activity</li>
 <li data-w="again">again</li>
@@ -305,7 +308,9 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="draw">draw</li>
 <li data-w="football">football</li>
 <li data-w="game">game</li>
+<li data-w="games">games</li>
 <li data-w="golf">golf</li>
+<li data-w="headphones">headphones</li>
 <li data-w="hide">hide</li>
 <li data-w="hockey">hockey</li>
 <li data-w="joke">joke</li>
@@ -314,10 +319,13 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="movie">movie</li>
 <li data-w="music">music</li>
 <li data-w="my turn">my turn</li>
+<li data-w="online">online</li>
 <li data-w="paint">paint</li>
+<li data-w="phone">phone</li>
 <li data-w="picture">picture</li>
 <li data-w="play">play</li>
 <li data-w="playground">playground</li>
+<li data-w="playlist">playlist</li>
 <li data-w="pull">pull</li>
 <li data-w="push">push</li>
 <li data-w="puzzle">puzzle</li>
@@ -337,43 +345,61 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="swing">swing</li>
 <li data-w="tablet">tablet</li>
 <li data-w="tennis">tennis</li>
+<li data-w="text">text</li>
 <li data-w="throw">throw</li>
 <li data-w="toy">toy</li>
 <li data-w="trampoline">trampoline</li>
 <li data-w="tv">TV</li>
 <li data-w="video">video</li>
+<li data-w="video call">video call</li>
 <li data-w="video game">video game</li>
 <li data-w="walk">walk</li>
 <li data-w="win">win</li>
 <li data-w="your turn">your turn</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
-<section id="feelings"><div class="h"><h2>Feelings</h2><span>67</span></div><ul>
+<section id="feelings"><div class="h"><h2>Feelings</h2><span>91</span></div><ul>
 <li data-w="a little">a little</li>
 <li data-w="angry">angry</li>
+<li data-w="annoyed">annoyed</li>
+<li data-w="ask me">ask me</li>
+<li data-w="awkward">awkward</li>
+<li data-w="bastard">bastard</li>
 <li data-w="beautiful">beautiful</li>
 <li data-w="better">better</li>
+<li data-w="bitch">bitch</li>
 <li data-w="bored">bored</li>
 <li data-w="calm">calm</li>
 <li data-w="comfortable">comfortable</li>
 <li data-w="confused">confused</li>
+<li data-w="crap">crap</li>
 <li data-w="cute">cute</li>
+<li data-w="damn">damn</li>
+<li data-w="embarrassed">embarrassed</li>
 <li data-w="enough">enough</li>
 <li data-w="excited">excited</li>
 <li data-w="excuse me">excuse me</li>
+<li data-w="exhausted">exhausted</li>
 <li data-w="fair">fair</li>
 <li data-w="feel">feel</li>
 <li data-w="feeling">feeling</li>
 <li data-w="feelings">feelings</li>
+<li data-w="fine">fine</li>
+<li data-w="frustrated">frustrated</li>
+<li data-w="fuck">fuck</li>
 <li data-w="funny">funny</li>
 <li data-w="happy">happy</li>
 <li data-w="hate">hate</li>
 <li data-w="huh">huh</li>
 <li data-w="hurt">hurt</li>
+<li data-w="i decide">I decide</li>
+<li data-w="i disagree">I disagree</li>
 <li data-w="i don&#x27;t know">I don&#x27;t know</li>
 <li data-w="i don&#x27;t understand">I don&#x27;t understand</li>
 <li data-w="i need a break">I need a break</li>
+<li data-w="i need time">I need time</li>
 <li data-w="jealous">jealous</li>
 <li data-w="kind">kind</li>
+<li data-w="leave it">leave it</li>
 <li data-w="leave me alone">leave me alone</li>
 <li data-w="let me finish">let me finish</li>
 <li data-w="lonely">lonely</li>
@@ -381,10 +407,14 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="mean">mean</li>
 <li data-w="miss">miss</li>
 <li data-w="mood">mood</li>
+<li data-w="not now">not now</li>
 <li data-w="oops">oops</li>
 <li data-w="ow">ow</li>
+<li data-w="patronized">patronized</li>
 <li data-w="perhaps">perhaps</li>
+<li data-w="piss off">piss off</li>
 <li data-w="possibly">possibly</li>
+<li data-w="private">private</li>
 <li data-w="probably">probably</li>
 <li data-w="proud">proud</li>
 <li data-w="ready">ready</li>
@@ -393,10 +423,13 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="sad">sad</li>
 <li data-w="safe">safe</li>
 <li data-w="scared">scared</li>
+<li data-w="shit">shit</li>
 <li data-w="shy">shy</li>
 <li data-w="sick">sick</li>
 <li data-w="silly">silly</li>
+<li data-w="stressed">stressed</li>
 <li data-w="surprised">surprised</li>
+<li data-w="talk to me">talk to me</li>
 <li data-w="tired">tired</li>
 <li data-w="too bright">too bright</li>
 <li data-w="too fast">too fast</li>
@@ -410,32 +443,44 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="unlikely">unlikely</li>
 <li data-w="unsure">unsure</li>
 <li data-w="very">very</li>
+<li data-w="whatever">whatever</li>
 <li data-w="worried">worried</li>
 <li data-w="worse">worse</li>
 <li data-w="wow">wow</li>
 <li data-w="wrong">wrong</li>
 <li data-w="yay">yay</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
-<section id="places"><div class="h"><h2>Places</h2><span>32</span></div><ul>
+<section id="places"><div class="h"><h2>Places</h2><span>45</span></div><ul>
+<li data-w="appointment">appointment</li>
 <li data-w="away">away</li>
+<li data-w="bank">bank</li>
 <li data-w="bathroom">bathroom</li>
 <li data-w="beach">beach</li>
 <li data-w="bedroom">bedroom</li>
 <li data-w="bus">bus</li>
+<li data-w="bus stop">bus stop</li>
 <li data-w="cafe">cafe</li>
 <li data-w="car">car</li>
 <li data-w="church">church</li>
+<li data-w="college">college</li>
 <li data-w="door">door</li>
 <li data-w="downstairs">downstairs</li>
 <li data-w="garden">garden</li>
+<li data-w="gig">gig</li>
 <li data-w="holiday">holiday</li>
 <li data-w="home">home</li>
 <li data-w="hospital">hospital</li>
+<li data-w="how much">how much</li>
 <li data-w="inside">inside</li>
 <li data-w="kitchen">kitchen</li>
 <li data-w="library">library</li>
+<li data-w="meeting">meeting</li>
+<li data-w="money">money</li>
 <li data-w="outside">outside</li>
 <li data-w="park">park</li>
+<li data-w="party">party</li>
+<li data-w="pay">pay</li>
+<li data-w="pharmacy">pharmacy</li>
 <li data-w="place">place</li>
 <li data-w="plane">plane</li>
 <li data-w="pool">pool</li>
@@ -444,14 +489,17 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="stairs">stairs</li>
 <li data-w="store">store</li>
 <li data-w="street">street</li>
+<li data-w="taxi">taxi</li>
 <li data-w="there">there</li>
+<li data-w="town">town</li>
 <li data-w="train">train</li>
 <li data-w="upstairs">upstairs</li>
 <li data-w="window">window</li>
 <li data-w="work">work</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
-<section id="health"><div class="h"><h2>Health</h2><span>58</span></div><ul>
+<section id="health"><div class="h"><h2>Health</h2><span>77</span></div><ul>
 <li data-w="allergic">allergic</li>
+<li data-w="anus">anus</li>
 <li data-w="arm">arm</li>
 <li data-w="autism">autism</li>
 <li data-w="autistic">autistic</li>
@@ -459,56 +507,74 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="bandage">bandage</li>
 <li data-w="bisexual">bisexual</li>
 <li data-w="body">body</li>
+<li data-w="breast">breast</li>
 <li data-w="butt">butt</li>
 <li data-w="chest">chest</li>
+<li data-w="condom">condom</li>
 <li data-w="cough">cough</li>
+<li data-w="dentist">dentist</li>
 <li data-w="diagnosis">diagnosis</li>
 <li data-w="disability">disability</li>
 <li data-w="disabled">disabled</li>
 <li data-w="dizzy">dizzy</li>
+<li data-w="do not touch me">do not touch me</li>
 <li data-w="doctor">doctor</li>
 <li data-w="don&#x27;t touch me">don&#x27;t touch me</li>
 <li data-w="ears">ears</li>
 <li data-w="elbow">elbow</li>
 <li data-w="emergency">emergency</li>
+<li data-w="erection">erection</li>
 <li data-w="eyes">eyes</li>
 <li data-w="face">face</li>
 <li data-w="finger">finger</li>
 <li data-w="foot">foot</li>
 <li data-w="gay">gay</li>
+<li data-w="glasses">glasses</li>
 <li data-w="hair">hair</li>
 <li data-w="hand">hand</li>
 <li data-w="head">head</li>
 <li data-w="health">health</li>
 <li data-w="heart">heart</li>
+<li data-w="i did not agree to this">I did not agree to this</li>
 <li data-w="it hurts">it hurts</li>
 <li data-w="itchy">itchy</li>
 <li data-w="knee">knee</li>
 <li data-w="leg">leg</li>
 <li data-w="lesbian">lesbian</li>
 <li data-w="lips">lips</li>
+<li data-w="medication">medication</li>
 <li data-w="medicine">medicine</li>
 <li data-w="mouth">mouth</li>
 <li data-w="nails">nails</li>
 <li data-w="neck">neck</li>
 <li data-w="neurodivergent">neurodivergent</li>
+<li data-w="nipple">nipple</li>
 <li data-w="nose">nose</li>
 <li data-w="nurse">nurse</li>
+<li data-w="pain">pain</li>
 <li data-w="pee">pee</li>
+<li data-w="penis">penis</li>
+<li data-w="period">period</li>
 <li data-w="poo">poo</li>
 <li data-w="poorly">poorly</li>
+<li data-w="sex">sex</li>
 <li data-w="shoulder">shoulder</li>
+<li data-w="shower">shower</li>
 <li data-w="skin">skin</li>
 <li data-w="sleepy">sleepy</li>
 <li data-w="sore">sore</li>
 <li data-w="teeth">teeth</li>
 <li data-w="temperature">temperature</li>
+<li data-w="testicles">testicles</li>
 <li data-w="therapy">therapy</li>
 <li data-w="throat">throat</li>
 <li data-w="thumb">thumb</li>
 <li data-w="toes">toes</li>
 <li data-w="toilet">toilet</li>
 <li data-w="tummy">tummy</li>
+<li data-w="vagina">vagina</li>
+<li data-w="vulva">vulva</li>
+<li data-w="wheelchair">wheelchair</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
 <section id="doing"><div class="h"><h2>Doing</h2><span>60</span></div><ul>
 <li data-w="answer">answer</li>
@@ -808,19 +874,16 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 <li data-w="straight">straight</li>
 <li data-w="triangle">triangle</li>
 </ul><p class="empty hidden">No match on this board.</p></section>
-<footer>Generated from the shipped seed vocabulary. This is what a new board is built with; boards already in use are only ever added to.</footer></div>
+</div>
 <script>
-(function(){
- var q=document.getElementById('q'),c=document.getElementById('count');
+(function(){var q=document.getElementById('q'),c=document.getElementById('count');
  var items=[].slice.call(document.querySelectorAll('li[data-w]'));
  var secs=[].slice.call(document.querySelectorAll('section'));
- q.addEventListener('input',function(){
-  var t=q.value.trim().toLowerCase(),n=0;
+ q.addEventListener('input',function(){var t=q.value.trim().toLowerCase(),n=0;
   items.forEach(function(li){var ok=!t||li.dataset.w.indexOf(t)>-1;
    li.classList.toggle('hidden',!ok);if(ok)n++;});
   secs.forEach(function(s){var k=s.querySelectorAll('li:not(.hidden)').length;
    s.querySelector('ul').classList.toggle('hidden',k===0);
    s.querySelector('.empty').classList.toggle('hidden',k>0);});
-  c.textContent=n+' shown';});
-})();
+  c.textContent=n+' shown';});})();
 </script>

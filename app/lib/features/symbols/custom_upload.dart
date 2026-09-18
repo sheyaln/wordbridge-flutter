@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../db/database.dart';
 import '../../db/ids.dart';
 import '../../db/tables.dart';
+import 'stored_path.dart';
 
 /// Longest edge of a stored custom symbol. A grid cell is at most a few
 /// hundred points; anything larger is a full-resolution photograph of a child
@@ -120,8 +121,22 @@ class CustomSymbolImporter {
                   s.label.equals(label) &
                   s.deletedAt.isNull(),
             ))
-            .getSingleOrNull();
-    if (existing != null) return existing;
+            .get();
+
+    // **A row whose file cannot be found is repaired, not handed back.**
+    //
+    // The same photograph for the same word is the same row, and returning it
+    // is what stops a second copy on disk. But a row written before iOS moved
+    // the data container carries a path into a folder that no longer exists
+    // (§4.90) — and handing that back means the caregiver re-picks the photo,
+    // gets the broken row again, and watches the picker do nothing, forever.
+    // Re-picking the picture is exactly the gesture that should fix it.
+    for (final row in existing) {
+      final stored = row.localUri;
+      if (stored == null) continue;
+      final at = await resolveStoredPath(stored, root: _documentsDirectory);
+      if (at != null) return row;
+    }
 
     final directory = Directory(
       p.join((await _documentsDirectory()).path, 'symbols', 'custom'),
@@ -133,6 +148,22 @@ class CustomSymbolImporter {
       await file.writeAsBytes(normalized.bytes, flush: true);
     }
 
+    // Recorded relative to the documents directory, never absolute: the
+    // absolute path is only true until the operating system moves the
+    // container out from under it (§4.90).
+    final stored = p.join('symbols', 'custom', '$hash.png');
+
+    // A row that was already here and could not be found is put right, which
+    // is both the repair and the answer: the caregiver gets their photograph
+    // back on the button they were trying to fix.
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      await (db.update(db.symbols)..where((s) => s.id.equals(row.id))).write(
+        SymbolsCompanion(localUri: Value(stored)),
+      );
+      return row.copyWith(localUri: Value(stored));
+    }
+
     // A second row over the same file is intentional when the label differs:
     // one photograph can be both "Nana" and "grandma" without storing it twice.
     return db
@@ -141,7 +172,7 @@ class CustomSymbolImporter {
           SymbolsCompanion.insert(
             id: newId(),
             source: SymbolSource.custom,
-            localUri: Value(file.path),
+            localUri: Value(stored),
             label: label,
             license: customSymbolLicense,
             attribution: customSymbolAttribution,

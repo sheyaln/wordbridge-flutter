@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -995,8 +996,14 @@ void main() {
         expect(symbol.packId, isNull);
         expect(symbol.contentHash, isNotNull);
         expect(symbol.width, customSymbolMaxEdge);
-        expect(symbol.localUri, startsWith(documents.path));
-        expect(File(symbol.localUri!).existsSync(), isTrue);
+        // Relative to the documents directory, never absolute: iOS moves the
+        // data container and an absolute path written down today names a
+        // folder that is gone tomorrow (§4.90).
+        expect(symbol.localUri, 'symbols/custom/${symbol.contentHash}.png');
+        expect(
+          File(p.join(documents.path, symbol.localUri!)).existsSync(),
+          isTrue,
+        );
       },
     );
 
@@ -1006,6 +1013,40 @@ void main() {
 
       expect(second!.id, first!.id);
       expect(await db.select(db.symbols).get(), hasLength(1));
+    });
+
+    test('a row whose folder has moved is repaired, not handed back', () async {
+      // The bug on Haley's iPad (§4.90). The photograph was imported under one
+      // iOS data container, the container moved, and the row went on naming a
+      // folder that no longer exists — so the button showed its word. Every
+      // retry with the same photo hashed the same, matched the same broken
+      // row, and handed it straight back: the picker appeared to do nothing,
+      // and would have done nothing forever.
+      final first = await importer.store(_photoWithExif(), label: 'colleague');
+      await (db.update(db.symbols)..where((s) => s.id.equals(first!.id))).write(
+        const SymbolsCompanion(
+          localUri: Value(
+            '/var/mobile/Containers/Data/Application/'
+            'B968E79A-CADE-419D-9D99-B80EC4AB8A07/Documents/'
+            'symbols/custom/gone.png',
+          ),
+        ),
+      );
+
+      // Exactly what the caregiver does: pick the same photograph again.
+      final again = await importer.store(_photoWithExif(), label: 'colleague');
+
+      expect(again!.id, first!.id, reason: 'a second row was made');
+      expect(await db.select(db.symbols).get(), hasLength(1));
+      expect(
+        again.localUri,
+        'symbols/custom/${first.contentHash}.png',
+        reason: 'the row still points into the folder that moved',
+      );
+      expect(
+        File(p.join(documents.path, again.localUri!)).existsSync(),
+        isTrue,
+      );
     });
 
     test('one photo can carry two labels without being stored twice', () async {

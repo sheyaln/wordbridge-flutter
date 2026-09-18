@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 
 import '../../db/database.dart';
+import 'stored_path.dart';
 import 'symbol_pack.dart';
 import 'symbol_registry.dart';
 
@@ -288,11 +288,16 @@ class SymbolResolver {
       if (uri == null || uri.isEmpty) {
         return await orFallback(labelOnly(label));
       }
-      if (!await File(uri).exists()) {
+      // Where the file is now, not where it was when it was written down: iOS
+      // moves the data container and takes every absolute path with it
+      // (§4.90). A photograph whose file has genuinely gone leaves the word
+      // doing the work rather than a gap where a picture used to be.
+      final at = await resolveStoredPath(uri);
+      if (at == null) {
         return await orFallback(labelOnly(label));
       }
 
-      return (label: label, image: (kind: SymbolImageKind.file, uri: uri));
+      return (label: label, image: (kind: SymbolImageKind.file, uri: at));
     } catch (_) {
       return labelOnly(label);
     }
