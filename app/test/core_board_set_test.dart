@@ -97,13 +97,8 @@ void main() {
       'he   my   same      can  get   take     +ing      and     on   right yes',
       'she  me   different do   make  put      +\'s      but     up   off      no',
       'it   this more      open close help     am/is/are because to   forward  don\'t',
-      'that .    less      look turn  finish   was/were  so      out  about    maybe',
+      'that .    less      look turn  finish   was/were  so      out  backward maybe',
     ];
-    // 5,9 was "backward" until "about" arrived. The preposition band is
-    // twelve deep, which is exactly two columns here, so a thirteenth word
-    // takes the twelfth slot and sends "backward" to page two. Not a
-    // formality — it is the one location this board has ever given up — and
-    // affordable only because nobody has learned it yet.
 
     final home = await (db.select(
       db.boards,

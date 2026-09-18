@@ -510,6 +510,17 @@ final homeBands = <Band<SeedWord>>[
       // "for", exactly as "for" reads on page two there. Accepted for the same
       // reason: one movement further away costs less than the column.
       w('with', PartOfSpeech.preposition, level: 2),
+      // What a sentence is *of*: "talk about it", "ask about him", "a story
+      // about the dog". That is most of what anybody says out loud, and no
+      // other word on this board could say it.
+      //
+      // Here and not with the prepositions in `places`, because in American
+      // English this is not a word about where anything is. "he's about
+      // somewhere" is British; a board written in one dialect that files a
+      // word by another dialect's meaning puts it where nobody will look.
+      // What it does here is join a sentence to its subject matter, which is
+      // exactly what this band is for.
+      w('about', PartOfSpeech.preposition, level: 2),
     ],
   ),
 
@@ -568,23 +579,17 @@ final homeBands = <Band<SeedWord>>[
       // wheelchair, a queue, a page or a walk.
       w('forward', PartOfSpeech.preposition, level: 3),
       w('backward', PartOfSpeech.preposition, level: 3),
-      // What a sentence is *of*, which nothing on this board could say. Every
-      // preposition above answers where a thing is; none answers what a thing
-      // concerns — "talk about it", "ask about him", "a story about the dog" —
-      // and that is most of what anybody says out loud.
+      // "there" is not here, and neither are "with" or "about". All three
+      // belong in this band by word class and none of them fits at any grid
+      // this board ships on.
       //
-      // **The thirteenth word in a twelve-deep band, and it costs a column.**
-      // Twelve is exactly two columns at 7x12, so this takes a third and sends
-      // `under`, `left`, `right` and `off` to page one's end. Taken on purpose
-      // rather than routed around: nobody has learned these locations yet, and
-      // a preposition a board cannot say is worse than four prepositions one
-      // key further away. It would not be affordable after 1.0.
-      w('about', PartOfSpeech.preposition, level: 2),
-      // "there" is not here, and "with" is not here. Both belong in this band
-      // by word class and neither fits at any grid this board ships on.
+      // "about" is also not the word this band is for. Its locative sense —
+      // "he's about somewhere" — is British, and this board is written in
+      // American English, where "about" means what a sentence is *of*. That is
+      // a joining word, and it is in `articles` below with the others.
       //
       // "there" is on `places` / `where`, with the other adverbs that answer
-      // the question. "with" is in `articles` below, with the joining words.
+      // the question. "with" is in `articles` below.
     ],
   ),
 

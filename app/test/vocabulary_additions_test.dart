@@ -103,16 +103,28 @@ void main() {
       expect(page['unlikely']!.row, page['unsure']!.row);
     });
 
-    test('about is with the other prepositions', () async {
-      // The thirteenth word in a twelve-deep band, which is exactly two
-      // columns at 7x12 — so it takes a third and sends "backward" to page
-      // two. Its column is what this checks: the band fills down, so "about"
-      // is under "out" and in the same column as "under", "left" and "off".
+    test('about is with the joining words', () async {
+      // Not with the prepositions in `places`: "about" only means where
+      // something is in British English, and this board is written in
+      // American English, where it means what a sentence is *of*. That is a
+      // joining word.
+      //
+      // This band fills down its columns, so it shares one with "with" and
+      // "for" rather than a row.
+      final boards = await layout(rows: 7, cols: 12);
+      final page = boards['home 2'] ?? boards['home']!;
+
+      expect(page, contains('about'));
+      expect(page['about']!.col, page['with']!.col);
+    });
+
+    test('and the prepositions keep the locations they had', () async {
+      // "about" cost `places` a column while it was there, and "backward"
+      // paid for it. Moving the word out gives the location back.
       final board = (await layout(rows: 7, cols: 12))['home']!;
 
-      expect(board, contains('about'));
-      expect(board['about']!.col, board['under']!.col);
-      expect(board['about']!.row, board['out']!.row);
+      expect(board, contains('backward'));
+      expect(board['backward']!.col, board['forward']!.col);
     });
 
     test('and it is on every grid the app builds', () async {
